@@ -13,6 +13,9 @@ import { PostgresReviewStore } from './server/review-store';
 import { PostgresModerationStore } from './server/moderation-store';
 import { PostgresWorkshopSearchStore } from './server/workshop-search-store';
 import { PostgresAnalyticsStore } from './server/analytics';
+import { loadEnvironment } from '../scripts/environment.mjs';
+
+Object.assign(process.env, loadEnvironment());
 
 const databaseUrl = process.env['DATABASE_URL'];
 if (process.env['NODE_ENV'] === 'production' && !databaseUrl) {
@@ -62,5 +65,9 @@ if (isMainModule(import.meta.url) || process.env['pm_id']) {
 
 export const reqHandler = createNodeRequestHandler(async (request, response) => {
   await app.ready();
+  // Local readiness must refer to this starter, even if a port was claimed concurrently.
+  if (process.env['NODE_ENV'] !== 'production' && process.env['AUTOKOSOVA_DEV_INSTANCE']) {
+    response.setHeader('x-autokosova-dev-instance', process.env['AUTOKOSOVA_DEV_INSTANCE']);
+  }
   app.server.emit('request', request, response);
 });

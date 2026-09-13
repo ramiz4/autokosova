@@ -14,6 +14,34 @@ AutoKosova verwaltet keine Passwörter. Eine produktive Sitzung darf erst entste
 
 Die ZITADEL-Anwendung benötigt einen Authorization-Code-Flow mit PKCE, eine registrierte lokale Redirect-URL für Entwicklung und später eine separat freigegebene Produktions-Redirect-URL. Secrets, Client-IDs und echte Domains gehören nicht in Git.
 
+## Lokale Ports, Dateien und 1Password
+
+Angular läuft mit `npm start` und standardmäßig auch mit `npm run dev:demo` unter
+`http://localhost:4200/`. Dazu gehört der registrierte Callback
+`http://localhost:4200/auth/callback`. Der separat gebaute SSR-Server läuft über
+`npm run start:ssr` standardmäßig auf Port 4000 (`PORT`); das ist ein anderer Startmodus.
+
+Für einen weiteren Worktree `AUTOKOSOVA_APP_PORT` ausdrücklich in dessen `.env.local`
+setzen. Ein echter OIDC-Login benötigt dann eine passende, bereits freigegebene Callback-URL.
+Der Entwicklungsstarter ändert keine Anbieterregistrierung. Lokale Callback-/Logout-URLs
+sind normale Konfiguration und keine Passwörter. Der Adapter liest `ZITADEL_REDIRECT_URI`;
+eine Variable `ZITADEL_POST_LOGOUT_URI` wird nicht unterstützt und soll nicht angelegt werden.
+
+`.env.example` dokumentiert die erwarteten Namen und enthält keine aktive Teilkonfiguration.
+Das auskommentierte 4200-Callback-Beispiel erst zusammen mit den übrigen erforderlichen
+OIDC-Werten aktivieren. Ein Kopieren der Vorlage allein aktiviert keinen Login.
+Der gemeinsame Loader liest außerhalb von Produktion zuerst `.env`, dann `.env.local`;
+vorhandene Prozessvariablen haben Vorrang. Der Starter verwendet bei unvollständiger
+OIDC-Konfiguration nur den öffentlichen Gastablauf und nennt den fehlenden Login.
+Der direkte Serverstart behält die bestehende Prüfung unvollständiger OIDC-Konfiguration.
+
+Die tatsächlichen instanzspezifischen Werte und Testkonten werden im freigegebenen
+1Password-Eintrag gepflegt. Sie werden gezielt als Prozessvariablen oder lokale,
+von Git ignorierte `.env.local` bereitgestellt; weder Node noch der Starter fragt
+1Password automatisch ab. Testpasswörter bleiben ausschließlich im Secret-Store
+und werden nicht als App-Konfiguration hinterlegt. Keine Tokens, Passwörter oder
+vollständigen DB-Verbindungsadressen in Terminalausgaben, Issues oder PRs ausgeben.
+
 ## Testrollen ohne lokalen Bypass
 
 Alle verifizierten ZITADEL-Subjekte erhalten in AutoKosova mindestens die Rolle `customer`. Die

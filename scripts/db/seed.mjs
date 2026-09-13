@@ -1,5 +1,8 @@
 import pg from 'pg';
 import { assertSeedEnvironment, parseSeedProfile, seedDatabase } from './seed-data.mjs';
+import { loadEnvironment } from '../environment.mjs';
+
+Object.assign(process.env, loadEnvironment());
 
 const databaseUrl = process.env.DATABASE_URL;
 const profile = parseSeedProfile(process.argv.slice(2));

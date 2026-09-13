@@ -8,6 +8,7 @@
 
 # Node
 /node_modules
+.autokosova-dev.lock/
 .env
 .env.*
 !.env.example

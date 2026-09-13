@@ -1,6 +1,9 @@
 import { spawn } from 'node:child_process';
 import pg from 'pg';
 import { assertSeedEnvironment, parseSeedProfile } from './seed-data.mjs';
+import { loadEnvironment } from '../environment.mjs';
+
+Object.assign(process.env, loadEnvironment());
 
 if (process.env.ALLOW_LOCAL_RESET !== '1' || process.env.NODE_ENV === 'production') {
   throw new Error('Set ALLOW_LOCAL_RESET=1 for a non-production reset.');
