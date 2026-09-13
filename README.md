@@ -23,10 +23,10 @@ Privates Repository mit Produktplanung und technischer Grundlage. Der Stack ist 
 
 ## Entwicklungsstart
 
-Voraussetzung: **Node.js 24.21.0, npm 11.19.0**, Docker mit lokalem Linux-Docker-Kontext
-und Docker Compose v2. Die Versionen stehen in `.nvmrc` und `package.json`; npm prüft
-sie auch vor Installationen und Script-Aufrufen. Mit vorhandenem nvm: `nvm use`;
-falls nötig danach `npm install --global npm@11.19.0`. CI verwendet dieselben Versionen.
+Voraussetzung: eine von Angular 22 unterstützte Node.js-Laufzeit (Node 22.22.3+, 24.15+
+oder 26+) sowie Docker mit lokalem Linux-Docker-Kontext und Docker Compose v2. `.nvmrc`
+legt Node 24.21.0 für CI und reproduzierbare Fehlersuche nahe; lokale Entwicklungs- und
+Diagnosebefehle erzwingen diese Version nicht.
 Auf ARM-Macs nutzt der PostGIS-Container die `linux/amd64`-Emulation von Docker.
 
 ```sh

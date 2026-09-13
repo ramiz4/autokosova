@@ -3,9 +3,15 @@ import { mkdtemp, writeFile, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import packageJson from '../package.json' with { type: 'json' };
 import { loadEnvironment } from '../scripts/environment.mjs';
 import { resolveConfig, seedEnvironment } from '../scripts/dev/config.mjs';
 import { acquireLock, readLock } from '../scripts/dev/lock.mjs';
+
+test('local development is not blocked by an exact npm devEngines gate', () => {
+  assert.equal(packageJson.devEngines, undefined);
+  assert.match(packageJson.engines.node, /22\.22\.3/);
+});
 
 async function workspace(t) {
   const root = await mkdtemp(join(tmpdir(), 'autokosova-config-test-'));

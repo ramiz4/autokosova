@@ -6,6 +6,11 @@ import test from 'node:test';
 import { runProcess } from '../scripts/dev/process.mjs';
 
 test('npm ci rejects a new unreviewed install script without executing it', async (t) => {
+  const major = Number(process.env.npm_config_user_agent?.match(/\bnpm\/(\d+)/)?.[1]);
+  if (Number.isFinite(major) && major < 11) {
+    t.skip('requires npm 11, which implements allowScripts');
+    return;
+  }
   const root = await mkdtemp(join(tmpdir(), 'autokosova-npm-policy-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const dependency = join(root, 'dependency');

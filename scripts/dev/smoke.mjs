@@ -39,8 +39,12 @@ async function freePort() {
   }
 }
 
-async function start(root, profile = 'demo') {
-  const child = startProcess(process.execPath, ['scripts/dev.mjs', '--profile', profile], {
+async function start(root, profile = 'demo', viaNpm = false) {
+  const command = viaNpm ? 'npm' : process.execPath;
+  const args = viaNpm
+    ? ['run', profile === 'reference' ? 'dev' : `dev:${profile}`]
+    : ['scripts/dev.mjs', '--profile', profile];
+  const child = startProcess(command, args, {
     cwd: root,
     env,
   });
@@ -89,7 +93,7 @@ try {
   const b = resolveConfig(second, env);
   assert.notEqual(a.project, b.project);
   assert.notEqual(a.dbPort, b.dbPort);
-  const firstApp = await start(first);
+  const firstApp = await start(first, 'demo', true);
   const secondApp = await start(second);
   console.log('PASS: Zwei frische Worktrees starten parallel mit erreichbaren Demo-Daten.');
   await assert.rejects(run(process.execPath, ['scripts/dev.mjs', '--profile', 'demo'], first));
@@ -97,14 +101,16 @@ try {
   assert.equal(secondApp.finished, false);
   console.log('PASS: Doppelstart verändert keinen laufenden Starter.');
 
+  await firstApp.interrupt();
+  running.delete(firstApp);
+  await assert.rejects(readFile(join(first, '.autokosova-dev.lock', 'owner')), { code: 'ENOENT' });
+  const restarted = await start(first);
   await database(a, (db) =>
     db.query(
       "CREATE TABLE local_dx_smoke (value text); INSERT INTO local_dx_smoke VALUES ('retained')",
     ),
   );
-  await stop(firstApp);
   assert.equal(secondApp.finished, false);
-  const restarted = await start(first);
   const result = await database(a, (db) => db.query('SELECT value FROM local_dx_smoke'));
   assert.equal(result.rows[0].value, 'retained');
   await runProcess('npm', ['run', 'test:demo-seed'], { cwd: first, env: a.env });

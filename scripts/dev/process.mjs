@@ -56,6 +56,18 @@ export function startProcess(command, args, { cwd, env, log = () => {} } = {}) {
       }
     }
   }
+  async function stop() {
+    signal('SIGTERM');
+    await Promise.race([done, delay(3000, undefined, { ref: false })]);
+    // Also kill remaining grandchildren after the group leader has exited.
+    signal('SIGKILL');
+    await done;
+  }
+  async function interrupt() {
+    signal('SIGINT');
+    await Promise.race([done, delay(3000, undefined, { ref: false })]);
+    if (!finished) await stop();
+  }
   return {
     done,
     get finished() {
@@ -64,13 +76,8 @@ export function startProcess(command, args, { cwd, env, log = () => {} } = {}) {
     get output() {
       return output;
     },
-    async stop() {
-      signal('SIGTERM');
-      await Promise.race([done, delay(3000, undefined, { ref: false })]);
-      // Also kill remaining grandchildren after the group leader has exited.
-      signal('SIGKILL');
-      await done;
-    },
+    interrupt,
+    stop,
   };
 }
 

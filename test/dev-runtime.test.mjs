@@ -120,7 +120,7 @@ test('process failures do not disclose child output; timeouts and aborts stop ch
   await assert.rejects(pending, /abgebrochen/);
 });
 
-test('stopping a process group also releases a grandchild listening port', async (t) => {
+test('stopping or interrupting a process group also releases a grandchild listening port', async (t) => {
   const child = startProcess(process.execPath, [
     '-e',
     `
@@ -135,7 +135,7 @@ test('stopping a process group also releases a grandchild listening port', async
   const port = Number(child.output.trim());
   assert.ok(port > 0);
   await assert.rejects(assertFreePort(port, 'TEST_PORT'), /belegt/);
-  await child.stop();
+  await child.interrupt();
   await assertFreePort(port, 'TEST_PORT');
 });
 
