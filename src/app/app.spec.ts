@@ -36,9 +36,11 @@ describe('Homepage', () => {
       '/branding/autokosova-logo-header.png',
     );
     expect(page.querySelector('h1')?.textContent).toContain('Schon vor der Reise.');
-    expect(page.querySelector('a[href="/anfrage"]')?.textContent).toContain(
-      'Jetzt Anfrage erstellen',
-    );
+    expect(
+      [...page.querySelectorAll<HTMLAnchorElement>('a[href="/anfrage"]')].some((link) =>
+        link.textContent?.includes('Jetzt Anfrage erstellen'),
+      ),
+    ).toBe(true);
     expect(page.querySelector('form#werkstatt-suche')).toBeTruthy();
     expect(page.textContent).toContain('ohne Konto');
     expect(page.textContent).not.toMatch(/10[’']000|500\+|Reparaturgarantie|Arben/);
