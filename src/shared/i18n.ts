@@ -63,6 +63,9 @@ const messages: Readonly<Record<AppLanguage, MessageCatalog>> = {
     'home.workshopOnboarding': 'Werkstatt aufnehmen',
     'profile.details': 'Leistungen und Angaben',
     'profile.language': 'Sprachen',
+    'profile.localDemo': 'Lokale Demo · ausschliesslich fiktive Entwicklungsdaten',
+    'profile.localDemoContact':
+      'Lokale Demo: Die Vorschau und der Link sind prüfbar, aber WhatsApp oder Telefon werden nicht geöffnet.',
     'profile.loading': 'Werkstattprofil wird geladen …',
     'profile.noPhotos': 'Keine Fotos veröffentlicht.',
     'profile.noReviews': 'Noch keine Bewertungen',
@@ -196,6 +199,9 @@ const messages: Readonly<Record<AppLanguage, MessageCatalog>> = {
     'home.workshopOnboarding': 'Register a garage',
     'profile.details': 'Services and details',
     'profile.language': 'Languages',
+    'profile.localDemo': 'Local demo · fictional development data only',
+    'profile.localDemoContact':
+      'Local demo: the preview and link can be checked, but WhatsApp or the phone app will not open.',
     'profile.loading': 'Garage profile is loading …',
     'profile.noPhotos': 'No photos published.',
     'profile.noReviews': 'No reviews yet',
@@ -326,6 +332,9 @@ const messages: Readonly<Record<AppLanguage, MessageCatalog>> = {
     'home.workshopOnboarding': 'Regjistro servis',
     'profile.details': 'Shërbimet dhe të dhënat',
     'profile.language': 'Gjuhët',
+    'profile.localDemo': 'Demo lokale · vetëm të dhëna zhvillimi fiktive',
+    'profile.localDemoContact':
+      'Demo lokale: pamja paraprake dhe lidhja mund të kontrollohen, por WhatsApp ose telefoni nuk hapen.',
     'profile.loading': 'Profili i servisit po ngarkohet …',
     'profile.noPhotos': 'Nuk ka foto të publikuara.',
     'profile.noReviews': 'Ende pa vlerësime',

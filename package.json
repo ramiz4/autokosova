@@ -13,6 +13,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:server": "tsx --test test/**/*.test.ts",
+    "test:demo-seed": "AUTOKOSOVA_EXPECT_DEMO_DATA=1 tsx --test test/demo-seed-postgres.test.ts",
     "test:smoke": "node scripts/smoke.mjs",
     "lint": "eslint src --max-warnings=0",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
@@ -20,7 +21,9 @@
     "format:write": "prettier --write .github/workflows .github/PULL_REQUEST_TEMPLATE.md .postcssrc.json .prettierrc angular.json compose.yaml eslint.config.mjs package.json tsconfig*.json src scripts test db",
     "db:migrate": "node scripts/db/migrate.mjs",
     "db:seed": "node scripts/db/seed.mjs",
+    "db:seed:demo": "node scripts/db/seed.mjs --profile demo",
     "db:reset": "node scripts/db/reset.mjs",
+    "db:reset:demo": "node scripts/db/reset.mjs --profile demo",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run test:server && npm run build && npm run test:smoke"
   },
   "private": true,
