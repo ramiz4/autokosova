@@ -12,8 +12,12 @@ import { IconComponent, type IconName } from './icon.component';
       <app-icon [name]="icon()" class="size-10 lg:size-12" />
     </span>
     <div>
-      <h2 class="text-lg font-bold leading-snug tracking-tight text-ink">{{ title() }}</h2>
-      <p class="mt-1 text-sm leading-relaxed text-muted lg:text-base">{{ description() }}</p>
+      <h2 class="text-lg font-bold leading-snug tracking-tight text-ink 2xl:text-xl">
+        {{ title() }}
+      </h2>
+      <p class="mt-1 text-sm leading-relaxed text-muted lg:text-base 2xl:text-lg">
+        {{ description() }}
+      </p>
     </div>
   `,
 })
