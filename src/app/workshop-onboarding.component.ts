@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { LanguageService } from './language.service';
 
 interface OnboardingForm {
   contactPerson: string;
@@ -159,6 +160,7 @@ interface OnboardingForm {
   `,
 })
 export class WorkshopOnboardingComponent {
+  private readonly language = inject(LanguageService);
   protected consentAccepted = false;
   protected form: OnboardingForm = {
     contactPerson: '',
@@ -173,6 +175,10 @@ export class WorkshopOnboardingComponent {
   };
   protected message = '';
   protected sending = false;
+
+  constructor() {
+    this.language.setPage('home.workshopOnboarding', 'home.intro', true);
+  }
 
   protected async submit() {
     const csrfToken = document.cookie

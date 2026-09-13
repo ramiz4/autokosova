@@ -5,13 +5,14 @@ import {
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
 import { join } from 'node:path';
-import { createServer } from './server/app';
+import { createServer, isNoIndexPath } from './server/app';
 import { AccessStore } from './server/access';
 import { readZitadelOidcConfig } from './server/oidc';
 import { PostgresRepairRequestStore } from './server/repair-request-store';
 import { PostgresReviewStore } from './server/review-store';
 import { PostgresModerationStore } from './server/moderation-store';
 import { PostgresWorkshopSearchStore } from './server/workshop-search-store';
+import { PostgresAnalyticsStore } from './server/analytics';
 
 const databaseUrl = process.env['DATABASE_URL'];
 if (process.env['NODE_ENV'] === 'production' && !databaseUrl) {
@@ -25,6 +26,9 @@ const app = createServer({
   ...(databaseUrl ? { reviewStore: new PostgresReviewStore(databaseUrl) } : {}),
   ...(databaseUrl ? { moderationStore: new PostgresModerationStore(databaseUrl) } : {}),
   ...(databaseUrl ? { searchStore: new PostgresWorkshopSearchStore(databaseUrl) } : {}),
+  ...(databaseUrl ? { analyticsStore: new PostgresAnalyticsStore(databaseUrl) } : {}),
+  analyticsEnabled: process.env['AUTOKOSOVA_ANALYTICS_ENABLED'] === 'true',
+  ...(process.env['PUBLIC_SITE_URL'] ? { publicSiteUrl: process.env['PUBLIC_SITE_URL'] } : {}),
   staticRoot: join(import.meta.dirname, '../browser'),
 });
 const angularApp = new AngularNodeAppEngine();
@@ -35,6 +39,8 @@ app.setNotFoundHandler(async (request, reply) => {
   if (!response) {
     return reply.code(404).send({ error: 'Not found' });
   }
+
+  if (isNoIndexPath(request.url)) response.headers.set('x-robots-tag', 'noindex, nofollow');
 
   reply.hijack();
   await writeResponseToNodeResponse(response, reply.raw);

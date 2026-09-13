@@ -10,6 +10,8 @@ import {
   type RepairRequestVehicle,
 } from '../shared/repair-request';
 import { RepairRequestDraft } from './repair-request-draft';
+import { LanguageService } from './language.service';
+import { LanguageSwitcherComponent } from './language-switcher.component';
 
 const serviceCategories = [
   ['service-inspektion', 'Service und Inspektion'],
@@ -44,7 +46,7 @@ const places = [
 ] as const;
 
 @Component({
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, LanguageSwitcherComponent],
   selector: 'app-repair-request',
   templateUrl: './repair-request.component.html',
 })
@@ -62,6 +64,7 @@ export class RepairRequestComponent {
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly destroyRef = inject(DestroyRef);
   private readonly formBuilder = inject(NonNullableFormBuilder);
+  protected readonly language = inject(LanguageService);
   private readonly draft = inject(RepairRequestDraft);
 
   protected readonly form = this.formBuilder.group({
@@ -83,6 +86,7 @@ export class RepairRequestComponent {
   });
 
   constructor() {
+    this.language.setPage('request.title', 'request.intro', true);
     if (!this.browser) return;
     const stored = this.draft.read();
     if (stored) this.form.patchValue(stored);
@@ -146,7 +150,7 @@ export class RepairRequestComponent {
     }
     const path = this.matchingPath(this.toInput());
     this.draft.clear();
-    window.location.assign(path);
+    window.location.assign(this.localizedMatchingPath(path));
   }
 
   protected async savePrivately(): Promise<void> {
@@ -177,7 +181,7 @@ export class RepairRequestComponent {
 
     const result = (await response.json()) as { matchingPath: string };
     this.draft.clear();
-    window.location.assign(result.matchingPath);
+    window.location.assign(this.localizedMatchingPath(result.matchingPath));
   }
 
   private createArea() {
@@ -207,7 +211,12 @@ export class RepairRequestComponent {
       places: input.areas.map((area) => `${area.placeId}:${area.radiusKm}`).join(','),
       service: input.serviceCategoryId,
     });
-    return `/suche?${query.toString()}`;
+    return `${this.language.link('search')}?${query.toString()}`;
+  }
+
+  private localizedMatchingPath(path: string): string {
+    const [, query = ''] = path.split('?', 2);
+    return `${this.language.link('search')}${query ? `?${query}` : ''}`;
   }
 
   private serviceStepIsValid(): boolean {

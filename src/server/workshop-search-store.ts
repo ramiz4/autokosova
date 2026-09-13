@@ -73,6 +73,13 @@ export class PostgresWorkshopSearchStore implements WorkshopSearchStore {
     return row ? toPublicProfile(row) : undefined;
   }
 
+  async listPublicWorkshopIds(): Promise<readonly string[]> {
+    const result = await this.pool.query<{ readonly id: string }>(
+      'SELECT id FROM public_workshop_profile ORDER BY id',
+    );
+    return result.rows.map((row) => row.id);
+  }
+
   async searchPublicWorkshops(
     input: PublicWorkshopSearchInput,
   ): Promise<PublicWorkshopSearchResponse> {

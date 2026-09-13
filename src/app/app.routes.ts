@@ -6,30 +6,35 @@ import { WorkshopOnboardingComponent } from './workshop-onboarding.component';
 import { WorkshopProfileComponent } from './workshop-profile.component';
 
 export const routes: Routes = [
-  {
-    component: FoundationComponent,
-    path: '',
-    pathMatch: 'full',
-  },
-  {
-    component: WorkshopOnboardingComponent,
-    path: 'werkstatt/aufnahme',
-    title: 'Werkstatt aufnehmen | AutoKosova',
-  },
-  {
-    component: RepairRequestComponent,
-    path: 'anfrage',
-    title: 'Reparaturanfrage | AutoKosova',
-  },
-  {
-    component: SearchHandoffComponent,
-    path: 'suche',
-    title: 'Werkstattsuche | AutoKosova',
-  },
-  {
-    component: WorkshopProfileComponent,
-    path: 'werkstatt/:workshopId',
-    title: 'Werkstattprofil | AutoKosova',
-  },
+  ...localizedRoutes(''),
+  ...localizedRoutes('sq'),
+  ...localizedRoutes('en'),
   { path: '**', redirectTo: '' },
 ];
+
+function localizedRoutes(prefix: string): Routes {
+  const childPrefix = prefix ? `${prefix}/` : '';
+  return [
+    {
+      component: FoundationComponent,
+      path: prefix,
+      pathMatch: 'full',
+    },
+    {
+      component: WorkshopOnboardingComponent,
+      path: `${childPrefix}werkstatt/aufnahme`,
+    },
+    {
+      component: RepairRequestComponent,
+      path: `${childPrefix}anfrage`,
+    },
+    {
+      component: SearchHandoffComponent,
+      path: `${childPrefix}suche`,
+    },
+    {
+      component: WorkshopProfileComponent,
+      path: `${childPrefix}werkstatt/:workshopId`,
+    },
+  ];
+}

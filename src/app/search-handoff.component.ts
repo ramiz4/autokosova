@@ -1,6 +1,9 @@
 import { isPlatformBrowser } from '@angular/common';
 import { ChangeDetectorRef, Component, inject, PLATFORM_ID } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { AnalyticsService } from './analytics.service';
+import { LanguageService } from './language.service';
+import { LanguageSwitcherComponent } from './language-switcher.component';
 
 interface SearchResult {
   readonly companyDataVerified: boolean;
@@ -9,7 +12,12 @@ interface SearchResult {
   readonly matchingPlace: { readonly id: string; readonly label: string };
   readonly name: string;
   readonly reasons: readonly string[];
-  readonly reviewSummary: { readonly label: string };
+  readonly reviewSummary: {
+    readonly averageRating?: number;
+    readonly label: string;
+    readonly reviewCount?: number;
+    readonly state?: 'available' | 'unavailable';
+  };
   readonly selfReportedSpecializations: readonly string[];
 }
 
@@ -18,28 +26,35 @@ interface SearchResponse {
   readonly pageSize: number;
   readonly results: readonly SearchResult[];
   readonly searchAreas: readonly { readonly label: string; readonly radiusKm: number }[];
-  readonly serviceCategory: { readonly label: string };
+  readonly serviceCategory: { readonly id: string; readonly label: string };
   readonly total: number;
   readonly totalPages: number;
 }
 
 @Component({
-  imports: [RouterLink],
+  imports: [RouterLink, LanguageSwitcherComponent],
   selector: 'app-search-handoff',
   template: `
     <main
       class="mx-auto min-h-screen max-w-5xl px-4 py-8 sm:px-6 sm:py-12"
       aria-labelledby="search-title"
     >
-      <a routerLink="/" class="text-sm font-semibold text-sky-800 underline">Zur Startseite</a>
-      <p class="mt-6 text-sm font-bold tracking-widest text-sky-700 uppercase">Werkstattsuche</p>
+      <header class="flex flex-wrap items-center justify-between gap-4">
+        <a
+          [routerLink]="language.link('home')"
+          class="text-sm font-semibold text-sky-800 underline"
+          >{{ language.t('common.backHome') }}</a
+        >
+        <app-language-switcher />
+      </header>
+      <p class="mt-6 text-sm font-bold tracking-widest text-sky-700 uppercase">
+        {{ language.t('home.badge') }}
+      </p>
       <h1 id="search-title" class="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-        Passende Werkstätten
+        {{ language.t('search.title') }}
       </h1>
       <p class="mt-3 max-w-3xl leading-7 text-slate-700">
-        Der Suchkreis ist eine Luftlinie. Mehrere Orte werden zusammen berücksichtigt; eine
-        Werkstatt erscheint nur einmal. Fahrzeug-, Reise- und Dateiangaben werden nicht an
-        Werkstätten gesendet.
+        {{ language.t('search.intro') }}
       </p>
 
       @if (state === 'loading') {
@@ -47,7 +62,7 @@ interface SearchResponse {
           class="mt-8 rounded-xl border border-slate-200 bg-white p-5 text-slate-700"
           role="status"
         >
-          Suche wird geladen …
+          {{ language.t('search.loading') }}
         </p>
       }
 
@@ -56,14 +71,14 @@ interface SearchResponse {
           class="mt-8 rounded-xl border border-amber-300 bg-amber-50 p-5"
           aria-labelledby="invalid-title"
         >
-          <h2 id="invalid-title" class="text-xl font-bold">Suchangaben fehlen</h2>
+          <h2 id="invalid-title" class="text-xl font-bold">{{ language.t('search.invalid') }}</h2>
           <p class="mt-2 leading-7 text-slate-700">
-            Wähle bitte Leistung, Ort und Radius. Wir erweitern den Suchkreis nicht stillschweigend.
+            {{ language.t('search.invalidBody') }}
           </p>
           <a
-            routerLink="/anfrage"
+            [routerLink]="language.link('request')"
             class="mt-4 inline-flex min-h-11 items-center font-semibold text-sky-800 underline"
-            >Suche starten</a
+            >{{ language.t('home.search') }}</a
           >
         </section>
       }
@@ -74,18 +89,17 @@ interface SearchResponse {
           aria-labelledby="search-error-title"
         >
           <h2 id="search-error-title" class="text-xl font-bold">
-            Ergebnisse sind gerade nicht verfügbar
+            {{ language.t('search.error') }}
           </h2>
           <p class="mt-2 leading-7 text-slate-700">
-            Bitte versuche es erneut oder passe deine Filter an. Es wurde keine Anfrage an eine
-            Werkstatt gesendet.
+            {{ language.t('search.errorBody') }}
           </p>
           <button
             type="button"
             class="mt-4 min-h-11 rounded-lg border border-sky-800 px-4 font-semibold text-sky-900"
             (click)="load()"
           >
-            Erneut suchen
+            {{ language.t('common.retry') }}
           </button>
         </section>
       }
@@ -93,14 +107,14 @@ interface SearchResponse {
       @if (state === 'ready' && response) {
         <section
           class="mt-8 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-          aria-label="Aktive Filter"
+          [attr.aria-label]="language.t('search.activeFilters')"
         >
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 class="font-bold">{{ response.serviceCategory.label }}</h2>
+              <h2 class="font-bold">{{ language.serviceLabel(response.serviceCategory.id) }}</h2>
               <p class="mt-1 text-sm text-slate-700">
                 @for (area of response.searchAreas; track area.label; let last = $last) {
-                  {{ area.label }} · {{ area.radiusKm }} km Luftlinie
+                  {{ radiusLabel(area.radiusKm, area.label) }}
                   @if (!last) {
                     ,
                   }
@@ -108,23 +122,26 @@ interface SearchResponse {
               </p>
             </div>
             <a
-              routerLink="/anfrage"
+              [routerLink]="language.link('request')"
               class="inline-flex min-h-11 items-center font-semibold text-sky-800 underline"
-              >Filter anpassen</a
+              >{{ language.t('search.adjust') }}</a
             >
           </div>
         </section>
 
         <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
           <p class="font-semibold" role="status">
-            {{ response.total }} {{ response.total === 1 ? 'Werkstatt' : 'Werkstätten' }} gefunden
+            {{ response.total }}
+            {{
+              response.total === 1 ? language.t('search.foundOne') : language.t('search.foundMany')
+            }}
           </p>
           <button
             type="button"
             class="min-h-11 rounded-lg border border-slate-300 px-4 font-semibold text-slate-800"
             (click)="showMapFallback()"
           >
-            Karte anzeigen
+            {{ language.t('search.map') }}
           </button>
         </div>
 
@@ -133,8 +150,7 @@ interface SearchResponse {
             class="mt-4 rounded-xl border border-slate-200 bg-slate-100 p-4 text-sm leading-6 text-slate-700"
             role="status"
           >
-            Die Kartenansicht ist derzeit nicht verfügbar. Die Ergebnisliste funktioniert weiterhin
-            vollständig; Entfernungen bleiben als Luftlinie zum passenden Suchort gekennzeichnet.
+            {{ language.t('search.mapUnavailable') }}
           </p>
         }
 
@@ -144,16 +160,15 @@ interface SearchResponse {
             aria-labelledby="empty-title"
           >
             <h2 id="empty-title" class="text-xl font-bold">
-              Keine Werkstatt im gewählten Suchkreis
+              {{ language.t('search.empty') }}
             </h2>
             <p class="mt-2 max-w-2xl leading-7 text-slate-700">
-              Passe Leistung oder Ort an oder wähle bewusst einen grösseren Radius. Wir zeigen nicht
-              automatisch weiter entfernte Betriebe.
+              {{ language.t('search.emptyBody') }}
             </p>
             <a
-              routerLink="/anfrage"
+              [routerLink]="language.link('request')"
               class="mt-4 inline-flex min-h-11 items-center font-semibold text-sky-800 underline"
-              >Filter anpassen</a
+              >{{ language.t('search.adjust') }}</a
             >
           </section>
         } @else {
@@ -164,36 +179,35 @@ interface SearchResponse {
                   <div>
                     <h2 class="text-xl font-bold">{{ workshop.name }}</h2>
                     <p class="mt-1 text-sm text-slate-700">
-                      {{ distance(workshop.distanceKm) }} Luftlinie zu
-                      {{ workshop.matchingPlace.label }}
+                      {{ aerialDistance(workshop.distanceKm, workshop.matchingPlace.label) }}
                     </p>
                   </div>
                   @if (workshop.companyDataVerified) {
                     <span
                       class="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-900"
-                      >Unternehmensdaten geprüft</span
+                      >{{ language.t('profile.verified') }}</span
                     >
                   }
                 </div>
-                <p class="mt-4 font-semibold text-slate-900">Warum passend</p>
+                <p class="mt-4 font-semibold text-slate-900">{{ language.t('search.why') }}</p>
                 <ul class="mt-2 flex flex-wrap gap-2 text-sm text-slate-700">
-                  @for (reason of workshop.reasons; track reason) {
+                  @for (reason of matchingReasons(workshop); track reason) {
                     <li class="rounded-full bg-sky-50 px-3 py-1">{{ reason }}</li>
                   }
                 </ul>
                 @if (workshop.selfReportedSpecializations.length) {
                   <p class="mt-4 text-sm leading-6 text-slate-700">
-                    <span class="font-semibold">Selbstauskunft:</span>
+                    <span class="font-semibold">{{ language.t('search.selfReported') }}</span>
                     {{ workshop.selfReportedSpecializations.join(', ') }}
                   </p>
                 }
                 <p class="mt-4 text-sm leading-6 text-slate-700">
-                  {{ workshop.reviewSummary.label }}
+                  {{ reviewLabel(workshop.reviewSummary) }}
                 </p>
                 <a
-                  [routerLink]="['/werkstatt', workshop.id]"
+                  [routerLink]="language.link('workshop', workshop.id)"
                   class="mt-5 inline-flex min-h-11 items-center font-semibold text-sky-800 underline"
-                  >Profil ansehen</a
+                  >{{ language.t('search.profile') }}</a
                 >
               </li>
             }
@@ -208,10 +222,10 @@ interface SearchResponse {
               [disabled]="response.page === 1"
               (click)="goToPage(response.page - 1)"
             >
-              Zurück
+              {{ language.t('search.previous') }}
             </button>
             <p class="text-sm text-slate-700">
-              Seite {{ response.page }} von {{ response.totalPages }}
+              {{ pageLabel(response.page, response.totalPages) }}
             </p>
             <button
               type="button"
@@ -219,7 +233,7 @@ interface SearchResponse {
               [disabled]="response.page === response.totalPages"
               (click)="goToPage(response.page + 1)"
             >
-              Weiter
+              {{ language.t('search.next') }}
             </button>
           </nav>
         }
@@ -229,13 +243,16 @@ interface SearchResponse {
 })
 export class SearchHandoffComponent {
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
+  protected readonly analytics = inject(AnalyticsService);
   private readonly changeDetector = inject(ChangeDetectorRef);
+  protected readonly language = inject(LanguageService);
   private readonly route = inject(ActivatedRoute);
   protected mapUnavailable = false;
   protected response?: SearchResponse;
   protected state: 'error' | 'invalid' | 'loading' | 'ready' = 'loading';
 
   constructor() {
+    this.language.setPage('search.title', 'search.intro', true);
     if (!this.hasRequiredFilters()) {
       this.state = 'invalid';
     } else if (this.browser) {
@@ -244,13 +261,67 @@ export class SearchHandoffComponent {
   }
 
   protected distance(distanceKm: number): string {
-    return `${distanceKm.toLocaleString('de-CH', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} km`;
+    return `${distanceKm.toLocaleString(this.language.language, { maximumFractionDigits: 1, minimumFractionDigits: 1 })} km`;
+  }
+
+  protected aerialDistance(distanceKm: number, place: string): string {
+    return this.language.t('search.aerialDistance', { distance: this.distance(distanceKm), place });
+  }
+
+  protected radiusLabel(radiusKm: number, place: string): string {
+    return this.language.t('search.radius', { distance: `${radiusKm} km`, place });
+  }
+
+  protected pageLabel(page: number, totalPages: number): string {
+    if (this.language.language === 'en') return `Page ${page} of ${totalPages}`;
+    if (this.language.language === 'sq') return `Faqja ${page} nga ${totalPages}`;
+    return `Seite ${page} von ${totalPages}`;
+  }
+
+  protected reviewLabel(summary: SearchResult['reviewSummary']): string {
+    if (summary.state !== 'available' || !summary.averageRating || !summary.reviewCount) {
+      return this.language.t('profile.noReviews');
+    }
+    const count = summary.reviewCount;
+    if (this.language.language === 'en') {
+      return `${summary.averageRating.toFixed(1)} / 5 · ${count} ${count === 1 ? 'review' : 'reviews'}`;
+    }
+    if (this.language.language === 'sq') {
+      return `${summary.averageRating.toFixed(1)} / 5 · ${count} ${count === 1 ? 'vlerësim' : 'vlerësime'}`;
+    }
+    return summary.label;
+  }
+
+  protected matchingReasons(workshop: SearchResult): readonly string[] {
+    return workshop.reasons.flatMap((reason) => {
+      if (reason.startsWith('Leistung:')) {
+        return [
+          this.language.t('search.reasonService', {
+            service: this.response
+              ? this.language.serviceLabel(this.response.serviceCategory.id)
+              : reason.slice('Leistung:'.length).trim(),
+          }),
+        ];
+      }
+      if (reason === 'Markenoffen') return [this.language.t('search.reasonAnyMake')];
+      if (reason.startsWith('Sprache:')) {
+        return [
+          this.language.t('search.reasonLanguage', {
+            language: reason.slice('Sprache:'.length).trim(),
+          }),
+        ];
+      }
+      if (reason === 'Unternehmensdaten geprüft') return [this.language.t('profile.verified')];
+      // The same distance is already rendered immediately next to the profile name.
+      if (reason.includes('Luftlinie')) return [];
+      return [reason];
+    });
   }
 
   protected goToPage(page: number): void {
     const query = new URLSearchParams(window.location.search);
     query.set('page', String(page));
-    window.location.assign(`/suche?${query.toString()}`);
+    window.location.assign(`${this.language.link('search')}?${query.toString()}`);
   }
 
   protected async load(): Promise<void> {
@@ -263,6 +334,7 @@ export class SearchHandoffComponent {
       if (!response.ok) throw new Error('Search request failed');
       this.response = (await response.json()) as SearchResponse;
       this.state = 'ready';
+      this.analytics.track('search_results_displayed');
       this.changeDetector.markForCheck();
     } catch {
       this.state = 'error';

@@ -3,6 +3,12 @@ import fastifyStatic from '@fastify/static';
 import Fastify from 'fastify';
 import type { FastifyReply } from 'fastify';
 import {
+  isAutomatedRequest,
+  isPublicAnalyticsEvent,
+  type AnalyticsStore,
+  type PublicAnalyticsEvent,
+} from './analytics';
+import {
   AccessError,
   AccessStore,
   DuplicateWorkshopError,
@@ -53,13 +59,33 @@ import {
 
 interface ServerOptions {
   readonly accessStore?: AccessStore;
+  readonly analyticsEnabled?: boolean;
+  readonly analyticsStore?: AnalyticsStore;
   readonly oidcConfig?: ZitadelOidcConfig;
   readonly moderationStore?: ModerationLifecycleStore;
   readonly repairRequestStore?: RepairRequestStore;
   readonly reviewStore?: ReviewStore;
   readonly searchStore?: WorkshopSearchStore;
+  readonly publicSiteUrl?: string;
   readonly staticRoot?: string;
 }
+
+const analyticsEventSchema = {
+  additionalProperties: false,
+  properties: {
+    name: {
+      enum: [
+        'search_started',
+        'search_results_displayed',
+        'workshop_profile_opened',
+        'contact_channel_opened',
+      ],
+      type: 'string',
+    },
+  },
+  required: ['name'],
+  type: 'object',
+};
 
 const repairRequestBodySchema = {
   additionalProperties: false,
@@ -120,7 +146,7 @@ const repairRequestBodySchema = {
 };
 
 function safeReturnTo(value: unknown): string {
-  return value === '/anfrage' ? value : '/';
+  return value === '/anfrage' || value === '/sq/anfrage' || value === '/en/anfrage' ? value : '/';
 }
 
 const stringListSchema = {
@@ -298,6 +324,10 @@ export function createServer(options: ServerOptions = {}) {
   const searchStore: WorkshopSearchStore = options.searchStore ?? accessStore;
   const moderationStore: ModerationLifecycleStore = options.moderationStore ?? accessStore;
 
+  app.addHook('onRequest', async (request, reply) => {
+    if (isNoIndexPath(request.url)) reply.header('x-robots-tag', 'noindex, nofollow');
+  });
+
   app.register(cookie);
   app.addContentTypeParser(
     ['image/jpeg', 'image/png', 'image/webp'],
@@ -324,6 +354,15 @@ export function createServer(options: ServerOptions = {}) {
     (moderationStore as object) !== (searchStore as object)
   ) {
     app.addHook('onClose', async () => moderationStore.close?.());
+  }
+  if (
+    options.analyticsStore?.close &&
+    (options.analyticsStore as object) !== (repairRequestStore as object) &&
+    (options.analyticsStore as object) !== (searchStore as object) &&
+    (options.analyticsStore as object) !== (reviewStore as object) &&
+    (options.analyticsStore as object) !== (moderationStore as object)
+  ) {
+    app.addHook('onClose', async () => options.analyticsStore?.close?.());
   }
 
   function requirePrincipal(
@@ -363,6 +402,52 @@ export function createServer(options: ServerOptions = {}) {
 
   app.get('/health', async () => ({ status: 'ok' }));
   app.get('/api/health', async () => ({ status: 'ok' }));
+  app.get('/robots.txt', async (_request, reply) => {
+    reply.type('text/plain; charset=utf-8');
+    const sitemap = options.publicSiteUrl
+      ? `\nSitemap: ${siteUrl(options.publicSiteUrl, '/sitemap.xml')}`
+      : '';
+    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /anfrage\nDisallow: /sq/anfrage\nDisallow: /en/anfrage\nDisallow: /werkstatt/aufnahme\nDisallow: /sq/werkstatt/aufnahme\nDisallow: /en/werkstatt/aufnahme\nDisallow: /suche${sitemap}\n`;
+  });
+  app.get('/sitemap.xml', async (_request, reply) => {
+    if (!options.publicSiteUrl) {
+      return reply
+        .code(503)
+        .send({ error: 'PUBLIC_SITE_URL is required before publishing a sitemap' });
+    }
+    const workshopIds = await searchStore.listPublicWorkshopIds();
+    const locations = [
+      '/',
+      '/sq',
+      '/en',
+      ...workshopIds.flatMap((id) => [
+        `/werkstatt/${encodeURIComponent(id)}`,
+        `/sq/werkstatt/${encodeURIComponent(id)}`,
+        `/en/werkstatt/${encodeURIComponent(id)}`,
+      ]),
+    ];
+    reply.type('application/xml; charset=utf-8');
+    return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${locations.map((location) => `<url><loc>${escapeXml(siteUrl(options.publicSiteUrl!, location))}</loc></url>`).join('')}</urlset>`;
+  });
+  app.post(
+    '/api/public/analytics/events',
+    { schema: { body: analyticsEventSchema } },
+    async (request, reply) => {
+      if (!options.analyticsEnabled || !options.analyticsStore) return reply.code(204).send();
+      const body = request.body as unknown;
+      if (!isAnalyticsPayload(body))
+        return reply.code(400).send({ error: 'Invalid analytics event' });
+      const userAgent =
+        typeof request.headers['user-agent'] === 'string'
+          ? request.headers['user-agent']
+          : undefined;
+      if (isAutomatedRequest(userAgent)) {
+        return reply.code(204).send();
+      }
+      await options.analyticsStore.record(body.name, new Date().toISOString().slice(0, 10));
+      return reply.code(204).send();
+    },
+  );
   app.get('/api/public/search', async (request, reply) => {
     try {
       const input = parsePublicWorkshopSearch(request.query as Record<string, unknown>);
@@ -1266,4 +1351,50 @@ export function createServer(options: ServerOptions = {}) {
   }
 
   return app;
+}
+
+export function isNoIndexPath(url: string): boolean {
+  const path = url.split('?', 1)[0];
+  return (
+    path.startsWith('/api/') ||
+    path.startsWith('/auth/') ||
+    path === '/anfrage' ||
+    path === '/sq/anfrage' ||
+    path === '/en/anfrage' ||
+    path === '/werkstatt/aufnahme' ||
+    path === '/sq/werkstatt/aufnahme' ||
+    path === '/en/werkstatt/aufnahme' ||
+    path === '/suche' ||
+    path === '/sq/suche' ||
+    path === '/en/suche'
+  );
+}
+
+function siteUrl(origin: string, path: string): string {
+  const url = new URL(origin);
+  if (url.protocol !== 'https:') throw new Error('PUBLIC_SITE_URL must use HTTPS');
+  return new URL(path, url).toString();
+}
+
+function escapeXml(value: string): string {
+  return value.replace(/[<>&'"]/g, (character) => {
+    const entities: Readonly<Record<string, string>> = {
+      '"': '&quot;',
+      '&': '&amp;',
+      "'": '&apos;',
+      '<': '&lt;',
+      '>': '&gt;',
+    };
+    return entities[character];
+  });
+}
+
+function isAnalyticsPayload(value: unknown): value is { readonly name: PublicAnalyticsEvent } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    Object.keys(value).length === 1 &&
+    Object.hasOwn(value, 'name') &&
+    isPublicAnalyticsEvent((value as { readonly name: unknown }).name)
+  );
 }
