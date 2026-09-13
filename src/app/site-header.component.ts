@@ -1,4 +1,4 @@
-import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, inject, input, signal, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LanguageService } from './language.service';
 import { LanguageSwitcherComponent } from './language-switcher.component';
@@ -11,6 +11,7 @@ import { IconComponent } from './ui/icon.component';
   templateUrl: './site-header.component.html',
 })
 export class SiteHeaderComponent {
+  readonly active = input<'search' | undefined>();
   protected readonly language = inject(LanguageService);
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
   protected readonly menuOpen = signal(false);

@@ -93,7 +93,7 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
     home: '',
     onboarding: '/werkstatt/aufnahme',
     request: '/anfrage',
-    search: '/suche',
+    search: '/garages',
     workshop: `/werkstatt/${encodeURIComponent(parameter ?? '')}`,
   };
   return `${base}${segments[route]}` || '/';
@@ -104,7 +104,14 @@ function identifyRoute(path: string): { readonly parameter?: string; readonly ro
   if (normalized === '/') return { route: 'home' };
   if (normalized === '/werkstatt/aufnahme') return { route: 'onboarding' };
   if (normalized === '/anfrage') return { route: 'request' };
-  if (normalized === '/suche') return { route: 'search' };
+  if (
+    normalized === '/garages' ||
+    normalized === '/workshops' ||
+    normalized === '/suche' ||
+    normalized === '/werkstaetten'
+  ) {
+    return { route: 'search' };
+  }
   const workshop = normalized.match(/^\/werkstatt\/([^/]+)$/);
   return workshop ? { parameter: workshop[1], route: 'workshop' } : { route: 'home' };
 }

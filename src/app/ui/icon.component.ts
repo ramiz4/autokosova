@@ -1,7 +1,17 @@
 import { Component, input } from '@angular/core';
 
 export type IconName =
-  'arrow' | 'check' | 'shield' | 'clock' | 'thumb' | 'menu' | 'close' | 'search' | 'chevron-down';
+  | 'arrow'
+  | 'check'
+  | 'shield'
+  | 'clock'
+  | 'thumb'
+  | 'menu'
+  | 'close'
+  | 'search'
+  | 'chevron-down'
+  | 'heart'
+  | 'pin';
 
 @Component({
   selector: 'app-icon',
@@ -23,6 +33,9 @@ export class IconComponent {
   readonly name = input.required<IconName>();
   protected readonly paths: Record<IconName, string> = {
     'chevron-down': 'm6 9 6 6 6-6',
+    heart:
+      'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.9-8.6a5.5 5.5 0 0 0-.1-7.8Z',
+    pin: 'M12 21s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12Zm0-9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
     arrow: 'M4 12h16m-6-6 6 6-6 6',
     check: 'm5 12 4 4L19 6',
     shield: 'm12 2 9 4v6c0 5-9 10-9 10S3 17 3 12V6l9-4Zm-5 10 3 3 7-7',

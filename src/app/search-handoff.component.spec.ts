@@ -8,7 +8,25 @@ function routeWith(query: Record<string, string>) {
 }
 
 describe('SearchHandoffComponent', () => {
-  it('asks for filters instead of silently broadening an incomplete search', async () => {
+  it('loads the explicit all-results default when no filters are supplied', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (input) => {
+      expect(String(input)).toContain('/api/public/search?all=true');
+      return new Response(
+        JSON.stringify({
+          allResults: true,
+          page: 1,
+          pageSize: 10,
+          results: [],
+          searchAreas: [],
+          serviceCategory: { id: 'all', label: 'Alle Leistungen' },
+          sort: 'recommended',
+          total: 25,
+          totalPages: 3,
+        }),
+        { status: 200 },
+      );
+    };
     await TestBed.configureTestingModule({
       imports: [SearchHandoffComponent],
       providers: [
@@ -18,15 +36,17 @@ describe('SearchHandoffComponent', () => {
       ],
     }).compileComponents();
 
-    const fixture = TestBed.createComponent(SearchHandoffComponent);
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.textContent).toContain(
-      'Wir erweitern den Suchkreis nicht stillschweigend.',
-    );
+    try {
+      const fixture = TestBed.createComponent(SearchHandoffComponent);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain('25 passende Werkstätten gefunden');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
-  it('keeps the list usable when the optional map is unavailable', async () => {
+  it('does not render a map column when no map provider is configured', async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async () =>
       new Response(
@@ -68,15 +88,12 @@ describe('SearchHandoffComponent', () => {
       const fixture = TestBed.createComponent(SearchHandoffComponent);
       await fixture.whenStable();
       fixture.detectChanges();
-      (fixture.nativeElement.querySelector('button') as HTMLButtonElement).click();
-      await fixture.whenStable();
-      fixture.detectChanges();
-
       expect(fixture.nativeElement.textContent).toContain('Fiktive Werkstatt');
-      expect(fixture.nativeElement.textContent).toContain(
+      expect(fixture.nativeElement.textContent).toContain('Filter anwenden');
+      expect(fixture.nativeElement.textContent).not.toContain(
         'Kartenansicht ist derzeit nicht verfügbar',
       );
-      expect(fixture.nativeElement.textContent).toContain('Filter anpassen');
+      expect(fixture.nativeElement.querySelectorAll('aside')).toHaveLength(1);
     } finally {
       globalThis.fetch = originalFetch;
     }

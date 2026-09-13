@@ -13,8 +13,9 @@ const knownServiceCategoryIds = new Set<string>(REPAIR_REQUEST_SERVICE_CATEGORIE
 const knownVehicleMakeIds = new Set<string>(REPAIR_REQUEST_VEHICLE_MAKES);
 
 export const SEARCH_LIMITS = {
+  defaultAllPageSize: 30,
   defaultPageSize: 10,
-  maxPageSize: 24,
+  maxPageSize: 30,
 } as const;
 
 export interface PublicWorkshopSearchArea {
@@ -24,10 +25,12 @@ export interface PublicWorkshopSearchArea {
 
 export interface PublicWorkshopSearchInput {
   readonly areas: readonly PublicWorkshopSearchArea[];
+  readonly allResults?: boolean;
   readonly language?: string;
   readonly page: number;
   readonly pageSize: number;
-  readonly serviceCategoryId: string;
+  readonly serviceCategoryId?: string;
+  readonly sort?: 'recommended' | 'rating';
   readonly vehicleMakeId?: string;
 }
 
@@ -55,6 +58,7 @@ export interface PublicWorkshopSearchResult {
 }
 
 export interface PublicWorkshopSearchResponse {
+  readonly allResults: boolean;
   readonly page: number;
   readonly pageSize: number;
   readonly results: readonly PublicWorkshopSearchResult[];
@@ -64,6 +68,7 @@ export interface PublicWorkshopSearchResponse {
     readonly radiusKm: number;
   }[];
   readonly serviceCategory: { readonly id: string; readonly label: string };
+  readonly sort: PublicWorkshopSearchInput['sort'];
   readonly total: number;
   readonly totalPages: number;
 }
@@ -89,9 +94,28 @@ export function parsePublicWorkshopSearch(
 ): PublicWorkshopSearchInput | undefined {
   const places = optionalString(query['places']);
   const serviceCategoryId = optionalString(query['service']);
-  if (!places && !serviceCategoryId) return undefined;
-  if (!places || !serviceCategoryId)
-    throw new WorkshopSearchValidationError('Place and service are required');
+  if (!places) {
+    if (!serviceCategoryId && query['all'] !== 'true') return undefined;
+    if (serviceCategoryId && !knownServiceCategoryIds.has(serviceCategoryId)) {
+      throw new WorkshopSearchValidationError('Please choose a known service category');
+    }
+    const sort = optionalString(query['sort']) ?? 'recommended';
+    if (sort !== 'recommended' && sort !== 'rating') {
+      throw new WorkshopSearchValidationError('Please choose a supported sort order');
+    }
+    return {
+      allResults: true,
+      areas: [],
+      page: positiveInteger(query['page'], 1, 9999),
+      pageSize: positiveInteger(
+        query['pageSize'],
+        SEARCH_LIMITS.defaultAllPageSize,
+        SEARCH_LIMITS.maxPageSize,
+      ),
+      sort,
+      ...(serviceCategoryId ? { serviceCategoryId } : {}),
+    };
+  }
 
   const areas = places.split(',').map((value) => {
     const [placeId, radius] = value.split(':');
@@ -118,7 +142,7 @@ export function parsePublicWorkshopSearch(
   if (new Set(areas.map((area) => area.placeId)).size !== areas.length) {
     throw new WorkshopSearchValidationError('Each search area must use a different place');
   }
-  if (!knownServiceCategoryIds.has(serviceCategoryId)) {
+  if (serviceCategoryId && !knownServiceCategoryIds.has(serviceCategoryId)) {
     throw new WorkshopSearchValidationError('Please choose a known service category');
   }
 
@@ -131,6 +155,11 @@ export function parsePublicWorkshopSearch(
     throw new WorkshopSearchValidationError('Language filter is invalid');
   }
 
+  const sort = optionalString(query['sort']) ?? 'recommended';
+  if (sort !== 'recommended' && sort !== 'rating') {
+    throw new WorkshopSearchValidationError('Please choose a supported sort order');
+  }
+
   return {
     areas,
     ...(language ? { language } : {}),
@@ -140,7 +169,8 @@ export function parsePublicWorkshopSearch(
       SEARCH_LIMITS.defaultPageSize,
       SEARCH_LIMITS.maxPageSize,
     ),
-    serviceCategoryId,
+    ...(serviceCategoryId ? { serviceCategoryId } : {}),
+    sort,
     ...(vehicleMakeId ? { vehicleMakeId } : {}),
   };
 }
@@ -150,29 +180,33 @@ export function findPublicWorkshops(
   input: PublicWorkshopSearchInput,
 ): PublicWorkshopSearchResponse {
   const candidates = workshops.flatMap((workshop) => {
-    if (!workshop.serviceCategoryIds.includes(input.serviceCategoryId)) return [];
+    if (input.serviceCategoryId && !workshop.serviceCategoryIds.includes(input.serviceCategoryId))
+      return [];
     if (!matchesVehicleMake(workshop, input.vehicleMakeId)) return [];
     if (!matchesLanguage(workshop, input.language)) return [];
 
     const workshopPlace = getCatalogPlace(workshop.placeId);
     if (!workshopPlace) return [];
-    const matchingAreas = input.areas
-      .map((area) => {
-        const searchPlace = getCatalogPlace(area.placeId);
-        if (!searchPlace) return undefined;
-        const distanceM = haversineDistanceM(
-          workshopPlace.latitude,
-          workshopPlace.longitude,
-          searchPlace.latitude,
-          searchPlace.longitude,
-        );
-        return isWithinSearchRadius(distanceM, area.radiusKm * 1000)
-          ? { distanceM, matchingPlaceId: area.placeId }
-          : undefined;
-      })
-      .filter((area): area is { readonly distanceM: number; readonly matchingPlaceId: string } =>
-        Boolean(area),
-      );
+    const matchingAreas = input.allResults
+      ? [{ distanceM: 0, matchingPlaceId: workshop.placeId }]
+      : input.areas
+          .map((area) => {
+            const searchPlace = getCatalogPlace(area.placeId);
+            if (!searchPlace) return undefined;
+            const distanceM = haversineDistanceM(
+              workshopPlace.latitude,
+              workshopPlace.longitude,
+              searchPlace.latitude,
+              searchPlace.longitude,
+            );
+            return isWithinSearchRadius(distanceM, area.radiusKm * 1000)
+              ? { distanceM, matchingPlaceId: area.placeId }
+              : undefined;
+          })
+          .filter(
+            (area): area is { readonly distanceM: number; readonly matchingPlaceId: string } =>
+              Boolean(area),
+          );
     if (!matchingAreas.length) return [];
     const closest = matchingAreas.sort(compareMatchingAreaDistance)[0];
     return [{ ...workshop, ...closest }];
@@ -200,12 +234,13 @@ export function toSearchResponse(
 
   const sorted = [...uniqueCandidates.values()]
     .map((candidate) => toSearchResult(candidate, input))
-    .sort(compareSearchResult);
+    .sort(input.sort === 'rating' ? compareRatingResult : compareSearchResult);
   const total = sorted.length;
   const totalPages = Math.max(1, Math.ceil(total / input.pageSize));
   const page = Math.min(input.page, totalPages);
   const offset = (page - 1) * input.pageSize;
   return {
+    allResults: input.allResults === true,
     page,
     pageSize: input.pageSize,
     results: sorted.slice(offset, offset + input.pageSize),
@@ -215,12 +250,31 @@ export function toSearchResponse(
       radiusKm: area.radiusKm,
     })),
     serviceCategory: {
-      id: input.serviceCategoryId,
-      label: SERVICE_CATEGORY_LABELS[input.serviceCategoryId] ?? input.serviceCategoryId,
+      id: input.serviceCategoryId ?? 'all',
+      label: input.serviceCategoryId
+        ? (SERVICE_CATEGORY_LABELS[input.serviceCategoryId] ?? input.serviceCategoryId)
+        : 'Alle Leistungen',
     },
+    sort: input.sort ?? 'recommended',
     total,
     totalPages,
   };
+}
+
+function compareRatingResult(
+  left: PublicWorkshopSearchResult,
+  right: PublicWorkshopSearchResult,
+): number {
+  // A missing or single-review score is never promoted above a more substantial verified basis.
+  const ratingDifference = ratingQuality(right) - ratingQuality(left);
+  if (ratingDifference) return ratingDifference;
+  return compareSearchResult(left, right);
+}
+
+function ratingQuality(result: PublicWorkshopSearchResult): number {
+  const summary = result.reviewSummary;
+  if (summary.state !== 'available' || !summary.averageRating || !summary.reviewCount) return 0;
+  return Math.min(summary.reviewCount, 20) * 10 + Math.round(summary.averageRating * 10);
 }
 
 export class WorkshopSearchValidationError extends Error {}
@@ -236,9 +290,9 @@ function toSearchResult(
   const matchingPlace = getCatalogPlace(candidate.matchingPlaceId);
   const companyDataVerified = candidate.verificationLabel === 'Unternehmensdaten geprüft';
   const distanceKm = roundDistance(candidate.distanceM / 1000);
-  const reasons = [
-    `Leistung: ${SERVICE_CATEGORY_LABELS[input.serviceCategoryId] ?? input.serviceCategoryId}`,
-  ];
+  const reasons = input.serviceCategoryId
+    ? [`Leistung: ${SERVICE_CATEGORY_LABELS[input.serviceCategoryId] ?? input.serviceCategoryId}`]
+    : [];
   if (input.vehicleMakeId) {
     reasons.push(
       candidate.vehicleMakeIds.includes(input.vehicleMakeId)

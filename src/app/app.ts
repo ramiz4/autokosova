@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
-import { CATALOG_PLACES, SERVICE_CATEGORY_LABELS } from '../shared/catalog';
+import { CATALOG_PLACES } from '../shared/catalog';
 import { REPAIR_REQUEST_LIMITS } from '../shared/repair-request';
 import { AnalyticsService } from './analytics.service';
 import { LanguageService } from './language.service';
@@ -34,10 +34,8 @@ export class FoundationComponent {
   private readonly router = inject(Router);
   protected readonly limits = REPAIR_REQUEST_LIMITS;
   protected readonly places = CATALOG_PLACES;
-  protected readonly serviceIds = Object.keys(SERVICE_CATEGORY_LABELS);
   protected placeId = 'xk-pristina';
   protected radiusKm = 20;
-  protected serviceCategoryId = '';
   protected searchError = '';
 
   constructor() {
@@ -45,10 +43,6 @@ export class FoundationComponent {
   }
 
   protected search(): void {
-    if (!this.serviceIds.includes(this.serviceCategoryId)) {
-      this.searchError = this.language.t('home.searchErrorService');
-      return;
-    }
     if (!this.places.some((place) => place.id === this.placeId)) {
       this.searchError = this.language.t('landing.invalidPlace');
       return;
@@ -69,7 +63,6 @@ export class FoundationComponent {
     void this.router.navigate([this.language.link('search')], {
       queryParams: {
         places: `${this.placeId}:${this.radiusKm}`,
-        service: this.serviceCategoryId,
       },
     });
   }

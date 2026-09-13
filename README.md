@@ -41,12 +41,12 @@ Such-API-Abfrage mit DB-Zugriff meldet die App als bereit. Angular läuft standa
 in der Ausgabe. Der separat gebaute SSR-Server (`npm run start:ssr`) verwendet `PORT`,
 standardmäßig 4000. `PORT` steuert nicht den Angular-Entwicklungsserver. Ctrl+C beendet die App samt Kindprozessen; DB und Daten bleiben erhalten.
 
-| Befehl | Datenprofil / Wirkung |
-|---|---|
-| `npm run dev` | Referenzkatalog: Kategorien, Marken und Orte |
-| `npm run dev:demo` | Zusätzlich 25 öffentliche fiktive Demo-Werkstätten |
-| `npm run dev:demo-workflows` | Zusätzlich gekennzeichnete Bewertungen, private Testanfragen und Nachweis-Metadaten |
-| `npm run dev:doctor` | Nur Diagnose von Toolchain, Konfiguration, Docker, Ressourcen und Ports; kein Start und keine DB-/Dateiänderung |
+| Befehl                       | Datenprofil / Wirkung                                                                                           |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                | Referenzkatalog: Kategorien, Marken und Orte                                                                    |
+| `npm run dev:demo`           | Zusätzlich 25 öffentliche fiktive Demo-Werkstätten                                                              |
+| `npm run dev:demo-workflows` | Zusätzlich gekennzeichnete Bewertungen, private Testanfragen und Nachweis-Metadaten                             |
+| `npm run dev:doctor`         | Nur Diagnose von Toolchain, Konfiguration, Docker, Ressourcen und Ports; kein Start und keine DB-/Dateiänderung |
 
 Die Demo-Befehle setzen die erforderlichen Seed-Freigaben nur im Seed-Prozess. Ein
 Profilwechsel entfernt keine vorhandenen Daten. Demo-Profile beginnen mit `DEMO ·`;
@@ -184,7 +184,7 @@ Entwicklungsoberfläche nicht hochgeladen.
 
 ## Öffentliche Suche lokal prüfen
 
-`/suche?places=xk-pristina%3A20&service=bremsen` verwendet nur veröffentlichte Werkstattprofile,
+`/garages` zeigt ohne Filter alle veröffentlichten Werkstattprofile. `/garages?places=xk-pristina%3A20&service=bremsen` verwendet nur veröffentlichte Werkstattprofile,
 den gepflegten Leistungsfilter und Ortskreise als Luftlinie. Mehrere Orte werden mit Komma getrennt,
 zum Beispiel `places=xk-pristina:20,xk-prizren:30`. Optional sind `vehicleMake=skoda` und
 `language=Deutsch`. Suchanfragen enthalten keine privaten Anfragewerte. Ohne Kartenanbieter bleibt

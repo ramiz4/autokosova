@@ -11,10 +11,14 @@ body {
   display: inline-flex;
   min-height: 44px;
   align-items: center;
-  border-radius: 6px;
+  border-bottom: 3px solid transparent;
 }
 .nav-link:hover {
   color: #0061ff;
+}
+.nav-link-active {
+  color: #0061ff;
+  border-bottom: 3px solid #0061ff;
 }
 .nav-link:focus-visible {
   outline: 2px solid #0061ff;

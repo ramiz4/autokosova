@@ -407,7 +407,7 @@ export function createServer(options: ServerOptions = {}) {
     const sitemap = options.publicSiteUrl
       ? `\nSitemap: ${siteUrl(options.publicSiteUrl, '/sitemap.xml')}`
       : '';
-    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /anfrage\nDisallow: /sq/anfrage\nDisallow: /en/anfrage\nDisallow: /werkstatt/aufnahme\nDisallow: /sq/werkstatt/aufnahme\nDisallow: /en/werkstatt/aufnahme\nDisallow: /suche${sitemap}\n`;
+    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /anfrage\nDisallow: /sq/anfrage\nDisallow: /en/anfrage\nDisallow: /werkstatt/aufnahme\nDisallow: /sq/werkstatt/aufnahme\nDisallow: /en/werkstatt/aufnahme\nDisallow: /garages\nDisallow: /sq/garages\nDisallow: /en/garages\nDisallow: /workshops\nDisallow: /suche\nDisallow: /werkstaetten${sitemap}\n`;
   });
   app.get('/sitemap.xml', async (_request, reply) => {
     if (!options.publicSiteUrl) {
@@ -1376,9 +1376,18 @@ export function isNoIndexPath(url: string): boolean {
     path === '/werkstatt/aufnahme' ||
     path === '/sq/werkstatt/aufnahme' ||
     path === '/en/werkstatt/aufnahme' ||
+    path === '/garages' ||
+    path === '/sq/garages' ||
+    path === '/en/garages' ||
+    path === '/workshops' ||
+    path === '/sq/workshops' ||
+    path === '/en/workshops' ||
     path === '/suche' ||
     path === '/sq/suche' ||
-    path === '/en/suche'
+    path === '/en/suche' ||
+    path === '/werkstaetten' ||
+    path === '/sq/werkstaetten' ||
+    path === '/en/werkstaetten'
   );
 }
 

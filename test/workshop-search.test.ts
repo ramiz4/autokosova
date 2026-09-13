@@ -168,6 +168,24 @@ test('ranking is deterministic and presents an honest pre-review state', () => {
   assert.equal(JSON.stringify(result).includes('paid'), false);
 });
 
+test('sort accepts only the documented server-side orders', () => {
+  assert.equal(query({ sort: 'rating' }).sort, 'rating');
+  assert.equal(query().sort, 'recommended');
+  assert.throws(() => query({ sort: 'paid-top' }));
+});
+
+test('the explicit all-results mode returns every demo item on one default page', () => {
+  const all = parsePublicWorkshopSearch({ all: 'true' })!;
+  const workshops = Array.from({ length: 25 }, (_, index) =>
+    profile({ id: `demo-${index}`, name: `Demo ${index}` }),
+  );
+  const result = findPublicWorkshops(workshops, all);
+  assert.equal(all.allResults, true);
+  assert.equal(result.total, 25);
+  assert.equal(result.results.length, 25);
+  assert.equal(result.totalPages, 1);
+});
+
 test('result pagination is stable and malformed filters are rejected instead of widened', () => {
   const workshops = Array.from({ length: 12 }, (_, index) =>
     profile({
