@@ -297,26 +297,29 @@ interface Area {
                       }
                     </div>
                     <div class="relative p-3 sm:min-h-[144px] sm:pr-48">
-                      <div class="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <h2 class="text-xl font-bold tracking-tight">{{ workshop.name }}</h2>
-                          <p class="mt-1 text-sm text-slate-600">
-                            {{
-                              response.allResults
-                                ? workshop.matchingPlace.label
-                                : aerialDistance(workshop.distanceKm, workshop.matchingPlace.label)
-                            }}
-                          </p>
-                        </div>
+                      <div class="flex items-center gap-2">
+                        <h2 class="text-xl font-bold tracking-tight">{{ workshop.name }}</h2>
                         @if (workshop.companyDataVerified) {
                           <span
-                            class="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-brand-dark"
-                            >{{ language.t('profile.verified') }}</span
+                            class="inline-flex size-5 items-center justify-center rounded-full bg-brand text-white"
+                            [attr.aria-label]="language.t('profile.verified')"
                           >
+                            <app-icon name="check" class="size-3.5" />
+                          </span>
                         }
                       </div>
-                      <p class="mt-2 text-sm font-semibold text-amber-700">
-                        {{ reviewLabel(workshop.reviewSummary) }}
+                      @if (hasReviews(workshop)) {
+                        <p class="mt-1 text-sm font-semibold text-amber-600">
+                          ★ {{ reviewLabel(workshop.reviewSummary) }}
+                        </p>
+                      } @else {
+                        <p class="mt-1 text-sm font-semibold text-amber-700">
+                          {{ language.t('profile.noReviews') }}
+                        </p>
+                      }
+                      <p class="mt-2 flex items-center gap-1 text-sm text-slate-600">
+                        <app-icon name="pin" class="size-4 text-brand-dark" />
+                        {{ locationLabel(workshop) }}
                       </p>
                       <ul class="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-brand-dark">
                         @for (reason of matchingReasons(workshop); track reason) {
@@ -326,6 +329,12 @@ interface Area {
                           <li class="rounded-full bg-slate-100 px-3 py-1">{{ tag }}</li>
                         }
                       </ul>
+                      <span
+                        class="absolute right-5 top-4 text-ink"
+                        [title]="'Favoriten sind noch nicht verfügbar'"
+                        aria-hidden="true"
+                        ><app-icon name="heart" class="size-6"
+                      /></span>
                       <a
                         [routerLink]="language.link('workshop', workshop.id)"
                         appButton="outline"
@@ -458,6 +467,18 @@ export class SearchHandoffComponent {
     return summary.state === 'available' && summary.averageRating && summary.reviewCount
       ? summary.label
       : this.language.t('profile.noReviews');
+  }
+
+  protected hasReviews(workshop: Result): boolean {
+    return (
+      workshop.reviewSummary.state === 'available' && Boolean(workshop.reviewSummary.reviewCount)
+    );
+  }
+
+  protected locationLabel(workshop: Result): string {
+    return this.response?.allResults
+      ? workshop.matchingPlace.label
+      : this.aerialDistance(workshop.distanceKm, workshop.matchingPlace.label);
   }
   protected pageLabel(page: number, total: number): string {
     return this.language.language === 'en'
