@@ -1,0 +1,250 @@
+import { randomUUID } from 'node:crypto';
+import pg from 'pg';
+import { AccessError, type StoredRepairRequest } from './access';
+import type { RepairRequestInput, RepairRequestVehicle } from '../shared/repair-request';
+
+// PostgreSQL DATE is a calendar value. Parsing it as a JavaScript Date would apply a timezone and
+// could turn 2026-10-02 into 2026-10-01 for users west of UTC.
+pg.types.setTypeParser(1082, (value: string) => value);
+
+export interface RepairRequestStore {
+  close?(): Promise<void>;
+  createRepairRequest(
+    ownerUserId: string,
+    input: RepairRequestInput,
+  ): StoredRepairRequest | Promise<StoredRepairRequest>;
+  getRepairRequest(
+    ownerUserId: string,
+    repairRequestId: string,
+  ): StoredRepairRequest | Promise<StoredRepairRequest>;
+}
+
+interface RepairRequestRow {
+  readonly created_at: Date;
+  readonly earliest_dropoff_on: string;
+  readonly id: string;
+  readonly latest_pickup_on: string;
+  readonly service_category_id: string;
+  readonly stay_ends_on: string;
+  readonly symptom: string | null;
+  readonly vehicle_id: string | null;
+}
+
+interface VehicleRow {
+  readonly engine_details: string | null;
+  readonly make_id: string | null;
+  readonly manufacture_year: number | null;
+  readonly mileage_km: number | null;
+  readonly model: string | null;
+  readonly transmission_details: string | null;
+}
+
+/**
+ * Runtime repository for private requests. It deliberately performs owner checks in SQL in
+ * addition to the RLS policies, so a missing session variable cannot broaden a result set.
+ */
+export class PostgresRepairRequestStore implements RepairRequestStore {
+  private readonly pool: pg.Pool;
+
+  constructor(databaseUrl: string) {
+    this.pool = new pg.Pool({ connectionString: databaseUrl });
+  }
+
+  async close(): Promise<void> {
+    await this.pool.end();
+  }
+
+  async createRepairRequest(
+    ownerUserId: string,
+    input: RepairRequestInput,
+  ): Promise<StoredRepairRequest> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await this.setPrincipal(client, ownerUserId);
+      await client.query(
+        `INSERT INTO app_user (id, oidc_subject, status)
+         VALUES ($1, $1, 'active')
+         ON CONFLICT (id) DO UPDATE SET status = 'active'`,
+        [ownerUserId],
+      );
+
+      const vehicleId = input.vehicle ? randomUUID() : null;
+      if (input.vehicle && vehicleId) {
+        await client.query(
+          `INSERT INTO vehicle (
+             id, owner_user_id, label, make_id, model, manufacture_year,
+             engine_details, transmission_details, mileage_km
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [
+            vehicleId,
+            ownerUserId,
+            `${input.vehicle.makeId} ${input.vehicle.model}`,
+            input.vehicle.makeId,
+            input.vehicle.model,
+            input.vehicle.year,
+            input.vehicle.engineDetails ?? null,
+            input.vehicle.transmissionDetails ?? null,
+            input.vehicle.mileageKm ?? null,
+          ],
+        );
+      }
+
+      const requestId = randomUUID();
+      const createdAt = new Date().toISOString();
+      await client.query(
+        `INSERT INTO repair_request (
+           id, owner_user_id, vehicle_id, service_category_id, symptom,
+           earliest_dropoff_on, latest_pickup_on, stay_ends_on, state
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft')`,
+        [
+          requestId,
+          ownerUserId,
+          vehicleId,
+          input.serviceCategoryId,
+          input.symptom ?? null,
+          input.earliestDropoffOn,
+          input.latestPickupOn,
+          input.stayEndsOn,
+        ],
+      );
+
+      for (const [index, area] of input.areas.entries()) {
+        await client.query(
+          `INSERT INTO request_search_area (id, repair_request_id, position, place_id, radius_m)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [randomUUID(), requestId, index + 1, area.placeId, area.radiusKm * 1000],
+        );
+      }
+
+      await this.attachFiles(client, ownerUserId, requestId, input.attachmentIds ?? []);
+      await client.query('COMMIT');
+      return {
+        areas: input.areas,
+        attachmentIds: input.attachmentIds ?? [],
+        createdAt,
+        earliestDropoffOn: input.earliestDropoffOn,
+        id: requestId,
+        latestPickupOn: input.latestPickupOn,
+        serviceCategoryId: input.serviceCategoryId,
+        stayEndsOn: input.stayEndsOn,
+        symptom: input.symptom,
+        vehicle: input.vehicle,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getRepairRequest(
+    ownerUserId: string,
+    repairRequestId: string,
+  ): Promise<StoredRepairRequest> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await this.setPrincipal(client, ownerUserId);
+      const requestResult = await client.query<RepairRequestRow>(
+        `SELECT id, created_at, service_category_id, symptom, earliest_dropoff_on,
+                latest_pickup_on, stay_ends_on, vehicle_id
+         FROM repair_request
+         WHERE id = $1 AND owner_user_id = $2`,
+        [repairRequestId, ownerUserId],
+      );
+      const request = requestResult.rows[0];
+      if (!request) throw new AccessError(404, 'Private repair request not found');
+
+      const areaResult = await client.query<{ place_id: string; radius_m: number }>(
+        `SELECT place_id, radius_m
+         FROM request_search_area
+         WHERE repair_request_id = $1
+         ORDER BY position`,
+        [request.id],
+      );
+      const attachmentResult = await client.query<{ file_id: string }>(
+        `SELECT file_id FROM repair_request_attachment WHERE repair_request_id = $1 ORDER BY file_id`,
+        [request.id],
+      );
+      const vehicle = request.vehicle_id
+        ? await this.getVehicle(client, request.vehicle_id)
+        : undefined;
+      await client.query('COMMIT');
+
+      return {
+        areas: areaResult.rows.map((area) => ({
+          placeId: area.place_id as RepairRequestInput['areas'][number]['placeId'],
+          radiusKm: area.radius_m / 1000,
+        })),
+        attachmentIds: attachmentResult.rows.map((attachment) => attachment.file_id),
+        createdAt: request.created_at.toISOString(),
+        earliestDropoffOn: request.earliest_dropoff_on,
+        id: request.id,
+        latestPickupOn: request.latest_pickup_on,
+        serviceCategoryId: request.service_category_id,
+        stayEndsOn: request.stay_ends_on,
+        symptom: request.symptom ?? undefined,
+        vehicle,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  private async attachFiles(
+    client: pg.PoolClient,
+    ownerUserId: string,
+    requestId: string,
+    attachmentIds: readonly string[],
+  ): Promise<void> {
+    if (!attachmentIds.length) return;
+    const fileResult = await client.query<{ id: string }>(
+      `SELECT id
+       FROM file_object
+       WHERE id = ANY($1::text[]) AND owner_user_id = $2`,
+      [attachmentIds, ownerUserId],
+    );
+    if (fileResult.rowCount !== attachmentIds.length) {
+      throw new AccessError(404, 'Private file not found');
+    }
+    for (const fileId of attachmentIds) {
+      await client.query(
+        `INSERT INTO repair_request_attachment (repair_request_id, file_id)
+         VALUES ($1, $2)`,
+        [requestId, fileId],
+      );
+    }
+  }
+
+  private async getVehicle(client: pg.PoolClient, vehicleId: string) {
+    const result = await client.query<VehicleRow>(
+      `SELECT make_id, model, manufacture_year, engine_details, transmission_details, mileage_km
+       FROM vehicle
+       WHERE id = $1`,
+      [vehicleId],
+    );
+    const vehicle = result.rows[0];
+    if (!vehicle || !vehicle.make_id || !vehicle.model || vehicle.manufacture_year === null) {
+      throw new AccessError(404, 'Private vehicle not found');
+    }
+    return {
+      ...(vehicle.engine_details ? { engineDetails: vehicle.engine_details } : {}),
+      makeId: vehicle.make_id as RepairRequestVehicle['makeId'],
+      ...(vehicle.mileage_km === null ? {} : { mileageKm: vehicle.mileage_km }),
+      model: vehicle.model,
+      ...(vehicle.transmission_details
+        ? { transmissionDetails: vehicle.transmission_details }
+        : {}),
+      year: vehicle.manufacture_year,
+    };
+  }
+
+  private async setPrincipal(client: pg.PoolClient, userId: string): Promise<void> {
+    await client.query(`SELECT set_config('app.user_id', $1, true)`, [userId]);
+  }
+}

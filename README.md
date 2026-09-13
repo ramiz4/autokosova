@@ -50,6 +50,16 @@ Falls Port 55432 belegt ist, kann vor `docker compose up` ein anderer lokaler Po
 
 Qualität vor Billigpreis. Kein Bietermodell. Suche, Profile und Direktkontakt ohne Konto. Ein Ort mit Radius oder mehrere Orte mit jeweils eigenem Radius. Unternehmensprüfung ist keine Reparaturgarantie. Bewertungen und organisches Ranking sind nicht käuflich.
 
+## Reparaturanfrage lokal prüfen
+
+`/anfrage` führt schrittweise durch optionale Fahrzeugdaten, Leistung/Symptom sowie einen bis drei
+Orte mit 5–100 km Luftlinienradius und lokale Reisedaten. Gäste behalten den Entwurf nur im
+Browser und können damit zur Suche weitergehen. Nur nach OIDC-Anmeldung kann die Anfrage über die
+private API dauerhaft gespeichert werden. Der Suchübergang enthält ausschließlich Leistung und
+Orts-/Radiusfilter; es wird nichts automatisch an Werkstätten gesendet. Fotos und Diagnoseberichte
+bleiben optional und privat; ohne einen konfigurierten Objektspeicher werden sie in der lokalen
+Entwicklungsoberfläche nicht hochgeladen.
+
 ## Entwicklung
 
 Ausschliesslich GitHub Issues und Pull Requests; kein Jira und keine doppelte Ticketpflege. Die Build- und Testcommands sind oben dokumentiert. Keine Infrastruktur wurde bestellt oder produktiv eingerichtet. GitHub Actions nutzt eine flüchtige PostGIS-Testdatenbank und erhält keine Secrets.

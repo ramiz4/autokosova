@@ -16,12 +16,84 @@ import {
   type ZitadelOidcConfig,
   verifyZitadelAccessToken,
 } from './oidc';
+import { buildMatchingPath, validateRepairRequest } from './repair-requests';
+import type { RepairRequestStore } from './repair-request-store';
 import { normalizeWorkshopPhoto, WorkshopPhotoError } from './workshop-photo';
+import {
+  REPAIR_REQUEST_LIMITS,
+  REPAIR_REQUEST_PLACES,
+  REPAIR_REQUEST_SERVICE_CATEGORIES,
+  REPAIR_REQUEST_VEHICLE_MAKES,
+  type RepairRequestInput,
+} from '../shared/repair-request';
 
 interface ServerOptions {
   readonly accessStore?: AccessStore;
   readonly oidcConfig?: ZitadelOidcConfig;
+  readonly repairRequestStore?: RepairRequestStore;
   readonly staticRoot?: string;
+}
+
+const repairRequestBodySchema = {
+  additionalProperties: false,
+  properties: {
+    areas: {
+      items: {
+        additionalProperties: false,
+        properties: {
+          placeId: { enum: REPAIR_REQUEST_PLACES, type: 'string' },
+          radiusKm: {
+            maximum: REPAIR_REQUEST_LIMITS.maxRadiusKm,
+            minimum: REPAIR_REQUEST_LIMITS.minRadiusKm,
+            type: 'integer',
+          },
+        },
+        required: ['placeId', 'radiusKm'],
+        type: 'object',
+      },
+      maxItems: REPAIR_REQUEST_LIMITS.maxAreas,
+      minItems: 1,
+      type: 'array',
+    },
+    attachmentIds: {
+      items: { minLength: 1, type: 'string' },
+      maxItems: REPAIR_REQUEST_LIMITS.maxAttachments,
+      type: 'array',
+      uniqueItems: true,
+    },
+    earliestDropoffOn: { pattern: '^\\d{4}-\\d{2}-\\d{2}$', type: 'string' },
+    latestPickupOn: { pattern: '^\\d{4}-\\d{2}-\\d{2}$', type: 'string' },
+    serviceCategoryId: { enum: REPAIR_REQUEST_SERVICE_CATEGORIES, type: 'string' },
+    stayEndsOn: { pattern: '^\\d{4}-\\d{2}-\\d{2}$', type: 'string' },
+    symptom: { maxLength: REPAIR_REQUEST_LIMITS.maxSymptomLength, type: 'string' },
+    vehicle: {
+      additionalProperties: false,
+      properties: {
+        engineDetails: { maxLength: 120, type: 'string' },
+        makeId: { enum: REPAIR_REQUEST_VEHICLE_MAKES, type: 'string' },
+        mileageKm: {
+          maximum: REPAIR_REQUEST_LIMITS.maxMileageKm,
+          minimum: 0,
+          type: 'integer',
+        },
+        model: { maxLength: 120, minLength: 1, type: 'string' },
+        transmissionDetails: { maxLength: 120, type: 'string' },
+        year: {
+          maximum: REPAIR_REQUEST_LIMITS.maxVehicleYear,
+          minimum: REPAIR_REQUEST_LIMITS.minVehicleYear,
+          type: 'integer',
+        },
+      },
+      required: ['makeId', 'model', 'year'],
+      type: 'object',
+    },
+  },
+  required: ['areas', 'earliestDropoffOn', 'latestPickupOn', 'serviceCategoryId', 'stayEndsOn'],
+  type: 'object',
+};
+
+function safeReturnTo(value: unknown): string {
+  return value === '/anfrage' ? value : '/';
 }
 
 const stringListSchema = {
@@ -85,6 +157,7 @@ export function createServer(options: ServerOptions = {}) {
     },
   });
   const accessStore = options.accessStore ?? new AccessStore();
+  const repairRequestStore: RepairRequestStore = options.repairRequestStore ?? accessStore;
 
   app.register(cookie);
   app.addContentTypeParser(
@@ -92,6 +165,9 @@ export function createServer(options: ServerOptions = {}) {
     { parseAs: 'buffer' },
     (_request, body, done) => done(null, body),
   );
+  if (repairRequestStore.close) {
+    app.addHook('onClose', async () => repairRequestStore.close?.());
+  }
 
   function requirePrincipal(
     request: {
@@ -144,12 +220,17 @@ export function createServer(options: ServerOptions = {}) {
       .send(photo.content);
   });
 
-  app.get('/auth/login', async (_request, reply) => {
+  app.get('/auth/login', async (request, reply) => {
     if (!options.oidcConfig) {
       return reply.code(503).send({ error: 'OIDC is not configured' });
     }
     const transaction = createPkceTransaction();
-    accessStore.createOidcTransaction(transaction.state, transaction.codeVerifier);
+    const query = request.query as { returnTo?: string };
+    accessStore.createOidcTransaction(
+      transaction.state,
+      transaction.codeVerifier,
+      safeReturnTo(query.returnTo),
+    );
     return reply.redirect(
       createAuthorizationUrl(options.oidcConfig, transaction.state, transaction.codeChallenge),
     );
@@ -189,7 +270,7 @@ export function createServer(options: ServerOptions = {}) {
         sameSite: 'lax',
         secure,
       });
-      return reply.redirect('/');
+      return reply.redirect(transaction.returnTo);
     } catch {
       return reply.code(401).send({ error: 'OIDC authentication failed' });
     }
@@ -228,6 +309,37 @@ export function createServer(options: ServerOptions = {}) {
       }
     },
   );
+
+  app.post(
+    '/api/me/repair-requests',
+    { schema: { body: repairRequestBodySchema } },
+    async (request, reply) => {
+      try {
+        const principal = requirePrincipal(request, true);
+        const body = request.body as RepairRequestInput;
+        const validationError = validateRepairRequest(body);
+        if (validationError) throw new AccessError(400, validationError);
+        const repairRequest = await repairRequestStore.createRepairRequest(principal.userId, body);
+        return reply.code(201).send({
+          id: repairRequest.id,
+          matchingPath: buildMatchingPath(body),
+          state: 'draft',
+        });
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.get('/api/me/repair-requests/:repairRequestId', async (request, reply) => {
+    try {
+      const principal = requirePrincipal(request);
+      const params = request.params as { repairRequestId: string };
+      return await repairRequestStore.getRepairRequest(principal.userId, params.repairRequestId);
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
 
   app.get('/api/me/workshops', async (request, reply) => {
     try {

@@ -7,9 +7,15 @@ import {
 import { join } from 'node:path';
 import { createServer } from './server/app';
 import { readZitadelOidcConfig } from './server/oidc';
+import { PostgresRepairRequestStore } from './server/repair-request-store';
 
+const databaseUrl = process.env['DATABASE_URL'];
+if (process.env['NODE_ENV'] === 'production' && !databaseUrl) {
+  throw new Error('DATABASE_URL is required for a production server.');
+}
 const app = createServer({
   oidcConfig: readZitadelOidcConfig(process.env),
+  ...(databaseUrl ? { repairRequestStore: new PostgresRepairRequestStore(databaseUrl) } : {}),
   staticRoot: join(import.meta.dirname, '../browser'),
 });
 const angularApp = new AngularNodeAppEngine();

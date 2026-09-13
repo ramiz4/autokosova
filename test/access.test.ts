@@ -56,6 +56,45 @@ test('login stays unavailable until an OIDC provider is configured', async () =>
   }
 });
 
+test('OIDC transaction preserves a local return path for the saved draft', () => {
+  const store = new AccessStore();
+  store.createOidcTransaction('state', 'verifier', '/anfrage');
+  const transaction = store.consumeOidcTransaction('state');
+  assert.equal(transaction?.codeVerifier, 'verifier');
+  assert.equal(transaction?.returnTo, '/anfrage');
+  assert.ok(transaction?.expiresAt instanceof Date);
+});
+
+test('OIDC login only accepts the repair-request return path', async () => {
+  const store = new AccessStore();
+  const app = createServer({
+    accessStore: store,
+    oidcConfig: {
+      audience: 'client-id',
+      authorizationEndpoint: 'https://issuer.example/oauth/v2/authorize',
+      clientId: 'client-id',
+      issuer: 'https://issuer.example',
+      jwksUri: 'https://issuer.example/oauth/v2/keys',
+      redirectUri: 'http://localhost:4000/auth/callback',
+      tokenEndpoint: 'https://issuer.example/oauth/v2/token',
+    },
+  });
+  try {
+    const accepted = await app.inject({ method: 'GET', url: '/auth/login?returnTo=/anfrage' });
+    const rejected = await app.inject({
+      method: 'GET',
+      url: '/auth/login?returnTo=//example.test',
+    });
+    const acceptedState = new URL(accepted.headers.location!).searchParams.get('state')!;
+    const rejectedState = new URL(rejected.headers.location!).searchParams.get('state')!;
+
+    assert.equal(store.consumeOidcTransaction(acceptedState)?.returnTo, '/anfrage');
+    assert.equal(store.consumeOidcTransaction(rejectedState)?.returnTo, '/');
+  } finally {
+    await app.close();
+  }
+});
+
 test('customers only receive their own vehicles', async () => {
   const { app, customerA, customerB, customerVehicle } = setup();
   try {
