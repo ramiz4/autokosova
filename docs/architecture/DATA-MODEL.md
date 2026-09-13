@@ -21,8 +21,8 @@ Dieses Modell ergänzt [ADR-001](ADR-001.md). Es ist eine fachliche und technisc
 | `ServiceCategory` | `id`, `parent_id`, `slug`, `label_de`, `label_sq`, `state` | Öffentlich lesbarer, administrativ gepflegter Katalog. Keine freien Kategorien in der Suche. |
 | `Place` | `id`, `name`, `country_code`, `point geography(Point,4326)`, `source`, `status` | Öffentliche, geprüfte Ortsgrundlage. `source` dokumentiert eigene Prüfung; MapTiler-Suchergebnisse werden nicht persistiert. |
 | `Vehicle` | `id`, `owner_user_id`, `make`, `model`, `year`, `notes`, `deleted_at` | Kundenprivat. Kein Kennzeichen und keine VIN, sofern für den MVP nicht ausdrücklich erforderlich und freigegeben. |
-| `RepairRequest` | `id`, `owner_user_id`, `vehicle_id nullable`, `service_category_id`, `description`, `travel_window nullable`, `state` | Kundenprivat. Wird nicht automatisch an Werkstätten verteilt und ist kein Auftrag oder Angebot. |
-| `SearchArea` | `id`, `owner_user_id nullable`, `point geography(Point,4326)`, `radius_m`, `label`, `expires_at` | Gast-Suche bleibt nur kurzlebig; gespeicherte Suche hat Besitzer und RLS. Mehrere Flächen sind eine Vereinigung, nicht mehrere Kontaktanfragen. |
+| `RepairRequest` | `id`, `owner_user_id`, `vehicle_id nullable`, `service_category_id`, `symptom nullable`, `earliest_dropoff_on`, `latest_pickup_on`, `stay_ends_on`, `state` | Kundenprivat. Die drei Werte sind lokale Kalendertage (`Abgabe ≤ Abholung ≤ Aufenthaltsende`), keine UTC-Zeitpunkte. Wird nicht automatisch an Werkstätten verteilt und ist kein Auftrag oder Angebot. |
+| `RequestSearchArea` | `id`, `repair_request_id`, `place_id`, `radius_m` | Kundenprivat mit RLS über die Anfrage. Mindestens ein, höchstens drei verschiedene Orte, je 5–100 km Luftlinie; mehrere Flächen sind eine Vereinigung, nicht mehrere Kontaktanfragen. |
 | `ContactIntent` | `id`, `workshop_id`, `actor_user_id nullable`, `anonymous_key nullable`, `channel`, `created_at` | Privat und minimal. Dokumentiert nur die bewusst gewählte Kontaktabsicht; keine Nachricht, Telefonnummer, Buchung, Preis oder Reparaturdetails. Anonyme Schlüssel sind gehasht, rotierbar und befristet. |
 | `VisitEvidence` | `id`, `owner_user_id`, `review_id nullable`, `evidence_kind`, `verification_state`, `private_file_id nullable` | Besonders schützenswert. Nur ein abgeleiteter Status kann bei einer Review erscheinen; Datei und Prüfnotiz bleiben privat. Werkstattbestätigung ist nur eine mögliche Evidenz, keine Voraussetzung für Kritik. |
 | `Review` | `id`, `author_user_id`, `workshop_id`, `service_category_id`, `text`, `rating nullable`, `publication_state`, `evidence_status`, `moderation_state` | Öffentliche View nur nach Moderationsfreigabe. `evidence_status` ist keine Qualitätsgarantie und die Veröffentlichung negativer Kritik hängt nicht an einer Werkstattbestätigung. |
@@ -94,6 +94,11 @@ Die Matrix wird zweimal durchgesetzt: Fachservice plus PostgreSQL-RLS. Öffentli
 2. Uploads landen in einem nicht lesbaren Quarantäne-Prefix. Erst nach Scan und atomarem Metadatenwechsel wird ein privates Objekt referenzierbar.
 3. Downloads erhalten eine neue, eng befristete URL erst nach erneuter Objektprüfung. Die URL, der Dateiname und der Beleginhalt stehen nie im Audit- oder E-Mail-Log.
 4. Löschung markiert erst fachlich `retention_state`, sperrt Zugriff und löscht nach der später rechtlich festgelegten Frist Objekt und Metadaten. Rechtliche Aufbewahrung und konkrete Fristen sind noch offen und werden nicht vorweggenommen.
+
+`RepairRequestAttachment` verbindet nur eine private Anfrage mit einer dem gleichen Besitzer
+gehörenden Datei. Eine Anfrage kann höchstens fünf optionale Bilder oder Diagnoseberichte
+referenzieren. Der öffentliche Suchübergang enthält ausschließlich Leistung und Orts-/Radiusfilter;
+niemals Fahrzeug-, Reise-, Freitext- oder Dateiwerte.
 
 ## Szenarioprüfung
 

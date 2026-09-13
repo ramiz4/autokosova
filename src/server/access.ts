@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { RepairRequestInput } from '../shared/repair-request';
 
 export type SystemRole = 'admin' | 'customer' | 'moderator';
 export type MembershipRole = 'editor' | 'owner';
@@ -68,6 +69,7 @@ interface Session {
 interface OidcTransaction {
   readonly codeVerifier: string;
   readonly expiresAt: Date;
+  readonly returnTo: string;
 }
 
 interface Vehicle {
@@ -86,6 +88,26 @@ interface Membership {
 interface PrivateFile {
   readonly id: string;
   readonly ownerUserId: string;
+}
+
+interface PrivateRepairRequest {
+  readonly createdAt: string;
+  readonly id: string;
+  readonly input: RepairRequestInput;
+  readonly ownerUserId: string;
+}
+
+export interface StoredRepairRequest {
+  readonly areas: RepairRequestInput['areas'];
+  readonly attachmentIds: readonly string[];
+  readonly createdAt: string;
+  readonly earliestDropoffOn: string;
+  readonly id: string;
+  readonly latestPickupOn: string;
+  readonly serviceCategoryId: string;
+  readonly stayEndsOn: string;
+  readonly symptom?: string;
+  readonly vehicle?: RepairRequestInput['vehicle'];
 }
 
 interface Workshop {
@@ -139,6 +161,7 @@ export class AccessStore {
   private readonly files = new Map<string, PrivateFile>();
   private readonly memberships = new Map<string, Membership>();
   private readonly oidcTransactions = new Map<string, OidcTransaction>();
+  private readonly repairRequests = new Map<string, PrivateRepairRequest>();
   private readonly sessions = new Map<string, Session>();
   private readonly users = new Map<string, Set<SystemRole>>();
   private readonly vehicles = new Map<string, Vehicle>();
@@ -197,11 +220,27 @@ export class AccessStore {
     });
   }
 
-  createOidcTransaction(state: string, codeVerifier: string) {
+  createOidcTransaction(state: string, codeVerifier: string, returnTo = '/') {
     this.oidcTransactions.set(state, {
       codeVerifier,
       expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      returnTo,
     });
+  }
+
+  createRepairRequest(ownerUserId: string, input: RepairRequestInput): StoredRepairRequest {
+    for (const fileId of input.attachmentIds ?? []) {
+      const file = this.files.get(fileId);
+      if (!file || file.ownerUserId !== ownerUserId) {
+        throw new AccessError(404, 'Private file not found');
+      }
+    }
+
+    const id = randomUUID();
+    const createdAt = new Date().toISOString();
+    const storedInput = structuredClone(input);
+    this.repairRequests.set(id, { createdAt, id, input: storedInput, ownerUserId });
+    return this.toStoredRepairRequest({ createdAt, id, input: storedInput, ownerUserId });
   }
 
   createVehicle(ownerUserId: string, label: string) {
@@ -215,6 +254,14 @@ export class AccessStore {
     this.oidcTransactions.delete(state);
     if (!transaction || transaction.expiresAt <= now) return undefined;
     return transaction;
+  }
+
+  getRepairRequest(userId: string, repairRequestId: string): StoredRepairRequest {
+    const request = this.repairRequests.get(repairRequestId);
+    if (!request || request.ownerUserId !== userId) {
+      throw new AccessError(404, 'Private repair request not found');
+    }
+    return this.toStoredRepairRequest(request);
   }
 
   createWorkshopDocumentGrant(principal: Principal, workshopId: string): FileGrant {
@@ -439,6 +486,21 @@ export class AccessStore {
       expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
       fileId,
       grantId: randomUUID(),
+    };
+  }
+
+  private toStoredRepairRequest(request: PrivateRepairRequest): StoredRepairRequest {
+    return {
+      areas: request.input.areas,
+      attachmentIds: request.input.attachmentIds ?? [],
+      createdAt: request.createdAt,
+      earliestDropoffOn: request.input.earliestDropoffOn,
+      id: request.id,
+      latestPickupOn: request.input.latestPickupOn,
+      serviceCategoryId: request.input.serviceCategoryId,
+      stayEndsOn: request.input.stayEndsOn,
+      symptom: request.input.symptom,
+      vehicle: request.input.vehicle,
     };
   }
 
