@@ -42,6 +42,13 @@ jobs:
       - run: npm run test:demo-seed
       - run: ALLOW_LOCAL_RESET=1 npm run db:reset
       - run: ALLOW_LOCAL_RESET=1 AUTOKOSOVA_DEMO_DATA=1 npm run db:reset:demo
+      - run: npm run test:demo-seed
+      - run: ALLOW_LOCAL_RESET=1 npm run db:reset
+      - run: AUTOKOSOVA_DEMO_DATA=1 AUTOKOSOVA_DEMO_WORKFLOW_DATA=1 npm run db:seed:demo-workflows
+      - run: AUTOKOSOVA_DEMO_DATA=1 AUTOKOSOVA_DEMO_WORKFLOW_DATA=1 npm run db:seed:demo-workflows
+      - run: npm run test:demo-workflow-seed
+      - run: ALLOW_LOCAL_RESET=1 AUTOKOSOVA_DEMO_DATA=1 AUTOKOSOVA_DEMO_WORKFLOW_DATA=1 npm run db:reset:demo-workflows
+      - run: npm run test:demo-workflow-seed
       - run: ALLOW_LOCAL_RESET=1 npm run db:reset
       - run: npm run format:check
       - run: npm run lint

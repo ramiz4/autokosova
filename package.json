@@ -14,6 +14,7 @@
     "test": "ng test",
     "test:server": "tsx --test test/**/*.test.ts",
     "test:demo-seed": "AUTOKOSOVA_EXPECT_DEMO_DATA=1 tsx --test test/demo-seed-postgres.test.ts",
+    "test:demo-workflow-seed": "AUTOKOSOVA_EXPECT_DEMO_WORKFLOW_DATA=1 tsx --test test/demo-workflow-seed-postgres.test.ts",
     "test:smoke": "node scripts/smoke.mjs",
     "lint": "eslint src --max-warnings=0",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
@@ -22,8 +23,10 @@
     "db:migrate": "node scripts/db/migrate.mjs",
     "db:seed": "node scripts/db/seed.mjs",
     "db:seed:demo": "node scripts/db/seed.mjs --profile demo",
+    "db:seed:demo-workflows": "node scripts/db/seed.mjs --profile demo-workflows",
     "db:reset": "node scripts/db/reset.mjs",
     "db:reset:demo": "node scripts/db/reset.mjs --profile demo",
+    "db:reset:demo-workflows": "node scripts/db/reset.mjs --profile demo-workflows",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run test:server && npm run build && npm run test:smoke"
   },
   "private": true,
