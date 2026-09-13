@@ -102,6 +102,12 @@ test('a workshop is private until an admin releases it, while qualification stay
       name: 'Fiktive Werkstatt Prishtina',
       photoIds: [],
       placeId: 'xk-pristina',
+      reviewSummary: {
+        label: 'Noch keine Bewertungen',
+        reviewCount: 0,
+        state: 'unavailable',
+        verifiedVisitCount: 0,
+      },
       selfReportedSpecializations: ['Elektrodiagnose'],
       serviceCategoryIds: ['elektronik-diagnose'],
       vehicleMakeIds: ['volkswagen'],

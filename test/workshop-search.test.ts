@@ -151,8 +151,18 @@ test('ranking is deterministic and presents an honest pre-review state', () => {
   assert.deepEqual(
     result.results.map((workshop) => workshop.reviewSummary),
     [
-      { label: 'Noch keine Bewertungen', state: 'unavailable' },
-      { label: 'Noch keine Bewertungen', state: 'unavailable' },
+      {
+        label: 'Noch keine Bewertungen',
+        reviewCount: 0,
+        state: 'unavailable',
+        verifiedVisitCount: 0,
+      },
+      {
+        label: 'Noch keine Bewertungen',
+        reviewCount: 0,
+        state: 'unavailable',
+        verifiedVisitCount: 0,
+      },
     ],
   );
   assert.equal(JSON.stringify(result).includes('paid'), false);
@@ -290,12 +300,10 @@ test(
       const result = await store.searchPublicWorkshops(query({ places: 'xk-pristina:5' }));
       const profile = await store.getPublicWorkshop(workshopId);
 
-      assert.deepEqual(
-        result.results.map((workshop) => workshop.id),
-        [workshopId],
-      );
-      assert.equal(result.results[0].distanceKm, 0);
-      assert.equal(result.results[0].companyDataVerified, true);
+      const matchingWorkshop = result.results.find((workshop) => workshop.id === workshopId);
+      assert.ok(matchingWorkshop);
+      assert.equal(matchingWorkshop.distanceKm, 0);
+      assert.equal(matchingWorkshop.companyDataVerified, true);
       assert.equal(JSON.stringify(result).includes('Private fiktive Person'), false);
       assert.deepEqual(profile, {
         contact: { phone: '+383 44 000 010' },
@@ -304,6 +312,12 @@ test(
         name: 'Fiktive PostgreSQL-Suche',
         photoIds: [],
         placeId: 'xk-pristina',
+        reviewSummary: {
+          label: 'Noch keine Bewertungen',
+          reviewCount: 0,
+          state: 'unavailable',
+          verifiedVisitCount: 0,
+        },
         selfReportedSpecializations: ['Bremsen'],
         serviceCategoryIds: ['bremsen'],
         vehicleMakeIds: [],

@@ -1,5 +1,29 @@
 import { randomUUID } from 'node:crypto';
 import type { RepairRequestInput } from '../shared/repair-request';
+import { SERVICE_CATEGORY_LABELS, VEHICLE_MAKE_LABELS } from '../shared/catalog';
+import {
+  calculateOverallRating,
+  emptyReviewSummary,
+  isReviewEvidenceKind,
+  isReviewRejectionReason,
+  isReviewUpdateKind,
+  isVisitMonth,
+  REVIEW_LIMITS,
+  reviewSummaryLabel,
+  type OwnReview,
+  type PublicReviewSummary,
+  type PublicWorkshopReview,
+  type ReviewDecisionInput,
+  type ReviewEvidenceKind,
+  type ReviewEvidenceStatus,
+  type ReviewPublicFilter,
+  type ReviewPublicationState,
+  type ReviewRejectionReason,
+  type ReviewRatings,
+  type ReviewStore,
+  type ReviewSubmissionInput,
+  type ReviewUpdateKind,
+} from './reviews';
 import {
   findPublicWorkshops,
   type PublicWorkshopSearchInput,
@@ -59,6 +83,7 @@ export interface PublicWorkshopProfile {
   readonly name: string;
   readonly photoIds: readonly string[];
   readonly placeId: string;
+  readonly reviewSummary?: PublicReviewSummary;
   readonly selfReportedSpecializations: readonly string[];
   readonly serviceCategoryIds: readonly string[];
   readonly vehicleMakeIds: readonly string[];
@@ -93,6 +118,8 @@ interface Membership {
 interface PrivateFile {
   readonly id: string;
   readonly ownerUserId: string;
+  reviewId?: string;
+  retentionState: 'active' | 'deleted';
 }
 
 interface PrivateRepairRequest {
@@ -140,6 +167,40 @@ interface WorkshopPhoto {
   readonly workshopId: string;
 }
 
+interface ReviewEvidence {
+  readonly evidenceKind: ReviewEvidenceKind;
+  readonly fileId: string;
+  status: ReviewEvidenceStatus;
+}
+
+interface ReviewRecord {
+  readonly authorUserId: string;
+  readonly createdAt: string;
+  readonly evidence: ReviewEvidence;
+  readonly id: string;
+  moderationAssignmentUserId?: string;
+  publicationState: ReviewPublicationState;
+  publishedAt?: string;
+  readonly ratings: ReviewRatings;
+  rejectionReason?: ReviewRejectionReason;
+  readonly serviceCategoryId: string;
+  readonly text: string;
+  readonly updates: {
+    readonly authorUserId: string;
+    readonly createdAt: string;
+    readonly kind: ReviewUpdateKind;
+    readonly text: string;
+  }[];
+  readonly vehicleMakeId?: string;
+  readonly visitMonth: string;
+  readonly workshopId: string;
+  workshopResponse?: {
+    readonly createdAt: string;
+    readonly workshopId: string;
+    readonly text: string;
+  };
+}
+
 export interface AuditEvent {
   readonly actorUserId: string;
   readonly subjectId?: string;
@@ -161,12 +222,13 @@ export class DuplicateWorkshopError extends AccessError {
   }
 }
 
-export class AccessStore {
+export class AccessStore implements ReviewStore {
   readonly auditEvents: AuditEvent[] = [];
   private readonly files = new Map<string, PrivateFile>();
   private readonly memberships = new Map<string, Membership>();
   private readonly oidcTransactions = new Map<string, OidcTransaction>();
   private readonly repairRequests = new Map<string, PrivateRepairRequest>();
+  private readonly reviews = new Map<string, ReviewRecord>();
   private readonly sessions = new Map<string, Session>();
   private readonly users = new Map<string, Set<SystemRole>>();
   private readonly vehicles = new Map<string, Vehicle>();
@@ -248,6 +310,57 @@ export class AccessStore {
     return this.toStoredRepairRequest({ createdAt, id, input: storedInput, ownerUserId });
   }
 
+  createReview(principal: Principal, input: ReviewSubmissionInput): OwnReview {
+    if (principal.roles.has('admin')) {
+      throw new AccessError(403, 'An admin cannot submit a review on behalf of a customer');
+    }
+    this.validateReviewSubmission(input);
+    const workshop = this.requireWorkshop(input.workshopId);
+    if (workshop.publicationState !== 'published') {
+      throw new AccessError(404, 'Published workshop not found');
+    }
+    const file = this.files.get(input.evidenceFileId);
+    if (!file || file.ownerUserId !== principal.userId) {
+      throw new AccessError(404, 'Private evidence file not found');
+    }
+    if (file.retentionState !== 'active' || file.reviewId) {
+      throw new AccessError(409, 'A private evidence file can only support one review');
+    }
+
+    const id = randomUUID();
+    const review: ReviewRecord = {
+      authorUserId: principal.userId,
+      createdAt: new Date().toISOString(),
+      evidence: {
+        evidenceKind: input.evidenceKind,
+        fileId: input.evidenceFileId,
+        status: 'submitted',
+      },
+      id,
+      publicationState: 'submitted',
+      ratings: {
+        communication: input.communication,
+        priceTransparency: input.priceTransparency,
+        punctuality: input.punctuality,
+        workQuality: input.workQuality,
+      },
+      serviceCategoryId: input.serviceCategoryId,
+      text: input.text.trim(),
+      updates: [],
+      ...(input.vehicleMakeId ? { vehicleMakeId: input.vehicleMakeId } : {}),
+      visitMonth: input.visitMonth,
+      workshopId: input.workshopId,
+    };
+    file.reviewId = id;
+    this.reviews.set(id, review);
+    this.auditEvents.push({
+      actorUserId: principal.userId,
+      subjectId: id,
+      type: 'review-submitted',
+    });
+    return this.toOwnReview(review);
+  }
+
   createVehicle(ownerUserId: string, label: string) {
     const id = randomUUID();
     this.vehicles.set(id, { id, label, ownerUserId });
@@ -272,7 +385,7 @@ export class AccessStore {
   createWorkshopDocumentGrant(principal: Principal, workshopId: string): FileGrant {
     this.requireWorkshopAccess(principal, workshopId);
     const fileId = randomUUID();
-    this.files.set(fileId, { id: fileId, ownerUserId: principal.userId });
+    this.files.set(fileId, { id: fileId, ownerUserId: principal.userId, retentionState: 'active' });
     this.workshopDocuments.set(fileId, { fileId, workshopId });
     return this.createGrant(fileId);
   }
@@ -285,7 +398,7 @@ export class AccessStore {
       throw new AccessError(413, 'Invalid file size');
     }
     const fileId = randomUUID();
-    this.files.set(fileId, { id: fileId, ownerUserId: userId });
+    this.files.set(fileId, { id: fileId, ownerUserId: userId, retentionState: 'active' });
     return this.createGrant(fileId);
   }
 
@@ -322,6 +435,184 @@ export class AccessStore {
     return this.toPublicWorkshop(workshop);
   }
 
+  assignModerator(admin: Principal, reviewId: string, moderatorUserId: string): void {
+    this.requireAdmin(admin);
+    if (!this.ensureUser(moderatorUserId).has('moderator')) {
+      throw new AccessError(422, 'A review can only be assigned to a moderator');
+    }
+    const review = this.requireReview(reviewId);
+    if (review.publicationState !== 'submitted') {
+      throw new AccessError(409, 'Only submitted reviews can be assigned for review');
+    }
+    if (review.authorUserId === moderatorUserId) {
+      throw new AccessError(409, 'A reviewer cannot be assigned to their own review');
+    }
+    review.moderationAssignmentUserId = moderatorUserId;
+    review.publicationState = 'under_review';
+    review.evidence.status = 'under_review';
+    this.auditEvents.push({
+      actorUserId: admin.userId,
+      subjectId: reviewId,
+      type: 'review-moderator-assigned',
+    });
+  }
+
+  decideReview(principal: Principal, reviewId: string, decision: ReviewDecisionInput): void {
+    const review = this.requireModerationAccess(principal, reviewId);
+    if (review.publicationState !== 'under_review') {
+      throw new AccessError(409, 'Only reviews under review can receive a decision');
+    }
+    this.validateReviewDecision(decision);
+    if (decision.decision === 'published') {
+      const file = this.files.get(review.evidence.fileId);
+      if (
+        !file ||
+        file.retentionState !== 'active' ||
+        !decision.checklist.serviceMatches ||
+        !decision.checklist.visitMonthMatches ||
+        !decision.checklist.workshopMatches
+      ) {
+        throw new AccessError(
+          422,
+          'A review needs a checked private visit evidence before publication',
+        );
+      }
+      review.evidence.status = 'verified';
+      review.publicationState = 'published';
+      review.publishedAt = new Date().toISOString();
+    } else {
+      review.evidence.status = 'not_verified';
+      review.publicationState = 'rejected';
+      review.rejectionReason = decision.rejectionReason;
+    }
+    this.auditEvents.push({
+      actorUserId: principal.userId,
+      subjectId: reviewId,
+      type: `review-${decision.decision}`,
+    });
+  }
+
+  deleteEvidenceAfterRetention(admin: Principal, reviewId: string): void {
+    this.requireAdmin(admin);
+    const review = this.requireReview(reviewId);
+    if (review.publicationState !== 'published' || review.evidence.status !== 'verified') {
+      throw new AccessError(409, 'Only verified evidence of a published review can be deleted');
+    }
+    const file = this.files.get(review.evidence.fileId);
+    if (file) file.retentionState = 'deleted';
+    review.evidence.status = 'deleted_after_retention';
+    this.auditEvents.push({
+      actorUserId: admin.userId,
+      subjectId: reviewId,
+      type: 'review-evidence-deleted-after-retention',
+    });
+  }
+
+  deletePrivateFile(fileId: string): void {
+    const file = this.files.get(fileId);
+    if (file) file.retentionState = 'deleted';
+  }
+
+  issueEvidenceDownloadGrant(principal: Principal, reviewId: string): FileGrant {
+    const review = this.requireReview(reviewId);
+    const isOwner = review.authorUserId === principal.userId;
+    const isAssignedModerator =
+      principal.roles.has('moderator') && review.moderationAssignmentUserId === principal.userId;
+    if (!isOwner && !principal.roles.has('admin') && !isAssignedModerator) {
+      throw new AccessError(404, 'Private visit evidence not found');
+    }
+    const file = this.files.get(review.evidence.fileId);
+    if (!file || file.retentionState !== 'active') {
+      throw new AccessError(404, 'Private visit evidence not found');
+    }
+    return this.createGrant(file.id);
+  }
+
+  listOwnReviews(principal: Principal): readonly OwnReview[] {
+    return [...this.reviews.values()]
+      .filter((review) => review.authorUserId === principal.userId)
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .map((review) => this.toOwnReview(review));
+  }
+
+  listPublicReviews(
+    workshopId: string,
+    filter: ReviewPublicFilter = {},
+  ): readonly PublicWorkshopReview[] {
+    return [...this.reviews.values()]
+      .filter(
+        (review) =>
+          review.workshopId === workshopId &&
+          review.publicationState === 'published' &&
+          (review.evidence.status === 'verified' ||
+            review.evidence.status === 'deleted_after_retention') &&
+          (!filter.serviceCategoryId || review.serviceCategoryId === filter.serviceCategoryId) &&
+          (!filter.vehicleMakeId || review.vehicleMakeId === filter.vehicleMakeId),
+      )
+      .sort(
+        (left, right) =>
+          right.visitMonth.localeCompare(left.visitMonth) ||
+          right.createdAt.localeCompare(left.createdAt),
+      )
+      .map((review) => this.toPublicReview(review));
+  }
+
+  postReviewUpdate(
+    principal: Principal,
+    reviewId: string,
+    kind: ReviewUpdateKind,
+    text: string,
+  ): void {
+    const review = this.requireReview(reviewId);
+    if (review.authorUserId !== principal.userId) {
+      throw new AccessError(404, 'Review not found');
+    }
+    if (review.publicationState !== 'published') {
+      throw new AccessError(409, 'Only published reviews can receive an update');
+    }
+    if (!isReviewUpdateKind(kind) || !this.isReviewText(text, REVIEW_LIMITS.maxUpdateLength)) {
+      throw new AccessError(422, 'Review update is invalid');
+    }
+    review.updates.push({
+      authorUserId: principal.userId,
+      createdAt: new Date().toISOString(),
+      kind,
+      text: text.trim(),
+    });
+    this.auditEvents.push({
+      actorUserId: principal.userId,
+      subjectId: reviewId,
+      type: `review-${kind}-added`,
+    });
+  }
+
+  postWorkshopResponse(
+    principal: Principal,
+    workshopId: string,
+    reviewId: string,
+    text: string,
+  ): void {
+    this.requireWorkshopAccess(principal, workshopId);
+    const review = this.requireReview(reviewId);
+    if (review.workshopId !== workshopId) throw new AccessError(404, 'Published review not found');
+    if (review.publicationState !== 'published') {
+      throw new AccessError(404, 'Published review not found');
+    }
+    if (!this.isReviewText(text, REVIEW_LIMITS.maxResponseLength)) {
+      throw new AccessError(422, 'Workshop response is invalid');
+    }
+    review.workshopResponse = {
+      createdAt: new Date().toISOString(),
+      text: text.trim(),
+      workshopId,
+    };
+    this.auditEvents.push({
+      actorUserId: principal.userId,
+      subjectId: reviewId,
+      type: 'review-workshop-response-posted',
+    });
+  }
+
   getWorkshopPhoto(
     workshopId: string,
     photoId: string,
@@ -346,7 +637,11 @@ export class AccessStore {
       return this.createGrant(fileId);
     }
     const file = this.files.get(fileId);
-    if (!file || (file.ownerUserId !== principal.userId && !principal.roles.has('admin'))) {
+    if (
+      !file ||
+      file.retentionState !== 'active' ||
+      (file.ownerUserId !== principal.userId && !principal.roles.has('admin'))
+    ) {
       throw new AccessError(404, 'Private file not found');
     }
     return this.createGrant(fileId);
@@ -513,6 +808,122 @@ export class AccessStore {
     };
   }
 
+  private getPublicReviewSummary(workshopId: string): PublicReviewSummary {
+    const reviews = this.listPublicReviews(workshopId);
+    if (!reviews.length) return emptyReviewSummary();
+    const totalRating = reviews.reduce((total, review) => total + review.ratings.overall, 0);
+    const averageRating = Math.round((totalRating / reviews.length) * 10) / 10;
+    return {
+      averageRating,
+      label: reviewSummaryLabel(reviews.length, averageRating),
+      latestVisitMonth: reviews[0].visitMonth,
+      reviewCount: reviews.length,
+      state: 'available',
+      // A retained public review still means the visit was checked historically. The file itself
+      // has already become inaccessible after the documented deletion step.
+      verifiedVisitCount: reviews.length,
+    };
+  }
+
+  private isReviewText(value: string, maximum: number): boolean {
+    const trimmed = value.trim();
+    return trimmed.length >= REVIEW_LIMITS.minTextLength && trimmed.length <= maximum;
+  }
+
+  private requireModerationAccess(principal: Principal, reviewId: string): ReviewRecord {
+    const review = this.requireReview(reviewId);
+    if (review.authorUserId === principal.userId) {
+      throw new AccessError(403, 'A reviewer cannot decide their own review');
+    }
+    if (principal.roles.has('admin')) return review;
+    if (
+      principal.roles.has('moderator') &&
+      review.moderationAssignmentUserId === principal.userId
+    ) {
+      return review;
+    }
+    throw new AccessError(403, 'Moderator access denied for this review');
+  }
+
+  private requireReview(reviewId: string): ReviewRecord {
+    const review = this.reviews.get(reviewId);
+    if (!review) throw new AccessError(404, 'Review not found');
+    return review;
+  }
+
+  private toOwnReview(review: ReviewRecord): OwnReview {
+    return {
+      evidenceStatus: review.evidence.status,
+      id: review.id,
+      publicationState: review.publicationState,
+      ...(review.rejectionReason ? { rejectionReason: review.rejectionReason } : {}),
+      ratings: { ...review.ratings, overall: calculateOverallRating(review.ratings) },
+      serviceCategoryId: review.serviceCategoryId,
+      visitMonth: review.visitMonth,
+      workshopId: review.workshopId,
+    };
+  }
+
+  private toPublicReview(review: ReviewRecord): PublicWorkshopReview {
+    return {
+      evidence: { label: 'Besuch belegt', state: 'verified' },
+      id: review.id,
+      ratings: { ...review.ratings, overall: calculateOverallRating(review.ratings) },
+      serviceCategoryId: review.serviceCategoryId,
+      text: review.text,
+      updates: review.updates.map(({ createdAt, kind, text }) => ({ createdAt, kind, text })),
+      ...(review.vehicleMakeId ? { vehicleMakeId: review.vehicleMakeId } : {}),
+      visitMonth: review.visitMonth,
+      ...(review.workshopResponse
+        ? {
+            workshopResponse: {
+              createdAt: review.workshopResponse.createdAt,
+              text: review.workshopResponse.text,
+            },
+          }
+        : {}),
+    };
+  }
+
+  private validateReviewDecision(decision: ReviewDecisionInput): void {
+    const checklist = decision.checklist;
+    if (decision.decision !== 'published' && decision.decision !== 'rejected') {
+      throw new AccessError(422, 'Review decision is invalid');
+    }
+    if (
+      !checklist ||
+      typeof checklist.serviceMatches !== 'boolean' ||
+      typeof checklist.visitMonthMatches !== 'boolean' ||
+      typeof checklist.workshopMatches !== 'boolean'
+    ) {
+      throw new AccessError(422, 'Evidence checklist is invalid');
+    }
+    if (decision.decision === 'rejected' && !isReviewRejectionReason(decision.rejectionReason)) {
+      throw new AccessError(422, 'A rejected review needs a reason for the author');
+    }
+  }
+
+  private validateReviewSubmission(input: ReviewSubmissionInput): void {
+    const ratings = [
+      input.workQuality,
+      input.communication,
+      input.priceTransparency,
+      input.punctuality,
+    ];
+    if (
+      !input.workshopId ||
+      !input.evidenceFileId ||
+      !isReviewEvidenceKind(input.evidenceKind) ||
+      !Object.hasOwn(SERVICE_CATEGORY_LABELS, input.serviceCategoryId) ||
+      (input.vehicleMakeId && !Object.hasOwn(VEHICLE_MAKE_LABELS, input.vehicleMakeId)) ||
+      !isVisitMonth(input.visitMonth) ||
+      !this.isReviewText(input.text, REVIEW_LIMITS.maxTextLength) ||
+      ratings.some((rating) => !Number.isInteger(rating) || rating < 1 || rating > 5)
+    ) {
+      throw new AccessError(422, 'Review submission is invalid');
+    }
+  }
+
   private createWorkshop(userId: string, profile: WorkshopProfileInput, consent: WorkshopConsent) {
     if (!consent.version || consent.version.length > 80) {
       throw new AccessError(422, 'A current onboarding consent version is required');
@@ -606,6 +1017,7 @@ export class AccessStore {
         .filter((photo) => photo.workshopId === workshop.id && photo.visibility === 'approved')
         .map((photo) => photo.id),
       placeId: workshop.profile.placeId,
+      reviewSummary: this.getPublicReviewSummary(workshop.id),
       selfReportedSpecializations: [...workshop.profile.selfReportedSpecializations],
       serviceCategoryIds: [...workshop.profile.serviceCategoryIds],
       vehicleMakeIds: [...workshop.profile.vehicleMakeIds],

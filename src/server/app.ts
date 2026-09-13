@@ -20,6 +20,15 @@ import { buildMatchingPath, validateRepairRequest } from './repair-requests';
 import type { RepairRequestStore } from './repair-request-store';
 import { normalizeWorkshopPhoto, WorkshopPhotoError } from './workshop-photo';
 import {
+  REVIEW_EVIDENCE_KINDS,
+  REVIEW_LIMITS,
+  REVIEW_REJECTION_REASONS,
+  type ReviewDecisionInput,
+  type ReviewStore,
+  type ReviewSubmissionInput,
+  type ReviewUpdateKind,
+} from './reviews';
+import {
   parsePublicWorkshopSearch,
   type WorkshopSearchStore,
   WorkshopSearchValidationError,
@@ -36,6 +45,7 @@ interface ServerOptions {
   readonly accessStore?: AccessStore;
   readonly oidcConfig?: ZitadelOidcConfig;
   readonly repairRequestStore?: RepairRequestStore;
+  readonly reviewStore?: ReviewStore;
   readonly searchStore?: WorkshopSearchStore;
   readonly staticRoot?: string;
 }
@@ -149,6 +159,60 @@ const verificationChecklistSchema = {
   type: 'object',
 };
 
+const reviewSubmissionSchema = {
+  additionalProperties: false,
+  properties: {
+    communication: { maximum: 5, minimum: 1, type: 'integer' },
+    evidenceFileId: { maxLength: 120, minLength: 1, type: 'string' },
+    evidenceKind: { enum: REVIEW_EVIDENCE_KINDS, type: 'string' },
+    priceTransparency: { maximum: 5, minimum: 1, type: 'integer' },
+    punctuality: { maximum: 5, minimum: 1, type: 'integer' },
+    serviceCategoryId: { enum: REPAIR_REQUEST_SERVICE_CATEGORIES, type: 'string' },
+    text: {
+      maxLength: REVIEW_LIMITS.maxTextLength,
+      minLength: REVIEW_LIMITS.minTextLength,
+      type: 'string',
+    },
+    vehicleMakeId: { enum: REPAIR_REQUEST_VEHICLE_MAKES, type: 'string' },
+    visitMonth: { pattern: '^\\d{4}-(0[1-9]|1[0-2])$', type: 'string' },
+    workQuality: { maximum: 5, minimum: 1, type: 'integer' },
+    workshopId: { maxLength: 120, minLength: 1, type: 'string' },
+  },
+  required: [
+    'workshopId',
+    'serviceCategoryId',
+    'visitMonth',
+    'workQuality',
+    'communication',
+    'priceTransparency',
+    'punctuality',
+    'text',
+    'evidenceKind',
+    'evidenceFileId',
+  ],
+  type: 'object',
+};
+
+const reviewDecisionSchema = {
+  additionalProperties: false,
+  properties: {
+    checklist: {
+      additionalProperties: false,
+      properties: {
+        serviceMatches: { type: 'boolean' },
+        visitMonthMatches: { type: 'boolean' },
+        workshopMatches: { type: 'boolean' },
+      },
+      required: ['serviceMatches', 'visitMonthMatches', 'workshopMatches'],
+      type: 'object',
+    },
+    decision: { enum: ['published', 'rejected'], type: 'string' },
+    rejectionReason: { enum: REVIEW_REJECTION_REASONS, type: 'string' },
+  },
+  required: ['decision', 'checklist'],
+  type: 'object',
+};
+
 export function createServer(options: ServerOptions = {}) {
   const app = Fastify({
     bodyLimit: 5 * 1024 * 1024,
@@ -164,6 +228,7 @@ export function createServer(options: ServerOptions = {}) {
   });
   const accessStore = options.accessStore ?? new AccessStore();
   const repairRequestStore: RepairRequestStore = options.repairRequestStore ?? accessStore;
+  const reviewStore: ReviewStore = options.reviewStore ?? accessStore;
   const searchStore: WorkshopSearchStore = options.searchStore ?? accessStore;
 
   app.register(cookie);
@@ -177,6 +242,13 @@ export function createServer(options: ServerOptions = {}) {
   }
   if (searchStore.close && (searchStore as object) !== (repairRequestStore as object)) {
     app.addHook('onClose', async () => searchStore.close?.());
+  }
+  if (
+    reviewStore.close &&
+    (reviewStore as object) !== (repairRequestStore as object) &&
+    (reviewStore as object) !== (searchStore as object)
+  ) {
+    app.addHook('onClose', async () => reviewStore.close?.());
   }
 
   function requirePrincipal(
@@ -231,6 +303,32 @@ export function createServer(options: ServerOptions = {}) {
     const params = request.params as { workshopId: string };
     const workshop = await searchStore.getPublicWorkshop(params.workshopId);
     return workshop ? workshop : reply.code(404).send({ error: 'Published workshop not found' });
+  });
+  app.get('/api/public/workshops/:workshopId/reviews', async (request, reply) => {
+    try {
+      const params = request.params as { workshopId: string };
+      const query = request.query as { serviceCategoryId?: string; vehicleMakeId?: string };
+      if (
+        query.serviceCategoryId &&
+        !REPAIR_REQUEST_SERVICE_CATEGORIES.includes(query.serviceCategoryId as never)
+      ) {
+        throw new AccessError(400, 'Please choose a known service category');
+      }
+      if (
+        query.vehicleMakeId &&
+        !REPAIR_REQUEST_VEHICLE_MAKES.includes(query.vehicleMakeId as never)
+      ) {
+        throw new AccessError(400, 'Please choose a known vehicle make');
+      }
+      return {
+        reviews: await reviewStore.listPublicReviews(params.workshopId, {
+          ...(query.serviceCategoryId ? { serviceCategoryId: query.serviceCategoryId } : {}),
+          ...(query.vehicleMakeId ? { vehicleMakeId: query.vehicleMakeId } : {}),
+        }),
+      };
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
   });
   app.get('/api/public/workshops/:workshopId/photos/:photoId', async (request, reply) => {
     const params = request.params as { photoId: string; workshopId: string };
@@ -367,6 +465,78 @@ export function createServer(options: ServerOptions = {}) {
     try {
       const principal = requirePrincipal(request);
       return { workshops: accessStore.listOwnedWorkshops(principal) };
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+
+  app.get('/api/me/reviews', async (request, reply) => {
+    try {
+      return { reviews: await reviewStore.listOwnReviews(requirePrincipal(request)) };
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+
+  app.post(
+    '/api/me/reviews',
+    { schema: { body: reviewSubmissionSchema } },
+    async (request, reply) => {
+      try {
+        const review = await reviewStore.createReview(
+          requirePrincipal(request, true),
+          request.body as ReviewSubmissionInput,
+        );
+        return reply.code(201).send(review);
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.post(
+    '/api/me/reviews/:reviewId/updates',
+    {
+      schema: {
+        body: {
+          additionalProperties: false,
+          properties: {
+            kind: { enum: ['complaint', 'rework'], type: 'string' },
+            text: {
+              maxLength: REVIEW_LIMITS.maxUpdateLength,
+              minLength: REVIEW_LIMITS.minTextLength,
+              type: 'string',
+            },
+          },
+          required: ['kind', 'text'],
+          type: 'object',
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const params = request.params as { reviewId: string };
+        const body = request.body as { kind: ReviewUpdateKind; text: string };
+        await reviewStore.postReviewUpdate(
+          requirePrincipal(request, true),
+          params.reviewId,
+          body.kind,
+          body.text,
+        );
+        return reply.code(204).send();
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.get('/api/reviews/:reviewId/evidence/download-grant', async (request, reply) => {
+    try {
+      const params = request.params as { reviewId: string };
+      return await reviewStore.issueEvidenceDownloadGrant(
+        requirePrincipal(request),
+        params.reviewId,
+      );
     } catch (error) {
       return errorResponse(error, reply);
     }
@@ -529,6 +699,41 @@ export function createServer(options: ServerOptions = {}) {
   );
 
   app.post(
+    '/api/workshops/:workshopId/reviews/:reviewId/response',
+    {
+      schema: {
+        body: {
+          additionalProperties: false,
+          properties: {
+            text: {
+              maxLength: REVIEW_LIMITS.maxResponseLength,
+              minLength: REVIEW_LIMITS.minTextLength,
+              type: 'string',
+            },
+          },
+          required: ['text'],
+          type: 'object',
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const params = request.params as { reviewId: string; workshopId: string };
+        const body = request.body as { text: string };
+        await reviewStore.postWorkshopResponse(
+          requirePrincipal(request, true),
+          params.workshopId,
+          params.reviewId,
+          body.text,
+        );
+        return reply.code(204).send();
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.post(
     '/api/admin/memberships',
     {
       schema: {
@@ -556,6 +761,69 @@ export function createServer(options: ServerOptions = {}) {
         accessStore.addMembership(body.userId, body.workshopId, body.role);
         accessStore.auditEvents.push({ actorUserId: principal.userId, type: 'membership-granted' });
         return reply.code(201).send({ status: 'created' });
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.post(
+    '/api/admin/reviews/:reviewId/assign',
+    {
+      schema: {
+        body: {
+          additionalProperties: false,
+          properties: { moderatorUserId: { maxLength: 120, minLength: 1, type: 'string' } },
+          required: ['moderatorUserId'],
+          type: 'object',
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const params = request.params as { reviewId: string };
+        const body = request.body as { moderatorUserId: string };
+        await reviewStore.assignModerator(
+          requirePrincipal(request, true),
+          params.reviewId,
+          body.moderatorUserId,
+        );
+        return reply.code(204).send();
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.post(
+    '/api/admin/reviews/:reviewId/decision',
+    { schema: { body: reviewDecisionSchema } },
+    async (request, reply) => {
+      try {
+        const params = request.params as { reviewId: string };
+        await reviewStore.decideReview(
+          requirePrincipal(request, true),
+          params.reviewId,
+          request.body as ReviewDecisionInput,
+        );
+        return reply.code(204).send();
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.post(
+    '/api/admin/reviews/:reviewId/evidence/delete-after-retention',
+    async (request, reply) => {
+      try {
+        const params = request.params as { reviewId: string };
+        const fileId = await reviewStore.deleteEvidenceAfterRetention(
+          requirePrincipal(request, true),
+          params.reviewId,
+        );
+        if (typeof fileId === 'string') accessStore.deletePrivateFile(fileId);
+        return reply.code(204).send();
       } catch (error) {
         return errorResponse(error, reply);
       }
@@ -686,9 +954,14 @@ export function createServer(options: ServerOptions = {}) {
       try {
         const principal = requirePrincipal(request, true);
         const body = request.body as { contentType: string; sizeBytes: number };
-        return reply
-          .code(201)
-          .send(accessStore.getFileGrant(principal.userId, body.contentType, body.sizeBytes));
+        const grant = accessStore.getFileGrant(principal.userId, body.contentType, body.sizeBytes);
+        await reviewStore.registerPrivateFile?.(
+          principal.userId,
+          grant.fileId,
+          body.contentType,
+          body.sizeBytes,
+        );
+        return reply.code(201).send(grant);
       } catch (error) {
         return errorResponse(error, reply);
       }

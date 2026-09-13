@@ -30,7 +30,13 @@ Nach den harten Filtern ist die Reihenfolge vollständig deterministisch:
 
 Die angezeigten Gründe entsprechen nur diesen Merkmalen: Leistung, gegebenenfalls Marke oder Markenoffenheit, Sprache, Unternehmensdatenprüfung und Entfernung. Es gibt absichtlich kein Feld für Abo, Zahlung, Klicks, Provision oder Moderationsdruck.
 
-Bewertungen existieren erst mit #14. Bis dahin zeigt jedes Ergebnis ehrlich **„Noch keine Bewertungen“**. Die spätere Bewertungsergänzung muss Anzahl, Aktualität, fachlichen Bezug und Nachweisstatus in einer eigenen, dokumentierten Vertrauensregel berücksichtigen: Eine einzelne 5,0 darf eine größere aktuelle relevante Erfahrungsbasis nicht blind überstimmen. Neue Betriebe bleiben unabhängig davon auffindbar.
+Bewertungen aus #14 erscheinen erst nach unabhängiger Moderation und privater Nachweisprüfung.
+Die Suche zeigt nur daraus abgeleitete Anzahl, Durchschnitt, neuesten Besuchsmonat und historische
+Nachweisbasis; Nachweisdateien, Autoren, Moderationsnotizen und Werkstattantworten bleiben außen
+vor. Ein einzelner 5,0-Wert erhält keinen Bonus. Erst ab zwei überprüften veröffentlichten Besuchen
+kann der Wert als auf vier Punkte begrenzter Gleichstandsentscheider wirken. Bezahlung, Abo,
+Werkstattbestätigung oder Moderationsdruck haben kein Rankingfeld. Neue Betriebe bleiben unabhängig
+davon auffindbar. Details stehen in [REVIEWS.md](REVIEWS.md).
 
 ## Fehler- und Leerzustände
 
