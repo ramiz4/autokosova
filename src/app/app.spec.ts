@@ -74,17 +74,10 @@ describe('Homepage', () => {
     expect(menu.hidden).toBe(true);
   });
 
-  it('validates the search and hands off only service and location filters', async () => {
+  it('starts the faster search with only the selected location and radius', async () => {
     const { fixture, page } = await render();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const form = page.querySelector('form')!;
-    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    await fixture.whenStable();
-    expect(page.querySelector('[role="alert"]')?.textContent).toContain('Leistung');
-    expect(navigate).not.toHaveBeenCalled();
-    const service = page.querySelector<HTMLSelectElement>('#search-service')!;
-    service.value = 'bremsen';
-    service.dispatchEvent(new Event('change'));
     const radius = page.querySelector<HTMLInputElement>('#search-radius')!;
     radius.value = '101';
     radius.dispatchEvent(new Event('input'));
@@ -99,7 +92,7 @@ describe('Homepage', () => {
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await fixture.whenStable();
     expect(navigate).toHaveBeenCalledWith(['/garages'], {
-      queryParams: { places: 'xk-pristina:30', service: 'bremsen' },
+      queryParams: { places: 'xk-pristina:30' },
     });
     expect(analytics.track).toHaveBeenCalledExactlyOnceWith('search_started');
   });
