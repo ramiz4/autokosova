@@ -178,7 +178,7 @@ interface Area {
           >
         </div>
         <div class="grid gap-5 xl:grid-cols-[320px_minmax(0,820px)]">
-          <aside class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <aside class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:-mt-[52px]">
             <div class="flex items-center justify-between gap-3">
               <h2 class="font-bold">{{ ui('search.ui.filter') }}</h2>
               <button
