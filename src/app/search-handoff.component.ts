@@ -51,68 +51,83 @@ interface Area {
   selector: 'app-search-handoff',
   template: ` <main class="min-h-screen bg-[#f4f8fe] text-ink" aria-labelledby="search-title">
     <section
-      class="relative isolate overflow-hidden bg-[#edf5ff] px-4 pt-4 sm:px-8 lg:px-12 lg:pt-6"
+      class="relative isolate min-h-[340px] overflow-hidden bg-[#f4f7fc] px-4 pt-4 sm:px-8 lg:px-12 lg:pt-6"
     >
       <div
-        class="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(244,248,254,0.98)_0%,rgba(244,248,254,0.8)_44%,rgba(244,248,254,0.18)_100%),url('/images/search/search-hero-workshop.webp')] bg-cover bg-right"
+        class="absolute right-0 top-0 -z-20 h-full w-full bg-[url('/images/search/search-hero-workshop.webp')] bg-cover bg-center opacity-25 md:w-[55%] md:opacity-100"
+      ></div>
+      <div
+        class="absolute inset-0 -z-10 bg-gradient-to-r from-[#f4f7fc] via-[#f4f7fc]/95 to-transparent"
       ></div>
       <app-site-header [active]="'search'" class="relative mx-auto block max-w-[1920px]" />
-      <p
-        lang="de"
-        class="pointer-events-none absolute right-[31%] top-32 hidden max-w-52 -rotate-6 text-center font-serif text-4xl italic leading-tight text-brand-dark xl:block"
-      >
-        {{ ui('search.ui.slogan') }}
-      </p>
       <div
-        class="mx-auto grid max-w-[1920px] gap-7 py-12 lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)] lg:items-end lg:py-16"
+        class="relative mx-auto grid max-w-[1280px] grid-cols-1 items-end gap-6 px-2 py-8 md:grid-cols-12"
       >
-        <div class="max-w-3xl">
-          <p class="text-xs font-bold tracking-[.24em] text-brand-dark">
-            {{ language.t('home.badge') }}
-          </p>
-          <h1 id="search-title" class="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
-            {{ language.t('search.title') }}
-          </h1>
-          <p class="mt-4 max-w-2xl text-lg leading-relaxed text-slate-700">
-            {{ ui('search.ui.heroIntro') }}
-          </p>
-          <ul class="mt-6 flex flex-wrap gap-x-7 gap-y-3 text-sm font-semibold text-brand-dark">
-            <li class="flex items-center gap-2">
-              <app-icon name="shield" class="size-6" />{{ language.t('profile.verified') }}
-            </li>
-            <li class="flex items-center gap-2">
-              <app-icon name="thumb" class="size-6" />{{ language.t('landing.choiceBenefit') }}
-            </li>
-            <li class="flex items-center gap-2">
-              <app-icon name="check" class="size-6" />{{ language.t('home.transparent.title') }}
-            </li>
-          </ul>
+        <div class="flex h-full flex-col md:col-span-7">
+          <div class="mb-auto">
+            <h1
+              id="search-title"
+              class="text-4xl font-black tracking-tight text-[#0f172a] md:text-5xl"
+            >
+              {{ language.t('search.title') }}
+            </h1>
+            <p
+              class="mt-3 max-w-xl text-sm font-medium leading-relaxed text-[#475569] md:text-base"
+            >
+              {{ ui('search.ui.heroIntro') }}
+            </p>
+          </div>
+          <div class="mt-8 flex flex-wrap items-center gap-x-8 gap-y-4">
+            <div class="flex items-center gap-3">
+              <span
+                class="flex size-8 items-center justify-center rounded-full bg-brand text-white shadow-md shadow-blue-500/20"
+                ><app-icon name="shield" class="size-4" /></span
+              ><span class="text-xs font-bold tracking-wide text-[#1e293b] md:text-sm">{{
+                language.t('profile.verified')
+              }}</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span
+                class="flex size-8 items-center justify-center rounded-full bg-brand text-white shadow-md shadow-blue-500/20"
+                ><app-icon name="thumb" class="size-4" /></span
+              ><span class="text-xs font-bold tracking-wide text-[#1e293b] md:text-sm">{{
+                language.t('landing.choiceBenefit')
+              }}</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span
+                class="flex size-8 items-center justify-center rounded-full bg-brand text-white shadow-md shadow-blue-500/20"
+                ><app-icon name="pin" class="size-4" /></span
+              ><span class="text-xs font-bold tracking-wide text-[#1e293b] md:text-sm">{{
+                language.t('home.transparent.title')
+              }}</span>
+            </div>
+          </div>
         </div>
         <form
-          class="rounded-2xl border border-white/80 bg-white/95 p-3 shadow-xl shadow-slate-950/10"
+          class="mt-6 w-full md:col-span-5 md:mt-0 md:self-end"
           (ngSubmit)="applyFilters()"
           novalidate
         >
           <label class="sr-only" for="hero-place">{{ ui('search.ui.place') }}</label>
-          <div class="flex flex-col gap-3 sm:flex-row">
-            <span class="relative flex-1">
-              <app-icon
-                name="pin"
-                class="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-brand-dark"
-              />
+          <div
+            class="flex w-full items-center gap-2 rounded-2xl border border-slate-100 bg-white p-2 shadow-xl shadow-blue-900/5"
+          >
+            <span class="relative flex flex-1 items-center gap-2.5 pl-3 py-1.5">
+              <app-icon name="pin" class="size-5 shrink-0 text-slate-900" />
               <select
                 id="hero-place"
                 [(ngModel)]="areas[0].placeId"
                 name="hero-place"
-                class="min-h-12 min-w-0 w-full rounded-xl border border-slate-300 bg-white py-2 pl-11 pr-3 font-semibold"
+                class="min-h-10 w-full bg-transparent text-sm font-semibold text-slate-950 focus:outline-none"
               >
                 @for (place of places; track place.id) {
                   <option [value]="place.id">{{ place.label }}</option>
                 }
               </select>
             </span>
-            <button type="submit" appButton class="min-h-12 px-8">
-              <app-icon name="search" class="size-5" />{{ language.t('nav.search') }}
+            <button type="submit" appButton class="min-h-11 rounded-xl px-7 text-sm">
+              {{ language.t('nav.search') }}
             </button>
           </div>
         </form>
