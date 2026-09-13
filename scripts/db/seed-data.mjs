@@ -1,92 +1,38 @@
+import {
+  demoWorkflowRequests,
+  demoWorkflowReviews,
+  demoWorkflowUsers,
+  demoWorkshops,
+} from '../../db/demo-data.mjs';
 import { places, serviceCategories, vehicleMakes } from '../../db/catalog.mjs';
+
+export { demoWorkshops } from '../../db/demo-data.mjs';
+export {
+  demoWorkflowRequests,
+  demoWorkflowReviews,
+  demoWorkflowUsers,
+} from '../../db/demo-data.mjs';
 
 const localDatabaseHosts = new Set(['127.0.0.1', '::1', '[::1]', 'localhost']);
 
 const demoSeedMarker = {
-  id: 'demo-public-v1',
+  id: 'demo-public-v2',
   label: 'Ausschliesslich fiktive lokale Demo-Werkstattprofile',
 };
 
-export const demoWorkshops = [
-  {
-    contactPerson: 'Lokale Demo-Person Prishtina',
-    description:
-      'Ausschliesslich fiktive lokale Entwicklungsdaten. Kein echter Betrieb und kein echtes Angebot.',
-    id: 'demo-prishtina-bremsen',
-    languages: ['Deutsch', 'Shqip'],
-    name: 'DEMO · Bremsen Prishtina',
-    placeId: 'xk-pristina',
-    publicPhone: '+99900000001',
-    selfReportedSpecializations: ['Bremsen'],
-    serviceCategoryIds: ['bremsen'],
-    vehicleMakeIds: ['skoda'],
-    verification: 'verified',
-  },
-  {
-    contactPerson: 'Lokale Demo-Person Prishtina Reifen',
-    description:
-      'Ausschliesslich fiktive lokale Entwicklungsdaten. Dieses Profil zeigt einen markenoffenen Betrieb ohne Unternehmenskennzeichen.',
-    id: 'demo-prishtina-reifen',
-    languages: ['Shqip'],
-    name: 'DEMO · Reifen Prishtina',
-    placeId: 'xk-pristina',
-    publicPhone: '+99900000002',
-    selfReportedSpecializations: ['Reifenwechsel'],
-    serviceCategoryIds: ['reifen'],
-    vehicleMakeIds: [],
-    verification: 'not_checked',
-  },
-  {
-    contactPerson: 'Lokale Demo-Person Ferizaj',
-    description:
-      'Ausschliesslich fiktive lokale Entwicklungsdaten. Dieses Profil ist für Mehrortsuche und Markenoffenheit bestimmt.',
-    id: 'demo-ferizaj-bremsen-offen',
-    languages: ['Deutsch'],
-    name: 'DEMO · Bremsen Ferizaj',
-    placeId: 'xk-ferizaj',
-    publicPhone: '+99900000003',
-    selfReportedSpecializations: ['Bremsen', 'Inspektion'],
-    serviceCategoryIds: ['bremsen', 'service-inspektion'],
-    vehicleMakeIds: [],
-    verification: 'verified',
-  },
-  {
-    contactPerson: 'Lokale Demo-Person Prizren',
-    description:
-      'Ausschliesslich fiktive lokale Entwicklungsdaten. Dieses Profil ist ein Markenfilter-Gegenbeispiel.',
-    id: 'demo-prizren-bremsen-vw',
-    languages: ['Deutsch', 'Shqip'],
-    name: 'DEMO · Bremsen Prizren',
-    placeId: 'xk-prizren',
-    publicPhone: '+99900000004',
-    selfReportedSpecializations: ['Bremsen'],
-    serviceCategoryIds: ['bremsen'],
-    vehicleMakeIds: ['volkswagen'],
-    verification: 'verified',
-  },
-  {
-    contactPerson: 'Lokale Demo-Person Pejë',
-    description:
-      'Ausschliesslich fiktive lokale Entwicklungsdaten. Dieses Profil deckt Leistung und Sprachfilter ausserhalb von Prishtina ab.',
-    id: 'demo-peja-klima',
-    languages: ['Shqip'],
-    name: 'DEMO · Klima Pejë',
-    placeId: 'xk-peja',
-    publicPhone: '+99900000005',
-    selfReportedSpecializations: ['Klimaanlage'],
-    serviceCategoryIds: ['klima'],
-    vehicleMakeIds: ['toyota'],
-    verification: 'verified',
-  },
-];
+const demoWorkflowSeedMarker = {
+  id: 'demo-workflows-v1',
+  label: 'Ausschliesslich fiktive lokale Demo-Workflowdaten',
+};
 
 export function parseSeedProfile(argumentsToParse) {
   if (!argumentsToParse.length) return 'reference';
   if (argumentsToParse.length === 2 && argumentsToParse[0] === '--profile') {
     if (argumentsToParse[1] === 'demo') return 'demo';
+    if (argumentsToParse[1] === 'demo-workflows') return 'demo-workflows';
   }
 
-  throw new Error('Usage: node scripts/db/seed.mjs [--profile demo]');
+  throw new Error('Usage: node scripts/db/seed.mjs [--profile demo|demo-workflows]');
 }
 
 export function assertSeedEnvironment({ databaseUrl, environment = process.env, profile }) {
@@ -96,8 +42,12 @@ export function assertSeedEnvironment({ databaseUrl, environment = process.env, 
 
   assertLocalDatabaseTarget(databaseUrl);
 
-  if (profile === 'demo' && environment.AUTOKOSOVA_DEMO_DATA !== '1') {
+  if (profile !== 'reference' && environment.AUTOKOSOVA_DEMO_DATA !== '1') {
     throw new Error('Set AUTOKOSOVA_DEMO_DATA=1 to seed local demo data.');
+  }
+
+  if (profile === 'demo-workflows' && environment.AUTOKOSOVA_DEMO_WORKFLOW_DATA !== '1') {
+    throw new Error('Set AUTOKOSOVA_DEMO_WORKFLOW_DATA=1 to seed local demo workflow data.');
   }
 }
 
@@ -130,10 +80,12 @@ export function assertLocalDatabaseTarget(databaseUrl) {
 export async function seedDatabase(client, profile) {
   await client.query('BEGIN');
   try {
-    if (profile === 'demo') await assertDemoIdsAreAvailable(client);
+    if (profile !== 'reference') await assertDemoIdsAreAvailable(client);
+    if (profile === 'demo-workflows') await assertDemoWorkflowIdsAreAvailable(client);
 
     await seedReferenceData(client);
-    if (profile === 'demo') await seedDemoData(client);
+    if (profile !== 'reference') await seedDemoData(client);
+    if (profile === 'demo-workflows') await seedDemoWorkflowData(client);
 
     await client.query('COMMIT');
   } catch (error) {
@@ -278,6 +230,208 @@ async function seedDemoData(client) {
          ON CONFLICT (workshop_id, vehicle_make_id) DO NOTHING`,
         [workshop.id, vehicleMakeId],
       );
+    }
+  }
+}
+
+function demoWorkflowFileId(review) {
+  return `demo-evidence-${review.id}`;
+}
+
+function demoWorkflowEntities() {
+  return {
+    app_user: demoWorkflowUsers,
+    file_object: demoWorkflowReviews.map(demoWorkflowFileId),
+    repair_request: demoWorkflowRequests.map((request) => request.id),
+    request_search_area: demoWorkflowRequests.flatMap((request) =>
+      request.searchAreas.map((area) => area.id),
+    ),
+    visit_evidence: demoWorkflowReviews.map((review) => `demo-evidence-row-${review.id}`),
+    workshop_review: demoWorkflowReviews.map((review) => review.id),
+  };
+}
+
+async function assertDemoWorkflowIdsAreAvailable(client) {
+  const sourceTables = {
+    app_user: 'app_user',
+    file_object: 'file_object',
+    repair_request: 'repair_request',
+    request_search_area: 'request_search_area',
+    visit_evidence: 'visit_evidence',
+    workshop_review: 'workshop_review',
+  };
+
+  for (const [entityType, entityIds] of Object.entries(demoWorkflowEntities())) {
+    const seeded = await client.query(
+      `SELECT entity_id
+       FROM local_demo_seed_entity
+       WHERE entity_type = $1 AND entity_id = ANY($2::text[])`,
+      [entityType, entityIds],
+    );
+    const existing = await client.query(
+      `SELECT id FROM ${sourceTables[entityType]} WHERE id = ANY($1::text[])`,
+      [entityIds],
+    );
+    const seededIds = new Set(seeded.rows.map((row) => row.entity_id));
+
+    for (const row of existing.rows) {
+      if (!seededIds.has(row.id)) {
+        throw new Error(`Demo workflow ${entityType} ID ${row.id} is occupied by local data.`);
+      }
+    }
+  }
+}
+
+async function recordDemoWorkflowEntity(client, entityType, entityId) {
+  await client.query(
+    `INSERT INTO local_demo_seed_entity (entity_type, entity_id, seed_version)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (entity_type, entity_id) DO UPDATE
+     SET seed_version = EXCLUDED.seed_version, updated_at = now()`,
+    [entityType, entityId, demoWorkflowSeedMarker.id],
+  );
+}
+
+async function seedDemoWorkflowData(client) {
+  await client.query(
+    `INSERT INTO app_seed_marker (id, label)
+     VALUES ($1, $2)
+     ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label`,
+    [demoWorkflowSeedMarker.id, demoWorkflowSeedMarker.label],
+  );
+
+  for (const userId of demoWorkflowUsers) {
+    await client.query(
+      `INSERT INTO app_user (id, oidc_subject, status)
+       VALUES ($1, $1, 'active')
+       ON CONFLICT (id) DO UPDATE SET oidc_subject = EXCLUDED.oidc_subject, status = 'active'`,
+      [userId],
+    );
+    await recordDemoWorkflowEntity(client, 'app_user', userId);
+  }
+
+  for (const review of demoWorkflowReviews) {
+    const fileId = demoWorkflowFileId(review);
+    const evidenceId = `demo-evidence-row-${review.id}`;
+
+    await client.query(
+      `INSERT INTO file_object (
+         id, owner_user_id, storage_key, content_type, size_bytes, scan_state, retention_state
+       ) VALUES ($1, $2, $3, 'application/pdf', 1, 'clean', 'active')
+       ON CONFLICT (id) DO UPDATE
+       SET owner_user_id = EXCLUDED.owner_user_id,
+           storage_key = EXCLUDED.storage_key,
+           content_type = EXCLUDED.content_type,
+           size_bytes = EXCLUDED.size_bytes,
+           scan_state = EXCLUDED.scan_state,
+           retention_state = EXCLUDED.retention_state`,
+      [fileId, review.authorUserId, `local-demo/${fileId}`],
+    );
+    await recordDemoWorkflowEntity(client, 'file_object', fileId);
+
+    await client.query(
+      `INSERT INTO workshop_review (
+         id, author_user_id, workshop_id, service_category_id, vehicle_make_id, visit_month,
+         work_quality, communication, price_transparency, punctuality, review_text,
+         publication_state, published_at
+       ) VALUES (
+         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'published', now()
+       )
+       ON CONFLICT (id) DO UPDATE
+       SET author_user_id = EXCLUDED.author_user_id,
+           workshop_id = EXCLUDED.workshop_id,
+           service_category_id = EXCLUDED.service_category_id,
+           vehicle_make_id = EXCLUDED.vehicle_make_id,
+           visit_month = EXCLUDED.visit_month,
+           work_quality = EXCLUDED.work_quality,
+           communication = EXCLUDED.communication,
+           price_transparency = EXCLUDED.price_transparency,
+           punctuality = EXCLUDED.punctuality,
+           review_text = EXCLUDED.review_text,
+           publication_state = EXCLUDED.publication_state,
+           published_at = now()`,
+      [
+        review.id,
+        review.authorUserId,
+        review.workshopId,
+        review.serviceCategoryId,
+        review.vehicleMakeId ?? null,
+        review.visitMonth,
+        review.workQuality,
+        review.communication,
+        review.priceTransparency,
+        review.punctuality,
+        review.text,
+      ],
+    );
+    await recordDemoWorkflowEntity(client, 'workshop_review', review.id);
+
+    await client.query(
+      `INSERT INTO visit_evidence (
+         id, review_id, owner_user_id, private_file_id, evidence_kind, verification_state,
+         service_matches, visit_month_matches, workshop_matches, reviewed_by_user_id, reviewed_at
+       ) VALUES ($1, $2, $3, $4, $5, 'verified', true, true, true, $6, now())
+       ON CONFLICT (id) DO UPDATE
+       SET review_id = EXCLUDED.review_id,
+           owner_user_id = EXCLUDED.owner_user_id,
+           private_file_id = EXCLUDED.private_file_id,
+           evidence_kind = EXCLUDED.evidence_kind,
+           verification_state = EXCLUDED.verification_state,
+           service_matches = true,
+           visit_month_matches = true,
+           workshop_matches = true,
+           reviewed_by_user_id = EXCLUDED.reviewed_by_user_id,
+           reviewed_at = now()`,
+      [
+        evidenceId,
+        review.id,
+        review.authorUserId,
+        fileId,
+        review.evidenceKind,
+        'demo-workflow-moderator',
+      ],
+    );
+    await recordDemoWorkflowEntity(client, 'visit_evidence', evidenceId);
+
+    await client.query(
+      `INSERT INTO review_moderator_assignment (
+         review_id, moderator_user_id, assigned_by_user_id
+       ) VALUES ($1, $2, $2)
+       ON CONFLICT (review_id) DO UPDATE
+       SET moderator_user_id = EXCLUDED.moderator_user_id,
+           assigned_by_user_id = EXCLUDED.assigned_by_user_id`,
+      [review.id, 'demo-workflow-moderator'],
+    );
+  }
+
+  for (const request of demoWorkflowRequests) {
+    await client.query(
+      `INSERT INTO repair_request (
+         id, owner_user_id, description, service_category_id, symptom, state
+       ) VALUES ($1, $2, $3, $4, $3, 'matching')
+       ON CONFLICT (id) DO UPDATE
+       SET owner_user_id = EXCLUDED.owner_user_id,
+           description = EXCLUDED.description,
+           service_category_id = EXCLUDED.service_category_id,
+           symptom = EXCLUDED.symptom,
+           state = EXCLUDED.state`,
+      [request.id, request.ownerUserId, request.symptom, request.serviceCategoryId],
+    );
+    await recordDemoWorkflowEntity(client, 'repair_request', request.id);
+
+    for (const [index, area] of request.searchAreas.entries()) {
+      await client.query(
+        `INSERT INTO request_search_area (
+           id, repair_request_id, position, place_id, radius_m
+         ) VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (id) DO UPDATE
+         SET repair_request_id = EXCLUDED.repair_request_id,
+             position = EXCLUDED.position,
+             place_id = EXCLUDED.place_id,
+             radius_m = EXCLUDED.radius_m`,
+        [area.id, request.id, index + 1, area.placeId, area.radiusM],
+      );
+      await recordDemoWorkflowEntity(client, 'request_search_area', area.id);
     }
   }
 }

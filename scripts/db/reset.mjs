@@ -38,5 +38,5 @@ function run(script, argumentsToPass = []) {
 await run(new URL('./migrate.mjs', import.meta.url).pathname);
 await run(
   new URL('./seed.mjs', import.meta.url).pathname,
-  profile === 'demo' ? ['--profile', 'demo'] : [],
+  profile === 'reference' ? [] : ['--profile', profile],
 );

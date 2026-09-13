@@ -46,9 +46,18 @@ npm start
 
 Der Demo-Seed akzeptiert nur eine lokale Loopback-URL für die Datenbank `autokosova`; er verweigert
 Produktion und jede andere Datenbank. Docker-Start und Migrationen erzeugen nie Demo-Daten. Die
-Demo-Profile beginnen mit `DEMO ·`, enthalten keine Bewertungen oder privaten Nachweise und öffnen
-in der lokalen Oberfläche weder WhatsApp noch die Telefon-App. Die Kontaktvorschau und validierten
-Links bleiben sichtbar und testbar.
+25 Demo-Profile beginnen mit `DEMO ·`, enthalten keine Bewertungen oder privaten Nachweise und
+öffnen in der lokalen Oberfläche weder WhatsApp noch die Telefon-App. Die Kontaktvorschau und
+validierten Links bleiben sichtbar und testbar.
+
+Ein weiterer, getrennt freizugebender Seed ergänzt klar gekennzeichnete fiktive Bewertungen sowie
+private Testanfragen und Nachweis-Metadaten. Er setzt beide Variablen voraus und braucht für eine
+manuelle private Sicht die separat dokumentierten ZITADEL-Testkonten; er erzeugt keinen lokalen
+Login-Bypass.
+
+```sh
+AUTOKOSOVA_DEMO_DATA=1 AUTOKOSOVA_DEMO_WORKFLOW_DATA=1 npm run db:seed:demo-workflows
+```
 
 Die App ist im Entwicklungsmodus über Angular erreichbar. Nach einem Produktionsbuild prüft `npm run test:smoke` die SSR-Startseite und `GET /health`.
 
@@ -62,9 +71,10 @@ npm run build
 npm run test:smoke
 ALLOW_LOCAL_RESET=1 npm run db:reset
 ALLOW_LOCAL_RESET=1 AUTOKOSOVA_DEMO_DATA=1 npm run db:reset:demo
+ALLOW_LOCAL_RESET=1 AUTOKOSOVA_DEMO_DATA=1 AUTOKOSOVA_DEMO_WORKFLOW_DATA=1 npm run db:reset:demo-workflows
 ```
 
-`db:reset` ist absichtlich ohne `ALLOW_LOCAL_RESET=1` gesperrt und darf niemals mit `NODE_ENV=production` laufen. Beide Reset-Befehle akzeptieren nur die lokale Datenbank `autokosova`; `db:reset:demo` verlangt zusätzlich `AUTOKOSOVA_DEMO_DATA=1`. Ein Reset mit oder ohne Demo-Daten ist die einzige vorgesehene Bereinigung der Demo-Daten; `db:seed:demo` löscht keine anderen lokalen Daten.
+`db:reset` ist absichtlich ohne `ALLOW_LOCAL_RESET=1` gesperrt und darf niemals mit `NODE_ENV=production` laufen. Alle Reset-Befehle akzeptieren nur die lokale Datenbank `autokosova`; `db:reset:demo` verlangt zusätzlich `AUTOKOSOVA_DEMO_DATA=1`, und `db:reset:demo-workflows` verlangt beide Demo-Freigaben. Ein Reset mit oder ohne Demo-Daten ist die einzige vorgesehene Bereinigung der Demo-Daten; die Seed-Befehle löschen keine anderen lokalen Daten.
 Falls Port 55432 belegt ist, kann vor `docker compose up` ein anderer lokaler Port mit `AUTOKOSOVA_DB_PORT=55433` gesetzt werden; `DATABASE_URL` muss dann denselben Port verwenden.
 
 ## Produktregeln

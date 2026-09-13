@@ -53,7 +53,7 @@ test(
       assert.equal(provenance.rows[0].count, String(demoWorkshops.length));
       assert.deepEqual(
         result.results.map((workshop) => workshop.id),
-        ['demo-prishtina-bremsen'],
+        ['demo-prishtina-bremsen', 'demo-prishtina-bremsen-offen'],
       );
       assert.equal(result.results[0].reviewSummary.state, 'unavailable');
       assert.equal(JSON.stringify(result).includes('Lokale Demo-Person'), false);
