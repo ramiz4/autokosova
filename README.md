@@ -17,6 +17,7 @@ Privates Repository mit Produktplanung und technischer Grundlage. Der Stack ist 
 - [Werkstattaufnahme, Prüfung und Bildschutz](docs/architecture/WORKSHOP-ONBOARDING.md)
 - [Öffentliche Mehrortsuche und nachvollziehbares Matching](docs/architecture/SEARCH-MATCHING.md)
 - [Bewusster Direktkontakt über WhatsApp oder Telefon](docs/architecture/DIRECT-CONTACT.md)
+- [Bewertungen und private Besuchsnachweise](docs/architecture/REVIEWS.md)
 
 ## Entwicklungsstart
 
@@ -77,6 +78,15 @@ ehrlichen Bewertungsleerzustand. WhatsApp und Telefon sind bewusst ausgewählte 
 Die Nachrichtenvorschau ist vor dem Öffnen sichtbar, enthält keine gespeicherten privaten
 Anfragewerte und wird nicht durch AutoKosova gesendet. Ohne gültige öffentliche Telefonnummer gibt
 es keinen externen Link.
+
+## Bewertungen lokal prüfen
+
+Eine Bewertung wird ausschließlich über die angemeldete private API mit einem zuvor autorisierten
+privaten Upload eingereicht. Der Nachweis bleibt getrennt von der öffentlichen Bewertung und wird
+für den lokalen Ablauf einem Moderator zugewiesen. Erst nach der dokumentierten Prüfliste erscheint
+eine Erfahrung im Profil und in der Suche. Der genaue Ablauf, öffentliche Felder und die
+Aufbewahrungsgrenze stehen in [REVIEWS.md](docs/architecture/REVIEWS.md). Lokale Tests verwenden
+keine echten Rechnungen, Fahrzeuge oder Werkstätten.
 
 ## Entwicklung
 

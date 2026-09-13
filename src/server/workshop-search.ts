@@ -1,4 +1,5 @@
 import type { PublicWorkshopProfile } from './access';
+import { emptyReviewSummary, reviewRelevanceScore, type PublicReviewSummary } from './reviews';
 import { getCatalogPlace, SERVICE_CATEGORY_LABELS, VEHICLE_MAKE_LABELS } from '../shared/catalog';
 import {
   REPAIR_REQUEST_LIMITS,
@@ -47,10 +48,7 @@ export interface PublicWorkshopSearchResult {
   readonly photoIds: readonly string[];
   readonly placeId: string;
   readonly reasons: readonly string[];
-  readonly reviewSummary: {
-    readonly label: 'Noch keine Bewertungen';
-    readonly state: 'unavailable';
-  };
+  readonly reviewSummary: PublicReviewSummary;
   readonly selfReportedSpecializations: readonly string[];
   readonly serviceCategoryIds: readonly string[];
   readonly vehicleMakeIds: readonly string[];
@@ -184,7 +182,8 @@ export function findPublicWorkshops(
 
 /**
  * Converts already-deduplicated database candidates into the same public response as the
- * in-memory local-development store. No review or payment field is accepted as ranking input.
+ * in-memory local-development store. Only published, independently checked visit aggregates can
+ * act as a small tie-breaker; payment and workshop confirmation have no ranking field.
  */
 export function toSearchResponse(
   candidates: readonly SearchMatchCandidate[],
@@ -267,7 +266,7 @@ function toSearchResult(
     photoIds: candidate.photoIds,
     placeId: candidate.placeId,
     reasons,
-    reviewSummary: { label: 'Noch keine Bewertungen', state: 'unavailable' },
+    reviewSummary: candidate.reviewSummary ?? emptyReviewSummary(),
     selfReportedSpecializations: candidate.selfReportedSpecializations,
     serviceCategoryIds: candidate.serviceCategoryIds,
     vehicleMakeIds: candidate.vehicleMakeIds,
@@ -280,8 +279,8 @@ function compareSearchResult(
 ): number {
   // The fixed order is intentionally explainable: requested service is a hard filter; then an
   // explicit brand match, documented company-data check, language match, and shorter air distance.
-  // Reviews will add a separate, documented confidence rule only with the review issue. Paid status
-  // has no field here and therefore cannot change organic relevance.
+  // The review tie-breaker is deliberately capped and needs a broader verified experience base;
+  // one five-star review cannot leapfrog a larger current basis. Paid status has no field here.
   const scoreDifference = relevanceScore(right) - relevanceScore(left);
   if (scoreDifference) return scoreDifference;
   const distanceDifference = left.distanceKm - right.distanceKm;
@@ -295,7 +294,8 @@ function relevanceScore(result: PublicWorkshopSearchResult): number {
     100 +
     (result.reasons.some((reason) => reason.startsWith('Fahrzeugmarke:')) ? 15 : 0) +
     (result.companyDataVerified ? 5 : 0) +
-    (result.reasons.some((reason) => reason.startsWith('Sprache:')) ? 2 : 0)
+    (result.reasons.some((reason) => reason.startsWith('Sprache:')) ? 2 : 0) +
+    reviewRelevanceScore(result.reviewSummary)
   );
 }
 

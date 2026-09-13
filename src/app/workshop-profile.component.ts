@@ -17,10 +17,41 @@ interface PublicWorkshopProfile {
   readonly name: string;
   readonly photoIds: readonly string[];
   readonly placeId: string;
+  readonly reviewSummary?: PublicReviewSummary;
   readonly selfReportedSpecializations: readonly string[];
   readonly serviceCategoryIds: readonly string[];
   readonly vehicleMakeIds: readonly string[];
   readonly verificationLabel?: 'Unternehmensdaten geprüft';
+}
+
+interface PublicReviewSummary {
+  readonly averageRating?: number;
+  readonly label: string;
+  readonly reviewCount: number;
+  readonly state: 'available' | 'unavailable';
+  readonly verifiedVisitCount: number;
+}
+
+interface PublicWorkshopReview {
+  readonly evidence: { readonly label: string };
+  readonly id: string;
+  readonly ratings: {
+    readonly communication: number;
+    readonly overall: number;
+    readonly priceTransparency: number;
+    readonly punctuality: number;
+    readonly workQuality: number;
+  };
+  readonly serviceCategoryId: string;
+  readonly text: string;
+  readonly updates: readonly {
+    readonly createdAt: string;
+    readonly kind: string;
+    readonly text: string;
+  }[];
+  readonly vehicleMakeId?: string;
+  readonly visitMonth: string;
+  readonly workshopResponse?: { readonly createdAt: string; readonly text: string };
 }
 
 @Component({
@@ -100,11 +131,134 @@ interface PublicWorkshopProfile {
               Für dieses Profil liegt kein Kennzeichen für geprüfte Unternehmensdaten vor.
             </p>
           }
-          <p class="mt-4 font-semibold text-slate-900">Noch keine Bewertungen</p>
-          <p class="mt-1 text-sm leading-6 text-slate-700">
-            Bewertungen werden erst nach einem separaten, überprüfbaren Besuchs- und
-            Moderationsablauf ergänzt. Wir zeigen keine Beispielsterne.
-          </p>
+          @if (profile.reviewSummary?.state === 'available') {
+            <p class="mt-4 font-semibold text-slate-900">{{ profile.reviewSummary?.label }}</p>
+            <p class="mt-1 text-sm leading-6 text-slate-700">
+              Der Gesamtwert ist der auf eine Dezimalstelle gerundete Mittelwert aus
+              Arbeitsqualität, Kommunikation, Preistransparenz und Termintreue. Er beruht nur auf
+              veröffentlichten Bewertungen mit überprüftem Besuchsnachweis.
+            </p>
+          } @else {
+            <p class="mt-4 font-semibold text-slate-900">Noch keine Bewertungen</p>
+            <p class="mt-1 text-sm leading-6 text-slate-700">
+              Bewertungen werden erst nach einem separaten, überprüfbaren Besuchs- und
+              Moderationsablauf ergänzt. Wir zeigen keine Beispielsterne.
+            </p>
+          }
+        </section>
+
+        <section
+          class="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"
+          aria-labelledby="reviews-title"
+        >
+          <div class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h2 id="reviews-title" class="text-xl font-bold">Erfahrungen nach Besuch</h2>
+              <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-700">
+                „Besuch belegt“ bedeutet, dass ein privater Nachweis geprüft wurde. Die Rechnung,
+                vollständige Identität und Fahrzeugdetails bleiben privat. Eine Werkstattantwort
+                ändert oder entfernt die Bewertung nicht.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="min-h-11 rounded-lg border border-sky-800 px-4 font-semibold text-sky-900"
+              (click)="loadReviews()"
+            >
+              Bewertungen filtern
+            </button>
+          </div>
+          <div class="mt-4 grid gap-4 sm:grid-cols-2">
+            <label class="grid gap-1 font-semibold"
+              >Arbeit filtern
+              <select
+                [(ngModel)]="reviewServiceCategoryId"
+                class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal"
+              >
+                <option value="">Alle Arbeiten</option>
+                @for (service of profile.serviceCategoryIds; track service) {
+                  <option [value]="service">{{ serviceLabels([service]) }}</option>
+                }
+              </select>
+            </label>
+            <label class="grid gap-1 font-semibold"
+              >Fahrzeugmarke filtern
+              <select
+                [(ngModel)]="reviewVehicleMakeId"
+                class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal"
+              >
+                <option value="">Alle Fahrzeugmarken</option>
+                @for (make of vehicleMakeOptions; track make[0]) {
+                  <option [value]="make[0]">{{ make[1] }}</option>
+                }
+              </select>
+            </label>
+          </div>
+          @if (reviewState === 'error') {
+            <p
+              class="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-slate-800"
+            >
+              Bewertungen sind gerade nicht verfügbar. Das bedeutet nicht, dass es keine gibt.
+            </p>
+          } @else if (reviewState === 'loading') {
+            <p class="mt-4 text-sm text-slate-700" role="status">Bewertungen werden geladen …</p>
+          } @else if (!reviews.length) {
+            <p class="mt-4 text-sm leading-6 text-slate-700">
+              Für diese Auswahl gibt es noch keine veröffentlichte, belegte Erfahrung.
+            </p>
+          } @else {
+            <ol class="mt-5 grid gap-4" aria-label="Veröffentlichte Bewertungen">
+              @for (review of reviews; track review.id) {
+                <li class="rounded-xl border border-slate-200 p-4">
+                  <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p class="font-semibold">
+                        {{ review.ratings.overall.toFixed(1) }} von 5 ·
+                        {{ serviceLabels([review.serviceCategoryId]) }}
+                      </p>
+                      <p class="mt-1 text-sm text-slate-700">
+                        Besuch: {{ review.visitMonth }}
+                        @if (review.vehicleMakeId) {
+                          · {{ vehicleMakeLabels([review.vehicleMakeId]) }}
+                        }
+                      </p>
+                    </div>
+                    <span
+                      class="rounded-full bg-sky-50 px-3 py-1 text-sm font-semibold text-sky-950"
+                    >
+                      {{ review.evidence.label }}
+                    </span>
+                  </div>
+                  <p class="mt-4 leading-7 text-slate-800">{{ review.text }}</p>
+                  <p class="mt-3 text-sm text-slate-700">
+                    Arbeitsqualität {{ review.ratings.workQuality }}/5 · Kommunikation
+                    {{ review.ratings.communication }}/5 · Preistransparenz
+                    {{ review.ratings.priceTransparency }}/5 · Termintreue
+                    {{ review.ratings.punctuality }}/5
+                  </p>
+                  @if (review.workshopResponse) {
+                    <div class="mt-4 border-l-4 border-sky-200 pl-4">
+                      <p class="font-semibold">Öffentliche Antwort der Werkstatt</p>
+                      <p class="mt-1 leading-7 text-slate-700">
+                        {{ review.workshopResponse.text }}
+                      </p>
+                    </div>
+                  }
+                  @if (review.updates.length) {
+                    <div class="mt-4 border-l-4 border-slate-200 pl-4">
+                      <p class="font-semibold">Nachvollziehbare Updates</p>
+                      @for (update of review.updates; track update.createdAt) {
+                        <p class="mt-1 text-sm leading-6 text-slate-700">
+                          {{ update.kind === 'rework' ? 'Nacharbeit' : 'Reklamation' }}:
+                          {{ update.text }}
+                        </p>
+                      }
+                    </div>
+                  }
+                </li>
+              }
+            </ol>
+          }
         </section>
 
         <section
@@ -273,8 +427,13 @@ export class WorkshopProfileComponent {
   protected includeDetails = false;
   protected profile?: PublicWorkshopProfile;
   protected repairSummary = '';
+  protected reviews: readonly PublicWorkshopReview[] = [];
+  protected reviewServiceCategoryId = '';
+  protected reviewState: 'error' | 'loading' | 'ready' = 'loading';
+  protected reviewVehicleMakeId = '';
   protected state: 'error' | 'loading' | 'ready' = 'loading';
   protected vehicleSummary = '';
+  protected readonly vehicleMakeOptions = Object.entries(VEHICLE_MAKE_LABELS);
 
   constructor() {
     if (this.browser) void this.load();
@@ -325,9 +484,34 @@ export class WorkshopProfileComponent {
       if (!response.ok) throw new Error('Workshop profile request failed');
       this.profile = (await response.json()) as PublicWorkshopProfile;
       this.state = 'ready';
+      await this.loadReviews(workshopId);
       this.changeDetector.markForCheck();
     } catch {
       this.state = 'error';
+      this.changeDetector.markForCheck();
+    }
+  }
+
+  protected async loadReviews(workshopId = this.profile?.id): Promise<void> {
+    if (!this.browser || !workshopId) return;
+    this.reviewState = 'loading';
+    try {
+      const query = new URLSearchParams();
+      if (this.reviewServiceCategoryId)
+        query.set('serviceCategoryId', this.reviewServiceCategoryId);
+      if (this.reviewVehicleMakeId) query.set('vehicleMakeId', this.reviewVehicleMakeId);
+      const suffix = query.size ? `?${query.toString()}` : '';
+      const response = await fetch(
+        `/api/public/workshops/${encodeURIComponent(workshopId)}/reviews${suffix}`,
+        { credentials: 'same-origin' },
+      );
+      if (!response.ok) throw new Error('Workshop reviews request failed');
+      const payload = (await response.json()) as { reviews?: readonly PublicWorkshopReview[] };
+      this.reviews = payload.reviews ?? [];
+      this.reviewState = 'ready';
+      this.changeDetector.markForCheck();
+    } catch {
+      this.reviewState = 'error';
       this.changeDetector.markForCheck();
     }
   }
