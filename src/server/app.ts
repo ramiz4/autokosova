@@ -2,7 +2,13 @@ import cookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import Fastify from 'fastify';
 import type { FastifyReply } from 'fastify';
-import { AccessError, AccessStore } from './access';
+import {
+  AccessError,
+  AccessStore,
+  DuplicateWorkshopError,
+  type VerificationChecklist,
+  type WorkshopProfileInput,
+} from './access';
 import {
   createAuthorizationUrl,
   createPkceTransaction,
@@ -10,6 +16,7 @@ import {
   type ZitadelOidcConfig,
   verifyZitadelAccessToken,
 } from './oidc';
+import { normalizeWorkshopPhoto, WorkshopPhotoError } from './workshop-photo';
 
 interface ServerOptions {
   readonly accessStore?: AccessStore;
@@ -17,8 +24,56 @@ interface ServerOptions {
   readonly staticRoot?: string;
 }
 
+const stringListSchema = {
+  items: { maxLength: 80, minLength: 1, type: 'string' },
+  maxItems: 20,
+  type: 'array',
+  uniqueItems: true,
+};
+
+const workshopProfileSchema = {
+  additionalProperties: false,
+  properties: {
+    contactEmail: { format: 'email', maxLength: 254, type: 'string' },
+    contactPerson: { maxLength: 120, minLength: 1, type: 'string' },
+    contactPhone: { maxLength: 40, minLength: 3, type: 'string' },
+    description: { maxLength: 2000, type: 'string' },
+    languages: stringListSchema,
+    name: { maxLength: 160, minLength: 1, type: 'string' },
+    placeId: { maxLength: 80, minLength: 1, pattern: '^xk-[a-z]+$', type: 'string' },
+    publicPhone: { maxLength: 40, minLength: 3, type: 'string' },
+    selfReportedSpecializations: stringListSchema,
+    serviceCategoryIds: stringListSchema,
+    vehicleMakeIds: stringListSchema,
+  },
+  required: [
+    'name',
+    'placeId',
+    'contactPerson',
+    'contactPhone',
+    'languages',
+    'serviceCategoryIds',
+    'vehicleMakeIds',
+    'selfReportedSpecializations',
+  ],
+  type: 'object',
+};
+
+const verificationChecklistSchema = {
+  additionalProperties: false,
+  properties: {
+    companyDocument: { enum: ['not_checked', 'verified', 'failed'], type: 'string' },
+    contactPerson: { enum: ['not_checked', 'verified', 'failed'], type: 'string' },
+    location: { enum: ['not_checked', 'verified', 'failed'], type: 'string' },
+    phone: { enum: ['not_checked', 'verified', 'failed'], type: 'string' },
+  },
+  required: ['phone', 'contactPerson', 'companyDocument', 'location'],
+  type: 'object',
+};
+
 export function createServer(options: ServerOptions = {}) {
   const app = Fastify({
+    bodyLimit: 5 * 1024 * 1024,
     logger: {
       level: 'info',
       serializers: {
@@ -32,6 +87,11 @@ export function createServer(options: ServerOptions = {}) {
   const accessStore = options.accessStore ?? new AccessStore();
 
   app.register(cookie);
+  app.addContentTypeParser(
+    ['image/jpeg', 'image/png', 'image/webp'],
+    { parseAs: 'buffer' },
+    (_request, body, done) => done(null, body),
+  );
 
   function requirePrincipal(
     request: {
@@ -53,6 +113,12 @@ export function createServer(options: ServerOptions = {}) {
   }
 
   function errorResponse(error: unknown, reply: FastifyReply) {
+    if (error instanceof DuplicateWorkshopError) {
+      return reply.code(error.statusCode).send({
+        candidates: error.publicMatches,
+        error: error.message,
+      });
+    }
     if (error instanceof AccessError) {
       return reply.code(error.statusCode).send({ error: error.message });
     }
@@ -62,6 +128,21 @@ export function createServer(options: ServerOptions = {}) {
   app.get('/health', async () => ({ status: 'ok' }));
   app.get('/api/health', async () => ({ status: 'ok' }));
   app.get('/api/public/search', async () => ({ status: 'public-search-ready' }));
+  app.get('/api/public/workshops', async () => ({ workshops: accessStore.listPublicWorkshops() }));
+  app.get('/api/public/workshops/:workshopId', async (request, reply) => {
+    const params = request.params as { workshopId: string };
+    const workshop = accessStore.getPublicWorkshop(params.workshopId);
+    return workshop ? workshop : reply.code(404).send({ error: 'Published workshop not found' });
+  });
+  app.get('/api/public/workshops/:workshopId/photos/:photoId', async (request, reply) => {
+    const params = request.params as { photoId: string; workshopId: string };
+    const photo = accessStore.getWorkshopPhoto(params.workshopId, params.photoId);
+    if (!photo) return reply.code(404).send({ error: 'Published workshop photo not found' });
+    return reply
+      .header('cache-control', 'public, max-age=3600')
+      .type(photo.contentType)
+      .send(photo.content);
+  });
 
   app.get('/auth/login', async (_request, reply) => {
     if (!options.oidcConfig) {
@@ -148,6 +229,147 @@ export function createServer(options: ServerOptions = {}) {
     },
   );
 
+  app.get('/api/me/workshops', async (request, reply) => {
+    try {
+      const principal = requirePrincipal(request);
+      return { workshops: accessStore.listOwnedWorkshops(principal) };
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+
+  app.get('/api/workshops/duplicate-candidates', async (request, reply) => {
+    try {
+      requirePrincipal(request);
+      const query = request.query as { name?: string; placeId?: string };
+      if (!query.name?.trim() || !query.placeId?.trim()) {
+        throw new AccessError(400, 'Name and placeId are required for duplicate checks');
+      }
+      return { candidates: accessStore.listPublicDuplicateCandidates(query.name, query.placeId) };
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+
+  app.post(
+    '/api/workshops',
+    {
+      schema: {
+        body: {
+          additionalProperties: false,
+          properties: {
+            consentVersion: { maxLength: 80, minLength: 1, type: 'string' },
+            profile: workshopProfileSchema,
+          },
+          required: ['consentVersion', 'profile'],
+          type: 'object',
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const principal = requirePrincipal(request, true);
+        const body = request.body as { consentVersion: string; profile: WorkshopProfileInput };
+        const workshop = accessStore.createWorkshopRegistration(
+          principal,
+          body.profile,
+          body.consentVersion,
+        );
+        return reply
+          .code(201)
+          .send({ id: workshop.id, publicationState: workshop.publicationState });
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.get('/api/workshops/:workshopId', async (request, reply) => {
+    try {
+      const principal = requirePrincipal(request);
+      const params = request.params as { workshopId: string };
+      return accessStore.getPrivateWorkshop(principal, params.workshopId);
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+
+  app.put(
+    '/api/workshops/:workshopId',
+    { schema: { body: workshopProfileSchema } },
+    async (request, reply) => {
+      try {
+        const principal = requirePrincipal(request, true);
+        const params = request.params as { workshopId: string };
+        accessStore.updateWorkshopProfile(
+          principal,
+          params.workshopId,
+          request.body as WorkshopProfileInput,
+        );
+        return reply.code(204).send();
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.post('/api/workshops/:workshopId/submit-for-review', async (request, reply) => {
+    try {
+      const principal = requirePrincipal(request, true);
+      const params = request.params as { workshopId: string };
+      accessStore.submitWorkshopForReview(principal, params.workshopId);
+      return reply.code(204).send();
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+
+  app.post('/api/workshops/:workshopId/verification-document-grants', async (request, reply) => {
+    try {
+      const principal = requirePrincipal(request, true);
+      const params = request.params as { workshopId: string };
+      return reply
+        .code(201)
+        .send(accessStore.createWorkshopDocumentGrant(principal, params.workshopId));
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+
+  app.post('/api/workshops/:workshopId/photos', async (request, reply) => {
+    try {
+      const principal = requirePrincipal(request, true);
+      const params = request.params as { workshopId: string };
+      const body = request.body;
+      if (!Buffer.isBuffer(body)) throw new AccessError(415, 'A binary workshop photo is required');
+      const normalized = await normalizeWorkshopPhoto(body, request.headers['content-type']);
+      const photo = accessStore.registerWorkshopPhoto(principal, params.workshopId, normalized);
+      return reply.code(201).send({
+        contentType: photo.contentType,
+        height: photo.height,
+        id: photo.id,
+        width: photo.width,
+      });
+    } catch (error) {
+      if (error instanceof WorkshopPhotoError) {
+        return reply.code(415).send({ error: error.message });
+      }
+      return errorResponse(error, reply);
+    }
+  });
+
+  app.get('/api/workshops/:workshopId/photos/:photoId', async (request, reply) => {
+    try {
+      const principal = requirePrincipal(request);
+      const params = request.params as { photoId: string; workshopId: string };
+      const photo = accessStore.getWorkshopPhoto(params.workshopId, params.photoId, principal);
+      if (!photo) throw new AccessError(404, 'Workshop photo not found');
+      return reply.type(photo.contentType).send(photo.content);
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+
   app.post(
     '/api/workshops/:workshopId/profile',
     {
@@ -200,6 +422,111 @@ export function createServer(options: ServerOptions = {}) {
         accessStore.addMembership(body.userId, body.workshopId, body.role);
         accessStore.auditEvents.push({ actorUserId: principal.userId, type: 'membership-granted' });
         return reply.code(201).send({ status: 'created' });
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.post(
+    '/api/admin/workshops/assisted-onboarding',
+    {
+      schema: {
+        body: {
+          additionalProperties: false,
+          properties: {
+            applicantUserId: { maxLength: 120, minLength: 1, type: 'string' },
+            consentSource: { const: 'documented_support_request', type: 'string' },
+            consentVersion: { maxLength: 80, minLength: 1, type: 'string' },
+            profile: workshopProfileSchema,
+          },
+          required: ['applicantUserId', 'consentSource', 'consentVersion', 'profile'],
+          type: 'object',
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const principal = requirePrincipal(request, true);
+        const body = request.body as {
+          applicantUserId: string;
+          consentSource: 'documented_support_request';
+          consentVersion: string;
+          profile: WorkshopProfileInput;
+        };
+        const workshop = accessStore.createAssistedWorkshop(
+          principal,
+          body.applicantUserId,
+          body.profile,
+          {
+            source: body.consentSource,
+            version: body.consentVersion,
+          },
+        );
+        return reply
+          .code(201)
+          .send({ id: workshop.id, publicationState: workshop.publicationState });
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.post(
+    '/api/admin/workshops/:workshopId/decision',
+    {
+      schema: {
+        body: {
+          additionalProperties: false,
+          properties: {
+            decision: { enum: ['published', 'rejected', 'suspended'], type: 'string' },
+            verification: verificationChecklistSchema,
+          },
+          required: ['decision', 'verification'],
+          type: 'object',
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const principal = requirePrincipal(request, true);
+        const params = request.params as { workshopId: string };
+        const body = request.body as {
+          decision: 'published' | 'rejected' | 'suspended';
+          verification: VerificationChecklist;
+        };
+        accessStore.reviewWorkshop(principal, params.workshopId, body.decision, body.verification);
+        return reply.code(204).send();
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.post(
+    '/api/admin/workshops/:workshopId/photos/:photoId/decision',
+    {
+      schema: {
+        body: {
+          additionalProperties: false,
+          properties: { approved: { type: 'boolean' } },
+          required: ['approved'],
+          type: 'object',
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const principal = requirePrincipal(request, true);
+        const params = request.params as { photoId: string; workshopId: string };
+        const body = request.body as { approved: boolean };
+        accessStore.publishWorkshopPhoto(
+          principal,
+          params.workshopId,
+          params.photoId,
+          body.approved,
+        );
+        return reply.code(204).send();
       } catch (error) {
         return errorResponse(error, reply);
       }
