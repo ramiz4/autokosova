@@ -1,0 +1,37 @@
+name: Arbeitspaket
+description: Kleines, testbares Arbeitspaket für AutoKosova
+labels: ["type:feature"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Ziel und Nutzen
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Umfang und Nicht-Ziele
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Akzeptanzkriterien und Tests
+      description: Überprüfbar formulieren; Fehlerfälle und Berechtigungen berücksichtigen.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Epic, Abhängigkeiten und offene Entscheidungen
+      description: Direkte GitHub-Issue-Verweise verwenden. Reale Gespräche und Freigaben ausdrücklich benennen.
+  - type: dropdown
+    id: estimate
+    attributes:
+      label: Vorläufige Story Points
+      options:
+        - "3"
+        - "5"
+        - "8"
+        - "Noch zu schätzen"

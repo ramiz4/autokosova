@@ -1,0 +1,14 @@
+# Secrets and local overrides
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local / generated files
+.DS_Store
+node_modules/
+dist/
+coverage/
+__pycache__/
+.venv/
