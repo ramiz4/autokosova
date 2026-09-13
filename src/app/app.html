@@ -1,166 +1,275 @@
-<main class="min-h-screen bg-slate-50 px-4 py-8 text-slate-950 sm:px-6 sm:py-12">
-  <section class="mx-auto max-w-6xl" aria-labelledby="landing-title">
-    <header
-      class="sticky top-3 z-10 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-sky-100 bg-white/90 p-2 pl-3 shadow-[0_12px_30px_-18px_rgba(11,28,51,0.4)] backdrop-blur-xl sm:top-4 sm:gap-4 sm:p-2.5 sm:pl-4"
+<a
+  href="#hauptinhalt"
+  class="fixed left-4 top-4 z-50 -translate-y-24 rounded-xl bg-white p-4 font-bold text-ink focus:translate-y-0"
+  >{{ language.t('landing.skip') }}</a
+>
+<main id="hauptinhalt" tabindex="-1" class="bg-white font-sans text-ink">
+  <section
+    class="relative isolate min-h-dvh bg-[#082544] px-4 pb-16 pt-5 sm:px-8 sm:pt-8 lg:px-12 lg:pt-[54px] 2xl:flex 2xl:flex-col"
+    aria-labelledby="landing-title"
+  >
+    <picture class="pointer-events-none absolute inset-0 -z-20">
+      <source media="(max-width: 640px)" srcset="/images/home/hero-mountain-road-800.webp" />
+      <img
+        src="/images/home/hero-mountain-road-1672.webp"
+        width="1672"
+        height="941"
+        alt=""
+        fetchpriority="high"
+        class="h-full w-full object-cover object-[88%_center] lg:object-center"
+      />
+    </picture>
+    <div
+      class="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(1,24,47,0.87)_0%,rgba(1,24,47,0.64)_39%,rgba(1,24,47,0.16)_75%),linear-gradient(0deg,rgba(1,21,41,0.65),transparent_60%)]"
+    ></div>
+    <app-site-header class="block w-full" />
+    <div
+      class="relative mx-auto mt-12 w-full max-w-[1276px] lg:mt-[72px] 2xl:my-auto 2xl:max-w-[1920px] 2xl:py-16"
     >
-      <a
-        [routerLink]="language.link('home')"
-        class="inline-flex items-center rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-700 focus:ring-offset-2"
-        aria-label="AutoKosova Startseite"
-      >
-        <img
-          src="/branding/autokosova-logo-header.png"
-          width="640"
-          height="149"
-          alt="AutoKosova"
-          class="h-11 w-auto sm:h-12"
-        />
-      </a>
-      <nav
-        class="ml-auto flex flex-wrap items-center justify-end gap-1 sm:gap-2"
-        aria-label="Hauptnavigation"
-      >
-        <app-language-switcher />
-        <a
-          href="#werkstatt-suche"
-          class="hidden min-h-11 items-center rounded-xl px-3 text-sm font-semibold text-sky-950 transition hover:bg-sky-50 focus:outline-none focus:ring-2 focus:ring-sky-700 focus:ring-offset-2 motion-reduce:transition-none md:inline-flex"
-          >{{ language.t('home.search') }}</a
-        >
-        <a
-          [routerLink]="language.link('onboarding')"
-          class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-sky-800 px-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-sky-900 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-sky-700 focus:ring-offset-2 motion-reduce:transition-none sm:px-4"
-        >
-          <svg
-            class="size-4 shrink-0"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            aria-hidden="true"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m7-7H5" />
-          </svg>
-          <span class="sm:hidden">{{ language.t('home.workshopOnboarding') }}</span>
-          <span class="hidden sm:inline">{{ language.t('home.workshopOnboarding') }}</span>
-        </a>
-      </nav>
-    </header>
-
-    <div class="mt-10 grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
-      <div>
-        <p class="text-sm font-bold tracking-widest text-sky-700 uppercase">
-          {{ language.t('home.badge') }}
+      <div class="max-w-[790px] 2xl:max-w-[62%]">
+        <p class="mb-4 text-xs font-bold tracking-[0.32em] text-sky-accent sm:text-sm">
+          AUTOKOSOVA
         </p>
-        <h1 id="landing-title" class="mt-3 max-w-2xl text-4xl font-bold tracking-tight sm:text-5xl">
-          {{ language.t('home.title') }}
+        <h1
+          id="landing-title"
+          class="text-[clamp(2.35rem,5.3vw,4.8rem)] font-bold leading-[0.98] tracking-[-0.035em] text-white 2xl:text-[clamp(4.8rem,4vw,6.25rem)]"
+        >
+          <span class="block">{{ language.t('landing.titleOne') }}</span>
+          <span class="block">{{ language.t('landing.titleTwo') }}</span>
+          <span class="mt-1 block text-sky-accent">{{ language.t('landing.titleAccent') }}</span>
         </h1>
-        <p class="mt-5 max-w-2xl text-lg leading-8 text-slate-700">
-          {{ language.t('home.intro') }}
+        <p
+          class="mt-5 max-w-[630px] text-lg leading-[1.35] text-blue-100 sm:text-xl lg:text-[26px] 2xl:max-w-[760px] 2xl:text-3xl"
+        >
+          {{ language.t('landing.intro') }}
         </p>
-        <dl class="mt-8 grid gap-4 sm:grid-cols-3">
-          <div class="rounded-xl bg-white p-4 shadow-sm">
-            <dt class="font-semibold">{{ language.t('home.transparent.title') }}</dt>
-            <dd class="mt-1 text-sm leading-6 text-slate-700">
-              {{ language.t('home.transparent.body') }}
-            </dd>
-          </div>
-          <div class="rounded-xl bg-white p-4 shadow-sm">
-            <dt class="font-semibold">{{ language.t('home.direct.title') }}</dt>
-            <dd class="mt-1 text-sm leading-6 text-slate-700">
-              {{ language.t('home.direct.body') }}
-            </dd>
-          </div>
-          <div class="rounded-xl bg-white p-4 shadow-sm">
-            <dt class="font-semibold">{{ language.t('home.honest.title') }}</dt>
-            <dd class="mt-1 text-sm leading-6 text-slate-700">
-              {{ language.t('home.honest.body') }}
-            </dd>
-          </div>
-        </dl>
+        <ul class="mt-7 grid gap-3 text-base text-white lg:mt-8 lg:gap-2 lg:text-xl">
+          @for (key of ['checked', 'experiences', 'vehicle']; track key) {
+            <li class="flex items-center gap-4">
+              <span
+                class="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand/80 lg:size-7"
+                ><app-icon name="check" class="size-4" /></span
+              >{{ language.t('landing.' + key) }}
+            </li>
+          }
+        </ul>
+        <div class="mt-8 inline-flex max-w-full flex-col items-center lg:mt-9">
+          <a
+            appButton
+            shape="pill"
+            [routerLink]="language.link('request')"
+            class="w-full rounded-full border-sky-accent/50 px-6 py-4 text-lg shadow-[0_8px_36px_-8px_#008cff] sm:min-w-[425px] lg:min-h-[70px] lg:text-2xl"
+            >{{ language.t('landing.request') }} <app-icon name="arrow" class="size-7"
+          /></a>
+          <p class="mt-3 text-sm text-blue-100 lg:text-base">{{ language.t('landing.free') }}</p>
+          <a
+            href="#werkstatt-suche"
+            class="mt-2 inline-flex min-h-11 items-center gap-2 rounded-lg text-sm font-semibold text-white underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-sky-accent xl:hidden"
+            >{{ language.t('landing.direct') }} <app-icon name="arrow" class="size-4"
+          /></a>
+        </div>
       </div>
+      <div
+        class="pointer-events-none absolute right-[6%] top-[112px] hidden w-[295px] -rotate-12 text-center text-[38px] leading-[1.15] text-white xl:block"
+        aria-hidden="true"
+      >
+        <p lang="sq" class="font-serif italic">{{ language.t('landing.quote') }}</p>
+        <span class="mx-auto mt-4 block h-[3px] w-28 bg-sky-accent"></span>
+      </div>
+      <aside
+        class="mt-8 flex max-w-[480px] items-center gap-5 rounded-3xl border border-white/30 bg-slate-900/55 p-5 text-white backdrop-blur-md lg:absolute lg:bottom-5 lg:right-0 lg:mt-0 lg:p-6"
+      >
+        <span
+          class="flex size-16 shrink-0 items-center justify-center rounded-full border border-white/60 bg-white/10 text-sky-accent"
+          ><app-icon name="shield" class="size-9"
+        /></span>
+        <div>
+          <p class="text-sm text-blue-100">{{ language.t('landing.choiceLabel') }}</p>
+          <p class="mt-1 text-lg font-bold lg:text-xl">{{ language.t('landing.choiceTitle') }}</p>
+          <p class="mt-1 text-sm text-blue-100">{{ language.t('landing.choiceBody') }}</p>
+        </div>
+      </aside>
+    </div>
+  </section>
 
+  <section
+    class="relative z-10 -mt-1 rounded-t-[36px] bg-white px-6 py-8 lg:-mt-5 lg:rounded-t-[48px] lg:px-12 lg:py-9"
+    [attr.aria-label]="language.t('landing.benefits')"
+  >
+    <div class="mx-auto grid max-w-[1292px] 2xl:max-w-[1920px] gap-7 lg:grid-cols-3 lg:gap-8">
+      <app-benefit-card
+        icon="clock"
+        [title]="language.t('landing.timeTitle')"
+        [description]="language.t('landing.timeBody')"
+      />
+      <app-benefit-card
+        icon="thumb"
+        [title]="language.t('landing.choiceBenefit')"
+        [description]="language.t('landing.choiceBenefitBody')"
+        class="border-t border-blue-100 pt-7 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0"
+      />
+      <app-benefit-card
+        icon="shield"
+        [title]="language.t('landing.trustTitle')"
+        [description]="language.t('landing.trustBody')"
+        class="border-t border-blue-100 pt-7 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0"
+      />
+    </div>
+  </section>
+
+  <section class="bg-[#f3f7fd] px-6 py-16 sm:px-10 lg:py-24" aria-labelledby="search-heading">
+    <div
+      class="mx-auto grid max-w-6xl 2xl:max-w-[1920px] items-center gap-10 lg:grid-cols-2 lg:gap-20"
+    >
+      <div>
+        <p class="text-xs font-bold tracking-[0.18em] text-brand-dark">
+          {{ language.t('landing.searchEyebrow') }}
+        </p>
+        <h2
+          id="search-heading"
+          class="mt-4 text-3xl font-bold leading-tight tracking-tight sm:text-4xl"
+        >
+          {{ language.t('landing.searchTitle') }}
+        </h2>
+        <p class="mt-5 text-lg leading-relaxed text-muted">
+          {{ language.t('landing.searchBody') }}
+        </p>
+        <p class="mt-5 flex items-center gap-3 text-sm font-bold text-brand-dark">
+          <app-icon name="check" class="size-5" />{{ language.t('landing.noAccount') }}
+        </p>
+      </div>
       <form
         id="werkstatt-suche"
-        class="rounded-2xl border border-sky-200 bg-white p-5 shadow-sm sm:p-7"
+        class="rounded-3xl border border-blue-100 bg-white p-6 shadow-lg shadow-blue-950/5 sm:p-8"
         (ngSubmit)="search()"
         novalidate
+        [attr.aria-label]="language.t('home.searchTitle')"
       >
-        <h2 class="text-2xl font-bold">{{ language.t('home.searchTitle') }}</h2>
-        <p class="mt-2 leading-7 text-slate-700">{{ language.t('home.searchIntro') }}</p>
-        <div class="mt-6 grid gap-4">
-          <label class="grid gap-1 font-semibold"
-            >{{ language.t('home.service') }}
+        <label for="search-service" class="text-sm font-bold">{{
+          language.t('home.service')
+        }}</label>
+        <select
+          id="search-service"
+          [(ngModel)]="serviceCategoryId"
+          name="serviceCategoryId"
+          class="mt-2 min-h-13 w-full rounded-xl border border-slate-300 bg-white px-3 focus-visible:outline-2 focus-visible:outline-brand"
+          required
+        >
+          <option value="">{{ language.t('common.choose') }}</option>
+          @for (serviceId of serviceIds; track serviceId) {
+            <option [value]="serviceId">{{ language.serviceLabel(serviceId) }}</option>
+          }
+        </select>
+        <div class="mt-5 grid gap-4 sm:grid-cols-[1fr_8rem]">
+          <div>
+            <label for="search-place" class="text-sm font-bold">{{
+              language.t('home.location')
+            }}</label>
             <select
-              [(ngModel)]="serviceCategoryId"
-              name="serviceCategoryId"
-              class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
-              required
+              id="search-place"
+              [(ngModel)]="placeId"
+              name="placeId"
+              class="mt-2 min-h-13 w-full rounded-xl border border-slate-300 bg-white px-3 focus-visible:outline-2 focus-visible:outline-brand"
             >
-              <option value="">{{ language.t('common.choose') }}</option>
-              @for (serviceId of serviceIds; track serviceId) {
-                <option [value]="serviceId">{{ language.serviceLabel(serviceId) }}</option>
+              @for (place of places; track place.id) {
+                <option [value]="place.id">{{ place.label }}</option>
               }
             </select>
-          </label>
-          <div class="grid gap-4 sm:grid-cols-[1fr_9rem]">
-            <label class="grid gap-1 font-semibold"
-              >{{ language.t('home.location') }}
-              <select
-                [(ngModel)]="placeId"
-                name="placeId"
-                class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
-              >
-                @for (place of places; track place.id) {
-                  <option [value]="place.id">{{ place.label }}</option>
-                }
-              </select>
-            </label>
-            <label class="grid gap-1 font-semibold"
-              >{{ language.t('home.radius') }}
-              <input
-                [(ngModel)]="radiusKm"
-                name="radiusKm"
-                type="number"
-                [min]="limits.minRadiusKm"
-                [max]="limits.maxRadiusKm"
-                class="min-h-11 rounded-lg border border-slate-300 px-3"
-              />
-            </label>
+          </div>
+          <div>
+            <label for="search-radius" class="text-sm font-bold">{{
+              language.t('home.radius')
+            }}</label>
+            <input
+              id="search-radius"
+              [(ngModel)]="radiusKm"
+              name="radiusKm"
+              type="number"
+              [min]="limits.minRadiusKm"
+              [max]="limits.maxRadiusKm"
+              aria-describedby="radius-help"
+              class="mt-2 min-h-13 w-full rounded-xl border border-slate-300 px-3 focus-visible:outline-2 focus-visible:outline-brand"
+            />
           </div>
         </div>
+        <p id="radius-help" class="mt-3 text-sm text-muted">{{ language.t('home.searchIntro') }}</p>
         @if (searchError) {
-          <p class="mt-4 font-semibold text-rose-800" role="alert">{{ searchError }}</p>
+          <p class="mt-4 text-sm font-semibold text-rose-800" role="alert">{{ searchError }}</p>
         }
-        <button
-          type="submit"
-          class="mt-6 min-h-11 w-full rounded-lg bg-sky-800 px-5 font-bold text-white hover:bg-sky-900 focus:outline-none focus:ring-2 focus:ring-sky-700 focus:ring-offset-2"
-        >
-          {{ language.t('home.search') }}
+        <button type="submit" appButton class="mt-6 w-full">
+          <app-icon name="search" class="size-5" />{{ language.t('nav.search') }}
         </button>
-        <a
-          [routerLink]="language.link('request')"
-          class="mt-4 inline-flex min-h-11 items-center font-semibold text-sky-800 underline"
-          >{{ language.t('home.request') }}</a
-        >
       </form>
     </div>
+  </section>
 
-    <p class="mt-10 max-w-3xl text-sm leading-6 text-slate-700">
-      {{ language.t('home.trust') }}
-    </p>
-    <section
-      class="mt-6 max-w-3xl rounded-xl border border-slate-200 bg-white p-4"
-      aria-labelledby="analytics-title"
-    >
-      <h2 id="analytics-title" class="font-semibold">{{ language.t('analytics.title') }}</h2>
-      <p class="mt-1 text-sm leading-6 text-slate-700">{{ language.t('analytics.description') }}</p>
+  <section
+    id="so-funktionierts"
+    class="mx-auto max-w-6xl 2xl:max-w-[1920px] px-6 py-16 lg:py-24"
+    aria-labelledby="how-heading"
+  >
+    <h2 id="how-heading" class="text-3xl font-bold tracking-tight sm:text-4xl">
+      {{ language.t('landing.howTitle') }}
+    </h2>
+    <div class="mt-10 grid gap-8 md:grid-cols-3">
+      @for (step of ['One', 'Two', 'Three']; track step; let index = $index) {
+        <article class="rounded-2xl border border-blue-100 p-6">
+          <span
+            class="flex size-11 items-center justify-center rounded-full bg-blue-50 text-lg font-bold text-brand-dark"
+            >{{ index + 1 }}</span
+          >
+          <h3 class="mt-5 text-xl font-bold">{{ language.t('landing.step' + step + 'Title') }}</h3>
+          <p class="mt-3 leading-relaxed text-muted">
+            {{ language.t('landing.step' + step + 'Body') }}
+          </p>
+        </article>
+      }
+    </div>
+  </section>
+  <section id="ueber-uns" class="bg-[#f3f7fd] px-6 py-16" aria-labelledby="about-heading">
+    <div class="mx-auto grid max-w-6xl 2xl:max-w-[1920px] gap-8 lg:grid-cols-2 lg:gap-20">
+      <div>
+        <h2 id="about-heading" class="text-3xl font-bold tracking-tight">
+          {{ language.t('landing.aboutTitle') }}
+        </h2>
+        <p class="mt-5 leading-relaxed text-muted">{{ language.t('landing.aboutBody') }}</p>
+      </div>
+      <div class="rounded-2xl border border-blue-100 bg-white p-6">
+        <app-icon name="shield" class="size-9 text-brand" />
+        <p class="mt-4 leading-relaxed text-muted">{{ language.t('landing.verification') }}</p>
+      </div>
+    </div>
+  </section>
+  <footer
+    class="mx-auto flex max-w-6xl 2xl:max-w-[1920px] flex-wrap items-start justify-between gap-8 px-6 py-10"
+  >
+    <div>
+      <a [routerLink]="language.link('home')" [attr.aria-label]="language.t('common.backHome')"
+        ><img
+          src="/branding/autokosova-logo-header.png"
+          width="640"
+          height="122"
+          alt="AutoKosova"
+          class="h-auto w-44"
+          loading="lazy"
+      /></a>
+      <p class="mt-3 text-sm text-muted">{{ language.t('landing.footer') }}</p>
+    </div>
+    <details class="max-w-lg text-sm text-muted">
+      <summary
+        class="min-h-11 cursor-pointer rounded-lg py-3 font-semibold text-ink focus-visible:outline-2 focus-visible:outline-brand"
+      >
+        {{ language.t('analytics.title') }}
+      </summary>
+      <p class="mt-2 leading-relaxed">{{ language.t('analytics.description') }}</p>
       <button
         type="button"
-        class="mt-3 min-h-11 font-semibold text-sky-800 underline"
+        class="mt-3 min-h-11 rounded-lg font-bold text-brand-dark underline focus-visible:outline-2 focus-visible:outline-brand"
+        [attr.aria-pressed]="analytics.consented"
         (click)="toggleAnalyticsConsent()"
       >
         {{ language.t(analytics.consented ? 'analytics.disable' : 'analytics.enable') }}
       </button>
-    </section>
-  </section>
+    </details>
+  </footer>
 </main>

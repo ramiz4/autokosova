@@ -505,14 +505,19 @@ export function createServer(options: ServerOptions = {}) {
       return reply.code(503).send({ error: 'OIDC is not configured' });
     }
     const transaction = createPkceTransaction();
-    const query = request.query as { returnTo?: string };
+    const query = request.query as { returnTo?: string; prompt?: string };
     accessStore.createOidcTransaction(
       transaction.state,
       transaction.codeVerifier,
       safeReturnTo(query.returnTo),
     );
     return reply.redirect(
-      createAuthorizationUrl(options.oidcConfig, transaction.state, transaction.codeChallenge),
+      createAuthorizationUrl(
+        options.oidcConfig,
+        transaction.state,
+        transaction.codeChallenge,
+        query.prompt === 'create' ? 'create' : undefined,
+      ),
     );
   });
 
@@ -1348,6 +1353,12 @@ export function createServer(options: ServerOptions = {}) {
       index: 'index.html',
       redirect: false,
       maxAge: '1y',
+      setHeaders(response, path) {
+        // Only Angular bundles with a content hash can safely survive a release in cache.
+        if (!/(?:main|styles|polyfills|chunk)-[A-Z0-9]{8}\.(?:js|css)$/.test(path)) {
+          response.header('cache-control', 'public, max-age=0, must-revalidate');
+        }
+      },
     });
   }
 

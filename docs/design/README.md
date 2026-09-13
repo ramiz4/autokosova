@@ -10,6 +10,8 @@ Die [Designreferenzen vom 13. September 2026](references/2026-09-13/README.md) e
 
 Die Sammlung dient als visuelle Grundlage für Startseite, Reparaturanfrage, Werkstattsuche, Werkstattprofil und Monetarisierungsseite. Sie wird nicht automatisch als öffentliches Bildmaterial in die Anwendung eingebunden. Die folgenden fachlichen Präzisierungen gelten auch für diese neueren Mockups.
 
+Die [Startseiten-Umsetzung und gemeinsamen UI-Bausteine](HOMEPAGE.md) beschreiben die in Issue #42 verwendeten Komponenten, Bildableitungen, fachlichen Abweichungen und Prüfungen.
+
 ## Historische Originaldatei
 
 Das frühere Showcase-PNG wurde im `autokosova-github-startpaket.zip` unter `repository/docs/design/autokosova-showcase.png` bereitgestellt und gehört zu [UX-Issue #5](https://github.com/ramiz4/autokosova/issues/5). Diese separate historische Datei liegt weiterhin nicht im Repository; die oben verlinkten Seiten-Mockups sind die neue, direkt verfügbare Grundlage für die Umbau-Issues #42–#46.

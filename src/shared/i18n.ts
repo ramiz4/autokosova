@@ -1,3 +1,5 @@
+import { landingCopy } from './landing-copy';
+
 export const APP_LANGUAGES = ['de', 'sq', 'en'] as const;
 
 export type AppLanguage = (typeof APP_LANGUAGES)[number];
@@ -456,7 +458,7 @@ export function translate(
   key: string,
   replacements: Readonly<Record<string, string | number>> = {},
 ): string {
-  const template = messages[language][key] ?? messages.de[key] ?? key;
+  const template = landingCopy[language][key] ?? messages[language][key] ?? messages.de[key] ?? key;
   return template.replace(/\{(\w+)\}/g, (_match, name: string) => String(replacements[name] ?? ''));
 }
 
