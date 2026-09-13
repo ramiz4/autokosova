@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="AutoKosova UX-Konzeptprototyp ohne Live-Daten" />
+    <link rel="icon" href="data:," />
+    <title>AutoKosova · UX-Konzept</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #0b1c33;
+        --muted: #526277;
+        --paper: #f5f8fc;
+        --surface: #ffffff;
+        --line: #ced9e7;
+        --primary: #075db8;
+        --primary-dark: #034383;
+        --soft-blue: #e6f0fb;
+        --success: #0d6b53;
+        --warning: #8a5300;
+        --danger: #b42318;
+        --radius: 18px;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; color: var(--ink); background: var(--paper); line-height: 1.5; }
+      button, input, select, textarea { font: inherit; }
+      button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+      button { cursor: pointer; }
+      button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+        outline: 3px solid #ed8b00;
+        outline-offset: 3px;
+      }
+      [hidden] { display: none !important; }
+      .shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+      .notice { margin: 12px auto 0; padding: 9px 13px; border: 1px solid #9bb8d8; border-radius: 10px; color: #173c66; background: #edf5ff; font-size: .9rem; }
+      .site-header { padding: 16px 0; background: var(--surface); border-bottom: 1px solid var(--line); }
+      .site-header .shell { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+      .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 800; font-size: 1.2rem; text-decoration: none; }
+      .brand-mark { display: grid; width: 35px; height: 35px; place-items: center; border-radius: 11px; color: white; background: var(--primary); }
+      .header-actions { display: flex; align-items: center; gap: 8px; }
+      .language { border: 1px solid var(--line); border-radius: 9px; background: white; padding: 9px 12px; min-height: 44px; color: var(--ink); }
+      .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 16px; border: 1px solid transparent; border-radius: 10px; font-weight: 700; text-decoration: none; }
+      .button-primary { color: #fff; background: var(--primary); }
+      .button-primary:hover { background: var(--primary-dark); }
+      .button-secondary { color: var(--primary-dark); border-color: #7ba9d8; background: #fff; }
+      .button-quiet { color: var(--ink); background: transparent; border-color: transparent; }
+      .button-danger { color: var(--danger); border-color: #e8b4af; background: #fff; }
+      .main { padding: 0 0 96px; }
+      .hero { position: relative; overflow: hidden; margin-top: 18px; padding: clamp(32px, 7vw, 78px); border-radius: 24px; color: #fff; background: radial-gradient(circle at 78% 16%, #2779c5 0, #123b64 25%, #0a1b30 64%); }
+      .hero::after { position: absolute; right: -44px; bottom: -60px; width: 440px; height: 180px; border: 18px solid rgba(255,255,255,.12); border-radius: 100% 100% 0 0; content: ""; transform: rotate(-10deg); }
+      .hero-copy { position: relative; z-index: 1; max-width: 670px; }
+      .eyebrow { margin: 0 0 10px; color: inherit; font-size: .87rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+      h1, h2, h3, p { margin-top: 0; }
+      h1 { max-width: 700px; margin-bottom: 14px; font-size: clamp(2rem, 5vw, 4.5rem); line-height: 1.05; letter-spacing: -.04em; }
+      h2 { margin-bottom: 8px; font-size: clamp(1.5rem, 3vw, 2.25rem); letter-spacing: -.025em; }
+      h3 { margin-bottom: 4px; font-size: 1.05rem; }
+      .lead { max-width: 630px; color: #e2edf8; font-size: 1.1rem; }
+      .search-panel { position: relative; z-index: 2; display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; max-width: 850px; margin-top: 26px; padding: 14px; border-radius: 16px; color: var(--ink); background: #fff; box-shadow: 0 18px 42px rgba(1, 19, 39, .24); }
+      .field { display: grid; gap: 5px; }
+      label { font-size: .9rem; font-weight: 700; }
+      input, select, textarea { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #8ba0bb; border-radius: 9px; color: var(--ink); background: #fff; }
+      textarea { min-height: 92px; resize: vertical; }
+      .section { padding: 52px 0 0; }
+      .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+      .section-heading p { max-width: 650px; margin: 0; color: var(--muted); }
+      .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+      .card, .panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: 0 5px 18px rgba(11, 28, 51, .05); }
+      .card { padding: 22px; }
+      .icon-box { display: grid; width: 42px; height: 42px; place-items: center; margin-bottom: 15px; border-radius: 12px; color: var(--primary-dark); background: var(--soft-blue); font-size: 1.3rem; }
+      .card p, .muted { color: var(--muted); }
+      .view { animation: appear .22s ease-out; }
+      @keyframes appear { from { opacity: .2; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+      .workflow { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; padding-top: 28px; }
+      .steps { display: flex; gap: 8px; margin-bottom: 20px; }
+      .step { flex: 1; min-width: 0; padding: 9px; border: 1px solid var(--line); border-radius: 10px; color: var(--muted); background: #fff; font-size: .82rem; font-weight: 700; text-align: center; }
+      .step[aria-current="step"] { color: #fff; border-color: var(--primary); background: var(--primary); }
+      .form-panel { padding: clamp(20px, 4vw, 38px); }
+      .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      .form-grid .full { grid-column: 1 / -1; }
+      .place-list { display: grid; gap: 10px; margin: 12px 0; }
+      .place-row { display: grid; grid-template-columns: minmax(0, 1fr) 130px auto; gap: 8px; align-items: end; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #f9fbfe; }
+      .form-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 24px; }
+      .aside { padding: 20px; }
+      .aside ul { padding-left: 18px; color: var(--muted); }
+      .aside li + li { margin-top: 9px; }
+      .error { margin: 14px 0 0; padding: 10px 12px; border-left: 4px solid var(--danger); border-radius: 8px; color: #7b1f19; background: #fff1f0; }
+      .results-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 22px 0 16px; }
+      .toggle-group { display: inline-flex; gap: 6px; padding: 4px; border: 1px solid var(--line); border-radius: 11px; background: #fff; }
+      .toggle-group button { min-height: 36px; padding: 6px 12px; border: 0; border-radius: 7px; color: var(--ink); background: transparent; font-weight: 700; }
+      .toggle-group button[aria-pressed="true"] { color: #fff; background: var(--primary); }
+      .status-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+      .status-controls button { min-height: 36px; padding: 6px 10px; border: 1px solid #a7bbd2; border-radius: 8px; color: #1f4a78; background: #fff; font-size: .86rem; }
+      .results-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
+      .result-list { display: grid; gap: 12px; }
+      .workshop-card { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 16px; }
+      .placeholder-logo { display: grid; width: 88px; height: 72px; place-items: center; border-radius: 12px; color: #315778; background: linear-gradient(145deg, #d7e8f9, #f0f6fc); font-weight: 800; text-align: center; }
+      .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+      .tag { padding: 4px 8px; border: 1px solid #b7d0e8; border-radius: 999px; color: #285680; background: #f3f8fd; font-size: .78rem; font-weight: 700; }
+      .availability { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; color: var(--warning); font-size: .88rem; font-weight: 700; }
+      .availability::before { width: 8px; height: 8px; border-radius: 50%; background: currentColor; content: ""; }
+      .concept-map { position: sticky; top: 16px; min-height: 370px; overflow: hidden; padding: 20px; border: 1px dashed #78a4cc; border-radius: var(--radius); background: linear-gradient(25deg, #ecf5fb, #dcecf6); }
+      .concept-map::before, .concept-map::after { position: absolute; content: ""; background: rgba(9, 91, 177, .17); }
+      .concept-map::before { width: 140%; height: 22px; top: 49%; left: -20%; transform: rotate(-18deg); }
+      .concept-map::after { width: 24px; height: 150%; top: -25%; left: 53%; transform: rotate(22deg); }
+      .map-label, .map-marker { position: relative; z-index: 1; }
+      .map-label { max-width: 195px; color: #294f70; }
+      .map-marker { display: grid; width: 44px; height: 44px; place-items: center; border: 3px solid #fff; border-radius: 50% 50% 50% 0; color: #fff; background: var(--primary); box-shadow: 0 5px 14px rgba(11, 51, 89, .28); transform: rotate(-45deg); }
+      .map-marker span { transform: rotate(45deg); }
+      .map-marker.one { margin: 92px 0 0 42%; }
+      .map-marker.two { margin: 56px 0 0 18%; background: #0d6b53; }
+      .state-panel { padding: 34px; text-align: center; }
+      .state-panel p { max-width: 480px; margin: 0 auto 18px; color: var(--muted); }
+      .spinner { width: 42px; height: 42px; margin: 0 auto 18px; border: 4px solid #c9d9e9; border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .profile-layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 22px; padding-top: 24px; }
+      .profile-card { padding: clamp(20px, 4vw, 36px); }
+      .profile-top { display: flex; align-items: center; gap: 18px; }
+      .profile-top .placeholder-logo { width: 100px; height: 82px; }
+      .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 24px 0; }
+      .info { padding: 12px; border-radius: 10px; background: #f2f7fc; }
+      .info strong, .info span { display: block; }
+      .info span { color: var(--muted); font-size: .85rem; }
+      .review-empty { margin-top: 20px; padding: 20px; border: 1px dashed #8ea8c1; border-radius: 12px; color: var(--muted); background: #fafcff; }
+      .profile-aside { padding: 22px; }
+      .profile-aside p { color: var(--muted); }
+      .contact-bar { position: sticky; bottom: 0; z-index: 4; display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 24px; padding: 14px; border: 1px solid #7ba9d8; border-radius: 14px; background: #fff; box-shadow: 0 -8px 24px rgba(11, 28, 51, .10); }
+      .contact-bar span { color: var(--muted); font-size: .9rem; }
+      .dialog-backdrop { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(3, 20, 39, .62); }
+      .dialog { width: min(470px, 100%); padding: 25px; border-radius: 18px; background: #fff; box-shadow: 0 22px 70px rgba(0,0,0,.28); }
+      .dialog p { color: var(--muted); }
+      .dialog-actions { display: grid; gap: 10px; margin-top: 20px; }
+      .dialog-actions .button { width: 100%; }
+      .contact-result { margin: 14px 0 0; padding: 10px; border-radius: 9px; color: #14523f; background: #e9f7f1; font-weight: 700; }
+      .back-link { margin: 24px 0 0; }
+      .footer { margin-top: 56px; padding: 28px 0 60px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+      @media (max-width: 760px) {
+        .shell { width: min(100% - 24px, 620px); }
+        .site-header .shell { align-items: flex-start; }
+        .brand { font-size: 1.04rem; }
+        .hero { padding: 34px 22px; border-radius: 18px; }
+        .search-panel, .workflow, .results-layout, .profile-layout { grid-template-columns: 1fr; }
+        .search-panel .button { width: 100%; }
+        .card-grid { grid-template-columns: 1fr; }
+        .section-heading, .results-toolbar, .contact-bar { align-items: stretch; flex-direction: column; }
+        .workflow { padding-top: 18px; }
+        .aside, .concept-map, .profile-aside { position: static; }
+        .form-grid, .info-grid { grid-template-columns: 1fr; }
+        .place-row { grid-template-columns: 1fr; }
+        .workshop-card { grid-template-columns: 68px minmax(0, 1fr); }
+        .workshop-card .button { grid-column: 1 / -1; width: 100%; }
+        .placeholder-logo { width: 68px; height: 68px; font-size: .8rem; }
+        .header-actions .button { display: none; }
+        .steps { gap: 4px; }
+        .step { padding: 7px 4px; font-size: .72rem; }
+      }
+      @media (min-width: 1280px) { .shell { width: 1180px; } }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="shell">
+        <button class="brand" type="button" data-view-target="landing" aria-label="AutoKosova Startseite">
+          <span class="brand-mark" aria-hidden="true">AK</span><span>AutoKosova</span>
+        </button>
+        <div class="header-actions">
+          <select class="language" id="language" aria-label="Sprache wählen">
+            <option value="de">Deutsch</option>
+            <option value="sq">Shqip</option>
+          </select>
+          <button class="button button-secondary" type="button" data-view-target="request" data-de="Werkstatt finden" data-sq="Gjej servis">Werkstatt finden</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="shell notice" role="status">Konzeptprototyp: keine Live-Werkstätten, keine echten Bewertungen und keine gesendeten Nachrichten.</div>
+
+      <section class="view" id="view-landing">
+        <div class="shell hero">
+          <div class="hero-copy">
+            <p class="eyebrow" data-de="Werkstatt finden – ohne Konto" data-sq="Gjej servis – pa llogari">Werkstatt finden – ohne Konto</p>
+            <h1 data-de="Mit Vertrauen zur passenden Werkstatt in Kosovo." data-sq="Gjej servisin e duhur në Kosovë me besim.">Mit Vertrauen zur passenden Werkstatt in Kosovo.</h1>
+            <p class="lead" data-de="Vergleiche Leistungen, Standort und nachvollziehbare Informationen. Du entscheidest selbst, wen du kontaktierst." data-sq="Krahaso shërbimet, vendndodhjen dhe informacionet e kuptueshme. Ti zgjedh kë kontakton.">Vergleiche Leistungen, Standort und nachvollziehbare Informationen. Du entscheidest selbst, wen du kontaktierst.</p>
+            <div class="search-panel" aria-label="Schnellsuche">
+              <div class="field"><label for="quick-service" data-de="Wobei brauchst du Hilfe?" data-sq="Çfarë të duhet?">Wobei brauchst du Hilfe?</label><select id="quick-service"><option>Wartung &amp; Service</option><option>Bremsen</option><option>Karosserie</option></select></div>
+              <div class="field"><label for="quick-place" data-de="Ort" data-sq="Vendi">Ort</label><select id="quick-place"><option>Pristina</option><option>Prizren</option><option>Peja</option></select></div>
+              <button class="button button-primary" type="button" data-view-target="request" data-de="Werkstatt finden" data-sq="Gjej servis">Werkstatt finden</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="shell section">
+          <div class="section-heading"><div><h2 data-de="So bleibt die Auswahl bei dir" data-sq="Zgjedhja mbetet te ti">So bleibt die Auswahl bei dir</h2><p data-de="Kein Bietermodell, keine Massenanfrage und keine gekauften Vertrauenssignale." data-sq="Pa ankand, pa kërkesa masive dhe pa shenja besimi të blera.">Kein Bietermodell, keine Massenanfrage und keine gekauften Vertrauenssignale.</p></div></div>
+          <div class="card-grid">
+            <article class="card"><div class="icon-box" aria-hidden="true">1</div><h3 data-de="Suche eingrenzen" data-sq="Ngushto kërkimin">Suche eingrenzen</h3><p data-de="Wähle Leistung, einen Ort oder mehrere Orte mit je einem Radius." data-sq="Zgjidh shërbimin, një vend ose disa vende me rreze të veçantë.">Wähle Leistung, einen Ort oder mehrere Orte mit je einem Radius.</p></article>
+            <article class="card"><div class="icon-box" aria-hidden="true">2</div><h3 data-de="Profile prüfen" data-sq="Kontrollo profilet">Profile prüfen</h3><p data-de="Sieh Leistungen, Unternehmensdaten und den ehrlichen Stand von Bewertungen." data-sq="Shiko shërbimet, të dhënat e kompanisë dhe gjendjen e sinqertë të vlerësimeve.">Sieh Leistungen, Unternehmensdaten und den ehrlichen Stand von Bewertungen.</p></article>
+            <article class="card"><div class="icon-box" aria-hidden="true">3</div><h3 data-de="Kontakt bewusst wählen" data-sq="Zgjidh kontaktin me vetëdije">Kontakt bewusst wählen</h3><p data-de="Rufe an oder öffne WhatsApp nur bei dem Betrieb, den du selbst auswählst." data-sq="Telefono ose hap WhatsApp vetëm te servisi që e zgjedh vetë.">Rufe an oder öffne WhatsApp nur bei dem Betrieb, den du selbst auswählst.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-request" hidden>
+        <div class="shell workflow">
+          <div>
+            <div class="back-link"><button class="button button-quiet" type="button" data-view-target="landing">← <span data-de="Zur Startseite" data-sq="Kthehu te fillimi">Zur Startseite</span></button></div>
+            <div class="steps" aria-label="Fortschritt"><span class="step" id="step-1" aria-current="step" data-de="1. Anfrage" data-sq="1. Kërkesa">1. Anfrage</span><span class="step" id="step-2" data-de="2. Gebiet" data-sq="2. Zona">2. Gebiet</span><span class="step" id="step-3" data-de="3. Ergebnisse" data-sq="3. Rezultatet">3. Ergebnisse</span></div>
+            <form class="panel form-panel" id="request-form" novalidate>
+              <div id="request-step-one">
+                <p class="eyebrow" style="color:#075db8" data-de="Schritt 1 von 2" data-sq="Hapi 1 nga 2">Schritt 1 von 2</p>
+                <h1 style="font-size:clamp(1.8rem,4vw,3rem)" data-de="Was soll an deinem Fahrzeug gemacht werden?" data-sq="Çfarë duhet bërë në automjetin tënd?">Was soll an deinem Fahrzeug gemacht werden?</h1>
+                <div class="form-grid">
+                  <div class="field"><label for="service" data-de="Gewünschte Arbeit" data-sq="Shërbimi i kërkuar">Gewünschte Arbeit</label><select id="service" required><option value="">Bitte wählen</option><option>Wartung &amp; Service</option><option>Bremsen</option><option>Karosserie</option></select></div>
+                  <div class="field"><label for="vehicle" data-de="Fahrzeug (optional)" data-sq="Automjeti (opsional)">Fahrzeug (optional)</label><input id="vehicle" placeholder="z. B. Kompaktwagen" /></div>
+                  <div class="field full"><label for="detail" data-de="Kurz beschreiben (optional)" data-sq="Përshkruaj shkurt (opsionale)">Kurz beschreiben (optional)</label><textarea id="detail" placeholder="Nur Informationen, die du für die Suche teilen möchtest."></textarea></div>
+                </div>
+                <p class="error" id="service-error" role="alert" hidden>Bitte wähle eine gewünschte Arbeit aus.</p>
+                <div class="form-actions"><span></span><button class="button button-primary" type="button" id="to-areas" data-de="Weiter zu den Orten" data-sq="Vazhdo te vendet">Weiter zu den Orten</button></div>
+              </div>
+              <div id="request-step-two" hidden>
+                <p class="eyebrow" style="color:#075db8" data-de="Schritt 2 von 2" data-sq="Hapi 2 nga 2">Schritt 2 von 2</p>
+                <h1 style="font-size:clamp(1.8rem,4vw,3rem)" data-de="Wo suchst du?" data-sq="Ku po kërkon?">Wo suchst du?</h1>
+                <p class="muted" data-de="Du kannst einen Ort oder mehrere Orte wählen. Jeder Radius gilt separat; Überschneidungen werden später nur einmal gezeigt." data-sq="Mund të zgjedhësh një ose disa vende. Çdo rreze vlen veçmas; mbivendosjet shfaqen vetëm një herë.">Du kannst einen Ort oder mehrere Orte wählen. Jeder Radius gilt separat; Überschneidungen werden später nur einmal gezeigt.</p>
+                <div class="place-list" id="place-list"></div>
+                <button class="button button-secondary" type="button" id="add-place" data-de="+ Weiteren Ort hinzufügen" data-sq="+ Shto një vend tjetër">+ Weiteren Ort hinzufügen</button>
+                <p class="error" id="place-error" role="alert" hidden>Bitte wähle mindestens einen Ort mit Radius.</p>
+                <div class="form-actions"><button class="button button-secondary" type="button" id="back-to-details" data-de="Zurück" data-sq="Kthehu">Zurück</button><button class="button button-primary" type="button" id="show-results" data-de="Werkstätten anzeigen" data-sq="Shfaq serviset">Werkstätten anzeigen</button></div>
+              </div>
+            </form>
+          </div>
+          <aside class="panel aside"><h2 style="font-size:1.25rem" data-de="Deine Privatsphäre" data-sq="Privatësia jote">Deine Privatsphäre</h2><ul><li data-de="Reisezeiten sind optional und nicht öffentlich." data-sq="Kohët e udhëtimit janë opsionale dhe jo publike.">Reisezeiten sind optional und nicht öffentlich.</li><li data-de="Eine Suche ist keine Anfrage an mehrere Werkstätten." data-sq="Kërkimi nuk është kërkesë për disa servise.">Eine Suche ist keine Anfrage an mehrere Werkstätten.</li><li data-de="Du entscheidest später selbst über den Kontakt." data-sq="Ti vendos vetë më vonë për kontaktin.">Du entscheidest später selbst über den Kontakt.</li></ul></aside>
+        </div>
+      </section>
+
+      <section class="view" id="view-results" hidden>
+        <div class="shell">
+          <div class="back-link"><button class="button button-quiet" type="button" data-view-target="request">← <span data-de="Suche anpassen" data-sq="Ndrysho kërkimin">Suche anpassen</span></button></div>
+          <div class="section-heading"><div><p class="eyebrow" style="color:#075db8" data-de="Konzept-Ergebnisse" data-sq="Rezultate koncepti">Konzept-Ergebnisse</p><h1 style="font-size:clamp(2rem,4vw,3.2rem)" data-de="Passende Werkstätten" data-sq="Servise të përshtatshme">Passende Werkstätten</h1><p id="result-context">Pristina · 15 km · Wartung &amp; Service</p></div></div>
+          <div class="results-toolbar">
+            <div class="toggle-group" aria-label="Darstellung wechseln"><button type="button" id="list-toggle" aria-pressed="true" data-de="Liste" data-sq="Listë">Liste</button><button type="button" id="map-toggle" aria-pressed="false" data-de="Kartenkonzept" data-sq="Koncept harte">Kartenkonzept</button></div>
+            <div class="status-controls" aria-label="Zustände demonstrieren"><button type="button" data-result-state="loaded">Ergebnisse</button><button type="button" data-result-state="loading">Laden</button><button type="button" data-result-state="empty">Keine Treffer</button><button type="button" data-result-state="error">Fehler</button></div>
+          </div>
+          <p class="notice" id="result-announcement" aria-live="polite">2 Konzeptbetriebe. Verfügbarkeit ist nicht bestätigt.</p>
+          <div class="results-layout" id="loaded-results">
+            <div class="result-list" id="result-list">
+              <article class="card workshop-card"><div class="placeholder-logo" aria-label="Konzeptbild">Konzept<br/>betrieb A</div><div><h2 style="font-size:1.22rem">Werkstattprofil A</h2><p class="muted">Beispielprofil · Pristina · Entfernung nur Konzept</p><div class="tag-row"><span class="tag">Wartung</span><span class="tag">Benzin</span></div><span class="availability" data-de="Verfügbarkeit nicht bestätigt" data-sq="Disponueshmëria nuk është konfirmuar">Verfügbarkeit nicht bestätigt</span></div><button class="button button-secondary" type="button" data-view-target="profile" data-de="Profil ansehen" data-sq="Shiko profilin">Profil ansehen</button></article>
+              <article class="card workshop-card"><div class="placeholder-logo" aria-label="Konzeptbild">Konzept<br/>betrieb B</div><div><h2 style="font-size:1.22rem">Werkstattprofil B</h2><p class="muted">Beispielprofil · Pristina · Entfernung nur Konzept</p><div class="tag-row"><span class="tag">Diagnose</span><span class="tag">Diesel</span></div><span class="availability" data-de="Verfügbarkeit nicht bestätigt" data-sq="Disponueshmëria nuk është konfirmuar">Verfügbarkeit nicht bestätigt</span></div><button class="button button-secondary" type="button" data-view-target="profile" data-de="Profil ansehen" data-sq="Shiko profilin">Profil ansehen</button></article>
+            </div>
+            <aside class="concept-map" id="concept-map" hidden><p class="map-label"><strong data-de="Kartenkonzept" data-sq="Koncept harte">Kartenkonzept</strong><br/><span data-de="Keine Kartendaten verbunden. Orte und Distanzen sind Beispiele." data-sq="Asnjë e dhënë harte nuk është lidhur. Vendet dhe distancat janë shembuj.">Keine Kartendaten verbunden. Orte und Distanzen sind Beispiele.</span></p><div class="map-marker one" aria-label="Konzeptbetrieb A"><span>A</span></div><div class="map-marker two" aria-label="Konzeptbetrieb B"><span>B</span></div></aside>
+          </div>
+          <div class="panel state-panel" id="loading-results" hidden><div class="spinner" aria-hidden="true"></div><h2 data-de="Ergebnisse werden gesucht" data-sq="Po kërkohen rezultatet">Ergebnisse werden gesucht</h2><p data-de="Ein Ladezustand macht klar, dass noch keine Auswahl getroffen werden kann." data-sq="Gjendja e ngarkimit tregon se ende nuk mund të bëhet zgjedhje.">Ein Ladezustand macht klar, dass noch keine Auswahl getroffen werden kann.</p></div>
+          <div class="panel state-panel" id="empty-results" hidden><h2 data-de="Noch keine passenden Treffer" data-sq="Ende nuk ka rezultate të përshtatshme">Noch keine passenden Treffer</h2><p data-de="Passe Leistung, Ort oder Radius an. Es wird keine künstliche Auswahl angezeigt." data-sq="Përshtat shërbimin, vendin ose rrezen. Nuk shfaqet përzgjedhje artificiale.">Passe Leistung, Ort oder Radius an. Es wird keine künstliche Auswahl angezeigt.</p><button class="button button-primary" type="button" data-view-target="request" data-de="Suche anpassen" data-sq="Ndrysho kërkimin">Suche anpassen</button></div>
+          <div class="panel state-panel" id="error-results" hidden><h2 data-de="Ergebnisse gerade nicht verfügbar" data-sq="Rezultatet nuk janë të disponueshme tani">Ergebnisse gerade nicht verfügbar</h2><p data-de="Die Auswahl wird nicht geschätzt. Bitte versuche es erneut oder passe deine Suche an." data-sq="Përzgjedhja nuk vlerësohet me hamendje. Provo përsëri ose ndrysho kërkimin.">Die Auswahl wird nicht geschätzt. Bitte versuche es erneut oder passe deine Suche an.</p><button class="button button-primary" type="button" data-result-state="loaded" data-de="Erneut versuchen" data-sq="Provo përsëri">Erneut versuchen</button></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-profile" hidden>
+        <div class="shell">
+          <div class="back-link"><button class="button button-quiet" type="button" data-view-target="results">← <span data-de="Zu den Ergebnissen" data-sq="Te rezultatet">Zu den Ergebnissen</span></button></div>
+          <div class="profile-layout">
+            <article class="panel profile-card"><div class="profile-top"><div class="placeholder-logo" aria-label="Konzeptbild">Konzept<br/>betrieb A</div><div><p class="eyebrow" style="color:#075db8" data-de="Beispielprofil" data-sq="Profil shembull">Beispielprofil</p><h1 style="font-size:clamp(1.8rem,4vw,3rem)">Werkstattprofil A</h1><p class="muted" data-de="Unternehmensdaten: im Konzept nicht geprüft" data-sq="Të dhënat e kompanisë: jo të verifikuara në koncept">Unternehmensdaten: im Konzept nicht geprüft</p></div></div>
+              <div class="info-grid"><div class="info"><span data-de="Leistungen" data-sq="Shërbimet">Leistungen</span><strong>Wartung, Diagnose</strong></div><div class="info"><span data-de="Standort" data-sq="Vendndodhja">Standort</span><strong>Pristina · Konzept</strong></div><div class="info"><span data-de="Sprachen" data-sq="Gjuhët">Sprachen</span><strong>DE · SQ</strong></div><div class="info"><span data-de="Verfügbarkeit" data-sq="Disponueshmëria">Verfügbarkeit</span><strong data-de="Nicht bestätigt" data-sq="Jo e konfirmuar">Nicht bestätigt</strong></div></div>
+              <h2 data-de="Bewertungen" data-sq="Vlerësimet">Bewertungen</h2><div class="review-empty"><strong data-de="Noch keine Bewertungen" data-sq="Ende nuk ka vlerësime">Noch keine Bewertungen</strong><p data-de="Neue Betriebe bleiben auffindbar. Eine fehlende Bewertung ist keine Qualitätsaussage." data-sq="Serviset e reja mbeten të gjetshme. Mungesa e vlerësimit nuk është gjykim për cilësinë.">Neue Betriebe bleiben auffindbar. Eine fehlende Bewertung ist keine Qualitätsaussage.</p></div>
+              <div class="contact-bar"><div><strong data-de="Du wählst den Kontakt" data-sq="Ti zgjedh kontaktin">Du wählst den Kontakt</strong><br/><span data-de="Kein Versand und keine Buchung im Konzept." data-sq="Asnjë dërgim dhe asnjë rezervim në koncept.">Kein Versand und keine Buchung im Konzept.</span></div><button class="button button-primary" type="button" id="open-contact" data-de="Kontakt wählen" data-sq="Zgjidh kontaktin">Kontakt wählen</button></div>
+            </article>
+            <aside class="panel profile-aside"><h2 style="font-size:1.3rem" data-de="Was dieses Profil nicht behauptet" data-sq="Çfarë nuk pretendon ky profil">Was dieses Profil nicht behauptet</h2><p data-de="Keine Qualitätsgarantie, keine bestätigte Terminverfügbarkeit und keine echte Unternehmensprüfung." data-sq="Asnjë garanci cilësie, asnjë disponueshmëri e konfirmuar dhe asnjë verifikim i vërtetë kompanie.">Keine Qualitätsgarantie, keine bestätigte Terminverfügbarkeit und keine echte Unternehmensprüfung.</p><button class="button button-secondary" type="button" data-view-target="request" data-de="Andere Suche starten" data-sq="Fillo kërkim tjetër">Andere Suche starten</button></aside>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer"><div class="shell">AutoKosova · UX-Konzept · Keine Live-Daten, keine Kontaktübertragung, keine Buchung.</div></footer>
+
+    <div class="dialog-backdrop" id="contact-dialog" hidden role="dialog" aria-modal="true" aria-labelledby="contact-title">
+      <div class="dialog"><h2 id="contact-title" data-de="Kontakt bewusst wählen" data-sq="Zgjidh kontaktin me vetëdije">Kontakt bewusst wählen</h2><p data-de="Im Konzept wird keine Nachricht gesendet. Die Auswahl zeigt nur den späteren, selbst gewählten Kanal." data-sq="Në koncept nuk dërgohet mesazh. Zgjedhja tregon vetëm kanalin e mëvonshëm të zgjedhur vetë.">Im Konzept wird keine Nachricht gesendet. Die Auswahl zeigt nur den späteren, selbst gewählten Kanal.</p><div class="dialog-actions"><button class="button button-primary" type="button" data-contact-choice="Telefon" data-de="Telefon wählen – Konzept" data-sq="Zgjidh telefonin – koncept">Telefon wählen – Konzept</button><button class="button button-secondary" type="button" data-contact-choice="WhatsApp" data-de="WhatsApp wählen – Konzept" data-sq="Zgjidh WhatsApp – koncept">WhatsApp wählen – Konzept</button><button class="button button-quiet" type="button" id="close-contact" data-de="Abbrechen" data-sq="Anulo">Abbrechen</button></div><p class="contact-result" id="contact-result" role="status" hidden></p></div>
+    </div>
+
+    <script>
+      const views = [...document.querySelectorAll('.view')];
+      const language = document.getElementById('language');
+      const placeList = document.getElementById('place-list');
+      const contactDialog = document.getElementById('contact-dialog');
+      let lastTrigger = null;
+
+      function showView(name) {
+        views.forEach((view) => { view.hidden = view.id !== `view-${name}`; });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function translate(lang) {
+        document.documentElement.lang = lang;
+        document.querySelectorAll(`[data-${lang}]`).forEach((item) => { item.textContent = item.dataset[lang]; });
+      }
+
+      function updateSteps(step) {
+        document.getElementById('step-1').toggleAttribute('aria-current', step === 1);
+        document.getElementById('step-2').toggleAttribute('aria-current', step === 2);
+        document.getElementById('step-3').toggleAttribute('aria-current', step === 3);
+      }
+
+      function renderPlaces() {
+        const rows = [...placeList.querySelectorAll('.place-row')];
+        if (rows.length === 0) addPlace();
+      }
+
+      function addPlace() {
+        const row = document.createElement('div');
+        row.className = 'place-row';
+        row.innerHTML = `<div class="field"><label>Ort</label><select class="place" aria-label="Ort"><option value="">Bitte wählen</option><option value="Pristina">Pristina</option><option value="Prizren">Prizren</option><option value="Peja">Peja</option></select></div><div class="field"><label>Radius</label><select class="radius" aria-label="Radius"><option value="5">5 km</option><option value="15" selected>15 km</option><option value="30">30 km</option></select></div><button class="button button-danger remove-place" type="button" aria-label="Ort entfernen">Entfernen</button>`;
+        row.querySelector('.remove-place').addEventListener('click', () => { row.remove(); renderPlaces(); });
+        placeList.append(row);
+      }
+
+      function setResultState(state) {
+        const target = state === 'loaded' ? 'loaded-results' : `${state}-results`;
+        ['loaded-results', 'loading-results', 'empty-results', 'error-results'].forEach((id) => { document.getElementById(id).hidden = id !== target; });
+        const labels = { loaded: '2 Konzeptbetriebe. Verfügbarkeit ist nicht bestätigt.', loading: 'Ergebnisse werden geladen.', empty: 'Keine passenden Konzepttreffer.', error: 'Die Konzeptdaten sind gerade nicht verfügbar.' };
+        document.getElementById('result-announcement').textContent = labels[state];
+        if (state === 'loaded') showList();
+      }
+
+      function showList() {
+        document.getElementById('result-list').hidden = false;
+        document.getElementById('concept-map').hidden = true;
+        document.getElementById('list-toggle').setAttribute('aria-pressed', 'true');
+        document.getElementById('map-toggle').setAttribute('aria-pressed', 'false');
+      }
+
+      function showMap() {
+        document.getElementById('result-list').hidden = true;
+        document.getElementById('concept-map').hidden = false;
+        document.getElementById('map-toggle').setAttribute('aria-pressed', 'true');
+        document.getElementById('list-toggle').setAttribute('aria-pressed', 'false');
+      }
+
+      document.querySelectorAll('[data-view-target]').forEach((button) => button.addEventListener('click', () => showView(button.dataset.viewTarget)));
+      language.addEventListener('change', () => translate(language.value));
+      document.getElementById('to-areas').addEventListener('click', () => {
+        const valid = document.getElementById('service').value;
+        document.getElementById('service-error').hidden = Boolean(valid);
+        if (!valid) return;
+        document.getElementById('request-step-one').hidden = true;
+        document.getElementById('request-step-two').hidden = false;
+        updateSteps(2);
+        renderPlaces();
+      });
+      document.getElementById('back-to-details').addEventListener('click', () => {
+        document.getElementById('request-step-two').hidden = true;
+        document.getElementById('request-step-one').hidden = false;
+        updateSteps(1);
+      });
+      document.getElementById('add-place').addEventListener('click', addPlace);
+      document.getElementById('show-results').addEventListener('click', () => {
+        const places = [...document.querySelectorAll('.place')];
+        const valid = places.some((place) => place.value);
+        document.getElementById('place-error').hidden = valid;
+        if (!valid) return;
+        const first = places.find((place) => place.value);
+        const radius = first.closest('.place-row').querySelector('.radius').value;
+        document.getElementById('result-context').textContent = `${first.value} · ${radius} km · ${document.getElementById('service').value}`;
+        updateSteps(3);
+        showView('results');
+        setResultState('loading');
+        window.setTimeout(() => setResultState('loaded'), 450);
+      });
+      document.querySelectorAll('[data-result-state]').forEach((button) => button.addEventListener('click', () => setResultState(button.dataset.resultState)));
+      document.getElementById('list-toggle').addEventListener('click', showList);
+      document.getElementById('map-toggle').addEventListener('click', showMap);
+      document.getElementById('open-contact').addEventListener('click', (event) => {
+        lastTrigger = event.currentTarget;
+        contactDialog.hidden = false;
+        document.getElementById('contact-result').hidden = true;
+        contactDialog.querySelector('[data-contact-choice]').focus();
+      });
+      function closeContact() { contactDialog.hidden = true; if (lastTrigger) lastTrigger.focus(); }
+      document.getElementById('close-contact').addEventListener('click', closeContact);
+      document.querySelectorAll('[data-contact-choice]').forEach((button) => button.addEventListener('click', () => {
+        const result = document.getElementById('contact-result');
+        result.textContent = `${button.dataset.contactChoice} gewählt. Keine Nachricht wurde gesendet.`;
+        result.hidden = false;
+      }));
+      document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !contactDialog.hidden) closeContact(); });
+      renderPlaces();
+    </script>
+  </body>
+</html>
