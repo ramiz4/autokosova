@@ -29,6 +29,16 @@ import {
   type ReviewUpdateKind,
 } from './reviews';
 import {
+  MODERATION_ACTIONS,
+  MODERATION_REASON_CODES,
+  MODERATION_REPORT_CATEGORIES,
+  type AppealInput,
+  type ContentReportInput,
+  type ModerationActionInput,
+  type ModerationLifecycleStore,
+  type RetentionPolicyInput,
+} from './moderation';
+import {
   parsePublicWorkshopSearch,
   type WorkshopSearchStore,
   WorkshopSearchValidationError,
@@ -44,6 +54,7 @@ import {
 interface ServerOptions {
   readonly accessStore?: AccessStore;
   readonly oidcConfig?: ZitadelOidcConfig;
+  readonly moderationStore?: ModerationLifecycleStore;
   readonly repairRequestStore?: RepairRequestStore;
   readonly reviewStore?: ReviewStore;
   readonly searchStore?: WorkshopSearchStore;
@@ -213,6 +224,61 @@ const reviewDecisionSchema = {
   type: 'object',
 };
 
+const contentReportSchema = {
+  additionalProperties: false,
+  properties: {
+    category: { enum: MODERATION_REPORT_CATEGORIES, type: 'string' },
+    details: { maxLength: 1200, minLength: 20, type: 'string' },
+    subjectId: { maxLength: 120, minLength: 1, type: 'string' },
+    subjectType: { enum: ['review', 'workshop_profile'], type: 'string' },
+  },
+  required: ['category', 'subjectId', 'subjectType'],
+  type: 'object',
+};
+
+const moderationActionSchema = {
+  additionalProperties: false,
+  properties: {
+    action: { enum: MODERATION_ACTIONS, type: 'string' },
+    reasonCode: { enum: MODERATION_REASON_CODES, type: 'string' },
+  },
+  required: ['action', 'reasonCode'],
+  type: 'object',
+};
+
+const appealSchema = {
+  additionalProperties: false,
+  properties: {
+    caseId: { maxLength: 120, minLength: 1, type: 'string' },
+    message: { maxLength: 1200, minLength: 20, type: 'string' },
+  },
+  required: ['caseId', 'message'],
+  type: 'object',
+};
+
+const retentionPolicySchema = {
+  additionalProperties: false,
+  properties: {
+    auditLogRetentionDays: { maximum: 3650, minimum: 1, type: 'integer' },
+    operatorApprovalReference: { maxLength: 160, minLength: 1, type: 'string' },
+    publicReviewHandling: { enum: ['delete', 'retain_anonymized'], type: 'string' },
+    repairRequestRetentionDays: { maximum: 3650, minimum: 1, type: 'integer' },
+    reportRetentionDays: { maximum: 3650, minimum: 1, type: 'integer' },
+    reviewEvidenceRetentionDays: { maximum: 3650, minimum: 1, type: 'integer' },
+    version: { maxLength: 80, minLength: 1, type: 'string' },
+  },
+  required: [
+    'version',
+    'operatorApprovalReference',
+    'publicReviewHandling',
+    'reviewEvidenceRetentionDays',
+    'repairRequestRetentionDays',
+    'reportRetentionDays',
+    'auditLogRetentionDays',
+  ],
+  type: 'object',
+};
+
 export function createServer(options: ServerOptions = {}) {
   const app = Fastify({
     bodyLimit: 5 * 1024 * 1024,
@@ -230,6 +296,7 @@ export function createServer(options: ServerOptions = {}) {
   const repairRequestStore: RepairRequestStore = options.repairRequestStore ?? accessStore;
   const reviewStore: ReviewStore = options.reviewStore ?? accessStore;
   const searchStore: WorkshopSearchStore = options.searchStore ?? accessStore;
+  const moderationStore: ModerationLifecycleStore = options.moderationStore ?? accessStore;
 
   app.register(cookie);
   app.addContentTypeParser(
@@ -249,6 +316,14 @@ export function createServer(options: ServerOptions = {}) {
     (reviewStore as object) !== (searchStore as object)
   ) {
     app.addHook('onClose', async () => reviewStore.close?.());
+  }
+  if (
+    moderationStore.close &&
+    (moderationStore as object) !== (reviewStore as object) &&
+    (moderationStore as object) !== (repairRequestStore as object) &&
+    (moderationStore as object) !== (searchStore as object)
+  ) {
+    app.addHook('onClose', async () => moderationStore.close?.());
   }
 
   function requirePrincipal(
@@ -542,6 +617,79 @@ export function createServer(options: ServerOptions = {}) {
     }
   });
 
+  app.post(
+    '/api/me/content-reports',
+    { schema: { body: contentReportSchema } },
+    async (request, reply) => {
+      try {
+        const report = await moderationStore.createContentReport(
+          requirePrincipal(request, true),
+          request.body as ContentReportInput,
+        );
+        return reply.code(201).send({
+          caseId: report.id,
+          message: 'Die Meldung wurde zur unabhängigen Prüfung aufgenommen.',
+          status: report.status,
+        });
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.get('/api/me/moderation-cases', async (request, reply) => {
+    try {
+      return { cases: await moderationStore.listOwnModerationCases(requirePrincipal(request)) };
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+
+  app.post(
+    '/api/me/moderation-appeals',
+    { schema: { body: appealSchema } },
+    async (request, reply) => {
+      try {
+        const appealId = await moderationStore.createAppeal(
+          requirePrincipal(request, true),
+          request.body as AppealInput,
+        );
+        return reply.code(201).send({
+          id: appealId,
+          message: 'Der Widerspruch wurde zur erneuten Prüfung aufgenommen.',
+        });
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.get('/api/me/data-export', async (request, reply) => {
+    try {
+      return await moderationStore.exportPersonalData(requirePrincipal(request));
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+
+  app.post('/api/me/data-deletion-requests', async (request, reply) => {
+    try {
+      const deletion = await moderationStore.requestPersonalDataDeletion(
+        requirePrincipal(request, true),
+      );
+      return reply.code(202).send({
+        id: deletion.id,
+        status: deletion.status,
+        message:
+          deletion.status === 'submitted'
+            ? 'Der Löschauftrag wurde zur Bearbeitung aufgenommen.'
+            : 'Der Löschauftrag benötigt zuerst die dokumentierte Betreiberregel.',
+      });
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+
   app.get('/api/workshops/duplicate-candidates', async (request, reply) => {
     try {
       requirePrincipal(request);
@@ -761,6 +909,117 @@ export function createServer(options: ServerOptions = {}) {
         accessStore.addMembership(body.userId, body.workshopId, body.role);
         accessStore.auditEvents.push({ actorUserId: principal.userId, type: 'membership-granted' });
         return reply.code(201).send({ status: 'created' });
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.get('/api/admin/moderation/queue', async (request, reply) => {
+    try {
+      return { cases: await moderationStore.listModerationQueue(requirePrincipal(request)) };
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+
+  app.get('/api/admin/moderation/cases/:caseId', async (request, reply) => {
+    try {
+      const params = request.params as { caseId: string };
+      return await moderationStore.getModerationCase(requirePrincipal(request), params.caseId);
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+
+  app.post(
+    '/api/admin/moderation/cases/:caseId/assign',
+    {
+      schema: {
+        body: {
+          additionalProperties: false,
+          properties: { moderatorUserId: { maxLength: 120, minLength: 1, type: 'string' } },
+          required: ['moderatorUserId'],
+          type: 'object',
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const params = request.params as { caseId: string };
+        const body = request.body as { moderatorUserId: string };
+        await moderationStore.assignModerationCase(
+          requirePrincipal(request, true),
+          params.caseId,
+          body.moderatorUserId,
+        );
+        return reply.code(204).send();
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.post(
+    '/api/admin/moderation/cases/:caseId/action',
+    { schema: { body: moderationActionSchema } },
+    async (request, reply) => {
+      try {
+        const params = request.params as { caseId: string };
+        return await moderationStore.applyModerationAction(
+          requirePrincipal(request, true),
+          params.caseId,
+          request.body as ModerationActionInput,
+        );
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.post(
+    '/api/admin/lifecycle/retention-policy',
+    { schema: { body: retentionPolicySchema } },
+    async (request, reply) => {
+      try {
+        return reply
+          .code(201)
+          .send(
+            await moderationStore.configureRetentionPolicy(
+              requirePrincipal(request, true),
+              request.body as RetentionPolicyInput,
+            ),
+          );
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
+  app.get('/api/admin/lifecycle/data-deletion-requests', async (request, reply) => {
+    try {
+      return {
+        requests: await moderationStore.listDataDeletionRequests(requirePrincipal(request)),
+      };
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+
+  app.post(
+    '/api/admin/lifecycle/data-deletion-requests/:requestId/process',
+    async (request, reply) => {
+      try {
+        const params = request.params as { requestId: string };
+        const completed = await moderationStore.processPersonalDataDeletion(
+          requirePrincipal(request, true),
+          params.requestId,
+        );
+        if (completed) {
+          accessStore.revokeUserSessions(completed.userId);
+          for (const fileId of completed.fileIds) accessStore.deletePrivateFile(fileId);
+        }
+        return reply.code(204).send();
       } catch (error) {
         return errorResponse(error, reply);
       }

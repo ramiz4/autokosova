@@ -10,6 +10,7 @@ import { AccessStore } from './server/access';
 import { readZitadelOidcConfig } from './server/oidc';
 import { PostgresRepairRequestStore } from './server/repair-request-store';
 import { PostgresReviewStore } from './server/review-store';
+import { PostgresModerationStore } from './server/moderation-store';
 import { PostgresWorkshopSearchStore } from './server/workshop-search-store';
 
 const databaseUrl = process.env['DATABASE_URL'];
@@ -22,6 +23,7 @@ const app = createServer({
   oidcConfig: readZitadelOidcConfig(process.env),
   ...(databaseUrl ? { repairRequestStore: new PostgresRepairRequestStore(databaseUrl) } : {}),
   ...(databaseUrl ? { reviewStore: new PostgresReviewStore(databaseUrl) } : {}),
+  ...(databaseUrl ? { moderationStore: new PostgresModerationStore(databaseUrl) } : {}),
   ...(databaseUrl ? { searchStore: new PostgresWorkshopSearchStore(databaseUrl) } : {}),
   staticRoot: join(import.meta.dirname, '../browser'),
 });
