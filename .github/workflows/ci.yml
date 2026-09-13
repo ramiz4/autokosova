@@ -36,6 +36,7 @@ jobs:
       - run: npm ci
       - run: npm run db:migrate
       - run: npm run db:seed
+      - run: npm run db:seed
       - run: ALLOW_LOCAL_RESET=1 npm run db:reset
       - run: npm run format:check
       - run: npm run lint
