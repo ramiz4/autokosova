@@ -183,6 +183,14 @@ interface Area {
                       [max]="limits.maxRadiusKm"
                       class="min-h-11 rounded-lg border border-slate-300 bg-white px-2"
                   /></label>
+                  <input
+                    [(ngModel)]="area.radiusKm"
+                    [name]="'radius-range-' + index"
+                    type="range"
+                    [min]="limits.minRadiusKm"
+                    [max]="limits.maxRadiusKm"
+                    class="mt-3 w-full accent-brand"
+                  />
                   @if (areas.length > 1) {
                     <button
                       type="button"
@@ -203,19 +211,20 @@ interface Area {
                   {{ ui('search.ui.addArea') }}
                 </button>
               }
+              <fieldset class="grid gap-1 text-sm font-semibold">
+                <legend>{{ language.t('home.service') }}</legend>
+                @for (entry of serviceIds; track entry) {
+                  <label class="flex min-h-7 items-center gap-2 font-normal">
+                    <input
+                      type="checkbox"
+                      [checked]="service === entry"
+                      (change)="toggleService(entry)"
+                      class="size-4 accent-brand"
+                    />{{ language.serviceLabel(entry) }}
+                  </label>
+                }
+              </fieldset>
               <label class="grid gap-1 text-sm font-semibold"
-                >{{ language.t('home.service')
-                }}<select
-                  [(ngModel)]="service"
-                  name="service"
-                  class="min-h-11 rounded-lg border border-slate-300 bg-white px-2"
-                >
-                  <option value="">{{ language.t('profile.allServices') }}</option>
-                  @for (entry of serviceIds; track entry) {
-                    <option [value]="entry">{{ language.serviceLabel(entry) }}</option>
-                  }
-                </select></label
-              ><label class="grid gap-1 text-sm font-semibold"
                 >Marke<select
                   [(ngModel)]="vehicleMake"
                   name="vehicleMake"
@@ -254,7 +263,7 @@ interface Area {
                   <li
                     class="grid overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm transition hover:border-brand/30 hover:shadow-md sm:grid-cols-[205px_minmax(0,1fr)]"
                   >
-                    <div class="relative min-h-40 bg-slate-100">
+                    <div class="relative min-h-[144px] bg-slate-100">
                       @if (photoIds(workshop).length) {
                         <img
                           [src]="photoUrl(workshop)"
@@ -265,7 +274,7 @@ interface Area {
                         <img
                           [src]="conceptImage(index)"
                           alt=""
-                          class="h-full min-h-40 w-full object-cover"
+                          class="h-full min-h-[144px] w-full object-cover"
                         />
                         <span
                           class="absolute bottom-2 left-2 rounded bg-slate-950/75 px-2 py-1 text-xs font-bold text-white"
@@ -274,7 +283,7 @@ interface Area {
                         <span class="sr-only">{{ ui('search.ui.noPhoto') }}</span>
                       }
                     </div>
-                    <div class="p-5">
+                    <div class="relative p-4 sm:min-h-[144px] sm:pr-48">
                       <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <h2 class="text-xl font-bold tracking-tight">{{ workshop.name }}</h2>
@@ -308,7 +317,7 @@ interface Area {
                         [routerLink]="language.link('workshop', workshop.id)"
                         appButton="outline"
                         size="compact"
-                        class="mt-4"
+                        class="mt-4 sm:absolute sm:right-5 sm:top-1/2 sm:mt-0 sm:-translate-y-1/2"
                         >{{ ui('search.ui.details') }}<app-icon name="arrow" class="size-4"
                       /></a>
                     </div>
@@ -396,6 +405,10 @@ export class SearchHandoffComponent {
   }
   protected addArea(): void {
     this.areas.push({ placeId: 'xk-prizren', radiusKm: 20 });
+  }
+
+  protected toggleService(service: string): void {
+    this.service = this.service === service ? '' : service;
   }
   protected removeArea(index: number): void {
     this.areas.splice(index, 1);
