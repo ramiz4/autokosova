@@ -2,6 +2,7 @@ import type { AppLanguage } from './i18n';
 
 export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, string>>>> = {
   de: {
+    'search.ui.details': 'Details ansehen',
     'search.ui.heroIntro':
       'Vergleiche geprüfte Werkstätten in deiner Nähe und finde den passenden Service für dein Fahrzeug – schnell, transparent und nachvollziehbar.',
     'search.ui.addArea': 'Weiteren Ort hinzufügen',
@@ -25,6 +26,7 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'search.ui.viewMap': 'Karte',
   },
   sq: {
+    'search.ui.details': 'Shiko detajet',
     'search.ui.heroIntro':
       'Krahaso servise të kontrolluara pranë teje dhe gjej shërbimin e përshtatshëm për automjetin tënd – shpejt, qartë dhe në mënyrë të kuptueshme.',
     'search.ui.addArea': 'Shto një vend tjetër',
@@ -48,6 +50,7 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'search.ui.viewMap': 'Hartë',
   },
   en: {
+    'search.ui.details': 'View details',
     'search.ui.heroIntro':
       'Compare checked garages near you and find the suitable service for your vehicle — quickly, transparently and with clear reasons.',
     'search.ui.addArea': 'Add another location',

@@ -148,7 +148,7 @@ interface Area {
           >
         </div>
         <div class="grid gap-5 xl:grid-cols-[272px_minmax(0,1fr)]">
-          <aside class="hidden rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+          <aside class="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
             <div class="flex items-center justify-between gap-3">
               <h2 class="font-bold">{{ ui('search.ui.filter') }}</h2>
               <button
@@ -250,11 +250,11 @@ interface Area {
               </div>
             } @else {
               <ol class="grid gap-4">
-                @for (workshop of response.results; track workshop.id) {
+                @for (workshop of response.results; track workshop.id; let index = $index) {
                   <li
-                    class="grid overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm sm:grid-cols-[180px_minmax(0,1fr)]"
+                    class="grid overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm transition hover:border-brand/30 hover:shadow-md sm:grid-cols-[205px_minmax(0,1fr)]"
                   >
-                    <div class="min-h-36 bg-slate-100">
+                    <div class="relative min-h-40 bg-slate-100">
                       @if (photoIds(workshop).length) {
                         <img
                           [src]="photoUrl(workshop)"
@@ -262,19 +262,22 @@ interface Area {
                           class="h-full w-full object-cover"
                         />
                       } @else {
-                        <div
-                          class="flex h-full min-h-36 items-center justify-center text-center text-sm font-semibold text-slate-500"
+                        <img
+                          [src]="conceptImage(index)"
+                          alt=""
+                          class="h-full min-h-40 w-full object-cover"
+                        />
+                        <span
+                          class="absolute bottom-2 left-2 rounded bg-slate-950/75 px-2 py-1 text-xs font-bold text-white"
+                          >Konzeptbild</span
                         >
-                          <app-icon name="shield" class="mr-2 size-6" />{{
-                            ui('search.ui.noPhoto')
-                          }}
-                        </div>
+                        <span class="sr-only">{{ ui('search.ui.noPhoto') }}</span>
                       }
                     </div>
                     <div class="p-5">
                       <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <h2 class="text-xl font-bold">{{ workshop.name }}</h2>
+                          <h2 class="text-xl font-bold tracking-tight">{{ workshop.name }}</h2>
                           <p class="mt-1 text-sm text-slate-600">
                             {{
                               response.allResults
@@ -290,7 +293,7 @@ interface Area {
                           >
                         }
                       </div>
-                      <p class="mt-3 text-sm font-semibold text-amber-700">
+                      <p class="mt-2 text-sm font-semibold text-amber-700">
                         {{ reviewLabel(workshop.reviewSummary) }}
                       </p>
                       <ul class="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-brand-dark">
@@ -305,8 +308,8 @@ interface Area {
                         [routerLink]="language.link('workshop', workshop.id)"
                         appButton="outline"
                         size="compact"
-                        class="mt-5"
-                        >{{ language.t('search.profile') }}<app-icon name="arrow" class="size-4"
+                        class="mt-4"
+                        >{{ ui('search.ui.details') }}<app-icon name="arrow" class="size-4"
                       /></a>
                     </div>
                   </li>
@@ -336,7 +339,7 @@ interface Area {
               </nav>
             }
           </section>
-          <aside class="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+          <aside class="hidden rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
             <div class="flex items-center justify-between gap-3">
               <h2 class="font-bold">{{ ui('search.ui.viewMap') }}</h2>
               <button
@@ -412,6 +415,10 @@ export class SearchHandoffComponent {
   }
   protected photoIds(workshop: Result): readonly string[] {
     return workshop.photoIds ?? [];
+  }
+
+  protected conceptImage(index: number): string {
+    return `/images/search/cards/concept-${(index % 4) + 1}.webp`;
   }
 
   protected specializations(workshop: Result): readonly string[] {
