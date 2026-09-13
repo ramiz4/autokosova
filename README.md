@@ -6,7 +6,7 @@ Passende Werkstatt anhand nachvollziehbarer Erfahrungen, Spezialisierung und Sta
 
 ## Projektstand
 
-Privates Repository mit Produktplanung und MVP-Backlog. Noch keine implementierte Plattform. Marke, Domain, Stack und Cloudanbieter sind noch nicht abschliessend festgelegt.
+Privates Repository mit Produktplanung und technischer Grundlage. Der Stack ist in [ADR-001](docs/architecture/ADR-001.md) und [ADR-002](docs/architecture/ADR-002.md) festgelegt; Marke, Domain und Anbieterbestellungen sind weiterhin nicht freigegeben.
 
 - [Produktbrief und MVP](docs/PRODUCT_BRIEF.md)
 - [Monetarisierung](docs/MONETIZATION.md)
@@ -14,9 +14,35 @@ Privates Repository mit Produktplanung und MVP-Backlog. Noch keine implementiert
 - [Arbeitsregeln für Entwickler und AI Agents](AGENTS.md)
 - [Designrichtung und Präzisierungen](docs/design/README.md)
 
-## Startpunkt
+## Entwicklungsstart
 
-[Issue #4: Produkt und Monetarisierung](https://github.com/ramiz4/autokosova/issues/4), darauf [UX #5](https://github.com/ramiz4/autokosova/issues/5) und [Architektur #6](https://github.com/ramiz4/autokosova/issues/6). Reale Gespräche und Betreiberfreigaben bleiben echte Abnahmepunkte; Entwürfe dürfen mit gekennzeichneten Annahmen vorbereitet werden.
+Voraussetzung: Node.js 24 LTS, Docker und Docker Compose. Die Datenbank enthält ausschließlich fiktive lokale Daten.
+Auf ARM-Macs nutzt der offizielle PostGIS-Container die von Docker bereitgestellte `linux/amd64`-Emulation.
+
+```sh
+npm ci
+docker compose up -d --wait db
+export DATABASE_URL=postgresql://autokosova:autokosova@127.0.0.1:55432/autokosova
+npm run db:migrate
+npm run db:seed
+npm start
+```
+
+Die App ist im Entwicklungsmodus über Angular erreichbar. Nach einem Produktionsbuild prüft `npm run test:smoke` die SSR-Startseite und `GET /health`.
+
+```sh
+npm run format:check
+npm run lint
+npm run typecheck
+npm test
+npm run test:server
+npm run build
+npm run test:smoke
+ALLOW_LOCAL_RESET=1 npm run db:reset
+```
+
+`db:reset` ist absichtlich ohne `ALLOW_LOCAL_RESET=1` gesperrt und darf niemals mit `NODE_ENV=production` laufen.
+Falls Port 55432 belegt ist, kann vor `docker compose up` ein anderer lokaler Port mit `AUTOKOSOVA_DB_PORT=55433` gesetzt werden; `DATABASE_URL` muss dann denselben Port verwenden.
 
 ## Produktregeln
 
@@ -24,7 +50,7 @@ Qualität vor Billigpreis. Kein Bietermodell. Suche, Profile und Direktkontakt o
 
 ## Entwicklung
 
-Ausschliesslich GitHub Issues und Pull Requests; kein Jira und keine doppelte Ticketpflege. Architektur und echte Build-/Testcommands werden durch die ersten Grundlagen-Issues festgelegt. Keine Infrastruktur wurde bestellt oder produktiv eingerichtet. Das lokale Importskript ist nach dieser Einrichtung nicht mehr erforderlich.
+Ausschliesslich GitHub Issues und Pull Requests; kein Jira und keine doppelte Ticketpflege. Die Build- und Testcommands sind oben dokumentiert. Keine Infrastruktur wurde bestellt oder produktiv eingerichtet. GitHub Actions nutzt eine flüchtige PostGIS-Testdatenbank und erhält keine Secrets.
 
 ## Lizenz
 

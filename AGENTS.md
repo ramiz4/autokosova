@@ -30,3 +30,7 @@ Serverseitige Objektberechtigungen. Private Belege, Fahrzeugdaten und Reisezeite
 ## Definition of Done
 
 Akzeptanzkriterien erfüllt; passende Tests tatsächlich ausgeführt; Fehler-/Leerzustände behandelt; mobile Oberfläche und DE/SQ-Texte berücksichtigt; Datenschutz/Berechtigungen geprüft; relevante Dokumentation aktualisiert; PR/CI überprüfbar. Nicht ausgeführte Prüfungen ausdrücklich benennen. Story Points sind vorläufige relative Grössen, keine Stunden- oder Lieferzusagen.
+
+## Tatsächliche Entwicklungscommands
+
+Nach `npm ci` startet `docker compose up -d --wait db` die ausschließlich lokale PostGIS-Datenbank auf Port 55432 (über `AUTOKOSOVA_DB_PORT` anpassbar). Mit passendem `DATABASE_URL` folgen `npm run db:migrate`, `npm run db:seed`, `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:server`, `npm run build` und `npm run test:smoke`. Ein Reset benötigt ausdrücklich `ALLOW_LOCAL_RESET=1 npm run db:reset`; er ist bei `NODE_ENV=production` gesperrt. Keine Secrets, Kunden- oder echten Werkstattdaten in lokale Seeds, CI oder Preview-Umgebungen geben.
