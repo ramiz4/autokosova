@@ -5,7 +5,7 @@ import { createServer } from '../src/server/app';
 import { localizedServiceLabel, translate } from '../src/shared/i18n';
 
 test('the three UI catalogs keep product strings and catalog labels separate from user content', () => {
-  assert.equal(translate('en', 'home.title'), 'Find a suitable auto repair shop in Kosovo.');
+  assert.equal(translate('en', 'home.title'), 'Find a suitable garage in Kosovo.');
   assert.equal(translate('sq', 'search.title'), 'Servise të përshtatshme');
   assert.equal(localizedServiceLabel('en', 'bremsen'), 'Brakes');
   assert.equal(localizedServiceLabel('sq', 'bremsen'), 'Frenat');

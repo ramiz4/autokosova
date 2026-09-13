@@ -10,7 +10,7 @@ export const LANGUAGE_LABELS: Readonly<Record<AppLanguage, string>> = {
 
 type MessageCatalog = Readonly<Record<string, string>>;
 
-// These are product UI strings, not translations of auto-repair-shop-provided descriptions or reviews.
+// These are product UI strings, not translations of garage-provided descriptions or reviews.
 // User-provided content stays in its submitted language and is explicitly labelled as such.
 const messages: Readonly<Record<AppLanguage, MessageCatalog>> = {
   de: {
@@ -165,22 +165,22 @@ const messages: Readonly<Record<AppLanguage, MessageCatalog>> = {
     'contact.call': 'Call',
     'contact.choose': 'Choose contact',
     'contact.description':
-      'You choose this auto repair shop yourself. A click only opens the visible draft or phone app. It does not send a message, confirm a job, or reserve an appointment.',
+      'You choose this garage yourself. A click only opens the visible draft or phone app. It does not send a message, confirm a job, or reserve an appointment.',
     'contact.openWhatsapp': 'Open in WhatsApp',
     'contact.title': 'Prepare contact deliberately',
     'contact.unavailable':
       'This profile has no valid public phone number, so no external contact link is offered.',
     'contact.userTextNote':
       'Your details are used only in the visible draft. Stored requests, VINs, registration numbers, documents, upload URLs, and exact travel dates remain excluded.',
-    'home.badge': 'Find an auto repair shop',
-    'home.direct.body': 'You choose the auto repair shop and contact channel.',
+    'home.badge': 'Find a garage',
+    'home.direct.body': 'You choose the garage and contact channel.',
     'home.direct.title': 'Direct',
     'home.honest.body': 'No ratings or availability are invented.',
     'home.honest.title': 'Honest',
     'home.intro':
       'Search by service and place without an account. You decide whom to contact — with no bidding, booking, or automatic request.',
     'home.request': 'Detailed request with vehicle and multiple places',
-    'home.search': 'Find an auto repair shop',
+    'home.search': 'Find a garage',
     'home.location': 'Location',
     'home.radius': 'Radius km',
     'home.service': 'Service',
@@ -188,25 +188,25 @@ const messages: Readonly<Record<AppLanguage, MessageCatalog>> = {
     'home.searchErrorService': 'Please choose a service first.',
     'home.searchIntro': 'The radius is straight-line distance in Kosovo.',
     'home.searchTitle': 'Start your search',
-    'home.title': 'Find a suitable auto repair shop in Kosovo.',
+    'home.title': 'Find a suitable garage in Kosovo.',
     'home.transparent.body': 'Clear reasons instead of paid placement.',
     'home.transparent.title': 'Transparent',
     'home.trust':
-      'A company-data check is not a repair-quality guarantee. You agree contact, price, and completion directly with the auto repair shop you choose.',
-    'home.workshopOnboarding': 'Register an auto repair shop',
+      'A company-data check is not a repair-quality guarantee. You agree contact, price, and completion directly with the garage you choose.',
+    'home.workshopOnboarding': 'Register a garage',
     'profile.details': 'Services and details',
     'profile.language': 'Languages',
-    'profile.loading': 'Auto repair shop profile is loading …',
+    'profile.loading': 'Garage profile is loading …',
     'profile.noPhotos': 'No photos published.',
     'profile.noReviews': 'No reviews yet',
     'profile.noReviewsBody':
       'Reviews appear only after a separate, verifiable visit and moderation process. We do not show sample stars.',
-    'profile.notAvailable': 'Auto repair shop profile unavailable',
+    'profile.notAvailable': 'Garage profile unavailable',
     'profile.notAvailableBody':
-      'The auto repair shop may not be published, or the connection is interrupted. No contact was initiated.',
-    'profile.originalText': 'Original text supplied by the auto repair shop; not translated.',
+      'The garage may not be published, or the connection is interrupted. No contact was initiated.',
+    'profile.originalText': 'Original text supplied by the garage; not translated.',
     'profile.photos': 'Photos',
-    'profile.profile': 'Auto repair shop profile',
+    'profile.profile': 'Garage profile',
     'profile.reviews': 'Experiences after a visit',
     'profile.reviewsOriginal':
       'Review texts are shown in their original language and are not presented as professional translations.',
@@ -231,10 +231,10 @@ const messages: Readonly<Record<AppLanguage, MessageCatalog>> = {
     'profile.reviewsUnavailable':
       'Reviews are unavailable right now. That does not mean there are none.',
     'profile.visitProof':
-      '“Visit verified” means private evidence was checked. The invoice, full identity, and vehicle details remain private. An auto repair shop response does not alter or remove a review.',
+      '“Visit verified” means private evidence was checked. The invoice, full identity, and vehicle details remain private. A garage response does not alter or remove a review.',
     'request.intro':
-      'Your details are only your search context. This creates no public job, booking, or automatic request to auto repair shops.',
-    'request.search': 'Search suitable auto repair shops',
+      'Your details are only your search context. This creates no public job, booking, or automatic request to garages.',
+    'request.search': 'Search suitable garages',
     'request.title': 'What work does your vehicle need?',
     'request.addVehicle': 'Add vehicle details',
     'request.back': 'Back',
@@ -249,14 +249,13 @@ const messages: Readonly<Record<AppLanguage, MessageCatalog>> = {
     'search.activeFilters': 'Active filters',
     'search.aerialDistance': '{distance} straight-line distance from {place}',
     'search.adjust': 'Adjust filters',
-    'search.empty': 'No auto repair shop in the selected area',
+    'search.empty': 'No garage in the selected area',
     'search.emptyBody':
-      'Adjust the service or location, or deliberately choose a larger radius. We do not automatically show more distant auto repair shops.',
+      'Adjust the service or location, or deliberately choose a larger radius. We do not automatically show more distant garages.',
     'search.error': 'Results are unavailable right now',
-    'search.errorBody':
-      'Please try again or adjust your filters. No request was sent to an auto repair shop.',
-    'search.foundOne': 'auto repair shop found',
-    'search.foundMany': 'auto repair shops found',
+    'search.errorBody': 'Please try again or adjust your filters. No request was sent to a garage.',
+    'search.foundOne': 'garage found',
+    'search.foundMany': 'garages found',
     'search.invalid': 'Search details are missing',
     'search.invalidBody':
       'Choose a service, place, and radius. We never silently broaden the search area.',
@@ -272,10 +271,10 @@ const messages: Readonly<Record<AppLanguage, MessageCatalog>> = {
     'search.reasonLanguage': 'Language: {language}',
     'search.reasonService': 'Service: {service}',
     'search.selfReported': 'Self-reported:',
-    'search.title': 'Suitable auto repair shops',
+    'search.title': 'Suitable garages',
     'search.why': 'Why it matches',
     'search.intro':
-      'The search radius is a straight line. Multiple locations are considered together, and each auto repair shop appears once. Vehicle, travel, and file details are never sent to auto repair shops.',
+      'The search radius is a straight line. Multiple locations are considered together, and each garage appears once. Vehicle, travel, and file details are never sent to garages.',
   },
   sq: {
     'a11y.language': 'Zgjidh gjuhën',
