@@ -46,6 +46,16 @@ test('guest paths stay public while private vehicles require a valid session', a
   }
 });
 
+test('login stays unavailable until an OIDC provider is configured', async () => {
+  const { app } = setup();
+  try {
+    const response = await app.inject({ method: 'GET', url: '/auth/login' });
+    assert.equal(response.statusCode, 503);
+  } finally {
+    await app.close();
+  }
+});
+
 test('customers only receive their own vehicles', async () => {
   const { app, customerA, customerB, customerVehicle } = setup();
   try {

@@ -16,6 +16,11 @@ interface Session {
   readonly userId: string;
 }
 
+interface OidcTransaction {
+  readonly codeVerifier: string;
+  readonly expiresAt: Date;
+}
+
 interface Vehicle {
   readonly id: string;
   readonly label: string;
@@ -43,6 +48,7 @@ export class AccessStore {
   readonly auditEvents: Array<{ actorUserId: string; type: string }> = [];
   private readonly files = new Map<string, PrivateFile>();
   private readonly memberships = new Map<string, Membership>();
+  private readonly oidcTransactions = new Map<string, OidcTransaction>();
   private readonly sessions = new Map<string, Session>();
   private readonly users = new Map<string, Set<SystemRole>>();
   private readonly vehicles = new Map<string, Vehicle>();
@@ -63,10 +69,24 @@ export class AccessStore {
     return { csrfToken, sessionId };
   }
 
+  createOidcTransaction(state: string, codeVerifier: string) {
+    this.oidcTransactions.set(state, {
+      codeVerifier,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    });
+  }
+
   createVehicle(ownerUserId: string, label: string) {
     const id = randomUUID();
     this.vehicles.set(id, { id, label, ownerUserId });
     return id;
+  }
+
+  consumeOidcTransaction(state: string, now = new Date()) {
+    const transaction = this.oidcTransactions.get(state);
+    this.oidcTransactions.delete(state);
+    if (!transaction || transaction.expiresAt <= now) return undefined;
+    return transaction;
   }
 
   getFileGrant(userId: string, contentType: string, sizeBytes: number): FileGrant {
