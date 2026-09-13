@@ -39,6 +39,30 @@ export class PostgresWorkshopSearchStore implements WorkshopSearchStore {
     await this.pool.end();
   }
 
+  async getPublicWorkshop(workshopId: string): Promise<PublicWorkshopProfile | undefined> {
+    const result = await this.pool.query<SearchRow>(
+      `SELECT
+         profile.id,
+         profile.name,
+         profile.place_id,
+         profile.description,
+         profile.public_phone,
+         profile.languages,
+         profile.self_reported_specializations,
+         profile.service_category_ids,
+         profile.vehicle_make_ids,
+         profile.company_data_verified,
+         ARRAY[]::text[] AS photo_ids,
+         profile.place_id AS matching_place_id,
+         0::double precision AS distance_m
+       FROM public_workshop_profile AS profile
+       WHERE profile.id = $1`,
+      [workshopId],
+    );
+    const row = result.rows[0];
+    return row ? toPublicProfile(row) : undefined;
+  }
+
   async searchPublicWorkshops(
     input: PublicWorkshopSearchInput,
   ): Promise<PublicWorkshopSearchResponse> {
@@ -99,7 +123,16 @@ export class PostgresWorkshopSearchStore implements WorkshopSearchStore {
 }
 
 function toCandidate(row: SearchRow): SearchMatchCandidate {
-  const profile: PublicWorkshopProfile = {
+  const profile = toPublicProfile(row);
+  return {
+    ...profile,
+    distanceM: Number(row.distance_m),
+    matchingPlaceId: row.matching_place_id,
+  };
+}
+
+function toPublicProfile(row: SearchRow): PublicWorkshopProfile {
+  return {
     contact: row.public_phone ? { phone: row.public_phone } : {},
     ...(row.description ? { description: row.description } : {}),
     id: row.id,
@@ -111,10 +144,5 @@ function toCandidate(row: SearchRow): SearchMatchCandidate {
     serviceCategoryIds: row.service_category_ids ?? [],
     vehicleMakeIds: row.vehicle_make_ids ?? [],
     ...(row.company_data_verified ? { verificationLabel: 'Unternehmensdaten geprüft' } : {}),
-  };
-  return {
-    ...profile,
-    distanceM: Number(row.distance_m),
-    matchingPlaceId: row.matching_place_id,
   };
 }

@@ -16,6 +16,7 @@ Privates Repository mit Produktplanung und technischer Grundlage. Der Stack ist 
 - [ZITADEL-Integration und offenes Login-Gate](docs/architecture/AUTH-INTEGRATION.md)
 - [Werkstattaufnahme, Prüfung und Bildschutz](docs/architecture/WORKSHOP-ONBOARDING.md)
 - [Öffentliche Mehrortsuche und nachvollziehbares Matching](docs/architecture/SEARCH-MATCHING.md)
+- [Bewusster Direktkontakt über WhatsApp oder Telefon](docs/architecture/DIRECT-CONTACT.md)
 
 ## Entwicklungsstart
 
@@ -68,6 +69,14 @@ den gepflegten Leistungsfilter und Ortskreise als Luftlinie. Mehrere Orte werden
 zum Beispiel `places=xk-pristina:20,xk-prizren:30`. Optional sind `vehicleMake=skoda` und
 `language=Deutsch`. Suchanfragen enthalten keine privaten Anfragewerte. Ohne Kartenanbieter bleibt
 die Ergebnisliste mit Entfernung zum passenden Suchort funktionsfähig.
+
+## Direktkontakt lokal prüfen
+
+Ein veröffentlichtes Profil unter `/werkstatt/<id>` zeigt nur freigegebene Profildaten sowie den
+ehrlichen Bewertungsleerzustand. WhatsApp und Telefon sind bewusst ausgewählte externe Aktionen:
+Die Nachrichtenvorschau ist vor dem Öffnen sichtbar, enthält keine gespeicherten privaten
+Anfragewerte und wird nicht durch AutoKosova gesendet. Ohne gültige öffentliche Telefonnummer gibt
+es keinen externen Link.
 
 ## Entwicklung
 

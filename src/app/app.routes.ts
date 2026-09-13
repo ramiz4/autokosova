@@ -3,6 +3,7 @@ import { FoundationComponent } from './app';
 import { RepairRequestComponent } from './repair-request.component';
 import { SearchHandoffComponent } from './search-handoff.component';
 import { WorkshopOnboardingComponent } from './workshop-onboarding.component';
+import { WorkshopProfileComponent } from './workshop-profile.component';
 
 export const routes: Routes = [
   {
@@ -24,6 +25,11 @@ export const routes: Routes = [
     component: SearchHandoffComponent,
     path: 'suche',
     title: 'Werkstattsuche | AutoKosova',
+  },
+  {
+    component: WorkshopProfileComponent,
+    path: 'werkstatt/:workshopId',
+    title: 'Werkstattprofil | AutoKosova',
   },
   { path: '**', redirectTo: '' },
 ];

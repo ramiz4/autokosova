@@ -229,7 +229,7 @@ export function createServer(options: ServerOptions = {}) {
   app.get('/api/public/workshops', async () => ({ workshops: accessStore.listPublicWorkshops() }));
   app.get('/api/public/workshops/:workshopId', async (request, reply) => {
     const params = request.params as { workshopId: string };
-    const workshop = accessStore.getPublicWorkshop(params.workshopId);
+    const workshop = await searchStore.getPublicWorkshop(params.workshopId);
     return workshop ? workshop : reply.code(404).send({ error: 'Published workshop not found' });
   });
   app.get('/api/public/workshops/:workshopId/photos/:photoId', async (request, reply) => {
