@@ -208,16 +208,10 @@ interface Area {
                         }
                       </select></span
                     ></label
-                  ><label class="mt-4 grid gap-2 text-xs font-bold"
-                    >{{ ui('search.ui.radius')
-                    }}<input
-                      [(ngModel)]="area.radiusKm"
-                      [name]="'radius-' + index"
-                      type="number"
-                      [min]="limits.minRadiusKm"
-                      [max]="limits.maxRadiusKm"
-                      class="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm"
-                  /></label>
+                  >
+                  <p class="mt-4 text-sm font-bold">
+                    {{ ui('search.ui.radiusValue', { radius: area.radiusKm }) }}
+                  </p>
                   <input
                     [(ngModel)]="area.radiusKm"
                     [name]="'radius-range-' + index"
