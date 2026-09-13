@@ -288,6 +288,7 @@ test(
       await client.query('COMMIT');
 
       const result = await store.searchPublicWorkshops(query({ places: 'xk-pristina:5' }));
+      const profile = await store.getPublicWorkshop(workshopId);
 
       assert.deepEqual(
         result.results.map((workshop) => workshop.id),
@@ -296,6 +297,18 @@ test(
       assert.equal(result.results[0].distanceKm, 0);
       assert.equal(result.results[0].companyDataVerified, true);
       assert.equal(JSON.stringify(result).includes('Private fiktive Person'), false);
+      assert.deepEqual(profile, {
+        contact: { phone: '+383 44 000 010' },
+        id: workshopId,
+        languages: ['Deutsch'],
+        name: 'Fiktive PostgreSQL-Suche',
+        photoIds: [],
+        placeId: 'xk-pristina',
+        selfReportedSpecializations: ['Bremsen'],
+        serviceCategoryIds: ['bremsen'],
+        vehicleMakeIds: [],
+        verificationLabel: 'Unternehmensdaten geprüft',
+      });
     } finally {
       await client.query('ROLLBACK');
       await client.query('DELETE FROM workshop_service_category WHERE workshop_id = $1', [

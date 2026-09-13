@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Component, inject, PLATFORM_ID } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, PLATFORM_ID } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 interface SearchResult {
@@ -190,6 +190,11 @@ interface SearchResponse {
                 <p class="mt-4 text-sm leading-6 text-slate-700">
                   {{ workshop.reviewSummary.label }}
                 </p>
+                <a
+                  [routerLink]="['/werkstatt', workshop.id]"
+                  class="mt-5 inline-flex min-h-11 items-center font-semibold text-sky-800 underline"
+                  >Profil ansehen</a
+                >
               </li>
             }
           </ol>
@@ -224,6 +229,7 @@ interface SearchResponse {
 })
 export class SearchHandoffComponent {
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly route = inject(ActivatedRoute);
   protected mapUnavailable = false;
   protected response?: SearchResponse;
@@ -257,8 +263,10 @@ export class SearchHandoffComponent {
       if (!response.ok) throw new Error('Search request failed');
       this.response = (await response.json()) as SearchResponse;
       this.state = 'ready';
+      this.changeDetector.markForCheck();
     } catch {
       this.state = 'error';
+      this.changeDetector.markForCheck();
     }
   }
 
