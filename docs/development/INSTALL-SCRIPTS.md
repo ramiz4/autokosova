@@ -1,7 +1,12 @@
 # Installationsskripte für die lokale Toolchain
 
 Für #49 am 13.09.2026 an den durch `package-lock.json` aufgelösten Paketen geprüft.
-Node 24.21.0 und npm 11.19.0 werden lokal und in CI gemeinsam verwendet.
+CI verwendet Node 24.21.0 und npm 11.19.0. Lokal sind die von Angular 22 unterstützten
+Node-LTS-Linien zulässig; der Entwicklungsstarter erzwingt keine exakte Toolchain-Version.
+Die `allowScripts`-Prüfung ist eine npm-11-Funktion und wird deshalb verbindlich in CI
+ausgeführt. npm 10 verwendet den bestehenden Lockfile, erzwingt diese Zusatzprüfung aber
+nicht bei der lokalen Installation; Abhängigkeitsänderungen werden erst nach grüner CI
+übernommen.
 
 | Paket | Entscheidung | Geprüfter Zweck |
 |---|---|---|

@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { resolveConfig, seedEnvironment } from './dev/config.mjs';
@@ -10,7 +9,8 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const controller = new AbortController();
 let interrupted = false;
 for (const name of ['SIGINT', 'SIGTERM'])
-  process.once(name, () => {
+  process.on(name, () => {
+    if (interrupted) return;
     interrupted = true;
     controller.abort();
   });
@@ -28,14 +28,6 @@ try {
   if (!['reference', 'demo', 'demo-workflows'].includes(profile)) {
     throw new Error('Aufruf: npm run dev[:demo|:demo-workflows|:doctor]');
   }
-  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-  const requiredNode = pkg.devEngines.runtime.version;
-  const requiredNpm = pkg.devEngines.packageManager.version;
-  if (process.versions.node !== requiredNode)
-    throw new Error(`Node ${requiredNode} benötigt. nvm use ausführen.`);
-  const npm = await runProcess('npm', ['--version'], { cwd: root, signal: controller.signal });
-  if (npm !== requiredNpm)
-    throw new Error(`npm ${requiredNpm} benötigt. README zur Toolchain beachten.`);
   const config = resolveConfig(root);
   console.log(
     `Worktree: ${config.root}\nProjekt: ${config.project}\nApp-Port: ${config.appPort} · DB-Port: ${config.dbPort}`,
