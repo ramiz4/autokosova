@@ -14,6 +14,7 @@ import { PostgresModerationStore } from './server/moderation-store';
 import { PostgresWorkshopSearchStore } from './server/workshop-search-store';
 import { PostgresAnalyticsStore } from './server/analytics';
 import { loadEnvironment } from '../scripts/environment.mjs';
+import { isStaticAssetRequest } from './server/static-asset-path';
 
 Object.assign(process.env, loadEnvironment());
 
@@ -37,6 +38,11 @@ const app = createServer({
 const angularApp = new AngularNodeAppEngine();
 
 app.setNotFoundHandler(async (request, reply) => {
+  // Do not hand a missing browser bundle to Angular SSR: module requests must never receive
+  // index.html, otherwise browsers report a misleading JavaScript MIME-type failure.
+  if (isStaticAssetRequest(request.url)) {
+    return reply.code(404).type('application/json').send({ error: 'Static asset not found' });
+  }
   const response = await angularApp.handle(request.raw);
 
   if (!response) {
