@@ -3,14 +3,32 @@ import fastifyStatic from '@fastify/static';
 import Fastify from 'fastify';
 import type { FastifyReply } from 'fastify';
 import { AccessError, AccessStore } from './access';
+import {
+  createAuthorizationUrl,
+  createPkceTransaction,
+  exchangeAuthorizationCode,
+  type ZitadelOidcConfig,
+  verifyZitadelAccessToken,
+} from './oidc';
 
 interface ServerOptions {
   readonly accessStore?: AccessStore;
+  readonly oidcConfig?: ZitadelOidcConfig;
   readonly staticRoot?: string;
 }
 
 export function createServer(options: ServerOptions = {}) {
-  const app = Fastify({ logger: true });
+  const app = Fastify({
+    logger: {
+      level: 'info',
+      serializers: {
+        req: (request) => ({
+          method: request.method,
+          url: request.url.split('?')[0],
+        }),
+      },
+    },
+  });
   const accessStore = options.accessStore ?? new AccessStore();
 
   app.register(cookie);
@@ -44,6 +62,57 @@ export function createServer(options: ServerOptions = {}) {
   app.get('/health', async () => ({ status: 'ok' }));
   app.get('/api/health', async () => ({ status: 'ok' }));
   app.get('/api/public/search', async () => ({ status: 'public-search-ready' }));
+
+  app.get('/auth/login', async (_request, reply) => {
+    if (!options.oidcConfig) {
+      return reply.code(503).send({ error: 'OIDC is not configured' });
+    }
+    const transaction = createPkceTransaction();
+    accessStore.createOidcTransaction(transaction.state, transaction.codeVerifier);
+    return reply.redirect(
+      createAuthorizationUrl(options.oidcConfig, transaction.state, transaction.codeChallenge),
+    );
+  });
+
+  app.get('/auth/callback', async (request, reply) => {
+    if (!options.oidcConfig) {
+      return reply.code(503).send({ error: 'OIDC is not configured' });
+    }
+    const query = request.query as { code?: string; error?: string; state?: string };
+    if (!query.code || !query.state || query.error) {
+      return reply.code(400).send({ error: 'Invalid OIDC callback' });
+    }
+    const transaction = accessStore.consumeOidcTransaction(query.state);
+    if (!transaction) {
+      return reply.code(400).send({ error: 'OIDC state is invalid or expired' });
+    }
+
+    try {
+      const idToken = await exchangeAuthorizationCode(
+        options.oidcConfig,
+        query.code,
+        transaction.codeVerifier,
+      );
+      const identity = await verifyZitadelAccessToken(idToken, options.oidcConfig);
+      const session = accessStore.createSession(identity.subject);
+      const secure = process.env['NODE_ENV'] === 'production';
+      reply.setCookie('autokosova_session', session.sessionId, {
+        httpOnly: true,
+        path: '/',
+        sameSite: 'lax',
+        secure,
+      });
+      reply.setCookie('autokosova_csrf', session.csrfToken, {
+        httpOnly: false,
+        path: '/',
+        sameSite: 'lax',
+        secure,
+      });
+      return reply.redirect('/');
+    } catch {
+      return reply.code(401).send({ error: 'OIDC authentication failed' });
+    }
+  });
 
   app.get('/api/me/vehicles', async (request, reply) => {
     try {

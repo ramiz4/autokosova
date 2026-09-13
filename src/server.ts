@@ -6,8 +6,12 @@ import {
 } from '@angular/ssr/node';
 import { join } from 'node:path';
 import { createServer } from './server/app';
+import { readZitadelOidcConfig } from './server/oidc';
 
-const app = createServer({ staticRoot: join(import.meta.dirname, '../browser') });
+const app = createServer({
+  oidcConfig: readZitadelOidcConfig(process.env),
+  staticRoot: join(import.meta.dirname, '../browser'),
+});
 const angularApp = new AngularNodeAppEngine();
 
 app.setNotFoundHandler(async (request, reply) => {
