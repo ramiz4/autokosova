@@ -1,35 +1,138 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { FoundationComponent } from './app';
+import { AnalyticsService } from './analytics.service';
+import { landingCopy } from '../shared/landing-copy';
 
-describe('App', () => {
+describe('Homepage', () => {
+  let analytics: {
+    consented: boolean;
+    track: ReturnType<typeof vi.fn>;
+    setConsent: ReturnType<typeof vi.fn>;
+  };
   beforeEach(async () => {
+    analytics = { consented: false, track: vi.fn(), setConsent: vi.fn() };
     await TestBed.configureTestingModule({
       imports: [FoundationComponent],
-      providers: [provideRouter([])],
+      providers: [
+        provideRouter([
+          { path: 'sq', component: FoundationComponent },
+          { path: 'en', component: FoundationComponent },
+        ]),
+        { provide: AnalyticsService, useValue: analytics },
+      ],
     }).compileComponents();
   });
 
-  it('should create the app', () => {
-    const fixture = TestBed.createComponent(FoundationComponent);
-    const app = fixture.componentInstance;
-    expect(app).toBeTruthy();
-  });
-
-  it('renders the public search as the primary landing action', async () => {
+  async function render() {
     const fixture = TestBed.createComponent(FoundationComponent);
     await fixture.whenStable();
-    const compiled = fixture.nativeElement as HTMLElement;
-    const logo = compiled.querySelector('header a img[alt="AutoKosova"]');
-    const searchLink = compiled.querySelector(
-      'nav[aria-label="Hauptnavigation"] a[href="#werkstatt-suche"]',
-    );
+    return { fixture, page: fixture.nativeElement as HTMLElement };
+  }
 
-    expect(logo?.getAttribute('src')).toBe('/branding/autokosova-logo-header.png');
-    expect(searchLink?.textContent).toContain('Werkstatt finden');
-    expect(compiled.querySelector('form#werkstatt-suche')).toBeTruthy();
-    expect(compiled.querySelector('h1')?.textContent).toContain('Finde eine passende Werkstatt');
-    expect(compiled.textContent).toContain('Werkstatt finden');
-    expect(compiled.textContent).toContain('ohne Konto');
+  it('offers the request and direct public search without fictional social proof', async () => {
+    const { page } = await render();
+    expect(page.querySelector('header img')?.getAttribute('src')).toBe(
+      '/branding/autokosova-logo-header.png',
+    );
+    expect(page.querySelector('h1')?.textContent).toContain('Schon vor der Reise.');
+    expect(page.querySelector('a[href="/anfrage"]')?.textContent).toContain(
+      'Jetzt Anfrage erstellen',
+    );
+    expect(page.querySelector('form#werkstatt-suche')).toBeTruthy();
+    expect(page.textContent).toContain('ohne Konto');
+    expect(page.textContent).not.toMatch(/10[’']000|500\+|Reparaturgarantie|Arben/);
+    expect(page.querySelector('picture img')?.getAttribute('fetchpriority')).toBe('high');
+    for (const id of ['werkstatt-suche', 'so-funktionierts', 'ueber-uns']) {
+      expect(page.querySelector('#' + id)).toBeTruthy();
+      expect(page.querySelector('header a[href="/#' + id + '"]')).toBeTruthy();
+    }
+  });
+
+  it('keeps menu state accessible, closes on Escape and restores focus', async () => {
+    const { fixture, page } = await render();
+    const toggle = page.querySelector<HTMLButtonElement>(
+      'button[aria-controls="mobile-navigation"]',
+    )!;
+    const menu = page.querySelector<HTMLElement>('#mobile-navigation')!;
+    expect(menu.hidden).toBe(true);
+    toggle.click();
+    await fixture.whenStable();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(menu.hidden).toBe(false);
+    menu.querySelector('a')!.focus();
+    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await fixture.whenStable();
+    expect(menu.hidden).toBe(true);
+    expect(document.activeElement).toBe(toggle);
+    toggle.click();
+    await fixture.whenStable();
+    menu
+      .querySelector('a')!
+      .dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    await fixture.whenStable();
+    expect(menu.hidden).toBe(true);
+  });
+
+  it('validates the search and hands off only service and location filters', async () => {
+    const { fixture, page } = await render();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const form = page.querySelector('form')!;
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await fixture.whenStable();
+    expect(page.querySelector('[role="alert"]')?.textContent).toContain('Leistung');
+    expect(navigate).not.toHaveBeenCalled();
+    const service = page.querySelector<HTMLSelectElement>('#search-service')!;
+    service.value = 'bremsen';
+    service.dispatchEvent(new Event('change'));
+    const radius = page.querySelector<HTMLInputElement>('#search-radius')!;
+    radius.value = '101';
+    radius.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await fixture.whenStable();
+    expect(page.querySelector('[role="alert"]')?.textContent).toContain('100');
+    expect(navigate).not.toHaveBeenCalled();
+    radius.value = '30';
+    radius.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await fixture.whenStable();
+    expect(navigate).toHaveBeenCalledWith(['/suche'], {
+      queryParams: { places: 'xk-pristina:30', service: 'bremsen' },
+    });
+    expect(analytics.track).toHaveBeenCalledExactlyOnceWith('search_started');
+  });
+
+  it('preserves localized request, section and language destinations', async () => {
+    await TestBed.inject(Router).navigateByUrl('/sq');
+    const { page } = await render();
+    expect(page.querySelector('h1')?.textContent).toContain('Para se të nisesh.');
+    expect(page.querySelector('a[href="/sq/anfrage"]')).toBeTruthy();
+    expect(page.querySelector('header a[href="/sq#werkstatt-suche"]')).toBeTruthy();
+    expect(page.querySelector('header a[href="/en"]')?.textContent).toContain('English');
+    expect(page.querySelector('header a[aria-current="page"]')?.textContent).toContain('Shqip');
+  });
+
+  it('keeps optional analytics a deliberate, reversible choice', async () => {
+    const { fixture, page } = await render();
+    const button = page.querySelector<HTMLButtonElement>('footer button')!;
+    expect(analytics.setConsent).not.toHaveBeenCalled();
+    button.click();
+    await fixture.whenStable();
+    expect(analytics.setConsent).toHaveBeenCalledWith(true);
+    analytics.consented = true;
+    button.click();
+    await fixture.whenStable();
+    expect(analytics.setConsent).toHaveBeenLastCalledWith(false);
+  });
+
+  it('provides complete DE/SQ/EN strings for the new shared shell', () => {
+    for (const locale of ['sq', 'en'] as const) {
+      expect(Object.keys(landingCopy[locale]).sort()).toEqual(Object.keys(landingCopy.de).sort());
+      expect(Object.values(landingCopy[locale]).every((value) => value.trim().length > 0)).toBe(
+        true,
+      );
+    }
   });
 });

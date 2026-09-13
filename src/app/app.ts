@@ -5,7 +5,10 @@ import { CATALOG_PLACES, SERVICE_CATEGORY_LABELS } from '../shared/catalog';
 import { REPAIR_REQUEST_LIMITS } from '../shared/repair-request';
 import { AnalyticsService } from './analytics.service';
 import { LanguageService } from './language.service';
-import { LanguageSwitcherComponent } from './language-switcher.component';
+import { SiteHeaderComponent } from './site-header.component';
+import { ButtonDirective } from './ui/button.directive';
+import { IconComponent } from './ui/icon.component';
+import { BenefitCardComponent } from './ui/benefit-card.component';
 
 @Component({
   imports: [RouterOutlet],
@@ -15,7 +18,14 @@ import { LanguageSwitcherComponent } from './language-switcher.component';
 export class App {}
 
 @Component({
-  imports: [FormsModule, RouterLink, LanguageSwitcherComponent],
+  imports: [
+    FormsModule,
+    RouterLink,
+    SiteHeaderComponent,
+    ButtonDirective,
+    IconComponent,
+    BenefitCardComponent,
+  ],
   templateUrl: './app.html',
 })
 export class FoundationComponent {
@@ -31,12 +41,16 @@ export class FoundationComponent {
   protected searchError = '';
 
   constructor() {
-    this.language.setPage('home.title', 'home.intro');
+    this.language.setPage('landing.pageTitle', 'landing.intro');
   }
 
   protected search(): void {
-    if (!this.serviceCategoryId) {
+    if (!this.serviceIds.includes(this.serviceCategoryId)) {
       this.searchError = this.language.t('home.searchErrorService');
+      return;
+    }
+    if (!this.places.some((place) => place.id === this.placeId)) {
+      this.searchError = this.language.t('landing.invalidPlace');
       return;
     }
     if (

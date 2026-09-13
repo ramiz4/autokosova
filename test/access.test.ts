@@ -92,6 +92,18 @@ test('OIDC login only accepts the repair-request return path', async () => {
     },
   });
   try {
+    const registration = await app.inject({
+      method: 'GET',
+      url: '/auth/login?returnTo=/sq/anfrage&prompt=create',
+    });
+    const registrationUrl = new URL(registration.headers.location!);
+    assert.equal(registration.statusCode, 302);
+    assert.equal(registrationUrl.searchParams.get('prompt'), 'create');
+    assert.equal(registrationUrl.searchParams.get('code_challenge_method'), 'S256');
+    assert.equal(
+      store.consumeOidcTransaction(registrationUrl.searchParams.get('state')!)?.returnTo,
+      '/sq/anfrage',
+    );
     const accepted = await app.inject({ method: 'GET', url: '/auth/login?returnTo=/anfrage' });
     const rejected = await app.inject({
       method: 'GET',

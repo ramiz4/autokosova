@@ -1,0 +1,86 @@
+<header
+  class="relative z-20 mx-auto max-w-[1352px] rounded-2xl border border-white/80 bg-white/97 px-4 py-3 text-ink shadow-xl shadow-black/10 sm:px-6 xl:rounded-[18px] xl:py-4"
+  (keydown.escape)="closeMenu(true)"
+>
+  <div class="flex min-h-13 items-center justify-between gap-3">
+    <a
+      [routerLink]="language.link('home')"
+      [attr.aria-label]="language.t('common.backHome')"
+      class="flex shrink-0 items-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand"
+    >
+      <img
+        src="/branding/autokosova-logo-header.png"
+        width="640"
+        height="122"
+        alt="AutoKosova"
+        class="block h-auto w-44 sm:w-52 xl:w-56"
+      />
+    </a>
+    <nav
+      class="hidden items-center gap-7 text-sm font-medium xl:flex"
+      [attr.aria-label]="language.t('nav.main')"
+    >
+      <a class="nav-link" [href]="language.link('home') + '#werkstatt-suche'">{{
+        language.t('nav.search')
+      }}</a>
+      <a class="nav-link" [href]="language.link('home') + '#so-funktionierts'">{{
+        language.t('nav.how')
+      }}</a>
+      <a class="nav-link" [routerLink]="language.link('onboarding')">{{
+        language.t('nav.workshops')
+      }}</a>
+      <a class="nav-link" [href]="language.link('home') + '#ueber-uns'">{{
+        language.t('nav.about')
+      }}</a>
+    </nav>
+    <div class="flex items-center gap-2 sm:gap-3">
+      <app-language-switcher [compact]="true" class="flex items-center" />
+      <div class="hidden items-center gap-3 xl:flex">
+        <a appButton="outline" size="compact" [href]="loginUrl()">{{ language.t('nav.login') }}</a>
+        <a appButton size="compact" [href]="loginUrl(true)">{{ language.t('nav.register') }}</a>
+      </div>
+      <button
+        #menuButton
+        type="button"
+        class="flex size-11 items-center justify-center rounded-lg hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand xl:hidden"
+        [attr.aria-label]="language.t(menuOpen() ? 'nav.close' : 'nav.open')"
+        [attr.aria-expanded]="menuOpen()"
+        aria-controls="mobile-navigation"
+        (click)="menuOpen.set(!menuOpen())"
+      >
+        <app-icon [name]="menuOpen() ? 'close' : 'menu'" class="size-6" />
+      </button>
+    </div>
+  </div>
+  <nav
+    id="mobile-navigation"
+    [hidden]="!menuOpen()"
+    class="mt-4 border-t border-blue-100 pt-3 xl:hidden"
+    [attr.aria-label]="language.t('nav.mobile')"
+  >
+    <div class="grid gap-1">
+      <a
+        class="nav-link"
+        [href]="language.link('home') + '#werkstatt-suche'"
+        (click)="closeMenu()"
+        >{{ language.t('nav.search') }}</a
+      >
+      <a
+        class="nav-link"
+        [href]="language.link('home') + '#so-funktionierts'"
+        (click)="closeMenu()"
+        >{{ language.t('nav.how') }}</a
+      >
+      <a class="nav-link" [routerLink]="language.link('onboarding')" (click)="closeMenu()">{{
+        language.t('nav.workshops')
+      }}</a>
+      <a class="nav-link" [href]="language.link('home') + '#ueber-uns'" (click)="closeMenu()">{{
+        language.t('nav.about')
+      }}</a>
+      <div class="mt-2 grid grid-cols-2 gap-3">
+        <a appButton="outline" size="compact" [href]="loginUrl()">{{ language.t('nav.login') }}</a>
+        <a appButton size="compact" [href]="loginUrl(true)">{{ language.t('nav.register') }}</a>
+      </div>
+    </div>
+  </nav>
+</header>

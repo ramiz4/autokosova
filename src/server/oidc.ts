@@ -48,6 +48,7 @@ export function createAuthorizationUrl(
   config: ZitadelOidcConfig,
   state: string,
   codeChallenge: string,
+  prompt?: 'create',
 ) {
   const url = new URL(config.authorizationEndpoint);
   url.searchParams.set('client_id', config.clientId);
@@ -57,6 +58,7 @@ export function createAuthorizationUrl(
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('scope', 'openid profile email');
   url.searchParams.set('state', state);
+  if (prompt === 'create') url.searchParams.set('prompt', 'create');
   return url.toString();
 }
 

@@ -22,6 +22,18 @@ test('authorization URL binds state, PKCE challenge and local redirect', () => {
   assert.equal(url.searchParams.get('code_challenge'), 'pkce-challenge');
   assert.equal(url.searchParams.get('code_challenge_method'), 'S256');
   assert.equal(url.searchParams.get('redirect_uri'), config.redirectUri);
+  assert.equal(url.searchParams.has('prompt'), false);
+});
+
+test('registration opens the hosted ZITADEL create screen with the same PKCE contract', () => {
+  const url = new URL(
+    createAuthorizationUrl(config, 'register-state', 'register-challenge', 'create'),
+  );
+  assert.equal(url.searchParams.get('prompt'), 'create');
+  assert.equal(url.searchParams.get('state'), 'register-state');
+  assert.equal(url.searchParams.get('code_challenge'), 'register-challenge');
+  assert.equal(url.searchParams.get('code_challenge_method'), 'S256');
+  assert.equal(url.searchParams.get('redirect_uri'), config.redirectUri);
 });
 
 test('OIDC configuration fails closed when it is incomplete', () => {
