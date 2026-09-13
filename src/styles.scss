@@ -11,6 +11,7 @@ body {
   display: inline-flex;
   min-height: 44px;
   align-items: center;
+  border-bottom: 3px solid white;
   border-radius: 6px;
 }
 .nav-link:hover {
@@ -18,7 +19,7 @@ body {
 }
 .nav-link-active {
   color: #0061ff;
-  box-shadow: inset 0 -3px #0061ff;
+  border-bottom: 3px solid #0061ff;
 }
 .nav-link:focus-visible {
   outline: 2px solid #0061ff;
