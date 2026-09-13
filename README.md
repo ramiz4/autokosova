@@ -14,6 +14,7 @@ Privates Repository mit Produktplanung und technischer Grundlage. Der Stack ist 
 - [Arbeitsregeln für Entwickler und AI Agents](AGENTS.md)
 - [Designrichtung und Präzisierungen](docs/design/README.md)
 - [ZITADEL-Integration und offenes Login-Gate](docs/architecture/AUTH-INTEGRATION.md)
+- [Werkstattaufnahme, Prüfung und Bildschutz](docs/architecture/WORKSHOP-ONBOARDING.md)
 
 ## Entwicklungsstart
 
