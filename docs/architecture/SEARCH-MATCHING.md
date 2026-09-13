@@ -20,7 +20,7 @@ Die aktuelle Standortreferenz ist der mit GeoNames belegte Ortsdatensatz aus #9,
 
 ## Organische Reihenfolge und Erklärungen
 
-Nach den harten Filtern ist die Reihenfolge vollständig deterministisch:
+Nach den harten Filtern ist die Standardreihenfolge vollständig deterministisch:
 
 1. direkte Übereinstimmung der optional ausgewählten Fahrzeugmarke (+15; markenoffen bleibt neutral),
 2. vollständig dokumentierte Unternehmensdatenprüfung (+5; keine Reparaturqualitätsgarantie),
@@ -37,6 +37,13 @@ vor. Ein einzelner 5,0-Wert erhält keinen Bonus. Erst ab zwei überprüften ver
 kann der Wert als auf vier Punkte begrenzter Gleichstandsentscheider wirken. Bezahlung, Abo,
 Werkstattbestätigung oder Moderationsdruck haben kein Rankingfeld. Neue Betriebe bleiben unabhängig
 davon auffindbar. Details stehen in [REVIEWS.md](REVIEWS.md).
+
+Die sichtbare Sortierung arbeitet ausschließlich serverseitig: **Empfohlen** nutzt die oben
+dokumentierte Standardreihenfolge. **Beste Bewertungsbasis** vergleicht zuerst nur die
+veröffentlichte, unabhängig überprüfte Bewertungsbasis und fällt danach auf dieselbe
+Standardreihenfolge zurück. Fehlende Basis oder ein einzelner Ausreißer werden nicht über eine
+breitere Basis gestellt. Der Query-Parameter `sort` akzeptiert nur `recommended` und
+`rating`; Preis, bezahlte Platzierung, Favoriten und Benachrichtigungen bleiben ausgeschlossen.
 
 ## Fehler- und Leerzustände
 

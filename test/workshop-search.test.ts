@@ -168,6 +168,12 @@ test('ranking is deterministic and presents an honest pre-review state', () => {
   assert.equal(JSON.stringify(result).includes('paid'), false);
 });
 
+test('sort accepts only the documented server-side orders', () => {
+  assert.equal(query({ sort: 'rating' }).sort, 'rating');
+  assert.equal(query().sort, 'recommended');
+  assert.throws(() => query({ sort: 'paid-top' }));
+});
+
 test('result pagination is stable and malformed filters are rejected instead of widened', () => {
   const workshops = Array.from({ length: 12 }, (_, index) =>
     profile({

@@ -28,6 +28,7 @@ export interface PublicWorkshopSearchInput {
   readonly page: number;
   readonly pageSize: number;
   readonly serviceCategoryId: string;
+  readonly sort?: 'recommended' | 'rating';
   readonly vehicleMakeId?: string;
 }
 
@@ -64,6 +65,7 @@ export interface PublicWorkshopSearchResponse {
     readonly radiusKm: number;
   }[];
   readonly serviceCategory: { readonly id: string; readonly label: string };
+  readonly sort: PublicWorkshopSearchInput['sort'];
   readonly total: number;
   readonly totalPages: number;
 }
@@ -131,6 +133,11 @@ export function parsePublicWorkshopSearch(
     throw new WorkshopSearchValidationError('Language filter is invalid');
   }
 
+  const sort = optionalString(query['sort']) ?? 'recommended';
+  if (sort !== 'recommended' && sort !== 'rating') {
+    throw new WorkshopSearchValidationError('Please choose a supported sort order');
+  }
+
   return {
     areas,
     ...(language ? { language } : {}),
@@ -141,6 +148,7 @@ export function parsePublicWorkshopSearch(
       SEARCH_LIMITS.maxPageSize,
     ),
     serviceCategoryId,
+    sort,
     ...(vehicleMakeId ? { vehicleMakeId } : {}),
   };
 }
@@ -200,7 +208,7 @@ export function toSearchResponse(
 
   const sorted = [...uniqueCandidates.values()]
     .map((candidate) => toSearchResult(candidate, input))
-    .sort(compareSearchResult);
+    .sort(input.sort === 'rating' ? compareRatingResult : compareSearchResult);
   const total = sorted.length;
   const totalPages = Math.max(1, Math.ceil(total / input.pageSize));
   const page = Math.min(input.page, totalPages);
@@ -218,9 +226,26 @@ export function toSearchResponse(
       id: input.serviceCategoryId,
       label: SERVICE_CATEGORY_LABELS[input.serviceCategoryId] ?? input.serviceCategoryId,
     },
+    sort: input.sort ?? 'recommended',
     total,
     totalPages,
   };
+}
+
+function compareRatingResult(
+  left: PublicWorkshopSearchResult,
+  right: PublicWorkshopSearchResult,
+): number {
+  // A missing or single-review score is never promoted above a more substantial verified basis.
+  const ratingDifference = ratingQuality(right) - ratingQuality(left);
+  if (ratingDifference) return ratingDifference;
+  return compareSearchResult(left, right);
+}
+
+function ratingQuality(result: PublicWorkshopSearchResult): number {
+  const summary = result.reviewSummary;
+  if (summary.state !== 'available' || !summary.averageRating || !summary.reviewCount) return 0;
+  return Math.min(summary.reviewCount, 20) * 10 + Math.round(summary.averageRating * 10);
 }
 
 export class WorkshopSearchValidationError extends Error {}

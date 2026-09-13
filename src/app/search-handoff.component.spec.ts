@@ -76,7 +76,7 @@ describe('SearchHandoffComponent', () => {
       expect(fixture.nativeElement.textContent).toContain(
         'Kartenansicht ist derzeit nicht verfügbar',
       );
-      expect(fixture.nativeElement.textContent).toContain('Filter anpassen');
+      expect(fixture.nativeElement.textContent).toContain('Filter anwenden');
     } finally {
       globalThis.fetch = originalFetch;
     }
