@@ -47,6 +47,7 @@ __screenshots__/
 Thumbs.db
 
 # Existing local tooling
+.playwright-cli/
 *.pem
 *.key
 __pycache__/
