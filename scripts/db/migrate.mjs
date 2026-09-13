@@ -1,6 +1,9 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import pg from 'pg';
+import { loadEnvironment } from '../environment.mjs';
+
+Object.assign(process.env, loadEnvironment());
 
 const databaseUrl = process.env.DATABASE_URL;
 

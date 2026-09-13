@@ -12,9 +12,13 @@ services:
       timeout: 3s
       retries: 20
     ports:
-      - '${AUTOKOSOVA_DB_PORT:-55432}:5432'
+      - '127.0.0.1:${AUTOKOSOVA_DB_PORT:-55432}:5432'
+    labels:
+      net.autokosova.worktree: '${AUTOKOSOVA_DEV_WORKTREE:-manual}'
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
 volumes:
   postgres-data:
+    labels:
+      net.autokosova.worktree: '${AUTOKOSOVA_DEV_WORKTREE:-manual}'

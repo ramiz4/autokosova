@@ -2,8 +2,8 @@
   "name": "autokosova",
   "version": "0.0.0",
   "engines": {
-    "node": ">=24 <25",
-    "npm": ">=11"
+    "node": "24.21.0",
+    "npm": "11.19.0"
   },
   "scripts": {
     "ng": "ng",
@@ -27,10 +27,16 @@
     "db:reset": "node scripts/db/reset.mjs",
     "db:reset:demo": "node scripts/db/reset.mjs --profile demo",
     "db:reset:demo-workflows": "node scripts/db/reset.mjs --profile demo-workflows",
-    "verify": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run test:server && npm run build && npm run test:smoke"
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test:dev && npm test && npm run test:server && npm run build && npm run test:smoke",
+    "dev": "node scripts/dev.mjs",
+    "dev:demo": "node scripts/dev.mjs --profile demo",
+    "dev:demo-workflows": "node scripts/dev.mjs --profile demo-workflows",
+    "dev:doctor": "node scripts/dev.mjs --doctor",
+    "test:dev": "node --test test/dev-*.test.mjs",
+    "test:dev:smoke": "node scripts/dev/smoke.mjs"
   },
   "private": true,
-  "packageManager": "npm@11.12.1",
+  "packageManager": "npm@11.19.0",
   "dependencies": {
     "@angular/common": "^22.1.0",
     "@angular/compiler": "^22.1.0",
@@ -66,5 +72,24 @@
     "typescript": "~6.0.2",
     "typescript-eslint": "8.70.0",
     "vitest": "^4.0.8"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.21.0",
+      "onFail": "error"
+    },
+    "packageManager": {
+      "name": "npm",
+      "version": "11.19.0",
+      "onFail": "error"
+    }
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "@parcel/watcher": false,
+    "fsevents": false,
+    "lmdb": false,
+    "msgpackr-extract": false
   }
 }

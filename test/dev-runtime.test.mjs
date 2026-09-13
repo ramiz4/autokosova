@@ -1,0 +1,195 @@
+import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import { setTimeout as delay } from 'node:timers/promises';
+import test from 'node:test';
+import { assertContainer, assertFreePort, inspectDocker } from '../scripts/dev/docker.mjs';
+import {
+  runProcess,
+  startProcess,
+  waitForApplication,
+  safeLogger,
+} from '../scripts/dev/process.mjs';
+
+const config = {
+  project: 'autokosova-test',
+  identity: 'test',
+  dbPort: 55499,
+  appPort: 4299,
+  env: {},
+  root: '/tmp',
+};
+function container() {
+  return {
+    Config: {
+      Labels: {
+        'com.docker.compose.project': config.project,
+        'com.docker.compose.service': 'db',
+        'net.autokosova.worktree': 'test',
+      },
+    },
+    HostConfig: { PortBindings: { '5432/tcp': [{ HostIp: '127.0.0.1', HostPort: '55499' }] } },
+    Mounts: [
+      {
+        Type: 'volume',
+        Name: `${config.project}_postgres-data`,
+        Destination: '/var/lib/postgresql/data',
+      },
+    ],
+    State: { Running: true, Health: { Status: 'healthy' } },
+    NetworkSettings: { Ports: { '5432/tcp': [{ HostIp: '127.0.0.1', HostPort: '55499' }] } },
+  };
+}
+
+test('loopback alone is insufficient: container ownership, volume and binding must match', () => {
+  assert.doesNotThrow(() => assertContainer(container(), config));
+  for (const change of [
+    (c) => {
+      c.Config.Labels['net.autokosova.worktree'] = 'other';
+    },
+    (c) => {
+      c.Config.Labels['com.docker.compose.project'] = 'other';
+    },
+    (c) => {
+      c.HostConfig.PortBindings['5432/tcp'][0].HostIp = '0.0.0.0';
+    },
+    (c) => {
+      c.HostConfig.PortBindings['5432/tcp'][0].HostPort = '55432';
+    },
+    (c) => {
+      c.Mounts[0].Name = 'foreign-data';
+    },
+  ]) {
+    const c = container();
+    change(c);
+    assert.throws(() => assertContainer(c, config), /nicht eindeutig/);
+  }
+});
+
+test('missing Docker and remote contexts fail without a mutating command', async () => {
+  for (const endpoint of [undefined, 'ssh://remote', 'tcp://127.0.0.1:2375']) {
+    const calls = [];
+    await assert.rejects(
+      inspectDocker(config, {
+        run: async (_, args) => {
+          calls.push(args);
+          if (endpoint === undefined) throw new Error('missing');
+          return args[1] === 'show' ? 'test' : JSON.stringify(endpoint);
+        },
+      }),
+    );
+    assert.ok(calls.every((args) => args[0] === 'context'));
+  }
+});
+
+test('preflight refuses foreign containers before compose up', async () => {
+  const calls = [];
+  const foreign = container();
+  foreign.Config.Labels['net.autokosova.worktree'] = 'other';
+  await assert.rejects(
+    inspectDocker(config, {
+      run: async (_, args) => {
+        calls.push(args.join(' '));
+        if (args[0] === 'context')
+          return args[1] === 'show' ? 'test' : JSON.stringify('unix:///tmp/docker.sock');
+        if (args.includes('info')) return 'linux';
+        if (args.includes('version')) return '2.39.0';
+        if (args.includes('ps')) return 'container-id';
+        if (args.includes('inspect')) return JSON.stringify([foreign]);
+        throw new Error('unexpected');
+      },
+    }),
+    /nicht eindeutig/,
+  );
+  assert.ok(calls.every((line) => !line.includes(' up ')));
+});
+
+test('process failures do not disclose child output; timeouts and aborts stop children', async () => {
+  await assert.rejects(
+    runProcess(process.execPath, ['-e', 'console.error("secret-password");process.exit(9)']),
+    (error) => /Exit 9/.test(error.message) && !error.message.includes('secret-password'),
+  );
+  await assert.rejects(
+    runProcess(process.execPath, ['-e', 'setInterval(()=>{},1000)'], { timeout: 100 }),
+    /Zeitlimit/,
+  );
+  const controller = new AbortController();
+  const pending = runProcess(process.execPath, ['-e', 'setInterval(()=>{},1000)'], {
+    signal: controller.signal,
+  });
+  controller.abort();
+  await assert.rejects(pending, /abgebrochen/);
+});
+
+test('stopping a process group also releases a grandchild listening port', async (t) => {
+  const child = startProcess(process.execPath, [
+    '-e',
+    `
+    require('node:child_process').spawn(process.execPath, ['-e',
+      "require('node:net').createServer().listen(0,'127.0.0.1',function(){console.log(this.address().port)})"], {stdio:'inherit'});
+    setInterval(()=>{},1000);
+  `,
+  ]);
+  t.after(() => child.stop());
+  const deadline = Date.now() + 5000;
+  while (!/\d+/.test(child.output) && Date.now() < deadline) await delay(25);
+  const port = Number(child.output.trim());
+  assert.ok(port > 0);
+  await assert.rejects(assertFreePort(port, 'TEST_PORT'), /belegt/);
+  await child.stop();
+  await assertFreePort(port, 'TEST_PORT');
+});
+
+test('readiness requires the search API, valid response and the requested demo record', async (t) => {
+  let status = 503;
+  let body = { status: 'ok' };
+  let instance = 'foreign-starter';
+  const server = createServer((request, response) => {
+    assert.match(request.url, /^\/api\/public\/search\?/);
+    response.writeHead(status, {
+      'Content-Type': 'application/json',
+      'x-autokosova-dev-instance': instance,
+    });
+    response.end(JSON.stringify(body));
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const url = `http://127.0.0.1:${server.address().port}`;
+  const child = { finished: false };
+  await assert.rejects(waitForApplication(url, child, { timeout: 100 }), /API\/DB/);
+  status = 200;
+  await assert.rejects(waitForApplication(url, child, { timeout: 100 }), /API\/DB/);
+  body = { results: [] };
+  await waitForApplication(url, child, { timeout: 500 });
+  await assert.rejects(
+    waitForApplication(url, child, { timeout: 100, profile: 'demo' }),
+    /API\/DB/,
+  );
+  body = { results: [{ id: 'demo-prishtina-bremsen' }] };
+  await waitForApplication(url, child, { timeout: 500, profile: 'demo' });
+  await assert.rejects(
+    waitForApplication(url, child, { timeout: 100, instance: 'own-starter' }),
+    /API\/DB/,
+  );
+  instance = 'own-starter';
+  await waitForApplication(url, child, { timeout: 500, instance });
+  await assert.rejects(waitForApplication(url, { finished: true }), /Angular/);
+});
+
+test('compiler diagnostics remain visible while split secrets and connection URLs are redacted', () => {
+  let output = '';
+  const log = safeLogger(
+    {
+      ZITADEL_CLIENT_ID: 'private-client',
+      DATABASE_URL: 'postgresql://user:password@localhost/db',
+    },
+    (line) => {
+      output += line;
+    },
+  );
+  log('Compiler TS7016: missing declaration\nprivate-');
+  log('client postgresql://user:password@localhost/db\n');
+  assert.match(output, /TS7016/);
+  assert.equal(output.includes('private-client'), false);
+  assert.equal(output.includes('password'), false);
+  assert.match(output, /redacted/);
+});
