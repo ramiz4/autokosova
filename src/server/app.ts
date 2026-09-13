@@ -20,6 +20,11 @@ import { buildMatchingPath, validateRepairRequest } from './repair-requests';
 import type { RepairRequestStore } from './repair-request-store';
 import { normalizeWorkshopPhoto, WorkshopPhotoError } from './workshop-photo';
 import {
+  parsePublicWorkshopSearch,
+  type WorkshopSearchStore,
+  WorkshopSearchValidationError,
+} from './workshop-search';
+import {
   REPAIR_REQUEST_LIMITS,
   REPAIR_REQUEST_PLACES,
   REPAIR_REQUEST_SERVICE_CATEGORIES,
@@ -31,6 +36,7 @@ interface ServerOptions {
   readonly accessStore?: AccessStore;
   readonly oidcConfig?: ZitadelOidcConfig;
   readonly repairRequestStore?: RepairRequestStore;
+  readonly searchStore?: WorkshopSearchStore;
   readonly staticRoot?: string;
 }
 
@@ -158,6 +164,7 @@ export function createServer(options: ServerOptions = {}) {
   });
   const accessStore = options.accessStore ?? new AccessStore();
   const repairRequestStore: RepairRequestStore = options.repairRequestStore ?? accessStore;
+  const searchStore: WorkshopSearchStore = options.searchStore ?? accessStore;
 
   app.register(cookie);
   app.addContentTypeParser(
@@ -167,6 +174,9 @@ export function createServer(options: ServerOptions = {}) {
   );
   if (repairRequestStore.close) {
     app.addHook('onClose', async () => repairRequestStore.close?.());
+  }
+  if (searchStore.close && (searchStore as object) !== (repairRequestStore as object)) {
+    app.addHook('onClose', async () => searchStore.close?.());
   }
 
   function requirePrincipal(
@@ -198,12 +208,24 @@ export function createServer(options: ServerOptions = {}) {
     if (error instanceof AccessError) {
       return reply.code(error.statusCode).send({ error: error.message });
     }
+    if (error instanceof WorkshopSearchValidationError) {
+      return reply.code(400).send({ error: error.message });
+    }
     throw error;
   }
 
   app.get('/health', async () => ({ status: 'ok' }));
   app.get('/api/health', async () => ({ status: 'ok' }));
-  app.get('/api/public/search', async () => ({ status: 'public-search-ready' }));
+  app.get('/api/public/search', async (request, reply) => {
+    try {
+      const input = parsePublicWorkshopSearch(request.query as Record<string, unknown>);
+      // Kept as a non-sensitive readiness response for the existing health/smoke contract.
+      if (!input) return { status: 'public-search-ready' };
+      return await searchStore.searchPublicWorkshops(input);
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
   app.get('/api/public/workshops', async () => ({ workshops: accessStore.listPublicWorkshops() }));
   app.get('/api/public/workshops/:workshopId', async (request, reply) => {
     const params = request.params as { workshopId: string };

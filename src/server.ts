@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { createServer } from './server/app';
 import { readZitadelOidcConfig } from './server/oidc';
 import { PostgresRepairRequestStore } from './server/repair-request-store';
+import { PostgresWorkshopSearchStore } from './server/workshop-search-store';
 
 const databaseUrl = process.env['DATABASE_URL'];
 if (process.env['NODE_ENV'] === 'production' && !databaseUrl) {
@@ -16,6 +17,7 @@ if (process.env['NODE_ENV'] === 'production' && !databaseUrl) {
 const app = createServer({
   oidcConfig: readZitadelOidcConfig(process.env),
   ...(databaseUrl ? { repairRequestStore: new PostgresRepairRequestStore(databaseUrl) } : {}),
+  ...(databaseUrl ? { searchStore: new PostgresWorkshopSearchStore(databaseUrl) } : {}),
   staticRoot: join(import.meta.dirname, '../browser'),
 });
 const angularApp = new AngularNodeAppEngine();

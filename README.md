@@ -15,6 +15,7 @@ Privates Repository mit Produktplanung und technischer Grundlage. Der Stack ist 
 - [Designrichtung und Präzisierungen](docs/design/README.md)
 - [ZITADEL-Integration und offenes Login-Gate](docs/architecture/AUTH-INTEGRATION.md)
 - [Werkstattaufnahme, Prüfung und Bildschutz](docs/architecture/WORKSHOP-ONBOARDING.md)
+- [Öffentliche Mehrortsuche und nachvollziehbares Matching](docs/architecture/SEARCH-MATCHING.md)
 
 ## Entwicklungsstart
 
@@ -59,6 +60,14 @@ private API dauerhaft gespeichert werden. Der Suchübergang enthält ausschließ
 Orts-/Radiusfilter; es wird nichts automatisch an Werkstätten gesendet. Fotos und Diagnoseberichte
 bleiben optional und privat; ohne einen konfigurierten Objektspeicher werden sie in der lokalen
 Entwicklungsoberfläche nicht hochgeladen.
+
+## Öffentliche Suche lokal prüfen
+
+`/suche?places=xk-pristina%3A20&service=bremsen` verwendet nur veröffentlichte Werkstattprofile,
+den gepflegten Leistungsfilter und Ortskreise als Luftlinie. Mehrere Orte werden mit Komma getrennt,
+zum Beispiel `places=xk-pristina:20,xk-prizren:30`. Optional sind `vehicleMake=skoda` und
+`language=Deutsch`. Suchanfragen enthalten keine privaten Anfragewerte. Ohne Kartenanbieter bleibt
+die Ergebnisliste mit Entfernung zum passenden Suchort funktionsfähig.
 
 ## Entwicklung
 

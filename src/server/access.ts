@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import type { RepairRequestInput } from '../shared/repair-request';
+import {
+  findPublicWorkshops,
+  type PublicWorkshopSearchInput,
+  type PublicWorkshopSearchResponse,
+} from './workshop-search';
 
 export type SystemRole = 'admin' | 'customer' | 'moderator';
 export type MembershipRole = 'editor' | 'owner';
@@ -372,6 +377,10 @@ export class AccessStore {
     return [...this.workshops.values()]
       .filter((workshop) => workshop.publicationState === 'published')
       .map((workshop) => this.toPublicWorkshop(workshop));
+  }
+
+  searchPublicWorkshops(input: PublicWorkshopSearchInput): PublicWorkshopSearchResponse {
+    return findPublicWorkshops(this.listPublicWorkshops(), input);
   }
 
   listVehicles(userId: string) {
