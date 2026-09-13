@@ -22,6 +22,10 @@ Zahlender Kunde wäre die Werkstatt. Möglicher Zusatznutzen: Auswertung eigener
 
 Ein Preisversuch braucht vorher die Betreiberfreigabe zu Budget, rechtlichem Rahmen und konkretem Leistungsumfang. Es wird dafür weder ein Zahlungsanbieter eingerichtet noch Geld eingezogen.
 
+## Arbeitsannahme bis zum Pilot
+
+Für die Grundlagenphase wird kein Abo, keine Werbung und keine Zahlungsabwicklung umgesetzt. Das kostenlose Basisprofil bleibt die Arbeitsannahme; ein späteres Pro-Abo darf nur zusätzliche Werkzeuge betreffen und verändert weder organische Relevanz noch Bewertungen oder Nachweise. Reale Zahlungsbereitschaft wird erst vor einem öffentlichen Pilot überprüft.
+
 ## Nicht käuflich
 
 Organisches Qualitäts-/Relevanzranking, Sterne, Entfernung, Besuchsnachweis, Unternehmensprüfung als Vertrauenssignal und Moderationsentscheidungen. Zahlender Betrieb kann keine negative Bewertung unterdrücken. Kostenloser Betrieb bleibt auffindbar und erreichbar.

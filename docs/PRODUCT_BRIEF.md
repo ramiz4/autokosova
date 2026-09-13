@@ -12,6 +12,10 @@ Stand: 13. September 2026. Grundlage sind Anforderungen des Projektinitiators, k
 
 Der Status wird erst nach echten Gesprächen aktualisiert. Die Vorbereitung und das Ergebnisraster stehen in [INTERVIEWS.md](validation/INTERVIEWS.md); dort werden keine unnötigen personenbezogenen Daten abgelegt.
 
+## Arbeitsentscheid für die Grundlagenphase
+
+Der Betreiber hat entschieden, die Grundlagenphase ohne zeitaufwendige Einzelinterviews fortzusetzen. Die dokumentierten Annahmen in [INTERVIEWS.md](validation/INTERVIEWS.md) sind deshalb die Arbeitsgrundlage für UX und Architektur. Sie sind keine Marktvalidierung und erlauben weder einen öffentlichen Pilot noch eine kostenpflichtige Leistung. Reale Gespräche und die Go/No-Go-Entscheidung gehören vor den öffentlichen Pilot in [Issue #18](https://github.com/ramiz4/autokosova/issues/18).
+
 ## Problem und Zielgruppe
 
 Nach Beschreibung des Initiators möchte die albanische Diaspora aus Deutschland, der Schweiz und weiteren Ländern während Aufenthalten in Kosovo Reparaturen und Wartungen durchführen lassen. Qualität ist wichtiger als der billigste Preis; für gute Arbeit besteht nach seiner Einschätzung Zahlungsbereitschaft. Es fehlen leicht zugängliche, verlässliche Informationen zur Auswahl passender Werkstätten. Vorhandene Alternativen und tatsächliche Nachfrage werden im Pilot geprüft; nicht pauschal behaupten, nirgendwo existierten Bewertungen.
@@ -56,7 +60,7 @@ Vor einem öffentlichen Pilot hält der Betreiber schriftlich fest, wer verantwo
 - **Anpassen:** Nutzen oder Ablauf ist unklar, aber die Gespräche zeigen einen konkret eingrenzbaren und prüfbaren nächsten Ansatz.
 - **Stoppen/verschieben:** Es gibt keinen belastbaren Nutzen, keine verantwortbare Betreibergrundlage oder eine nicht aufgelöste Schutz- beziehungsweise Rechtsfrage.
 
-Fünf Kunden- und fünf Werkstattgespräche sind eine Mindestgrundlage für die Entscheidung, aber keine repräsentative Marktstudie. Ein Kontaktklick bleibt eine Kontaktabsicht, nicht ein gesendeter Auftrag, Besuch oder Umsatz.
+Fünf Kunden- und fünf Werkstattgespräche sind eine Mindestgrundlage für die spätere öffentliche Pilotentscheidung in [Issue #18](https://github.com/ramiz4/autokosova/issues/18), aber keine repräsentative Marktstudie. Ein Kontaktklick bleibt eine Kontaktabsicht, nicht ein gesendeter Auftrag, Besuch oder Umsatz.
 
 ## Offene Entscheidungen
 

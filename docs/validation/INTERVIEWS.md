@@ -1,6 +1,6 @@
 # Gespräche und Pilotentscheidung
 
-Status: **Vorbereitung abgeschlossen, Validierung offen.** Dieses Dokument enthält keine Interviewergebnisse. Es darf erst nach tatsächlichen Gesprächen mit anonymisierten, sachlichen Notizen ergänzt werden.
+Status: **Annahmenbasis für die Grundlagenphase beschlossen; reale Validierung vor öffentlichem Pilot offen.** Dieses Dokument enthält keine Interviewergebnisse. Es darf erst nach tatsächlichen Gesprächen mit anonymisierten, sachlichen Notizen ergänzt werden.
 
 ## Ziel und Schutzrahmen
 
@@ -11,9 +11,25 @@ Die Gespräche prüfen, ob die beschriebene Zielgruppe einen nachvollziehbaren N
 - Keine Werkstatt als geprüft, empfohlen oder teilnehmend darstellen, solange es dafür keinen separaten Nachweis und eine Freigabe gibt.
 - Keine Person zu Kontakt, Preis oder Aussage drängen. Ein Gespräch kann jederzeit ohne Begründung beendet werden.
 
+## Beschlossene Annahmen für die Grundlagenphase
+
+Der Betreiber hat entschieden, die folgenden Annahmen nach bestem Wissen als Grundlage für UX und Architektur zu verwenden, statt jetzt Interviews durchzuführen. Jede Annahme bleibt bis zur realen Pilotvalidierung offen. Sie autorisiert keine öffentliche Bereitstellung, Kosten oder die Darstellung von Marktresultaten.
+
+| Annahme | Arbeitsentscheidung | Unsicherheit und spätere Prüfung |
+|---|---|---|
+| Zielgruppe | Primär Menschen aus der albanischen Diaspora, die einen Aufenthalt im Kosovo für Wartung oder Reparatur nutzen und eine Werkstatt selbst auswählen möchten. | Bedarf, Suchvolumen und bevorzugte Sprache sind nicht gemessen. Vor öffentlichem Pilot mit echten Nutzern prüfen. |
+| Nutzenversprechen | Orientierung über Leistung, Standort, Unternehmensdaten und nachvollziehbare Erfahrungen ist wertvoller als ein Preisvergleich oder eine Angebotsauktion. | Nicht durch Kunden belegt; kein Qualitäts- oder Erfolgsversprechen daraus ableiten. |
+| Kernablauf | Gastzugang: Suche nach Leistung und Ort → Ergebnisse → Profil → bewusst gewählter WhatsApp- oder Telefonkontakt. | Die Verständlichkeit von Mehrort-/Radiussuche, Texten und Kontaktweg wird mit echten Nutzern geprüft. |
+| Startgebiet | Pristina und ein klar kommunizierter Luftlinienradius sind der erste sinnvolle Fokus, weil ein dichteres Angebot die Profil- und Suchgrundlage vereinfacht. | Keine bestätigte Partner- oder Nachfragebasis. Erweiterung erst nach Pilotdaten. |
+| Werkstattaufnahme | Zunächst betreut und einzeln geprüft; Selbstregistrierung darf keine Kontrolle über einen bestehenden Betrieb verleihen. | Aufwand, Prüfungskriterien und Akzeptanz sind noch offen. |
+| Monetarisierung | Suche und Basisprofile bleiben kostenlos. In der Grundlagenphase gibt es kein Abo, keine Werbung und keine Zahlungsabwicklung. | Ob Werkstätten später für zusätzliche Werkzeuge zahlen würden, ist unbekannt. |
+| Erfolgsmessung | Relevante Suche, bewusst gewählte Kontaktabsicht, bestätigter Besuch, Profilabdeckung und Moderationsaufwand werden getrennt erfasst. | Kontaktabsicht ist keine Nachricht, Buchung, Besuch oder Umsatz. |
+
+Diese Annahmen geben [Issue #5](https://github.com/ramiz4/autokosova/issues/5) und [Issue #6](https://github.com/ramiz4/autokosova/issues/6) eine gemeinsame, ausdrücklich vorläufige Arbeitsgrundlage.
+
 ## Rekrutierungsplan
 
-Es werden mindestens fünf Gespräche je Gruppe geführt. Die kleine, gezielte Stichprobe dient dem Verständnis und ist nicht repräsentativ.
+Vor einem öffentlichen Pilot werden mindestens fünf Gespräche je Gruppe geführt. Die kleine, gezielte Stichprobe dient dem Verständnis und ist nicht repräsentativ. Diese spätere Validierung gehört zu [Issue #18](https://github.com/ramiz4/autokosova/issues/18); sie ist kein Blocker für die jetzige Grundlagenarbeit.
 
 | Gruppe | Gewünschte Vielfalt | Rekrutierung | Nicht zulässig |
 |---|---|---|---|
@@ -63,7 +79,7 @@ Die Auswertung trennt danach ausdrücklich:
 
 Einzelmeinungen, insbesondere zur Zahlungsbereitschaft, werden nicht verallgemeinert. Preis- und Umsatzzahlen werden nur mit Herkunft, Kontext und Unsicherheit dokumentiert; keine dieser Daten gehören in öffentliche Produkttexte.
 
-## Pilotkriterien und Entscheidung
+## Öffentlicher Pilot: spätere Kriterien und Entscheidung
 
 **Vorläufig verantwortliche Person:** Betreiber (Ramiz), vor Pilotbeginn ausdrücklich zu bestätigen.
 
@@ -74,4 +90,4 @@ Einzelmeinungen, insbesondere zur Zahlungsbereitschaft, werden nicht verallgemei
 | Betrieb | Pilotregion, Partner, Ansprechpartner, Budget, Support und Beschwerdeweg | Ein verantwortbarer, begrenzter Betrieb möglich ist | Verantwortlichkeit, Budget oder Beschwerdeweg fehlen |
 | Messung | Definition und Erfassung von relevanten Suchen, Kontaktabsicht, bestätigtem Besuch, Profilabdeckung und Moderationsaufwand | Die Messung keine Buchung oder Umsatz behauptet, die nicht belegt sind | Die zentrale Wirkung nicht datensparsam messbar ist |
 
-Die abschließende Entscheidung lautet **weiter**, **anpassen** oder **stoppen/verschieben** und nennt die zugrunde liegenden anonymen Erkenntnisse, offene Risiken und den Entscheidenden. Sie wird nicht allein aus der Mindestzahl von zehn Gesprächen abgeleitet.
+Die abschließende Entscheidung lautet **weiter**, **anpassen** oder **stoppen/verschieben** und nennt die zugrunde liegenden anonymen Erkenntnisse, offene Risiken und den Entscheidenden. Sie wird nicht allein aus der Mindestzahl von zehn Gesprächen abgeleitet. Ohne diese Prüfung bleibt es bei der Grundlagenarbeit und einem nicht öffentlichen, kostenfreien Entwicklungsstand.
