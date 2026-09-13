@@ -4,9 +4,15 @@ Vom Nutzer akzeptierte visuelle Ausgangsrichtung: **AutoKosova Car Repair Platfo
 
 Das Originalbild stammt aus der gemeinsamen Konzeptarbeit. Es zeigt fiktive Inhalte, keine nachgewiesenen Werkstätten, Kunden, Bewertungen, Preise oder Conversion-Ergebnisse.
 
-## Originaldatei
+## Aktuelle Seiten-Mockups und Bildmotive
 
-Das Original-PNG liegt im zuvor bereitgestellten `autokosova-github-startpaket.zip` unter `repository/docs/design/autokosova-showcase.png`. Es wurde bei diesem textbasierten Repository-Setup noch nicht übertragen. Deshalb wird hier kein defekter Bildlink eingebettet. [UX-Issue #5](https://github.com/ramiz4/autokosova/issues/5) verwendet diese Referenz; vor pixelnaher Umsetzung ist das Originalbild in den Arbeitskontext zu übernehmen. Die fachlichen Anforderungen sind nachfolgend vollständig festgehalten.
+Die [Designreferenzen vom 13. September 2026](references/2026-09-13/README.md) enthalten die fünf vollständigen Seiten-Mockups für die Umbau-Issues #42–#46 sowie acht ergänzende Bilder einschließlich eines mobilen Showcase. Alle 13 Original-PNGs sind mit aussagekräftigen Dateinamen, Herkunft und Zuordnung zu den einzelnen GitHub-Issues abgelegt.
+
+Die Sammlung dient als visuelle Grundlage für Startseite, Reparaturanfrage, Werkstattsuche, Werkstattprofil und Monetarisierungsseite. Sie wird nicht automatisch als öffentliches Bildmaterial in die Anwendung eingebunden. Die folgenden fachlichen Präzisierungen gelten auch für diese neueren Mockups.
+
+## Historische Originaldatei
+
+Das frühere Showcase-PNG wurde im `autokosova-github-startpaket.zip` unter `repository/docs/design/autokosova-showcase.png` bereitgestellt und gehört zu [UX-Issue #5](https://github.com/ramiz4/autokosova/issues/5). Diese separate historische Datei liegt weiterhin nicht im Repository; die oben verlinkten Seiten-Mockups sind die neue, direkt verfügbare Grundlage für die Umbau-Issues #42–#46.
 
 ## Verbindliche Präzisierungen
 
