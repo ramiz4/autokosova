@@ -147,7 +147,7 @@ const messages: Readonly<Record<AppLanguage, MessageCatalog>> = {
     'search.reasonLanguage': 'Sprache: {language}',
     'search.reasonService': 'Leistung: {service}',
     'search.selfReported': 'Selbstauskunft:',
-    'search.title': 'Passende Werkstätten',
+    'search.title': 'Werkstätten finden',
     'search.why': 'Warum passend',
     'search.intro':
       'Der Suchkreis ist eine Luftlinie. Mehrere Orte werden zusammen berücksichtigt; eine Werkstatt erscheint nur einmal. Fahrzeug-, Reise- und Dateiangaben werden nicht an Werkstätten gesendet.',
@@ -280,7 +280,7 @@ const messages: Readonly<Record<AppLanguage, MessageCatalog>> = {
     'search.reasonLanguage': 'Language: {language}',
     'search.reasonService': 'Service: {service}',
     'search.selfReported': 'Self-reported:',
-    'search.title': 'Suitable garages',
+    'search.title': 'Find garages',
     'search.why': 'Why it matches',
     'search.intro':
       'The search radius is a straight line. Multiple locations are considered together, and each garage appears once. Vehicle, travel, and file details are never sent to garages.',
@@ -414,7 +414,7 @@ const messages: Readonly<Record<AppLanguage, MessageCatalog>> = {
     'search.reasonLanguage': 'Gjuha: {language}',
     'search.reasonService': 'Shërbimi: {service}',
     'search.selfReported': 'Vetëdeklarim:',
-    'search.title': 'Servise të përshtatshme',
+    'search.title': 'Gjej servise',
     'search.why': 'Pse përshtatet',
     'search.intro':
       'Rrezja e kërkimit është distancë ajrore. Disa vende merren së bashku dhe çdo servis shfaqet vetëm një herë. Të dhënat e automjetit, udhëtimit dhe skedarëve nuk dërgohen te serviset.',

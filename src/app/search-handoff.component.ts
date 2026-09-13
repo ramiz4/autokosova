@@ -57,6 +57,12 @@ interface Area {
         class="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(244,248,254,0.98)_0%,rgba(244,248,254,0.8)_44%,rgba(244,248,254,0.18)_100%),url('/images/search/search-hero-workshop.webp')] bg-cover bg-right"
       ></div>
       <app-site-header [active]="'search'" class="relative mx-auto block max-w-[1920px]" />
+      <p
+        lang="de"
+        class="pointer-events-none absolute right-[31%] top-32 hidden max-w-52 -rotate-6 text-center font-serif text-4xl italic leading-tight text-brand-dark xl:block"
+      >
+        {{ ui('search.ui.slogan') }}
+      </p>
       <div
         class="mx-auto grid max-w-[1920px] gap-7 py-12 lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)] lg:items-end lg:py-16"
       >
@@ -83,22 +89,29 @@ interface Area {
           </ul>
         </div>
         <form
-          class="rounded-2xl border border-white/80 bg-white/95 p-4 shadow-xl shadow-slate-950/10"
+          class="rounded-2xl border border-white/80 bg-white/95 p-3 shadow-xl shadow-slate-950/10"
           (ngSubmit)="applyFilters()"
           novalidate
         >
           <label class="sr-only" for="hero-place">{{ ui('search.ui.place') }}</label>
           <div class="flex flex-col gap-3 sm:flex-row">
-            <select
-              id="hero-place"
-              [(ngModel)]="areas[0].placeId"
-              name="hero-place"
-              class="min-h-12 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 font-semibold"
-            >
-              @for (place of places; track place.id) {
-                <option [value]="place.id">{{ place.label }}</option>
-              }</select
-            ><button type="submit" appButton class="min-h-12 px-6">
+            <span class="relative flex-1">
+              <app-icon
+                name="pin"
+                class="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-brand-dark"
+              />
+              <select
+                id="hero-place"
+                [(ngModel)]="areas[0].placeId"
+                name="hero-place"
+                class="min-h-12 min-w-0 w-full rounded-xl border border-slate-300 bg-white py-2 pl-11 pr-3 font-semibold"
+              >
+                @for (place of places; track place.id) {
+                  <option [value]="place.id">{{ place.label }}</option>
+                }
+              </select>
+            </span>
+            <button type="submit" appButton class="min-h-12 px-8">
               <app-icon name="search" class="size-5" />{{ language.t('nav.search') }}
             </button>
           </div>
@@ -261,9 +274,9 @@ interface Area {
               <ol class="grid gap-4">
                 @for (workshop of response.results; track workshop.id; let index = $index) {
                   <li
-                    class="grid overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm transition hover:border-brand/30 hover:shadow-md sm:grid-cols-[205px_minmax(0,1fr)]"
+                    class="grid gap-3 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm transition hover:border-brand/30 hover:shadow-md sm:grid-cols-[205px_minmax(0,1fr)]"
                   >
-                    <div class="relative min-h-[144px] bg-slate-100">
+                    <div class="relative min-h-[144px] overflow-hidden rounded-xl bg-slate-100">
                       @if (photoIds(workshop).length) {
                         <img
                           [src]="photoUrl(workshop)"
@@ -283,7 +296,7 @@ interface Area {
                         <span class="sr-only">{{ ui('search.ui.noPhoto') }}</span>
                       }
                     </div>
-                    <div class="relative p-4 sm:min-h-[144px] sm:pr-48">
+                    <div class="relative p-3 sm:min-h-[144px] sm:pr-48">
                       <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <h2 class="text-xl font-bold tracking-tight">{{ workshop.name }}</h2>
