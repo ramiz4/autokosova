@@ -536,6 +536,7 @@ export function createServer(options: ServerOptions = {}) {
         transaction.codeVerifier,
       );
       const identity = await verifyZitadelAccessToken(idToken, options.oidcConfig);
+      accessStore.setVerifiedRoles(identity.subject, identity.roles);
       const session = accessStore.createSession(identity.subject);
       const secure = process.env['NODE_ENV'] === 'production';
       reply.setCookie('autokosova_session', session.sessionId, {

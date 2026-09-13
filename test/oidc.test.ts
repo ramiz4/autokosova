@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createAuthorizationUrl, readZitadelOidcConfig } from '../src/server/oidc';
+import {
+  createAuthorizationUrl,
+  extractZitadelProjectRoles,
+  readZitadelOidcConfig,
+} from '../src/server/oidc';
 
 const config = {
   audience: 'client-id',
@@ -35,4 +39,16 @@ test('OIDC configuration fails closed when it is incomplete', () => {
     }),
     config,
   );
+});
+
+test('only supported ZITADEL project roles become server roles', () => {
+  assert.deepEqual(
+    extractZitadelProjectRoles({
+      admin: { 'org-1': 'test.example' },
+      moderator: { 'org-1': 'test.example' },
+    }),
+    ['admin', 'moderator'],
+  );
+  assert.deepEqual(extractZitadelProjectRoles({ ignored: { moderator: false } }), []);
+  assert.deepEqual(extractZitadelProjectRoles([{ customer: { 'org-1': 'test.example' } }]), []);
 });

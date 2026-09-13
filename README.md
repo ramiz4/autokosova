@@ -61,6 +61,15 @@ AUTOKOSOVA_DEMO_DATA=1 AUTOKOSOVA_DEMO_WORKFLOW_DATA=1 npm run db:seed:demo-work
 
 Die App ist im Entwicklungsmodus über Angular erreichbar. Nach einem Produktionsbuild prüft `npm run test:smoke` die SSR-Startseite und `GET /health`.
 
+## Lokale Test-OIDC-Konten
+
+Die fiktiven Konten für Kunde, Werkstattmitglied, Moderator und Admin liegen mit ihren Passwörtern
+und aktuellen Subjects ausschließlich im freigegebenen 1Password-Store. Die lokale Konfiguration
+für ZITADEL wird ebenfalls nur daraus geladen; weder `.env.example` noch Git, CI oder Logs enthalten
+Zugangsdaten. Der Server übernimmt `admin` und `moderator` ausschließlich aus dem verifizierten
+ZITADEL-Projektrollen-Claim. Details und die Workshop-Membership-Grenze stehen in
+[AUTH-INTEGRATION.md](docs/architecture/AUTH-INTEGRATION.md).
+
 ```sh
 npm run format:check
 npm run lint

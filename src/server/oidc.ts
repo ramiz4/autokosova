@@ -1,6 +1,9 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
+const zitadelProjectRolesClaim = 'urn:zitadel:iam:org:project:roles';
+const supportedSystemRoles = new Set(['admin', 'moderator']);
+
 export interface ZitadelVerifierConfig {
   readonly audience: string;
   readonly issuer: string;
@@ -95,5 +98,20 @@ export async function verifyZitadelAccessToken(token: string, config: ZitadelVer
     throw new Error('OIDC token has no subject');
   }
 
-  return { subject: verification.payload.sub };
+  return {
+    roles: extractZitadelProjectRoles(verification.payload[zitadelProjectRolesClaim]),
+    subject: verification.payload.sub,
+  };
+}
+
+export function extractZitadelProjectRoles(value: unknown): readonly ('admin' | 'moderator')[] {
+  const roles = new Set<'admin' | 'moderator'>();
+  const grants = Array.isArray(value) ? value : [value];
+  for (const grant of grants) {
+    if (!grant || typeof grant !== 'object') continue;
+    for (const roleKey of Object.keys(grant)) {
+      if (supportedSystemRoles.has(roleKey)) roles.add(roleKey as 'admin' | 'moderator');
+    }
+  }
+  return [...roles].sort();
 }

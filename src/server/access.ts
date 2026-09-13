@@ -638,6 +638,10 @@ export class AccessStore implements ReviewStore {
     return { csrfToken, sessionId };
   }
 
+  setVerifiedRoles(userId: string, roles: readonly ('admin' | 'moderator')[]): void {
+    this.users.set(userId, new Set<SystemRole>(['customer', ...roles]));
+  }
+
   createWorkshopRegistration(
     principal: Principal,
     profile: WorkshopProfileInput,
