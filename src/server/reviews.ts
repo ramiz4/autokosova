@@ -26,7 +26,7 @@ export type ReviewEvidenceKind = (typeof REVIEW_EVIDENCE_KINDS)[number];
 export type ReviewEvidenceStatus =
   'submitted' | 'under_review' | 'verified' | 'not_verified' | 'deleted_after_retention';
 export type ReviewPublicationState =
-  'submitted' | 'under_review' | 'published' | 'rejected' | 'withdrawn';
+  'submitted' | 'under_review' | 'published' | 'temporarily_hidden' | 'rejected' | 'withdrawn';
 export type ReviewRejectionReason = (typeof REVIEW_REJECTION_REASONS)[number];
 export type ReviewUpdateKind = 'complaint' | 'rework';
 

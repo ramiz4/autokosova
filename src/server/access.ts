@@ -29,6 +29,26 @@ import {
   type PublicWorkshopSearchInput,
   type PublicWorkshopSearchResponse,
 } from './workshop-search';
+import {
+  isModerationAction,
+  isModerationReasonCode,
+  isModerationReportCategory,
+  isModerationSubjectType,
+  priorityForReport,
+  type AppealInput,
+  type ContentReportInput,
+  type DataDeletionRequest,
+  type ModerationActionInput,
+  type ModerationCaseDetail,
+  type ModerationCaseStatus,
+  type ModerationCaseSummary,
+  type ModerationPriority,
+  type ModerationReasonCode,
+  type ModerationReportCategory,
+  type ModerationSubjectType,
+  type RetentionPolicy,
+  type RetentionPolicyInput,
+} from './moderation';
 
 export type SystemRole = 'admin' | 'customer' | 'moderator';
 export type MembershipRole = 'editor' | 'owner';
@@ -118,6 +138,7 @@ interface Membership {
 interface PrivateFile {
   readonly id: string;
   readonly ownerUserId: string;
+  readonly storageKey: string;
   reviewId?: string;
   retentionState: 'active' | 'deleted';
 }
@@ -174,7 +195,7 @@ interface ReviewEvidence {
 }
 
 interface ReviewRecord {
-  readonly authorUserId: string;
+  authorUserId: string;
   readonly createdAt: string;
   readonly evidence: ReviewEvidence;
   readonly id: string;
@@ -201,6 +222,38 @@ interface ReviewRecord {
   };
 }
 
+interface ModerationCaseRecord {
+  assignedModeratorUserId?: string;
+  createdAt: string;
+  readonly id: string;
+  readonly priority: ModerationPriority;
+  reasonCode?: ModerationReasonCode;
+  readonly report?: {
+    readonly category: ModerationReportCategory;
+    readonly details?: string;
+    readonly reporterUserId: string;
+  };
+  status: ModerationCaseStatus;
+  readonly subjectId: string;
+  readonly subjectType: ModerationSubjectType | 'data_deletion';
+}
+
+interface AppealRecord {
+  readonly caseId: string;
+  readonly createdAt: string;
+  readonly id: string;
+  readonly message: string;
+  readonly appellantUserId: string;
+}
+
+export interface PersonalDataExport {
+  readonly exportedAt: string;
+  readonly files: readonly { readonly id: string; readonly status: 'active' | 'deleted' }[];
+  readonly repairRequests: readonly StoredRepairRequest[];
+  readonly reviews: readonly OwnReview[];
+  readonly vehicles: readonly { readonly id: string; readonly label: string }[];
+}
+
 export interface AuditEvent {
   readonly actorUserId: string;
   readonly subjectId?: string;
@@ -224,8 +277,12 @@ export class DuplicateWorkshopError extends AccessError {
 
 export class AccessStore implements ReviewStore {
   readonly auditEvents: AuditEvent[] = [];
+  private readonly appeals = new Map<string, AppealRecord>();
+  private readonly deletionRequests = new Map<string, DataDeletionRequest>();
+  private readonly deletedStorageKeys = new Set<string>();
   private readonly files = new Map<string, PrivateFile>();
   private readonly memberships = new Map<string, Membership>();
+  private readonly moderationCases = new Map<string, ModerationCaseRecord>();
   private readonly oidcTransactions = new Map<string, OidcTransaction>();
   private readonly repairRequests = new Map<string, PrivateRepairRequest>();
   private readonly reviews = new Map<string, ReviewRecord>();
@@ -235,6 +292,7 @@ export class AccessStore implements ReviewStore {
   private readonly workshopDocuments = new Map<string, WorkshopDocument>();
   private readonly workshopPhotos = new Map<string, WorkshopPhoto>();
   private readonly workshops = new Map<string, Workshop>();
+  private retentionPolicy?: RetentionPolicy;
 
   addMembership(
     userId: string,
@@ -247,6 +305,310 @@ export class AccessStore implements ReviewStore {
 
   addRole(userId: string, role: SystemRole) {
     this.ensureUser(userId).add(role);
+  }
+
+  /** Test-only local object-storage probe; production needs the queued provider worker in #17. */
+  wasPrivateObjectDeleted(fileId: string): boolean {
+    return this.deletedStorageKeys.has(`quarantine/${fileId}`);
+  }
+
+  configureRetentionPolicy(admin: Principal, input: RetentionPolicyInput): RetentionPolicy {
+    this.requireAdmin(admin);
+    const numericValues = [
+      input.reviewEvidenceRetentionDays,
+      input.repairRequestRetentionDays,
+      input.reportRetentionDays,
+      input.auditLogRetentionDays,
+    ];
+    if (
+      !input.version.trim() ||
+      !input.operatorApprovalReference.trim() ||
+      !['delete', 'retain_anonymized'].includes(input.publicReviewHandling) ||
+      numericValues.some((value) => !Number.isSafeInteger(value) || value < 1 || value > 3650)
+    ) {
+      throw new AccessError(422, 'Retention policy is incomplete');
+    }
+    this.retentionPolicy = { ...input, configuredAt: new Date().toISOString() };
+    for (const request of this.deletionRequests.values()) {
+      if (request.status !== 'blocked_by_policy') continue;
+      request.status = 'submitted';
+      request.policyVersion = input.version;
+      const caseRecord = this.moderationCases.get(request.id);
+      if (caseRecord) caseRecord.status = 'submitted';
+    }
+    this.auditEvents.push({
+      actorUserId: admin.userId,
+      subjectId: input.version,
+      type: 'retention-policy-configured',
+    });
+    return this.retentionPolicy;
+  }
+
+  createContentReport(principal: Principal, input: ContentReportInput): ModerationCaseSummary {
+    if (
+      !isModerationSubjectType(input.subjectType) ||
+      !input.subjectId.trim() ||
+      !isModerationReportCategory(input.category) ||
+      (input.details !== undefined &&
+        (input.details.trim().length < 20 || input.details.trim().length > 1200))
+    ) {
+      throw new AccessError(422, 'Report is invalid');
+    }
+    this.requireReportableSubject(input.subjectType, input.subjectId);
+    const duplicate = [...this.moderationCases.values()].some(
+      (record) =>
+        record.report?.reporterUserId === principal.userId &&
+        record.subjectType === input.subjectType &&
+        record.subjectId === input.subjectId &&
+        ['submitted', 'assigned', 'waiting_for_subject'].includes(record.status),
+    );
+    if (duplicate) throw new AccessError(409, 'This content already has an open report');
+    const record: ModerationCaseRecord = {
+      createdAt: new Date().toISOString(),
+      id: randomUUID(),
+      priority: priorityForReport(input.category),
+      report: {
+        category: input.category,
+        ...(input.details?.trim() ? { details: input.details.trim() } : {}),
+        reporterUserId: principal.userId,
+      },
+      status: 'submitted',
+      subjectId: input.subjectId,
+      subjectType: input.subjectType,
+    };
+    this.moderationCases.set(record.id, record);
+    this.auditEvents.push({
+      actorUserId: principal.userId,
+      subjectId: record.id,
+      type: 'content-report-submitted',
+    });
+    return this.toModerationCaseSummary(record);
+  }
+
+  assignModerationCase(admin: Principal, caseId: string, moderatorUserId: string): void {
+    this.requireAdmin(admin);
+    if (!this.ensureUser(moderatorUserId).has('moderator')) {
+      throw new AccessError(422, 'A case can only be assigned to a moderator');
+    }
+    const record = this.requireModerationCase(caseId);
+    if (!['submitted', 'assigned'].includes(record.status)) {
+      throw new AccessError(409, 'Only an open moderation case can be assigned');
+    }
+    record.assignedModeratorUserId = moderatorUserId;
+    record.status = 'assigned';
+    this.auditEvents.push({
+      actorUserId: admin.userId,
+      subjectId: caseId,
+      type: 'moderation-case-assigned',
+    });
+  }
+
+  applyModerationAction(
+    principal: Principal,
+    caseId: string,
+    input: ModerationActionInput,
+  ): ModerationCaseSummary {
+    if (!isModerationAction(input.action) || !isModerationReasonCode(input.reasonCode)) {
+      throw new AccessError(422, 'Moderation action is invalid');
+    }
+    const record = this.requireModerationCase(caseId);
+    this.requireCaseAccess(principal, record);
+    if (record.subjectType === 'data_deletion') {
+      throw new AccessError(409, 'Data deletion uses its dedicated workflow');
+    }
+    if (input.action === 'temporarily_hide' || input.action === 'restore') {
+      this.changeSubjectVisibility(record.subjectType, record.subjectId, input.action);
+      record.status = 'resolved';
+    } else if (input.action === 'request_information') {
+      record.status = 'waiting_for_subject';
+    } else if (input.action === 'approve') {
+      record.status = 'resolved';
+    } else {
+      record.status = 'rejected';
+    }
+    record.reasonCode = input.reasonCode;
+    this.auditEvents.push({
+      actorUserId: principal.userId,
+      subjectId: caseId,
+      type: `moderation-case-${input.action}`,
+    });
+    return this.toModerationCaseSummary(record);
+  }
+
+  createAppeal(principal: Principal, input: AppealInput): string {
+    if (
+      !input.caseId.trim() ||
+      input.message.trim().length < 20 ||
+      input.message.trim().length > 1200
+    ) {
+      throw new AccessError(422, 'Appeal is invalid');
+    }
+    const record = this.requireModerationCase(input.caseId);
+    if (!['resolved', 'rejected'].includes(record.status) || !this.canAppeal(principal, record)) {
+      throw new AccessError(403, 'Appeal is not available for this moderation case');
+    }
+    const appealId = randomUUID();
+    this.appeals.set(appealId, {
+      appellantUserId: principal.userId,
+      caseId: record.id,
+      createdAt: new Date().toISOString(),
+      id: appealId,
+      message: input.message.trim(),
+    });
+    record.status = 'submitted';
+    record.reasonCode = 'missing_information';
+    this.auditEvents.push({
+      actorUserId: principal.userId,
+      subjectId: record.id,
+      type: 'moderation-appeal-submitted',
+    });
+    return appealId;
+  }
+
+  getModerationCase(principal: Principal, caseId: string): ModerationCaseDetail {
+    const record = this.requireModerationCase(caseId);
+    this.requireCaseAccess(principal, record);
+    return this.toModerationCaseDetail(record);
+  }
+
+  listModerationQueue(principal: Principal): readonly ModerationCaseSummary[] {
+    if (principal.roles.has('admin')) {
+      return this.toSortedModerationSummaries([
+        ...this.toSortedModerationQueue([...this.moderationCases.values()]),
+        ...this.pendingSubjectQueue(),
+      ]);
+    }
+    if (!principal.roles.has('moderator')) throw new AccessError(403, 'Moderator access denied');
+    return this.toSortedModerationSummaries([
+      ...this.toSortedModerationQueue(
+        [...this.moderationCases.values()].filter(
+          (record) => record.assignedModeratorUserId === principal.userId,
+        ),
+      ),
+      ...this.pendingSubjectQueue(principal.userId),
+    ]);
+  }
+
+  listOwnModerationCases(principal: Principal): readonly ModerationCaseSummary[] {
+    return this.toSortedModerationQueue(
+      [...this.moderationCases.values()].filter((record) => this.canAppeal(principal, record)),
+    );
+  }
+
+  exportPersonalData(principal: Principal): PersonalDataExport {
+    return {
+      exportedAt: new Date().toISOString(),
+      files: [...this.files.values()]
+        .filter((file) => file.ownerUserId === principal.userId)
+        .map((file) => ({ id: file.id, status: file.retentionState })),
+      repairRequests: [...this.repairRequests.values()]
+        .filter((request) => request.ownerUserId === principal.userId)
+        .map((request) => this.toStoredRepairRequest(request)),
+      reviews: this.listOwnReviews(principal),
+      vehicles: this.listVehicles(principal.userId),
+    };
+  }
+
+  requestPersonalDataDeletion(principal: Principal): DataDeletionRequest {
+    const existing = [...this.deletionRequests.values()].find(
+      (request) => request.userId === principal.userId && request.status !== 'completed',
+    );
+    if (existing) return { ...existing };
+    const ownsWorkshop = [...this.memberships.values()].some(
+      (membership) =>
+        membership.userId === principal.userId &&
+        membership.role === 'owner' &&
+        membership.state === 'active',
+    );
+    const request: DataDeletionRequest = {
+      createdAt: new Date().toISOString(),
+      id: randomUUID(),
+      status: ownsWorkshop
+        ? 'manual_content_decision_required'
+        : this.retentionPolicy
+          ? 'submitted'
+          : 'blocked_by_policy',
+      userId: principal.userId,
+      ...(this.retentionPolicy ? { policyVersion: this.retentionPolicy.version } : {}),
+    };
+    this.deletionRequests.set(request.id, request);
+    this.moderationCases.set(request.id, {
+      createdAt: request.createdAt,
+      id: request.id,
+      priority: 'normal',
+      status: request.status === 'submitted' ? 'submitted' : 'waiting_for_subject',
+      subjectId: request.id,
+      subjectType: 'data_deletion',
+    });
+    this.auditEvents.push({
+      actorUserId: principal.userId,
+      subjectId: request.id,
+      type: 'personal-data-deletion-requested',
+    });
+    return { ...request };
+  }
+
+  listDataDeletionRequests(admin: Principal): readonly DataDeletionRequest[] {
+    this.requireAdmin(admin);
+    return [...this.deletionRequests.values()].map((request) => ({ ...request }));
+  }
+
+  processPersonalDataDeletion(admin: Principal, requestId: string): void {
+    this.requireAdmin(admin);
+    const request = this.deletionRequests.get(requestId);
+    if (!request) throw new AccessError(404, 'Data deletion request not found');
+    if (
+      request.status !== 'submitted' ||
+      !this.retentionPolicy ||
+      request.policyVersion !== this.retentionPolicy.version
+    ) {
+      throw new AccessError(409, 'Data deletion requires the configured operator policy');
+    }
+    const userId = request.userId;
+    for (const [id, repairRequest] of this.repairRequests) {
+      if (repairRequest.ownerUserId === userId) this.repairRequests.delete(id);
+    }
+    for (const [id, vehicle] of this.vehicles) {
+      if (vehicle.ownerUserId === userId) this.vehicles.delete(id);
+    }
+    for (const [id, review] of this.reviews) {
+      if (review.authorUserId !== userId) continue;
+      const file = this.files.get(review.evidence.fileId);
+      if (file) file.retentionState = 'deleted';
+      if (
+        review.publicationState === 'published' &&
+        this.retentionPolicy.publicReviewHandling === 'retain_anonymized'
+      ) {
+        review.authorUserId = `anonymized-review-author-${review.id}`;
+        review.evidence.status = 'deleted_after_retention';
+      } else {
+        this.reviews.delete(id);
+      }
+    }
+    for (const [id, file] of this.files) {
+      if (file.ownerUserId === userId) {
+        this.deletedStorageKeys.add(file.storageKey);
+        this.files.delete(id);
+      }
+    }
+    for (const [sessionId, session] of this.sessions) {
+      if (session.userId === userId) this.sessions.delete(sessionId);
+    }
+    for (const [key, membership] of this.memberships) {
+      if (membership.userId === userId) this.memberships.delete(key);
+    }
+    this.users.delete(userId);
+    request.status = 'completed';
+    const caseRecord = this.moderationCases.get(requestId);
+    if (caseRecord) {
+      caseRecord.status = 'resolved';
+      caseRecord.reasonCode = 'no_violation';
+    }
+    this.auditEvents.push({
+      actorUserId: admin.userId,
+      subjectId: requestId,
+      type: 'personal-data-deletion-completed',
+    });
   }
 
   createAssistedWorkshop(
@@ -385,7 +747,12 @@ export class AccessStore implements ReviewStore {
   createWorkshopDocumentGrant(principal: Principal, workshopId: string): FileGrant {
     this.requireWorkshopAccess(principal, workshopId);
     const fileId = randomUUID();
-    this.files.set(fileId, { id: fileId, ownerUserId: principal.userId, retentionState: 'active' });
+    this.files.set(fileId, {
+      id: fileId,
+      ownerUserId: principal.userId,
+      retentionState: 'active',
+      storageKey: `quarantine/${fileId}`,
+    });
     this.workshopDocuments.set(fileId, { fileId, workshopId });
     return this.createGrant(fileId);
   }
@@ -398,7 +765,12 @@ export class AccessStore implements ReviewStore {
       throw new AccessError(413, 'Invalid file size');
     }
     const fileId = randomUUID();
-    this.files.set(fileId, { id: fileId, ownerUserId: userId, retentionState: 'active' });
+    this.files.set(fileId, {
+      id: fileId,
+      ownerUserId: userId,
+      retentionState: 'active',
+      storageKey: `quarantine/${fileId}`,
+    });
     return this.createGrant(fileId);
   }
 
@@ -727,6 +1099,12 @@ export class AccessStore implements ReviewStore {
     if (sessionId) this.sessions.delete(sessionId);
   }
 
+  revokeUserSessions(userId: string) {
+    for (const [sessionId, session] of this.sessions) {
+      if (session.userId === userId) this.sessions.delete(sessionId);
+    }
+  }
+
   reviewWorkshop(
     admin: Principal,
     workshopId: string,
@@ -783,6 +1161,151 @@ export class AccessStore implements ReviewStore {
       subjectId: workshopId,
       type: 'workshop-profile-updated',
     });
+  }
+
+  private canAppeal(principal: Principal, record: ModerationCaseRecord): boolean {
+    if (record.report?.reporterUserId === principal.userId) return true;
+    if (record.subjectType === 'review') {
+      return this.reviews.get(record.subjectId)?.authorUserId === principal.userId;
+    }
+    if (record.subjectType === 'workshop_profile') {
+      return this.hasWorkshopAccess(principal, record.subjectId);
+    }
+    return false;
+  }
+
+  private changeSubjectVisibility(
+    subjectType: ModerationSubjectType,
+    subjectId: string,
+    action: 'temporarily_hide' | 'restore',
+  ): void {
+    if (subjectType === 'review') {
+      const review = this.requireReview(subjectId);
+      const expectedState = action === 'temporarily_hide' ? 'published' : 'temporarily_hidden';
+      if (review.publicationState !== expectedState) {
+        throw new AccessError(409, 'This review cannot take the requested visibility action');
+      }
+      review.publicationState = action === 'temporarily_hide' ? 'temporarily_hidden' : 'published';
+      return;
+    }
+    const workshop = this.requireWorkshop(subjectId);
+    const expectedState = action === 'temporarily_hide' ? 'published' : 'suspended';
+    if (workshop.publicationState !== expectedState) {
+      throw new AccessError(409, 'This workshop cannot take the requested visibility action');
+    }
+    workshop.publicationState = action === 'temporarily_hide' ? 'suspended' : 'published';
+  }
+
+  private requireCaseAccess(principal: Principal, record: ModerationCaseRecord): void {
+    if (principal.roles.has('admin')) return;
+    if (principal.roles.has('moderator') && record.assignedModeratorUserId === principal.userId)
+      return;
+    throw new AccessError(403, 'Moderator access denied for this case');
+  }
+
+  private requireModerationCase(caseId: string): ModerationCaseRecord {
+    const record = this.moderationCases.get(caseId);
+    if (!record) throw new AccessError(404, 'Moderation case not found');
+    return record;
+  }
+
+  private requireReportableSubject(subjectType: ModerationSubjectType, subjectId: string): void {
+    if (subjectType === 'review') {
+      const review = this.reviews.get(subjectId);
+      if (!review || review.publicationState !== 'published') {
+        throw new AccessError(404, 'Published review not found');
+      }
+      return;
+    }
+    const workshop = this.workshops.get(subjectId);
+    if (!workshop || workshop.publicationState !== 'published') {
+      throw new AccessError(404, 'Published workshop not found');
+    }
+  }
+
+  private toModerationCaseDetail(record: ModerationCaseRecord): ModerationCaseDetail {
+    return {
+      ...this.toModerationCaseSummary(record),
+      createdAt: record.createdAt,
+      ...(record.report
+        ? {
+            report: {
+              category: record.report.category,
+              ...(record.report.details ? { details: record.report.details } : {}),
+              reporterUserId: record.report.reporterUserId,
+            },
+          }
+        : {}),
+    };
+  }
+
+  private toModerationCaseSummary(record: ModerationCaseRecord): ModerationCaseSummary {
+    return {
+      ...(record.assignedModeratorUserId
+        ? { assignedModeratorUserId: record.assignedModeratorUserId }
+        : {}),
+      id: record.id,
+      priority: record.priority,
+      ...(record.reasonCode ? { reasonCode: record.reasonCode } : {}),
+      status: record.status,
+      subjectId: record.subjectId,
+      subjectType: record.subjectType,
+    };
+  }
+
+  private toSortedModerationQueue(
+    records: readonly ModerationCaseRecord[],
+  ): readonly ModerationCaseSummary[] {
+    return [...records]
+      .sort(
+        (left, right) =>
+          Number(right.priority === 'high') - Number(left.priority === 'high') ||
+          left.createdAt.localeCompare(right.createdAt),
+      )
+      .map((record) => this.toModerationCaseSummary(record));
+  }
+
+  private pendingSubjectQueue(moderatorUserId?: string): readonly ModerationCaseSummary[] {
+    const reviews = [...this.reviews.values()]
+      .filter(
+        (review) =>
+          ['submitted', 'under_review'].includes(review.publicationState) &&
+          (!moderatorUserId || review.moderationAssignmentUserId === moderatorUserId),
+      )
+      .map((review) => ({
+        ...(review.moderationAssignmentUserId
+          ? { assignedModeratorUserId: review.moderationAssignmentUserId }
+          : {}),
+        id: `review:${review.id}`,
+        priority: 'normal' as const,
+        status:
+          review.publicationState === 'under_review'
+            ? ('assigned' as const)
+            : ('submitted' as const),
+        subjectId: review.id,
+        subjectType: 'review' as const,
+      }));
+    if (moderatorUserId) return reviews;
+    const workshops = [...this.workshops.values()]
+      .filter((workshop) => workshop.publicationState === 'pending_review')
+      .map((workshop) => ({
+        id: `workshop:${workshop.id}`,
+        priority: 'normal' as const,
+        status: 'submitted' as const,
+        subjectId: workshop.id,
+        subjectType: 'workshop_profile' as const,
+      }));
+    return [...reviews, ...workshops];
+  }
+
+  private toSortedModerationSummaries(
+    summaries: readonly ModerationCaseSummary[],
+  ): readonly ModerationCaseSummary[] {
+    return [...summaries].sort(
+      (left, right) =>
+        Number(right.priority === 'high') - Number(left.priority === 'high') ||
+        left.id.localeCompare(right.id),
+    );
   }
 
   private createGrant(fileId: string): FileGrant {

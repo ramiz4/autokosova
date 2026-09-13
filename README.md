@@ -18,6 +18,7 @@ Privates Repository mit Produktplanung und technischer Grundlage. Der Stack ist 
 - [Öffentliche Mehrortsuche und nachvollziehbares Matching](docs/architecture/SEARCH-MATCHING.md)
 - [Bewusster Direktkontakt über WhatsApp oder Telefon](docs/architecture/DIRECT-CONTACT.md)
 - [Bewertungen und private Besuchsnachweise](docs/architecture/REVIEWS.md)
+- [Moderation, Meldungen und Datenlebenszyklus](docs/architecture/MODERATION-LIFECYCLE.md)
 
 ## Entwicklungsstart
 
