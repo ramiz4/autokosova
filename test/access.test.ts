@@ -56,6 +56,18 @@ test('login stays unavailable until an OIDC provider is configured', async () =>
   }
 });
 
+test('verified OIDC roles replace stale local elevated roles while retaining customer access', () => {
+  const store = new AccessStore();
+  store.addRole('test-user', 'admin');
+  store.setVerifiedRoles('test-user', ['moderator']);
+  const session = store.createSession('test-user');
+  const principal = store.getPrincipal(session.sessionId)!;
+
+  assert.equal(principal.roles.has('customer'), true);
+  assert.equal(principal.roles.has('moderator'), true);
+  assert.equal(principal.roles.has('admin'), false);
+});
+
 test('OIDC transaction preserves a local return path for the saved draft', () => {
   const store = new AccessStore();
   store.createOidcTransaction('state', 'verifier', '/anfrage');

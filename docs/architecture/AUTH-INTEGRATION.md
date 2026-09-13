@@ -14,6 +14,25 @@ AutoKosova verwaltet keine Passwörter. Eine produktive Sitzung darf erst entste
 
 Die ZITADEL-Anwendung benötigt einen Authorization-Code-Flow mit PKCE, eine registrierte lokale Redirect-URL für Entwicklung und später eine separat freigegebene Produktions-Redirect-URL. Secrets, Client-IDs und echte Domains gehören nicht in Git.
 
+## Testrollen ohne lokalen Bypass
+
+Alle verifizierten ZITADEL-Subjekte erhalten in AutoKosova mindestens die Rolle `customer`. Die
+Serverrolle `admin` oder `moderator` entsteht zusätzlich nur aus dem signatur- und issuer-geprüften
+ZITADEL-Claim `urn:zitadel:iam:org:project:roles`; Werte aus Browser, URL, Cookie oder Request-Body
+werden nie als Rolle übernommen. Das Testprojekt muss die Rollen im ID-Token ausgeben.
+
+Die nichtproduktiven Testkonten und ihre tatsächlichen Subjects liegen ohne Passwörter oder Tokens im
+freigegebenen 1Password-Eintrag. Für die lokale Prüfung werden genau diese fiktiven Rollen benötigt:
+
+- Kunde: private Anfrage und Bewertung;
+- Werkstattmitglied: nur die eigene Membership-Ansicht;
+- Moderator: nur zugewiesene Moderationsfälle;
+- Admin: Memberships und Moderationsentscheidungen.
+
+Ein neuer erfolgreicher OIDC-Login ersetzt zuvor im Prozess gespeicherte erhöhte Rollen desselben
+Subjekts durch die im frisch verifizierten Token enthaltenen Rollen. Damit kann ein entferntes
+Projektrecht nicht durch einen alten lokalen Rolleneintrag weiterwirken.
+
 ## Was die Tests beweisen
 
 Die Berechtigungstests erzeugen ausschließlich im Speicher Sitzungen mit zufälligen Test-IDs. Dieser Test-Store ist kein Login-Endpoint und keine lokale Ersatz-Authentifizierung. Er prüft Cookie-/CSRF-Grenzen, Ablauf, Abmeldung, Besitz, Membership, Rolleneskalation und private Dateifreigaben ohne Konto oder Token eines echten Menschen.
