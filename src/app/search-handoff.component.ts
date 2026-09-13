@@ -143,7 +143,9 @@ interface Area {
     }
     @if (state === 'ready' && response) {
       <section class="mx-auto max-w-[1920px] px-4 py-6 sm:px-8 lg:px-12">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 xl:ml-[292px]">
+        <div
+          class="mb-4 flex max-w-[820px] flex-wrap items-center justify-between gap-3 xl:ml-[340px]"
+        >
           <p class="text-xl font-bold" role="status">
             {{ ui('search.ui.resultCount', { count: response.total }) }}
           </p>
@@ -160,8 +162,8 @@ interface Area {
             </select></label
           >
         </div>
-        <div class="grid gap-5 xl:grid-cols-[272px_minmax(0,1fr)]">
-          <aside class="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+        <div class="grid gap-5 xl:grid-cols-[320px_minmax(0,820px)]">
+          <aside class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div class="flex items-center justify-between gap-3">
               <h2 class="font-bold">{{ ui('search.ui.filter') }}</h2>
               <button
@@ -172,21 +174,26 @@ interface Area {
                 {{ ui('search.ui.clear') }}
               </button>
             </div>
-            <div class="mt-5 grid gap-4">
+            <div class="mt-5 grid gap-5">
               @for (area of areas; track $index; let index = $index) {
-                <fieldset class="rounded-xl bg-blue-50/70 p-3">
-                  <label class="grid gap-1 text-sm font-semibold"
+                <fieldset>
+                  <label class="grid gap-2 text-xs font-bold"
                     >{{ ui('search.ui.place')
-                    }}<select
-                      [(ngModel)]="area.placeId"
-                      [name]="'place-' + index"
-                      class="min-h-11 rounded-lg border border-slate-300 bg-white px-2"
-                    >
-                      @for (place of places; track place.id) {
-                        <option [value]="place.id">{{ place.label }}</option>
-                      }
-                    </select></label
-                  ><label class="mt-3 grid gap-1 text-sm font-semibold"
+                    }}<span class="relative"
+                      ><app-icon
+                        name="pin"
+                        class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
+                      /><select
+                        [(ngModel)]="area.placeId"
+                        [name]="'place-' + index"
+                        class="min-h-10 w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm font-medium"
+                      >
+                        @for (place of places; track place.id) {
+                          <option [value]="place.id">{{ place.label }}</option>
+                        }
+                      </select></span
+                    ></label
+                  ><label class="mt-4 grid gap-2 text-xs font-bold"
                     >{{ ui('search.ui.radius')
                     }}<input
                       [(ngModel)]="area.radiusKm"
@@ -194,7 +201,7 @@ interface Area {
                       type="number"
                       [min]="limits.minRadiusKm"
                       [max]="limits.maxRadiusKm"
-                      class="min-h-11 rounded-lg border border-slate-300 bg-white px-2"
+                      class="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm"
                   /></label>
                   <input
                     [(ngModel)]="area.radiusKm"
@@ -202,8 +209,11 @@ interface Area {
                     type="range"
                     [min]="limits.minRadiusKm"
                     [max]="limits.maxRadiusKm"
-                    class="mt-3 w-full accent-brand"
+                    class="mt-1 w-full accent-brand"
                   />
+                  <div class="flex justify-between text-[11px] font-medium text-slate-400">
+                    <span>{{ limits.minRadiusKm }} km</span><span>{{ limits.maxRadiusKm }} km</span>
+                  </div>
                   @if (areas.length > 1) {
                     <button
                       type="button"
@@ -215,6 +225,24 @@ interface Area {
                   }
                 </fieldset>
               }
+              @if (areas.length > 1) {
+                <div class="flex flex-wrap gap-1.5">
+                  @for (area of areas; track area.placeId; let index = $index) {
+                    <span
+                      class="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-medium"
+                      >{{ placeLabel(area.placeId)
+                      }}<button
+                        type="button"
+                        class="min-h-5 min-w-5 text-slate-500"
+                        (click)="removeArea(index)"
+                        [attr.aria-label]="ui('search.ui.removeArea')"
+                      >
+                        ×
+                      </button></span
+                    >
+                  }
+                </div>
+              }
               @if (areas.length < limits.maxAreas) {
                 <button
                   type="button"
@@ -224,10 +252,10 @@ interface Area {
                   {{ ui('search.ui.addArea') }}
                 </button>
               }
-              <fieldset class="grid gap-1 text-sm font-semibold">
+              <fieldset class="grid gap-2 text-xs font-bold">
                 <legend>{{ language.t('home.service') }}</legend>
                 @for (entry of serviceIds; track entry) {
-                  <label class="flex min-h-7 items-center gap-2 font-normal">
+                  <label class="flex min-h-6 items-center gap-2 text-sm font-medium">
                     <input
                       type="checkbox"
                       [checked]="service === entry"
@@ -237,22 +265,22 @@ interface Area {
                   </label>
                 }
               </fieldset>
-              <label class="grid gap-1 text-sm font-semibold"
+              <label class="grid gap-2 text-xs font-bold"
                 >Marke<select
                   [(ngModel)]="vehicleMake"
                   name="vehicleMake"
-                  class="min-h-11 rounded-lg border border-slate-300 bg-white px-2"
+                  class="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium"
                 >
                   <option value="">{{ language.t('profile.allMakes') }}</option>
                   @for (entry of makeIds; track entry) {
                     <option [value]="entry">{{ makeLabels[entry] }}</option>
                   }
                 </select></label
-              ><label class="grid gap-1 text-sm font-semibold"
+              ><label class="grid gap-2 text-xs font-bold"
                 >Sprache<select
                   [(ngModel)]="spokenLanguage"
                   name="spokenLanguage"
-                  class="min-h-11 rounded-lg border border-slate-300 bg-white px-2"
+                  class="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium"
                 >
                   <option value="">{{ language.t('common.optional') }}</option>
                   <option value="Deutsch">Deutsch</option>
@@ -479,6 +507,10 @@ export class SearchHandoffComponent {
     return this.response?.allResults
       ? workshop.matchingPlace.label
       : this.aerialDistance(workshop.distanceKm, workshop.matchingPlace.label);
+  }
+
+  protected placeLabel(placeId: string): string {
+    return this.places.find((place) => place.id === placeId)?.label ?? placeId;
   }
   protected pageLabel(page: number, total: number): string {
     return this.language.language === 'en'
