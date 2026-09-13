@@ -71,4 +71,4 @@ jobs:
           cache: npm
       - run: npm install --global npm@11.19.0
       - run: npm ci
-      - run: npm run test:dev:smoke
+      - run: npm run test:dev:smoke:full
