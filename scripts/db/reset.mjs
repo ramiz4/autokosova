@@ -1,15 +1,15 @@
 import { spawn } from 'node:child_process';
 import pg from 'pg';
+import { assertSeedEnvironment, parseSeedProfile } from './seed-data.mjs';
 
 if (process.env.ALLOW_LOCAL_RESET !== '1' || process.env.NODE_ENV === 'production') {
   throw new Error('Set ALLOW_LOCAL_RESET=1 for a non-production reset.');
 }
 
 const databaseUrl = process.env.DATABASE_URL;
+const profile = parseSeedProfile(process.argv.slice(2));
 
-if (!databaseUrl) {
-  throw new Error('DATABASE_URL is required.');
-}
+assertSeedEnvironment({ databaseUrl, profile });
 
 const client = new pg.Client({ connectionString: databaseUrl });
 await client.connect();
@@ -21,9 +21,9 @@ try {
   await client.end();
 }
 
-function run(script) {
+function run(script, argumentsToPass = []) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [script], {
+    const child = spawn(process.execPath, [script, ...argumentsToPass], {
       env: process.env,
       stdio: 'inherit',
     });
@@ -36,4 +36,7 @@ function run(script) {
 }
 
 await run(new URL('./migrate.mjs', import.meta.url).pathname);
-await run(new URL('./seed.mjs', import.meta.url).pathname);
+await run(
+  new URL('./seed.mjs', import.meta.url).pathname,
+  profile === 'demo' ? ['--profile', 'demo'] : [],
+);

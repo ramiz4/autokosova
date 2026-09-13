@@ -37,6 +37,11 @@ jobs:
       - run: npm run db:migrate
       - run: npm run db:seed
       - run: npm run db:seed
+      - run: AUTOKOSOVA_DEMO_DATA=1 npm run db:seed:demo
+      - run: AUTOKOSOVA_DEMO_DATA=1 npm run db:seed:demo
+      - run: npm run test:demo-seed
+      - run: ALLOW_LOCAL_RESET=1 npm run db:reset
+      - run: ALLOW_LOCAL_RESET=1 AUTOKOSOVA_DEMO_DATA=1 npm run db:reset:demo
       - run: ALLOW_LOCAL_RESET=1 npm run db:reset
       - run: npm run format:check
       - run: npm run lint

@@ -90,4 +90,51 @@ describe('WorkshopProfileComponent', () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  it('keeps local demo contact links inspectable but prevents an external handover', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify({
+          contact: { phone: '+383 44 123 456' },
+          id: 'demo-prishtina-bremsen',
+          languages: ['Deutsch'],
+          name: 'DEMO · Bremsen Prishtina',
+          photoIds: [],
+          placeId: 'xk-pristina',
+          selfReportedSpecializations: ['Bremsen'],
+          serviceCategoryIds: ['bremsen'],
+          vehicleMakeIds: ['skoda'],
+        }),
+        { headers: { 'content-type': 'application/json' }, status: 200 },
+      );
+    try {
+      await TestBed.configureTestingModule({
+        imports: [WorkshopProfileComponent],
+        providers: [
+          provideRouter([]),
+          { provide: ActivatedRoute, useValue: routeWith('demo-prishtina-bremsen') },
+          { provide: PLATFORM_ID, useValue: 'browser' },
+        ],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(WorkshopProfileComponent);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const whatsAppLink = fixture.nativeElement.querySelector('a[href^="https://wa.me/"]');
+      const telephoneLink = fixture.nativeElement.querySelector('a[href^="tel:"]');
+
+      expect(fixture.nativeElement.textContent).toContain('Lokale Demo');
+      expect(whatsAppLink).toBeTruthy();
+      expect(telephoneLink).toBeTruthy();
+      expect(
+        whatsAppLink.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })),
+      ).toBe(false);
+      expect(
+        telephoneLink.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })),
+      ).toBe(false);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

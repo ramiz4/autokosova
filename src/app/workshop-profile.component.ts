@@ -15,6 +15,7 @@ import {
   buildTelephoneHref,
   buildWhatsAppHref,
 } from '../shared/contact-preview';
+import { isLocalDemoWorkshopId } from '../shared/local-demo';
 import { AnalyticsService } from './analytics.service';
 import { LanguageService } from './language.service';
 import { LanguageSwitcherComponent } from './language-switcher.component';
@@ -122,6 +123,11 @@ interface PublicWorkshopReview {
                 {{ profile.name }}
               </h1>
               <p class="mt-2 text-slate-700">{{ placeLabel(profile.placeId) }}</p>
+              @if (isLocalDemoProfile()) {
+                <p class="mt-2 text-sm font-semibold text-amber-900">
+                  {{ language.t('profile.localDemo') }}
+                </p>
+              }
             </div>
             @if (profile.verificationLabel) {
               <span
@@ -396,6 +402,7 @@ interface PublicWorkshopReview {
               @if (whatsAppHref()) {
                 <a
                   [href]="whatsAppHref()"
+                  (click)="blockLocalDemoContact($event)"
                   target="_blank"
                   rel="noopener noreferrer"
                   class="inline-flex min-h-11 items-center rounded-lg bg-emerald-700 px-5 font-semibold text-white"
@@ -405,15 +412,22 @@ interface PublicWorkshopReview {
               }
               <a
                 [href]="telephoneHref()"
+                (click)="blockLocalDemoContact($event)"
                 class="inline-flex min-h-11 items-center rounded-lg border border-sky-800 px-5 font-semibold text-sky-950"
                 (click)="contactOpened()"
                 >{{ language.t('contact.call') }}</a
               >
             </div>
-            <p class="mt-3 text-sm leading-6 text-slate-700">
-              Falls WhatsApp nicht verfügbar ist oder ein neuer Tab blockiert wird, kannst du direkt
-              anrufen. Es erscheint keine fingierte Versandbestätigung.
-            </p>
+            @if (isLocalDemoProfile()) {
+              <p class="mt-3 text-sm leading-6 text-amber-900" role="status">
+                {{ language.t('profile.localDemoContact') }}
+              </p>
+            } @else {
+              <p class="mt-3 text-sm leading-6 text-slate-700">
+                Falls WhatsApp nicht verfügbar ist oder ein neuer Tab blockiert wird, kannst du
+                direkt anrufen. Es erscheint keine fingierte Versandbestätigung.
+              </p>
+            }
           } @else {
             <p
               class="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4 leading-6 text-slate-800"
@@ -490,6 +504,14 @@ export class WorkshopProfileComponent {
 
   protected whatsAppHref(): string | undefined {
     return buildWhatsAppHref(this.profile?.contact.phone, this.contactPreview());
+  }
+
+  protected blockLocalDemoContact(event: Event): void {
+    if (this.isLocalDemoProfile()) event.preventDefault();
+  }
+
+  protected isLocalDemoProfile(): boolean {
+    return isLocalDemoWorkshopId(this.profile?.id);
   }
 
   protected async load(): Promise<void> {
