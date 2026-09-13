@@ -46,7 +46,7 @@ describe('SearchHandoffComponent', () => {
     }
   });
 
-  it('keeps the list usable when the optional map is unavailable', async () => {
+  it('does not render a map column when no map provider is configured', async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async () =>
       new Response(
@@ -88,15 +88,12 @@ describe('SearchHandoffComponent', () => {
       const fixture = TestBed.createComponent(SearchHandoffComponent);
       await fixture.whenStable();
       fixture.detectChanges();
-      (fixture.nativeElement.querySelector('button') as HTMLButtonElement).click();
-      await fixture.whenStable();
-      fixture.detectChanges();
-
       expect(fixture.nativeElement.textContent).toContain('Fiktive Werkstatt');
-      expect(fixture.nativeElement.textContent).toContain(
+      expect(fixture.nativeElement.textContent).toContain('Filter anwenden');
+      expect(fixture.nativeElement.textContent).not.toContain(
         'Kartenansicht ist derzeit nicht verfügbar',
       );
-      expect(fixture.nativeElement.textContent).toContain('Filter anwenden');
+      expect(fixture.nativeElement.querySelectorAll('aside')).toHaveLength(1);
     } finally {
       globalThis.fetch = originalFetch;
     }

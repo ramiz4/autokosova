@@ -413,28 +413,6 @@ interface Area {
               </nav>
             }
           </section>
-          <aside class="hidden rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
-            <div class="flex items-center justify-between gap-3">
-              <h2 class="font-bold">{{ ui('search.ui.viewMap') }}</h2>
-              <button
-                type="button"
-                class="min-h-11 text-sm font-bold text-brand-dark underline"
-                (click)="mapOpen = !mapOpen"
-              >
-                {{ ui(mapOpen ? 'search.ui.hideMap' : 'search.ui.mapOpen') }}
-              </button>
-            </div>
-            @if (mapOpen) {
-              <div class="mt-4 rounded-xl border border-dashed border-blue-200 bg-blue-50 p-5">
-                <app-icon name="shield" class="size-8 text-brand" />
-                <h3 class="mt-3 font-bold">{{ ui('search.ui.mapDisabled') }}</h3>
-                <p class="mt-2 text-sm leading-6 text-slate-700">
-                  {{ ui('search.ui.mapDisabledBody') }}
-                </p>
-                <p class="mt-4 text-xs text-slate-500">{{ language.t('search.intro') }}</p>
-              </div>
-            }
-          </aside>
         </div>
       </section>
     }
@@ -457,7 +435,6 @@ export class SearchHandoffComponent {
   protected sort: 'recommended' | 'rating' = 'recommended';
   protected vehicleMake = '';
   protected spokenLanguage = '';
-  protected mapOpen = true;
   protected response?: Response;
   protected state: 'error' | 'invalid' | 'loading' | 'ready' = 'loading';
   constructor() {
