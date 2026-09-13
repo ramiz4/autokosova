@@ -30,7 +30,22 @@ function localizedRoutes(prefix: string): Routes {
     },
     {
       component: SearchHandoffComponent,
+      path: `${childPrefix}garages`,
+    },
+    {
+      path: `${childPrefix}workshops`,
+      pathMatch: 'full',
+      redirectTo: `${childPrefix}garages`,
+    },
+    {
       path: `${childPrefix}suche`,
+      pathMatch: 'full',
+      redirectTo: `${childPrefix}garages`,
+    },
+    {
+      path: `${childPrefix}werkstaetten`,
+      pathMatch: 'full',
+      redirectTo: `${childPrefix}garages`,
     },
     {
       component: WorkshopProfileComponent,

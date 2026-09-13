@@ -98,7 +98,7 @@ describe('Homepage', () => {
     await fixture.whenStable();
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await fixture.whenStable();
-    expect(navigate).toHaveBeenCalledWith(['/suche'], {
+    expect(navigate).toHaveBeenCalledWith(['/garages'], {
       queryParams: { places: 'xk-pristina:30', service: 'bremsen' },
     });
     expect(analytics.track).toHaveBeenCalledExactlyOnceWith('search_started');

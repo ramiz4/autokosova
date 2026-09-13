@@ -20,9 +20,12 @@
       class="hidden items-center gap-7 text-sm font-medium xl:flex"
       [attr.aria-label]="language.t('nav.main')"
     >
-      <a class="nav-link" [href]="language.link('home') + '#werkstatt-suche'">{{
-        language.t('nav.search')
-      }}</a>
+      <a
+        class="nav-link"
+        [class.nav-link-active]="active() === 'search'"
+        [href]="language.link('search')"
+        >{{ language.t('nav.search') }}</a
+      >
       <a class="nav-link" [href]="language.link('home') + '#so-funktionierts'">{{
         language.t('nav.how')
       }}</a>

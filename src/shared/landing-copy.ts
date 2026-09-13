@@ -6,7 +6,7 @@ export const landingCopy: Readonly<Record<AppLanguage, Readonly<Record<string, s
     'landing.benefits': 'Deine Vorteile',
     'nav.main': 'Hauptnavigation',
     'nav.mobile': 'Mobile Navigation',
-    'nav.search': 'Werkstätten finden',
+    'nav.search': 'Werkstätte finden',
     'nav.how': 'So funktioniert’s',
     'nav.workshops': 'Für Werkstätten',
     'nav.about': 'Über uns',

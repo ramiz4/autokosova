@@ -27,6 +27,7 @@ interface Result {
   readonly selfReportedSpecializations: readonly string[];
 }
 interface Response {
+  readonly allResults: boolean;
   readonly page: number;
   readonly pageSize: number;
   readonly results: readonly Result[];
@@ -55,7 +56,7 @@ interface Area {
       <div
         class="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(244,248,254,0.98)_0%,rgba(244,248,254,0.8)_44%,rgba(244,248,254,0.18)_100%),url('/images/search/search-hero-workshop.webp')] bg-cover bg-right"
       ></div>
-      <app-site-header class="relative mx-auto block max-w-[1920px]" />
+      <app-site-header [active]="'search'" class="relative mx-auto block max-w-[1920px]" />
       <div
         class="mx-auto grid max-w-[1920px] gap-7 py-12 lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)] lg:items-end lg:py-16"
       >
@@ -67,7 +68,7 @@ interface Area {
             {{ language.t('search.title') }}
           </h1>
           <p class="mt-4 max-w-2xl text-lg leading-relaxed text-slate-700">
-            {{ language.t('search.intro') }}
+            {{ ui('search.ui.heroIntro') }}
           </p>
           <ul class="mt-6 flex flex-wrap gap-x-7 gap-y-3 text-sm font-semibold text-brand-dark">
             <li class="flex items-center gap-2">
@@ -129,7 +130,7 @@ interface Area {
     }
     @if (state === 'ready' && response) {
       <section class="mx-auto max-w-[1920px] px-4 py-6 sm:px-8 lg:px-12">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 xl:ml-[292px]">
           <p class="text-xl font-bold" role="status">
             {{ ui('search.ui.resultCount', { count: response.total }) }}
           </p>
@@ -146,8 +147,8 @@ interface Area {
             </select></label
           >
         </div>
-        <div class="grid gap-5 xl:grid-cols-[272px_minmax(0,1fr)_330px]">
-          <aside class="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+        <div class="grid gap-5 xl:grid-cols-[272px_minmax(0,1fr)]">
+          <aside class="hidden rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
             <div class="flex items-center justify-between gap-3">
               <h2 class="font-bold">{{ ui('search.ui.filter') }}</h2>
               <button
@@ -209,6 +210,7 @@ interface Area {
                   name="service"
                   class="min-h-11 rounded-lg border border-slate-300 bg-white px-2"
                 >
+                  <option value="">{{ language.t('profile.allServices') }}</option>
                   @for (entry of serviceIds; track entry) {
                     <option [value]="entry">{{ language.serviceLabel(entry) }}</option>
                   }
@@ -274,7 +276,11 @@ interface Area {
                         <div>
                           <h2 class="text-xl font-bold">{{ workshop.name }}</h2>
                           <p class="mt-1 text-sm text-slate-600">
-                            {{ aerialDistance(workshop.distanceKm, workshop.matchingPlace.label) }}
+                            {{
+                              response.allResults
+                                ? workshop.matchingPlace.label
+                                : aerialDistance(workshop.distanceKm, workshop.matchingPlace.label)
+                            }}
                           </p>
                         </div>
                         @if (workshop.companyDataVerified) {
@@ -370,7 +376,7 @@ export class SearchHandoffComponent {
   protected readonly makeIds = Object.keys(VEHICLE_MAKE_LABELS);
   protected readonly makeLabels = VEHICLE_MAKE_LABELS;
   protected areas: Area[] = [{ placeId: 'xk-pristina', radiusKm: 20 }];
-  protected service = 'bremsen';
+  protected service = '';
   protected sort: 'recommended' | 'rating' = 'recommended';
   protected vehicleMake = '';
   protected spokenLanguage = '';
@@ -380,8 +386,7 @@ export class SearchHandoffComponent {
   constructor() {
     this.language.setPage('search.title', 'search.intro', true);
     this.readFilters();
-    if (!this.hasFilters()) this.state = 'invalid';
-    else if (this.browser) void this.load();
+    if (this.browser) void this.load();
   }
   protected ui(key: string, replacements?: Record<string, string | number>): string {
     return this.language.t(key, replacements);
@@ -433,7 +438,7 @@ export class SearchHandoffComponent {
   }
   protected applyFilters(): void {
     const valid =
-      this.serviceIds.includes(this.service) &&
+      (!this.service || this.serviceIds.includes(this.service)) &&
       this.areas.length > 0 &&
       this.areas.length <= this.limits.maxAreas &&
       this.areas.every(
@@ -448,8 +453,9 @@ export class SearchHandoffComponent {
       return;
     }
     this.navigate({
+      all: null,
       places: this.areas.map((area) => `${area.placeId}:${area.radiusKm}`).join(','),
-      service: this.service,
+      service: this.service || null,
       sort: this.sort,
       vehicleMake: this.vehicleMake || null,
       language: this.spokenLanguage || null,
@@ -458,17 +464,25 @@ export class SearchHandoffComponent {
   }
   protected resetFilters(): void {
     this.areas = [{ placeId: 'xk-pristina', radiusKm: 20 }];
-    this.service = 'bremsen';
+    this.service = '';
     this.sort = 'recommended';
     this.vehicleMake = '';
     this.spokenLanguage = '';
-    this.applyFilters();
+    this.navigate({
+      all: 'true',
+      language: null,
+      page: null,
+      places: null,
+      service: null,
+      sort: this.sort,
+      vehicleMake: null,
+    });
   }
   protected async load(): Promise<void> {
-    if (!this.browser || !this.hasFilters()) return;
+    if (!this.browser) return;
     this.state = 'loading';
     try {
-      const result = await fetch(`/api/public/search${window.location.search}`, {
+      const result = await fetch(`/api/public/search${window.location.search || '?all=true'}`, {
         credentials: 'same-origin',
       });
       if (!result.ok) throw Error();
@@ -503,9 +517,5 @@ export class SearchHandoffComponent {
     this.sort = q.get('sort') === 'rating' ? 'rating' : 'recommended';
     this.vehicleMake = q.get('vehicleMake') ?? '';
     this.spokenLanguage = q.get('language') ?? '';
-  }
-  private hasFilters(): boolean {
-    const q = this.route.snapshot.queryParamMap;
-    return Boolean(q.get('places') && q.get('service'));
   }
 }
