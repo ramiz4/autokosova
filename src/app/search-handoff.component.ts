@@ -375,7 +375,7 @@ interface Area {
                           [routerLink]="language.link('workshop', workshop.id)"
                           appButton="outline"
                           size="compact"
-                          class="mt-4 sm:absolute sm:right-5 sm:top-1/2 sm:mt-0 sm:-translate-y-1/2"
+                          class="mt-4 sm:absolute sm:right-5 sm:bottom-3 sm:mt-0"
                           >{{ ui('search.ui.details') }}<app-icon name="arrow" class="size-4"
                         /></a>
                       </div>
