@@ -20,6 +20,14 @@ describe('App', () => {
     const fixture = TestBed.createComponent(FoundationComponent);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
+    const logo = compiled.querySelector('header a img[alt="AutoKosova"]');
+    const searchLink = compiled.querySelector(
+      'nav[aria-label="Hauptnavigation"] a[href="#werkstatt-suche"]',
+    );
+
+    expect(logo?.getAttribute('src')).toBe('/branding/autokosova-logo-header.png');
+    expect(searchLink?.textContent).toContain('Werkstatt finden');
+    expect(compiled.querySelector('form#werkstatt-suche')).toBeTruthy();
     expect(compiled.querySelector('h1')?.textContent).toContain('Finde eine passende Werkstatt');
     expect(compiled.textContent).toContain('Werkstatt finden');
     expect(compiled.textContent).toContain('ohne Konto');

@@ -1,12 +1,45 @@
 <main class="min-h-screen bg-slate-50 px-4 py-8 text-slate-950 sm:px-6 sm:py-12">
   <section class="mx-auto max-w-6xl" aria-labelledby="landing-title">
-    <header class="flex items-center justify-between gap-4">
-      <a routerLink="/" class="text-xl font-black tracking-tight text-sky-950">AutoKosova</a>
+    <header
+      class="sticky top-3 z-10 flex items-center justify-between gap-2 rounded-2xl border border-sky-100 bg-white/90 p-2 pl-3 shadow-[0_12px_30px_-18px_rgba(11,28,51,0.4)] backdrop-blur-xl sm:top-4 sm:gap-4 sm:p-2.5 sm:pl-4"
+    >
       <a
-        routerLink="/werkstatt/aufnahme"
-        class="min-h-11 px-2 py-2 font-semibold text-sky-800 underline"
-        >Werkstatt aufnehmen</a
+        routerLink="/"
+        class="inline-flex items-center rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-700 focus:ring-offset-2"
+        aria-label="AutoKosova Startseite"
       >
+        <img
+          src="/branding/autokosova-logo-header.png"
+          width="640"
+          height="149"
+          alt="AutoKosova"
+          class="h-11 w-auto sm:h-12"
+        />
+      </a>
+      <nav class="ml-auto flex items-center gap-1 sm:gap-2" aria-label="Hauptnavigation">
+        <a
+          href="#werkstatt-suche"
+          class="hidden min-h-11 items-center rounded-xl px-3 text-sm font-semibold text-sky-950 transition hover:bg-sky-50 focus:outline-none focus:ring-2 focus:ring-sky-700 focus:ring-offset-2 motion-reduce:transition-none md:inline-flex"
+          >Werkstatt finden</a
+        >
+        <a
+          routerLink="/werkstatt/aufnahme"
+          class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-sky-800 px-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-sky-900 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-sky-700 focus:ring-offset-2 motion-reduce:transition-none sm:px-4"
+        >
+          <svg
+            class="size-4 shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m7-7H5" />
+          </svg>
+          <span class="sm:hidden">Aufnehmen</span>
+          <span class="hidden sm:inline">Werkstatt aufnehmen</span>
+        </a>
+      </nav>
     </header>
 
     <div class="mt-10 grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
@@ -42,6 +75,7 @@
       </div>
 
       <form
+        id="werkstatt-suche"
         class="rounded-2xl border border-sky-200 bg-white p-5 shadow-sm sm:p-7"
         (ngSubmit)="search()"
         novalidate

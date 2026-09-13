@@ -1,0 +1,21 @@
+{
+  "name": "AutoKosova",
+  "short_name": "AutoKosova",
+  "icons": [
+    {
+      "src": "/favicon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "theme_color": "#075DB8",
+  "background_color": "#FFFFFF",
+  "display": "standalone"
+}
