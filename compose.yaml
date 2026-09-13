@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgis/postgis:17-3.5
+    platform: linux/amd64
+    environment:
+      POSTGRES_DB: autokosova
+      POSTGRES_PASSWORD: autokosova
+      POSTGRES_USER: autokosova
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U autokosova -d autokosova']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      - '${AUTOKOSOVA_DB_PORT:-55432}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:

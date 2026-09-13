@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_DB: autokosova
+          POSTGRES_PASSWORD: autokosova
+          POSTGRES_USER: autokosova
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U autokosova -d autokosova"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://autokosova:autokosova@127.0.0.1:5432/autokosova
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run db:migrate
+      - run: npm run db:seed
+      - run: ALLOW_LOCAL_RESET=1 npm run db:reset
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:server
+      - run: npm run build
+      - run: npm run test:smoke
