@@ -19,6 +19,7 @@ Privates Repository mit Produktplanung und technischer Grundlage. Der Stack ist 
 - [Bewusster Direktkontakt über WhatsApp oder Telefon](docs/architecture/DIRECT-CONTACT.md)
 - [Bewertungen und private Besuchsnachweise](docs/architecture/REVIEWS.md)
 - [Moderation, Meldungen und Datenlebenszyklus](docs/architecture/MODERATION-LIFECYCLE.md)
+- [DE/SQ/EN, SEO und datensparsame Messung](docs/MEASUREMENT.md)
 
 ## Entwicklungsstart
 
@@ -79,6 +80,14 @@ ehrlichen Bewertungsleerzustand. WhatsApp und Telefon sind bewusst ausgewählte 
 Die Nachrichtenvorschau ist vor dem Öffnen sichtbar, enthält keine gespeicherten privaten
 Anfragewerte und wird nicht durch AutoKosova gesendet. Ohne gültige öffentliche Telefonnummer gibt
 es keinen externen Link.
+
+## Sprache, SEO und Messung lokal prüfen
+
+`/`, `/sq` und `/en` führen durch dieselben Kernabläufe; der Sprachwechsel bewahrt dabei Pfad
+und unkritische Suchparameter. Nutzertexte und Bewertungen bleiben unverändert im Original. Der
+Schalter für die anonyme, aggregierte Messung ist standardmäßig aus. Details zu den zulässigen vier
+Ereignissen, der Auswertung, SEO-Grenzen und der weiterhin erforderlichen Sprachprüfung stehen in
+[MEASUREMENT.md](docs/MEASUREMENT.md).
 
 ## Bewertungen lokal prüfen
 

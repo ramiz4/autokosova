@@ -73,6 +73,7 @@ export interface WorkshopSearchStore {
   getPublicWorkshop(
     workshopId: string,
   ): PublicWorkshopProfile | undefined | Promise<PublicWorkshopProfile | undefined>;
+  listPublicWorkshopIds(): readonly string[] | Promise<readonly string[]>;
   searchPublicWorkshops(
     input: PublicWorkshopSearchInput,
   ): PublicWorkshopSearchResponse | Promise<PublicWorkshopSearchResponse>;

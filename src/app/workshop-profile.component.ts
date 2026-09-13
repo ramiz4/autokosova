@@ -1,5 +1,12 @@
 import { isPlatformBrowser } from '@angular/common';
-import { ChangeDetectorRef, Component, inject, PLATFORM_ID } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  inject,
+  PendingTasks,
+  PLATFORM_ID,
+  REQUEST,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { getCatalogPlace, SERVICE_CATEGORY_LABELS, VEHICLE_MAKE_LABELS } from '../shared/catalog';
@@ -8,6 +15,9 @@ import {
   buildTelephoneHref,
   buildWhatsAppHref,
 } from '../shared/contact-preview';
+import { AnalyticsService } from './analytics.service';
+import { LanguageService } from './language.service';
+import { LanguageSwitcherComponent } from './language-switcher.component';
 
 interface PublicWorkshopProfile {
   readonly contact: { readonly phone?: string };
@@ -55,21 +65,28 @@ interface PublicWorkshopReview {
 }
 
 @Component({
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, LanguageSwitcherComponent],
   selector: 'app-workshop-profile',
   template: `
     <main
       class="mx-auto min-h-screen max-w-4xl px-4 py-8 pb-28 sm:px-6 sm:py-12"
       aria-labelledby="profile-title"
     >
-      <a routerLink="/suche" class="text-sm font-semibold text-sky-800 underline">Zur Suche</a>
+      <header class="flex flex-wrap items-center justify-between gap-4">
+        <a
+          [routerLink]="language.link('search')"
+          class="text-sm font-semibold text-sky-800 underline"
+          >{{ language.t('common.backSearch') }}</a
+        >
+        <app-language-switcher />
+      </header>
 
       @if (state === 'loading') {
         <p
           class="mt-8 rounded-xl border border-slate-200 bg-white p-5 text-slate-700"
           role="status"
         >
-          Werkstattprofil wird geladen …
+          {{ language.t('profile.loading') }}
         </p>
       }
 
@@ -79,25 +96,26 @@ interface PublicWorkshopReview {
           aria-labelledby="profile-error-title"
         >
           <h1 id="profile-error-title" class="text-xl font-bold">
-            Werkstattprofil nicht verfügbar
+            {{ language.t('profile.notAvailable') }}
           </h1>
           <p class="mt-2 leading-7 text-slate-700">
-            Die Werkstatt ist möglicherweise nicht veröffentlicht oder die Verbindung ist gerade
-            unterbrochen. Es wurde kein Kontakt ausgelöst.
+            {{ language.t('profile.notAvailableBody') }}
           </p>
           <button
             type="button"
             class="mt-4 min-h-11 rounded-lg border border-sky-800 px-4 font-semibold text-sky-900"
             (click)="load()"
           >
-            Erneut laden
+            {{ language.t('common.retry') }}
           </button>
         </section>
       }
 
       @if (state === 'ready' && profile) {
         <header class="mt-6">
-          <p class="text-sm font-bold tracking-widest text-sky-700 uppercase">Werkstattprofil</p>
+          <p class="text-sm font-bold tracking-widest text-sky-700 uppercase">
+            {{ language.t('profile.profile') }}
+          </p>
           <div class="mt-2 flex flex-wrap items-start justify-between gap-4">
             <div>
               <h1 id="profile-title" class="text-3xl font-bold tracking-tight sm:text-4xl">
@@ -109,7 +127,7 @@ interface PublicWorkshopReview {
               <span
                 class="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-900"
               >
-                {{ profile.verificationLabel }}
+                {{ language.t('profile.verified') }}
               </span>
             }
           </div>
@@ -119,30 +137,25 @@ interface PublicWorkshopReview {
           class="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"
           aria-labelledby="trust-title"
         >
-          <h2 id="trust-title" class="text-xl font-bold">Vertrauensinformationen</h2>
+          <h2 id="trust-title" class="text-xl font-bold">{{ language.t('profile.trust') }}</h2>
           @if (profile.verificationLabel) {
             <p class="mt-3 leading-7 text-slate-700">
-              „Unternehmensdaten geprüft“ bedeutet, dass Kontakt, Ansprechperson,
-              Unternehmensnachweis und Standort geprüft wurden. Das ist keine Garantie für
-              Reparaturqualität oder Verfügbarkeit.
+              {{ language.t('profile.trustAvailable') }}
             </p>
           } @else {
             <p class="mt-3 leading-7 text-slate-700">
-              Für dieses Profil liegt kein Kennzeichen für geprüfte Unternehmensdaten vor.
+              {{ language.t('profile.trustUnavailable') }}
             </p>
           }
           @if (profile.reviewSummary?.state === 'available') {
             <p class="mt-4 font-semibold text-slate-900">{{ profile.reviewSummary?.label }}</p>
             <p class="mt-1 text-sm leading-6 text-slate-700">
-              Der Gesamtwert ist der auf eine Dezimalstelle gerundete Mittelwert aus
-              Arbeitsqualität, Kommunikation, Preistransparenz und Termintreue. Er beruht nur auf
-              veröffentlichten Bewertungen mit überprüftem Besuchsnachweis.
+              {{ language.t('profile.ratingDescription') }}
             </p>
           } @else {
-            <p class="mt-4 font-semibold text-slate-900">Noch keine Bewertungen</p>
+            <p class="mt-4 font-semibold text-slate-900">{{ language.t('profile.noReviews') }}</p>
             <p class="mt-1 text-sm leading-6 text-slate-700">
-              Bewertungen werden erst nach einem separaten, überprüfbaren Besuchs- und
-              Moderationsablauf ergänzt. Wir zeigen keine Beispielsterne.
+              {{ language.t('profile.noReviewsBody') }}
             </p>
           }
         </section>
@@ -153,11 +166,14 @@ interface PublicWorkshopReview {
         >
           <div class="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h2 id="reviews-title" class="text-xl font-bold">Erfahrungen nach Besuch</h2>
+              <h2 id="reviews-title" class="text-xl font-bold">
+                {{ language.t('profile.reviews') }}
+              </h2>
               <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-700">
-                „Besuch belegt“ bedeutet, dass ein privater Nachweis geprüft wurde. Die Rechnung,
-                vollständige Identität und Fahrzeugdetails bleiben privat. Eine Werkstattantwort
-                ändert oder entfernt die Bewertung nicht.
+                {{ language.t('profile.visitProof') }}
+              </p>
+              <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-700">
+                {{ language.t('profile.reviewsOriginal') }}
               </p>
             </div>
             <button
@@ -165,29 +181,29 @@ interface PublicWorkshopReview {
               class="min-h-11 rounded-lg border border-sky-800 px-4 font-semibold text-sky-900"
               (click)="loadReviews()"
             >
-              Bewertungen filtern
+              {{ language.t('profile.filterReviews') }}
             </button>
           </div>
           <div class="mt-4 grid gap-4 sm:grid-cols-2">
             <label class="grid gap-1 font-semibold"
-              >Arbeit filtern
+              >{{ language.t('profile.filterService') }}
               <select
                 [(ngModel)]="reviewServiceCategoryId"
                 class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal"
               >
-                <option value="">Alle Arbeiten</option>
+                <option value="">{{ language.t('profile.allServices') }}</option>
                 @for (service of profile.serviceCategoryIds; track service) {
                   <option [value]="service">{{ serviceLabels([service]) }}</option>
                 }
               </select>
             </label>
             <label class="grid gap-1 font-semibold"
-              >Fahrzeugmarke filtern
+              >{{ language.t('profile.filterMake') }}
               <select
                 [(ngModel)]="reviewVehicleMakeId"
                 class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal"
               >
-                <option value="">Alle Fahrzeugmarken</option>
+                <option value="">{{ language.t('profile.allMakes') }}</option>
                 @for (make of vehicleMakeOptions; track make[0]) {
                   <option [value]="make[0]">{{ make[1] }}</option>
                 }
@@ -198,13 +214,15 @@ interface PublicWorkshopReview {
             <p
               class="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-slate-800"
             >
-              Bewertungen sind gerade nicht verfügbar. Das bedeutet nicht, dass es keine gibt.
+              {{ language.t('profile.reviewsUnavailable') }}
             </p>
           } @else if (reviewState === 'loading') {
-            <p class="mt-4 text-sm text-slate-700" role="status">Bewertungen werden geladen …</p>
+            <p class="mt-4 text-sm text-slate-700" role="status">
+              {{ language.t('profile.reviewsLoading') }}
+            </p>
           } @else if (!reviews.length) {
             <p class="mt-4 text-sm leading-6 text-slate-700">
-              Für diese Auswahl gibt es noch keine veröffentlichte, belegte Erfahrung.
+              {{ language.t('profile.reviewsEmpty') }}
             </p>
           } @else {
             <ol class="mt-5 grid gap-4" aria-label="Veröffentlichte Bewertungen">
@@ -265,9 +283,10 @@ interface PublicWorkshopReview {
           class="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"
           aria-labelledby="details-title"
         >
-          <h2 id="details-title" class="text-xl font-bold">Leistungen und Angaben</h2>
+          <h2 id="details-title" class="text-xl font-bold">{{ language.t('profile.details') }}</h2>
           @if (profile.description) {
             <p class="mt-3 leading-7 text-slate-700">{{ profile.description }}</p>
+            <p class="mt-1 text-sm text-slate-600">{{ language.t('profile.originalText') }}</p>
           }
           <dl class="mt-5 grid gap-5 sm:grid-cols-2">
             <div>
@@ -279,7 +298,7 @@ interface PublicWorkshopReview {
               <dd class="mt-1 text-slate-700">{{ vehicleMakeLabels(profile.vehicleMakeIds) }}</dd>
             </div>
             <div>
-              <dt class="font-semibold">Sprachen</dt>
+              <dt class="font-semibold">{{ language.t('profile.language') }}</dt>
               <dd class="mt-1 text-slate-700">{{ profile.languages.join(', ') }}</dd>
             </div>
             <div>
@@ -299,7 +318,7 @@ interface PublicWorkshopReview {
           class="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"
           aria-labelledby="photos-title"
         >
-          <h2 id="photos-title" class="text-xl font-bold">Fotos</h2>
+          <h2 id="photos-title" class="text-xl font-bold">{{ language.t('profile.photos') }}</h2>
           @if (profile.photoIds.length) {
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
               @for (photoId of profile.photoIds; track photoId) {
@@ -311,7 +330,7 @@ interface PublicWorkshopReview {
               }
             </div>
           } @else {
-            <p class="mt-3 text-slate-700">Keine Fotos veröffentlicht.</p>
+            <p class="mt-3 text-slate-700">{{ language.t('profile.noPhotos') }}</p>
           }
         </section>
 
@@ -320,25 +339,21 @@ interface PublicWorkshopReview {
           class="mt-5 rounded-2xl border border-sky-200 bg-sky-50 p-5 shadow-sm sm:p-7"
           aria-labelledby="contact-title"
         >
-          <h2 id="contact-title" class="text-xl font-bold">Kontakt bewusst vorbereiten</h2>
+          <h2 id="contact-title" class="text-xl font-bold">{{ language.t('contact.title') }}</h2>
           <p class="mt-2 max-w-2xl leading-7 text-slate-700">
-            Du wählst diesen Betrieb selbst. Ein Klick öffnet nur den von dir sichtbaren Entwurf
-            oder die Telefon-App; er sendet keine Nachricht, bestätigt keinen Auftrag und reserviert
-            keinen Termin. Preis und Fertigstellung vereinbarst du direkt mit der Werkstatt.
+            {{ language.t('contact.description') }}
           </p>
 
           <fieldset class="mt-6 rounded-xl border border-sky-200 bg-white p-4">
-            <legend class="px-1 font-semibold">Optionale Angaben freigeben</legend>
+            <legend class="px-1 font-semibold">{{ language.t('profile.contactConsent') }}</legend>
             <label class="mt-2 flex min-h-11 items-start gap-3 text-slate-800">
               <input class="mt-1 size-5" [(ngModel)]="includeDetails" type="checkbox" />
               <span>
-                Ich möchte die unten selbst eingegebenen Fahrzeug- und Anliegenangaben in meinen
-                Nachrichtenentwurf aufnehmen.
+                {{ language.t('profile.contactConsentBody') }}
               </span>
             </label>
             <p class="mt-3 text-sm leading-6 text-slate-700">
-              Nichts aus einer gespeicherten Anfrage wird automatisch übernommen. VIN, Kennzeichen,
-              Dokumente, Upload-URLs und genaue Reisedaten gehören nicht in diesen Entwurf.
+              {{ language.t('contact.userTextNote') }}
             </p>
             @if (includeDetails) {
               <div class="mt-4 grid gap-4">
@@ -367,7 +382,7 @@ interface PublicWorkshopReview {
           </fieldset>
 
           <label class="mt-6 grid gap-1 font-semibold"
-            >Dein Nachrichtenentwurf
+            >{{ language.t('profile.messageDraft') }}
             <textarea
               class="rounded-lg border border-slate-300 bg-slate-50 p-3 font-normal leading-6 text-slate-800"
               [value]="contactPreview()"
@@ -384,13 +399,15 @@ interface PublicWorkshopReview {
                   target="_blank"
                   rel="noopener noreferrer"
                   class="inline-flex min-h-11 items-center rounded-lg bg-emerald-700 px-5 font-semibold text-white"
-                  >In WhatsApp öffnen</a
+                  (click)="contactOpened()"
+                  >{{ language.t('contact.openWhatsapp') }}</a
                 >
               }
               <a
                 [href]="telephoneHref()"
                 class="inline-flex min-h-11 items-center rounded-lg border border-sky-800 px-5 font-semibold text-sky-950"
-                >Anrufen</a
+                (click)="contactOpened()"
+                >{{ language.t('contact.call') }}</a
               >
             </div>
             <p class="mt-3 text-sm leading-6 text-slate-700">
@@ -401,8 +418,7 @@ interface PublicWorkshopReview {
             <p
               class="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4 leading-6 text-slate-800"
             >
-              Für dieses Profil ist keine gültige öffentliche Telefonnummer verfügbar. Ein externer
-              Kontaktlink wird deshalb nicht angeboten.
+              {{ language.t('contact.unavailable') }}
             </p>
           }
         </section>
@@ -412,7 +428,7 @@ interface PublicWorkshopReview {
             <a
               href="#kontakt"
               class="flex min-h-11 items-center justify-center rounded-lg bg-sky-800 px-5 font-semibold text-white"
-              >Kontakt auswählen</a
+              >{{ language.t('contact.choose') }}</a
             >
           </div>
         }
@@ -422,7 +438,11 @@ interface PublicWorkshopReview {
 })
 export class WorkshopProfileComponent {
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly analytics = inject(AnalyticsService);
   private readonly changeDetector = inject(ChangeDetectorRef);
+  protected readonly language = inject(LanguageService);
+  private readonly pendingTasks = inject(PendingTasks);
+  private readonly request = inject(REQUEST);
   private readonly route = inject(ActivatedRoute);
   protected includeDetails = false;
   protected profile?: PublicWorkshopProfile;
@@ -436,7 +456,9 @@ export class WorkshopProfileComponent {
   protected readonly vehicleMakeOptions = Object.entries(VEHICLE_MAKE_LABELS);
 
   constructor() {
+    this.language.setPage('profile.profile', 'profile.trust');
     if (this.browser) void this.load();
+    else if (this.request) this.pendingTasks.run(() => this.loadForServer(this.request!));
   }
 
   protected contactPreview(): string {
@@ -444,7 +466,7 @@ export class WorkshopProfileComponent {
       includeDetails: this.includeDetails,
       repairSummary: this.repairSummary,
       vehicleSummary: this.vehicleSummary,
-      workshopName: this.profile?.name ?? 'Werkstatt',
+      workshopName: this.profile?.name ?? this.language.t('home.badge'),
     });
   }
 
@@ -476,15 +498,33 @@ export class WorkshopProfileComponent {
       this.state = 'error';
       return;
     }
+    await this.loadProfile(workshopId);
+  }
+
+  private async loadForServer(request: Request): Promise<void> {
+    const workshopId = this.route.snapshot.paramMap.get('workshopId');
+    if (!workshopId) {
+      this.state = 'error';
+      return;
+    }
+    await this.loadProfile(workshopId, request.url);
+  }
+
+  private async loadProfile(workshopId: string, requestUrl?: string): Promise<void> {
     this.state = 'loading';
     try {
-      const response = await fetch(`/api/public/workshops/${encodeURIComponent(workshopId)}`, {
-        credentials: 'same-origin',
-      });
+      const response = await fetch(
+        this.publicApiUrl(`/api/public/workshops/${encodeURIComponent(workshopId)}`, requestUrl),
+        {
+          credentials: 'same-origin',
+        },
+      );
       if (!response.ok) throw new Error('Workshop profile request failed');
       this.profile = (await response.json()) as PublicWorkshopProfile;
       this.state = 'ready';
-      await this.loadReviews(workshopId);
+      this.language.setProfilePage(this.profile.name, this.profile.description);
+      if (this.browser) this.analytics.track('workshop_profile_opened');
+      await this.loadReviews(workshopId, requestUrl);
       this.changeDetector.markForCheck();
     } catch {
       this.state = 'error';
@@ -492,8 +532,12 @@ export class WorkshopProfileComponent {
     }
   }
 
-  protected async loadReviews(workshopId = this.profile?.id): Promise<void> {
-    if (!this.browser || !workshopId) return;
+  protected contactOpened(): void {
+    this.analytics.track('contact_channel_opened');
+  }
+
+  protected async loadReviews(workshopId = this.profile?.id, requestUrl?: string): Promise<void> {
+    if ((!this.browser && !requestUrl) || !workshopId) return;
     this.reviewState = 'loading';
     try {
       const query = new URLSearchParams();
@@ -502,7 +546,10 @@ export class WorkshopProfileComponent {
       if (this.reviewVehicleMakeId) query.set('vehicleMakeId', this.reviewVehicleMakeId);
       const suffix = query.size ? `?${query.toString()}` : '';
       const response = await fetch(
-        `/api/public/workshops/${encodeURIComponent(workshopId)}/reviews${suffix}`,
+        this.publicApiUrl(
+          `/api/public/workshops/${encodeURIComponent(workshopId)}/reviews${suffix}`,
+          requestUrl,
+        ),
         { credentials: 'same-origin' },
       );
       if (!response.ok) throw new Error('Workshop reviews request failed');
@@ -514,5 +561,9 @@ export class WorkshopProfileComponent {
       this.reviewState = 'error';
       this.changeDetector.markForCheck();
     }
+  }
+
+  private publicApiUrl(path: string, requestUrl?: string): string {
+    return requestUrl ? new URL(path, requestUrl).toString() : path;
   }
 }

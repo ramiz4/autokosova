@@ -1046,6 +1046,10 @@ export class AccessStore implements ReviewStore {
       .map((workshop) => this.toPublicWorkshop(workshop));
   }
 
+  listPublicWorkshopIds(): readonly string[] {
+    return this.listPublicWorkshops().map((workshop) => workshop.id);
+  }
+
   searchPublicWorkshops(input: PublicWorkshopSearchInput): PublicWorkshopSearchResponse {
     return findPublicWorkshops(this.listPublicWorkshops(), input);
   }
