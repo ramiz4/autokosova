@@ -32,7 +32,8 @@
     "dev:demo-workflows": "node scripts/dev.mjs --profile demo-workflows",
     "dev:doctor": "node scripts/dev.mjs --doctor",
     "test:dev": "node --test test/dev-*.test.mjs",
-    "test:dev:smoke": "node scripts/dev/smoke.mjs"
+    "test:dev:smoke": "node scripts/dev/quick-smoke.mjs",
+    "test:dev:smoke:full": "node scripts/dev/smoke.mjs"
   },
   "private": true,
   "dependencies": {

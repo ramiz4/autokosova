@@ -133,13 +133,14 @@ prüfen; keine pauschale Freigabe verwenden. Die Entscheidungen stehen in
 ```sh
 npm run test:dev
 npm run test:dev:smoke
+npm run test:dev:smoke:full
 ```
 
-Der Integrationstest erstellt zwei neue temporäre Git-Worktrees, installiert deren
-Abhängigkeiten und prüft echte DB-/App-Starts, Wiederholung, Isolation und Fehlerfälle.
-Er stoppt nur seine eigenen App-/DB-Prozesse. Test-Worktrees und DB-Volumes bleiben
-mit den ausgegebenen Pfaden zur Prüfung erhalten; er löscht keine Datenbank/Volumes.
-CI führt denselben Einstieg auf Linux mit ausschließlich fiktiven Daten aus.
+`test:dev:smoke` startet schnell einen isolierten Demo-Ablauf mit den bereits installierten
+Abhängigkeiten, prüft Ctrl+C und entfernt seinen temporären Worktree wieder. Für den
+vollständigen Nachweis führt `test:dev:smoke:full` zwei frische Worktrees mit eigenen
+PostGIS-DBs, Abhängigkeitsinstallationen, Wiederholung, Isolation und Fehlerfällen aus.
+CI verwendet ausschließlich diesen vollständigen Test mit fiktiven Daten.
 
 ## Lokale Test-OIDC-Konten
 
