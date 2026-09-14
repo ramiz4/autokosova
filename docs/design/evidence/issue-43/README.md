@@ -30,6 +30,8 @@ Fahrzeugschritt in DE/SQ/EN bei 1448, 1280, 360, 390 und 430 px geprüft. Zusät
 - `npm run format:check`, `npm run lint`, `npm run typecheck`: erfolgreich.
 - `npm test -- --watch=false`: 25 Tests erfolgreich, einschließlich 11 Anfrage-Tests.
 - `npm run test:server` mit der eigenen lokalen `DATABASE_URL`: 56 bestanden, 2 profilspezifische Demo-Seed-Tests übersprungen (keine entsprechenden Testprofil-Flags). Persistenz mit neuen Feldern, Teilfahrzeug und Fremdzugriff tatsächlich gegen PostgreSQL geprüft.
-- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle 529,24 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
+- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle 529,68 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
 - Screenreader-Semantik (`aria-current`, Status-/Fehlermeldungen), Fokuswechsel und Eingabevalidierung automatisiert geprüft. Kein manueller Durchlauf mit einem Screenreader und keine native mobile Browserprüfung.
 - Echter OIDC-Login mit Testkonto nicht ausgeführt: dieser isolierte Worktree hat keine OIDC-Konfiguration. Private Speicherung und Berechtigungen wurden über die authentifizierte API in Tests geprüft; dies ersetzt den realen OIDC-Durchlauf nicht.
+
+Pointer-Cursor zentral für aktive Links, Buttons, Auswahllisten, aufklappbare Elemente und Auswahl-/Upload-Bedienelemente ergänzt. Im Browser auf Header, Fahrzeugklassen, Auswahllisten und Formularaktionen über die berechneten CSS-Werte geprüft. Deaktivierte Elemente sind ausgenommen.
