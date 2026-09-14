@@ -112,3 +112,5 @@ Jeder Chip zeigt den Ort und seinen bestätigten Radius. Bearbeiten öffnet eine
 Automatisiert geprüft: unabhängige Radien, Abbrechen ohne Seiteneffekt, Übernahme, URL-Übergabe, Duplikate, Grenzen, Entfernen bei geöffnetem Editor, Escape und Rücknavigation. Live geprüft: Fokus beim Öffnen, Tastaturbedienung des Sliders, Abbrechen, dritter Ort und Such-URL `places=xk-prizren:35,xk-peja:50,xk-ferizaj:10`. DE/SQ/EN bei 360 px ohne horizontalen Überlauf. Der Editor belegt die verfügbare Filterbreite.
 
 [Optionaler Leerzustand mobil](location-empty-mobile.webp). Auch unmittelbar aufeinanderfolgende Entfernen-Aktionen vor dem nächsten Rendern entfernen die richtigen Orte: Chips und Aktionen sind an die jeweilige Ortsidentität gebunden. Regressionstest und Browserdurchlauf erfolgreich.
+
+„Weiteren Ort hinzufügen“ ist ein Button mit Innenabstand und dezentem flächigem Hover, ohne Unterstreichung. [Hover-Nachweis](add-location-hover.webp).

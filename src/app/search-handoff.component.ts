@@ -260,7 +260,7 @@ interface Area {
                     <button
                       id="add-area"
                       type="button"
-                      class="inline-flex min-h-11 items-center gap-2 justify-self-start rounded-lg text-left text-sm font-medium text-brand-dark hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                      class="inline-flex min-h-11 items-center gap-2 justify-self-start rounded-lg px-3 text-left text-sm font-medium text-brand-dark transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                       aria-controls="area-editor"
                       aria-expanded="false"
                       (click)="addArea()"
