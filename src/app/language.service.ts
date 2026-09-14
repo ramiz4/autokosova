@@ -1,5 +1,6 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
 import { filter } from 'rxjs';
@@ -22,6 +23,9 @@ export class LanguageService {
   private readonly document = inject(DOCUMENT);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly router = inject(Router);
+  private readonly navigationEnd = toSignal(
+    this.router.events.pipe(filter((event) => event instanceof NavigationEnd)),
+  );
   private readonly meta = inject(Meta);
   private readonly title = inject(Title);
 
@@ -33,6 +37,8 @@ export class LanguageService {
   }
 
   get language(): AppLanguage {
+    // Persistent shell components also need to update with zoneless change detection.
+    this.navigationEnd();
     return languageFromUrl(this.router.url);
   }
 
@@ -45,6 +51,7 @@ export class LanguageService {
   }
 
   switchUrl(target: AppLanguage): string {
+    this.navigationEnd();
     const current = this.router.url || this.browserPath();
     const suffixAt = current.search(/[?#]/);
     const path = suffixAt < 0 ? current : current.slice(0, suffixAt);
