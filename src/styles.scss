@@ -63,6 +63,25 @@ input[type='file']:not(:disabled)::file-selector-button {
   cursor: pointer;
 }
 
+/* Keep native select behavior while giving every dropdown the same chevron inset. */
+select:not([multiple]):not([size]),
+select:not([multiple])[size='1'] {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23506b96' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.875rem center;
+  background-size: 1rem 1rem;
+  padding-right: 2.75rem;
+}
+
+@media (forced-colors: active) {
+  select:not([multiple]):not([size]),
+  select:not([multiple])[size='1'] {
+    appearance: auto;
+    background-image: none;
+  }
+}
+
 /* A separate backdrop layer lets the floating menu blur the page independently. */
 .site-navbar-surface::before {
   content: '';

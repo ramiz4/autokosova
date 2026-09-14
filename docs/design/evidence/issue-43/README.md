@@ -95,3 +95,7 @@ Navbar-Inhalt und Suchinhalt teilen exakt dieselben Außenkanten: bei allen vier
 Toasts sind maximal 576 px breit und unten mittig positioniert. Status-Icon, 14-px-Text und Schließen-Button bilden eine gemeinsame Zeile; der kurze Gast-Hinweis „Favorit speichern?“ enthält direkt daneben den Textlink „Anmelden“. Mobile Seitenabstände und Safe Area bleiben berücksichtigt. Fehler werden als Alert angekündigt, andere Hinweise als Status.
 
 [Echter Gast-Hinweis Desktop](toast-login-1448.webp), [Mobil 360](toast-login-360.webp). Die Zustände [Gespeichert](toast-saved-fixture.webp), [Entfernt](toast-removed-fixture.webp) und [Fehler](toast-error-fixture.webp) wurden für diese reine Darstellungsprüfung mit simulierten API-Antworten aufgenommen; der echte OIDC-/Persistenznachweis ist separat oben dokumentiert. Schließen und Anmelden-Link sind bedienbar, keine horizontalen Überläufe.
+
+## Zentraler Select-Pfeil
+
+Alle nativen Dropdown-Selects erhalten über `src/styles.scss` denselben Chevron mit 14 px Randabstand, 16 px Icongröße und 44 px Textreserve rechts. Mehrfachauswahl und Listboxen behalten ihre native Darstellung. Im erzwungenen Kontrastmodus wird der native Pfeil verwendet. Berechnete CSS-Werte auf Suche, Anfrage, Startseite, Aufnahme und Profil geprüft; Tastaturfokus und mobile Darstellung ohne Überlauf bestätigt. [Desktop](select-inset-desktop.webp), [Mobil](select-inset-mobile.webp).
