@@ -1,0 +1,36 @@
+name: Footer browser
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: footer-browser-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  footer-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm install --global npm@11.19.0
+      - run: npm ci
+      - run: npm run build
+      - run: node scripts/footer-browser-smoke.mjs
+      - name: Upload footer viewport evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: footer-viewport-screenshots
+          path: test-results/footer
+          if-no-files-found: ignore
+          retention-days: 7

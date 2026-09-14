@@ -8,7 +8,6 @@ import {
   type MonetizationCopy,
 } from '../shared/monetization-copy';
 import { LanguageService } from './language.service';
-import { SiteFooterComponent } from './site-footer.component';
 import { SiteHeaderComponent } from './site-header.component';
 import { ButtonDirective } from './ui/button.directive';
 import { IconComponent, type IconName } from './ui/icon.component';
@@ -20,7 +19,7 @@ interface AudienceCard {
 }
 
 @Component({
-  imports: [RouterLink, SiteHeaderComponent, SiteFooterComponent, ButtonDirective, IconComponent],
+  imports: [RouterLink, SiteHeaderComponent, ButtonDirective, IconComponent],
   templateUrl: './monetization.component.html',
 })
 export class MonetizationComponent {

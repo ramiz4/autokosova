@@ -5,6 +5,7 @@ import { provideRouter, Router } from '@angular/router';
 import { monetizationCopy } from '../shared/monetization-copy';
 import { AccountSessionService } from './account-session.service';
 import { AnalyticsService } from './analytics.service';
+import { App } from './app';
 import { routes } from './app.routes';
 import { LanguageService, languageFromUrl, routePath } from './language.service';
 import { MonetizationComponent } from './monetization.component';
@@ -14,7 +15,7 @@ const languages = ['de', 'sq', 'en'] as const;
 describe('Costs and fairness page', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [MonetizationComponent],
+      imports: [MonetizationComponent, App],
       providers: [
         provideRouter(routes),
         {
@@ -61,7 +62,7 @@ describe('Costs and fairness page', () => {
       expect(page.querySelector('header img')?.getAttribute('src')).toBe(
         '/branding/autokosova-logo-header.png',
       );
-      expect(page.querySelector('app-site-footer footer')).toBeTruthy();
+      expect(page.querySelector('app-site-footer')).toBeNull();
       expect(page.querySelector('picture img')?.getAttribute('alt')).toBe('');
       expect(page.querySelector('[data-card="tools"], [data-card="partners"]')).toBeNull();
       expect(page.querySelector('main')?.textContent).not.toMatch(
@@ -152,16 +153,33 @@ describe('Costs and fairness page', () => {
     expect(TestBed.inject(Router).url).toBe('/sq/garages');
   });
 
-  it('keeps the skip target, section labels and optional analytics connected', async () => {
+  it('keeps the skip target and section labels connected', async () => {
     const { page } = await render();
     expect(page.querySelector('a[href="/monetization#monetization-main"]')).toBeTruthy();
     expect(page.querySelector('#monetization-main')?.getAttribute('tabindex')).toBe('-1');
     for (const section of page.querySelectorAll('main [aria-labelledby]')) {
       expect(page.querySelector('#' + section.getAttribute('aria-labelledby'))).toBeTruthy();
     }
+  });
+
+  it.each(languages)('uses one shell footer with optional analytics in %s', async (locale) => {
+    const fixture = TestBed.createComponent(App);
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl(routePath(locale, 'monetization'));
+    await fixture.whenStable();
+    const page = fixture.nativeElement as HTMLElement;
+    expect(page.querySelectorAll('app-site-footer footer')).toHaveLength(1);
     const consent = page.querySelector<HTMLButtonElement>('footer button[aria-pressed]')!;
     expect(consent.getAttribute('aria-pressed')).toBe('false');
     consent.click();
     expect(TestBed.inject(AnalyticsService).setConsent).toHaveBeenCalledWith(true);
+    for (const target of languages) {
+      await router.navigateByUrl(routePath(target, 'monetization') + '?source=information');
+      await fixture.whenStable();
+      expect(page.querySelector('h1')?.textContent?.trim()).toBe(monetizationCopy[target].title);
+      expect(page.querySelectorAll('footer')).toHaveLength(1);
+      expect(page.querySelector(`footer a[href="${routePath(target, 'search')}"]`)).toBeTruthy();
+      expect(page.querySelector(`footer a[href="${routePath(target, 'privacy')}"]`)).toBeTruthy();
+    }
   });
 });
