@@ -1,3 +1,10 @@
+import {
+  repairRequestSummary,
+  validRepairRequestPageOptions,
+  type RepairRequestPage,
+  type RepairRequestPageOptions,
+  type SavedRepairRequest,
+} from '../shared/saved-repair-request';
 import type {
   GaragePublicationState,
   GarageLocationPoint,
@@ -151,17 +158,7 @@ interface PrivateRepairRequest {
   readonly ownerUserId: string;
 }
 
-export interface StoredRepairRequest {
-  readonly areas: RepairRequestInput['areas'];
-  readonly attachmentIds: readonly string[];
-  readonly createdAt: string;
-  readonly earliestDropoffOn: string;
-  readonly id: string;
-  readonly latestPickupOn: string;
-  readonly serviceCategoryId: string;
-  readonly symptom?: string;
-  readonly vehicle?: RepairRequestInput['vehicle'];
-}
+export type StoredRepairRequest = SavedRepairRequest;
 
 interface Garage {
   readonly consent: GarageConsent;
@@ -797,6 +794,23 @@ export class AccessStore implements ReviewStore {
     this.oidcTransactions.delete(state);
     if (!transaction || transaction.expiresAt <= now) return undefined;
     return transaction;
+  }
+
+  listRepairRequests(ownerUserId: string, options: RepairRequestPageOptions): RepairRequestPage {
+    if (!validRepairRequestPageOptions(options)) throw new AccessError(400, 'Invalid request page');
+    const own = [...this.repairRequests.values()]
+      .filter((request) => request.ownerUserId === ownerUserId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+    const cursorIndex = options.cursor ? own.findIndex((item) => item.id === options.cursor) : -1;
+    if (options.cursor && cursorIndex < 0) throw new AccessError(404, 'Request page unavailable');
+    const page = own.slice(cursorIndex + 1, cursorIndex + 1 + options.limit + 1);
+    const requests = page
+      .slice(0, options.limit)
+      .map((item) => repairRequestSummary(this.toStoredRepairRequest(item)));
+    return {
+      requests,
+      nextCursor: page.length > options.limit ? requests[requests.length - 1].id : null,
+    };
   }
 
   getRepairRequest(userId: string, repairRequestId: string): StoredRepairRequest {

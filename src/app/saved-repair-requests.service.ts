@@ -1,8 +1,24 @@
 import { isPlatformBrowser } from '@angular/common';
-import { DestroyRef, Injectable, PLATFORM_ID, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  DestroyRef,
+  Injectable,
+  PLATFORM_ID,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import type { OwnAccount } from '../shared/account';
-import { isRepairRequestPage, isSavedRepairRequest } from '../shared/saved-repair-request-validation';
-import { REPAIR_REQUEST_PAGE_LIMIT, type RepairRequestSummary, type SavedRepairRequest } from '../shared/saved-repair-request';
+import {
+  isRepairRequestPage,
+  isSavedRepairRequest,
+} from '../shared/saved-repair-request-validation';
+import {
+  REPAIR_REQUEST_PAGE_LIMIT,
+  type RepairRequestSummary,
+  type SavedRepairRequest,
+} from '../shared/saved-repair-request';
 import { AccountSessionService } from './account-session.service';
 
 /** Page-scoped, memory-only private reads. It never reads or writes the browser inquiry draft. */
@@ -19,10 +35,15 @@ export class SavedRepairRequestsService {
   private readonly account = inject(AccountSessionService);
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly owner = signal<OwnAccount | null>(null);
-  private readonly visible = computed(() => this.owner() !== null &&
-    this.owner() === this.account.identity() && this.account.state() === 'ready' && !this.account.busy());
-  readonly requests = computed(() => this.visible() ? this.storedRequests() : []);
-  readonly detail = computed(() => this.visible() ? this.storedDetail() : null);
+  private readonly visible = computed(
+    () =>
+      this.owner() !== null &&
+      this.owner() === this.account.identity() &&
+      this.account.state() === 'ready' &&
+      !this.account.busy(),
+  );
+  readonly requests = computed(() => (this.visible() ? this.storedRequests() : []));
+  readonly detail = computed(() => (this.visible() ? this.storedDetail() : null));
   private generation = 0;
   private listController?: AbortController;
   private detailController?: AbortController;
@@ -68,7 +89,8 @@ export class SavedRepairRequestsService {
 
   async openDetail(id: string): Promise<void> {
     const identity = this.account.identity();
-    if (!this.browser || !identity || this.account.state() !== 'ready' || this.account.busy()) return;
+    if (!this.browser || !identity || this.account.state() !== 'ready' || this.account.busy())
+      return;
     this.detailController?.abort();
     const controller = new AbortController();
     this.detailController = controller;
@@ -78,7 +100,9 @@ export class SavedRepairRequestsService {
     this.detailState.set('loading');
     try {
       const response = await fetch(`/api/me/repair-requests/${encodeURIComponent(id)}`, {
-        credentials: 'same-origin', cache: 'no-store', signal: controller.signal,
+        credentials: 'same-origin',
+        cache: 'no-store',
+        signal: controller.signal,
       });
       if (!this.current(identity, generation, controller)) return;
       if (response.status === 401) return this.expire();
@@ -89,7 +113,8 @@ export class SavedRepairRequestsService {
       if (!response.ok) throw new Error('Private request unavailable');
       const detail: unknown = await response.json();
       if (!this.current(identity, generation, controller)) return;
-      if (!isSavedRepairRequest(detail) || detail.id !== id) throw new Error('Invalid private response');
+      if (!isSavedRepairRequest(detail) || detail.id !== id)
+        throw new Error('Invalid private response');
       this.storedDetail.set(detail);
       this.detailState.set('ready');
     } catch {
@@ -99,7 +124,8 @@ export class SavedRepairRequestsService {
 
   private async loadPage(cursor?: string): Promise<void> {
     const identity = this.account.identity();
-    if (!this.browser || !identity || this.account.state() !== 'ready' || this.account.busy()) return;
+    if (!this.browser || !identity || this.account.state() !== 'ready' || this.account.busy())
+      return;
     this.owner.set(identity);
     this.listController?.abort();
     const controller = new AbortController();
@@ -111,7 +137,9 @@ export class SavedRepairRequestsService {
     if (cursor) query.set('cursor', cursor);
     try {
       const response = await fetch(`/api/me/repair-requests?${query}`, {
-        credentials: 'same-origin', cache: 'no-store', signal: controller.signal,
+        credentials: 'same-origin',
+        cache: 'no-store',
+        signal: controller.signal,
       });
       if (!this.current(identity, generation, controller)) return;
       if (response.status === 401) return this.expire();
@@ -119,7 +147,8 @@ export class SavedRepairRequestsService {
       if (!response.ok) throw new Error('Private requests unavailable');
       const page: unknown = await response.json();
       if (!this.current(identity, generation, controller)) return;
-      if (!isRepairRequestPage(page) || page.nextCursor === cursor) throw new Error('Invalid private page');
+      if (!isRepairRequestPage(page) || page.nextCursor === cursor)
+        throw new Error('Invalid private page');
       const previous = cursor ? this.requests() : [];
       const seen = new Set(previous.map((item) => item.id));
       this.storedRequests.set([...previous, ...page.requests.filter((item) => !seen.has(item.id))]);
@@ -132,8 +161,13 @@ export class SavedRepairRequestsService {
 
   private current(identity: OwnAccount, generation: number, controller: AbortController): boolean {
     // Check the identity synchronously, too: an effect may not have run yet after logout/change.
-    return generation === this.generation && !controller.signal.aborted &&
-      this.account.identity() === identity && this.account.state() === 'ready' && !this.account.busy();
+    return (
+      generation === this.generation &&
+      !controller.signal.aborted &&
+      this.account.identity() === identity &&
+      this.account.state() === 'ready' &&
+      !this.account.busy()
+    );
   }
 
   private expire(): void {

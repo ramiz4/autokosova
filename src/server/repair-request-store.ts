@@ -1,3 +1,9 @@
+import {
+  repairRequestSummary,
+  validRepairRequestPageOptions,
+  type RepairRequestPage,
+  type RepairRequestPageOptions,
+} from '../shared/saved-repair-request';
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
 import { AccessError, type StoredRepairRequest } from './access';
@@ -9,6 +15,10 @@ pg.types.setTypeParser(1082, (value: string) => value);
 
 export interface RepairRequestStore {
   close?(): Promise<void>;
+  listRepairRequests(
+    ownerUserId: string,
+    options: RepairRequestPageOptions,
+  ): RepairRequestPage | Promise<RepairRequestPage>;
   createRepairRequest(
     ownerUserId: string,
     input: RepairRequestInput,
@@ -140,6 +150,79 @@ export class PostgresRepairRequestStore implements RepairRequestStore {
     }
   }
 
+  async listRepairRequests(
+    ownerUserId: string,
+    options: RepairRequestPageOptions,
+  ): Promise<RepairRequestPage> {
+    if (!validRepairRequestPageOptions(options)) throw new AccessError(400, 'Invalid request page');
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+      await this.setPrincipal(client, ownerUserId);
+      if (options.cursor) {
+        const anchor = await client.query(
+          'SELECT id FROM repair_request WHERE owner_user_id = $1 AND id = $2',
+          [ownerUserId, options.cursor],
+        );
+        if (!anchor.rowCount) throw new AccessError(404, 'Request page unavailable');
+      }
+      // Resolve the cursor timestamp in SQL: JS Date would lose PostgreSQL microseconds.
+      // Both the anchor and every joined vehicle are explicitly owner-bound, in addition to RLS.
+      const result = await client.query<{
+        id: string;
+        created_at: Date;
+        service_category_id: string;
+        symptom: string | null;
+        areas: RepairRequestInput['areas'];
+        make_id: RepairRequestVehicle['makeId'] | null;
+        vehicle_class: RepairRequestVehicle['vehicleClass'] | null;
+        model: string | null;
+        manufacture_year: number | null;
+      }>(
+        `SELECT r.id, r.created_at, r.service_category_id, left(r.symptom, 160) AS symptom,
+                v.make_id, v.model, v.manufacture_year, v.vehicle_class,
+                COALESCE((SELECT jsonb_agg(jsonb_build_object(
+                  'placeId', a.place_id, 'radiusKm', a.radius_m / 1000
+                ) ORDER BY a.position) FROM request_search_area a
+                  WHERE a.repair_request_id = r.id), '[]'::jsonb) AS areas
+         FROM repair_request r
+         LEFT JOIN vehicle v ON v.id = r.vehicle_id AND v.owner_user_id = $1
+         WHERE r.owner_user_id = $1 AND ($2::text IS NULL OR (r.created_at, r.id) < (
+           SELECT c.created_at, c.id FROM repair_request c
+           WHERE c.owner_user_id = $1 AND c.id = $2
+         ))
+         ORDER BY r.created_at DESC, r.id DESC
+         LIMIT $3`,
+        [ownerUserId, options.cursor ?? null, options.limit + 1],
+      );
+      const requests = result.rows.slice(0, options.limit).map((row) =>
+        repairRequestSummary({
+          id: row.id,
+          createdAt: row.created_at.toISOString(),
+          serviceCategoryId: row.service_category_id,
+          symptom: row.symptom ?? undefined,
+          areas: row.areas,
+          vehicle: {
+            ...(row.make_id ? { makeId: row.make_id } : {}),
+            ...(row.vehicle_class ? { vehicleClass: row.vehicle_class } : {}),
+            ...(row.model ? { model: row.model } : {}),
+            ...(row.manufacture_year === null ? {} : { year: row.manufacture_year }),
+          },
+        }),
+      );
+      await client.query('COMMIT');
+      return {
+        requests,
+        nextCursor: result.rows.length > options.limit ? requests[requests.length - 1].id : null,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async getRepairRequest(
     ownerUserId: string,
     repairRequestId: string,
@@ -170,7 +253,7 @@ export class PostgresRepairRequestStore implements RepairRequestStore {
         [request.id],
       );
       const vehicle = request.vehicle_id
-        ? await this.getVehicle(client, request.vehicle_id)
+        ? await this.getVehicle(client, ownerUserId, request.vehicle_id)
         : undefined;
       await client.query('COMMIT');
 
@@ -221,12 +304,12 @@ export class PostgresRepairRequestStore implements RepairRequestStore {
     }
   }
 
-  private async getVehicle(client: pg.PoolClient, vehicleId: string) {
+  private async getVehicle(client: pg.PoolClient, ownerUserId: string, vehicleId: string) {
     const result = await client.query<VehicleRow>(
       `SELECT make_id, model, manufacture_year, engine_details, transmission_details, mileage_km, vehicle_class, fuel
        FROM vehicle
-       WHERE id = $1`,
-      [vehicleId],
+       WHERE id = $1 AND owner_user_id = $2`,
+      [vehicleId, ownerUserId],
     );
     const vehicle = result.rows[0];
     if (!vehicle) {

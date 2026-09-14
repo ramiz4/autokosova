@@ -160,14 +160,18 @@
         >{{ language.t('account.profileTitle') }}</a
       >
       <div class="mb-2 grid gap-1 border-b border-slate-200/70 pb-2">
-        <button
-          type="button"
-          disabled
-          class="flex min-h-11 w-full cursor-not-allowed items-center rounded-lg px-2 text-left text-sm text-slate-400"
-          [title]="language.t('nav.privateUnavailable')"
-        >
-          {{ language.t('nav.myRequests') }}
-        </button>
+        @if (account.signedIn()) {
+          <a
+            data-account-inquiries
+            [routerLink]="language.link('inquiries')"
+            (click)="closeMenu()"
+            [attr.aria-current]="active() === 'inquiries' ? 'page' : null"
+            [class.bg-blue-50]="active() === 'inquiries'"
+            class="flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
+          >
+            {{ language.t('nav.myRequests') }}
+          </a>
+        }
         <button
           type="button"
           disabled

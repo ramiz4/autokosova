@@ -21,6 +21,7 @@ export type AppRoute =
   | 'garage'
   | 'monetization'
   | 'profile'
+  | 'inquiries'
   | PublicPageId;
 
 @Injectable({ providedIn: 'root' })
@@ -116,6 +117,7 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
     home: '',
     monetization: '/monetization',
     profile: '/profile',
+    inquiries: '/inquiries',
     onboarding: '/garages/new',
     request: '/inquiry',
     search: '/garages',
@@ -128,6 +130,7 @@ function identifyRoute(path: string): { readonly parameter?: string; readonly ro
   const normalized = path.replace(/^\/(?:sq|en)(?=\/|$)/, '') || '/';
   if (normalized === '/') return { route: 'home' };
   if (normalized === '/profile') return { route: 'profile' };
+  if (normalized === '/inquiries') return { route: 'inquiries' };
   if (normalized === '/monetization' || normalized === '/monetarisierung') {
     return { route: 'monetization' };
   }

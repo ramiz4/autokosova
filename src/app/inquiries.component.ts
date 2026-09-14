@@ -29,7 +29,9 @@ export class InquiriesComponent {
   constructor() {
     effect(() => this.language.setPageText(this.text('title'), this.text('description'), true));
     // Browser-only session validation; no private data is fetched into SSR/TransferState.
-    afterNextRender(() => { void this.account.refresh(); });
+    afterNextRender(() => {
+      void this.account.refresh();
+    });
   }
 
   protected text(key: InquiriesCopyKey): string {
@@ -45,9 +47,13 @@ export class InquiriesComponent {
   }
 
   protected searchQuery(request: RepairRequestSummary): Record<string, string> | null {
-    const serviceCategoryId = REPAIR_REQUEST_SERVICE_CATEGORIES.find((id) => id === request.serviceCategoryId);
+    const serviceCategoryId = REPAIR_REQUEST_SERVICE_CATEGORIES.find(
+      (id) => id === request.serviceCategoryId,
+    );
     return serviceCategoryId
-      ? Object.fromEntries(buildRepairRequestSearchParams({ areas: request.areas, serviceCategoryId }))
+      ? Object.fromEntries(
+          buildRepairRequestSearchParams({ areas: request.areas, serviceCategoryId }),
+        )
       : null;
   }
 
@@ -56,9 +62,14 @@ export class InquiriesComponent {
   }
 
   protected vehicleLabel(vehicle: RepairRequestSummary['vehicle']): string {
-    return [vehicle?.vehicleClass ? this.requestText(vehicle.vehicleClass) : '',
-      vehicle?.makeId ? VEHICLE_MAKE_LABELS[vehicle.makeId] : '', vehicle?.model, vehicle?.year]
-      .filter((value) => value !== undefined && value !== '').join(' · ');
+    return [
+      vehicle?.vehicleClass ? this.requestText(vehicle.vehicleClass) : '',
+      vehicle?.makeId ? VEHICLE_MAKE_LABELS[vehicle.makeId] : '',
+      vehicle?.model,
+      vehicle?.year,
+    ]
+      .filter((value) => value !== undefined && value !== '')
+      .join(' · ');
   }
 
   protected date(value: string, calendar = false): string {
@@ -68,21 +79,34 @@ export class InquiriesComponent {
     }).format(new Date(calendar ? `${value}T00:00:00Z` : value));
   }
 
-  protected vehicleEntries(vehicle: RepairRequestVehicle | undefined): readonly { label: string; value: string }[] {
+  protected vehicleEntries(
+    vehicle: RepairRequestVehicle | undefined,
+  ): readonly { label: string; value: string }[] {
     if (!vehicle) return [];
     const labels: Readonly<Record<keyof RepairRequestVehicle, RequestCopyKey>> = {
-      makeId: 'make', model: 'model', year: 'year', vehicleClass: 'class', fuel: 'fuel',
-      engineDetails: 'engine', transmissionDetails: 'transmission', mileageKm: 'mileage',
+      makeId: 'make',
+      model: 'model',
+      year: 'year',
+      vehicleClass: 'class',
+      fuel: 'fuel',
+      engineDetails: 'engine',
+      transmissionDetails: 'transmission',
+      mileageKm: 'mileage',
     };
     return (Object.keys(labels) as (keyof RepairRequestVehicle)[]).flatMap((key) => {
       const value = vehicle[key];
       if (value === undefined || value === '') return [];
       let display = String(value);
       if (key === 'makeId') display = VEHICLE_MAKE_LABELS[display] ?? display;
-      else if (key === 'vehicleClass' || key === 'fuel' ||
-        (key === 'transmissionDetails' && ['manual', 'automatic', 'semiAutomatic', 'other'].includes(display))) {
+      else if (
+        key === 'vehicleClass' ||
+        key === 'fuel' ||
+        (key === 'transmissionDetails' &&
+          ['manual', 'automatic', 'semiAutomatic', 'other'].includes(display))
+      ) {
         display = this.requestText(display as RequestCopyKey);
-      } else if (key === 'mileageKm') display = `${Number(value).toLocaleString(this.language.language)} km`;
+      } else if (key === 'mileageKm')
+        display = `${Number(value).toLocaleString(this.language.language)} km`;
       return [{ label: this.requestText(labels[key]), value: display }];
     });
   }

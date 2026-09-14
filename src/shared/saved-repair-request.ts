@@ -42,7 +42,8 @@ export function validRepairRequestPageOptions(options: RepairRequestPageOptions)
     Number.isInteger(options.limit) &&
     options.limit >= 1 &&
     options.limit <= REPAIR_REQUEST_MAX_PAGE_LIMIT &&
-    (options.cursor === undefined || (typeof options.cursor === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(options.cursor)))
+    (options.cursor === undefined ||
+      (typeof options.cursor === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(options.cursor)))
   );
 }
 
@@ -62,7 +63,8 @@ export function repairRequestSummary(
       ? { symptomPreview: [...request.symptom].slice(0, REPAIR_REQUEST_PREVIEW_LENGTH).join('') }
       : {}),
     areas: request.areas.map(({ placeId, radiusKm }) => ({ placeId, radiusKm })),
-    ...(vehicle && (vehicle.makeId || vehicle.model || vehicle.year !== undefined || vehicle.vehicleClass)
+    ...(vehicle &&
+    (vehicle.makeId || vehicle.model || vehicle.year !== undefined || vehicle.vehicleClass)
       ? {
           vehicle: {
             ...(vehicle.makeId ? { makeId: vehicle.makeId } : {}),

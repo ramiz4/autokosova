@@ -12,8 +12,10 @@ export function parseRepairRequestPage(value: unknown): RepairRequestPageOptions
   const query = value as Record<string, unknown>;
   if (Object.keys(query).some((key) => key !== 'limit' && key !== 'cursor'))
     throw new AccessError(400, 'Invalid request page');
-  if (query['limit'] !== undefined &&
-      (typeof query['limit'] !== 'string' || !/^[1-9]\d?$/.test(query['limit'])))
+  if (
+    query['limit'] !== undefined &&
+    (typeof query['limit'] !== 'string' || !/^[1-9]\d?$/.test(query['limit']))
+  )
     throw new AccessError(400, 'Invalid request page');
   if (query['cursor'] !== undefined && typeof query['cursor'] !== 'string')
     throw new AccessError(400, 'Invalid request page');
