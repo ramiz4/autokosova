@@ -59,7 +59,8 @@ try {
     assert.match(footer, /\/branding\/autokosova-logo-header\.png/);
     assert.match(footer, new RegExp(`${new Date().getFullYear()} AutoKosova`));
     assert.doesNotMatch(footer, /href="#"|href="(?:mailto:|tel:)/);
-    const locale = path === '/sq' || path.startsWith('/sq/') ? 'sq' : path.startsWith('/en') ? 'en' : 'de';
+    const locale =
+      path === '/sq' || path.startsWith('/sq/') ? 'sq' : path.startsWith('/en') ? 'en' : 'de';
     const prefix = locale === 'de' ? '' : `/${locale}`;
     assert.match(html, new RegExp(`<html[^>]*lang="${locale}"`));
     assert.ok(footer.includes(`href="${prefix}/inquiry"`), path);
