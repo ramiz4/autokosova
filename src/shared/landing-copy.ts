@@ -17,9 +17,7 @@ export const landingCopy: Readonly<Record<AppLanguage, Readonly<Record<string, s
     'nav.myRequests': 'Meine Anfragen',
     'nav.favorites': 'Favoriten',
     'nav.privateUnavailable': 'Diese private Ansicht ist noch nicht verfügbar.',
-    'nav.how': 'So funktioniert’s',
     'nav.garages': 'Für Werkstätten',
-    'nav.about': 'Über uns',
     'nav.login': 'Login',
     'nav.register': 'Registrieren',
     'nav.open': 'Menü öffnen',
@@ -51,21 +49,6 @@ export const landingCopy: Readonly<Record<AppLanguage, Readonly<Record<string, s
       'Wähle die gewünschte Leistung und einen Ort in Kosovo. Vergleiche passende Betriebe und entscheide selbst, wen du kontaktierst.',
     'landing.noAccount': 'Suchen und Kontakt auswählen – ohne Konto.',
     'landing.invalidPlace': 'Bitte wähle einen Ort aus der Liste.',
-    'landing.howTitle': 'In drei Schritten zur passenden Werkstatt',
-    'landing.stepOneTitle': 'Sag uns, was du suchst',
-    'landing.stepOneBody':
-      'Wähle Leistung und Ort. Für mehr Details kannst du eine persönliche Reparaturanfrage vorbereiten.',
-    'landing.stepTwoTitle': 'Vergleiche in Ruhe',
-    'landing.stepTwoBody':
-      'Sieh dir Leistungen, Unternehmensangaben und veröffentlichte Erfahrungen an.',
-    'landing.stepThreeTitle': 'Nimm selbst Kontakt auf',
-    'landing.stepThreeBody':
-      'Wähle einen Betrieb und stimme Reparatur, Preis und Termin direkt ab.',
-    'landing.aboutTitle': 'Ein gutes Gefühl auf dem Weg nach Hause.',
-    'landing.aboutBody':
-      'AutoKosova hilft dir, schon vor deiner Reise eine passende Werkstatt in Kosovo zu finden. Mit übersichtlichen Informationen und dem Kontakt, den du selbst auswählst.',
-    'landing.verification':
-      'Das Kennzeichen „Unternehmensdaten geprüft“ zeigt eine Prüfung der Unternehmensangaben an. Es ist keine Garantie für Reparaturqualität oder freie Termine. Besuchsnachweise bei Bewertungen werden separat geprüft.',
     'landing.footer': 'Dein Fahrzeug. Deine Entscheidung.',
   },
   sq: {
@@ -84,9 +67,7 @@ export const landingCopy: Readonly<Record<AppLanguage, Readonly<Record<string, s
     'nav.myRequests': 'Kërkesat e mia',
     'nav.favorites': 'Të preferuarat',
     'nav.privateUnavailable': 'Kjo pamje private nuk është ende e disponueshme.',
-    'nav.how': 'Si funksionon',
     'nav.garages': 'Për serviset',
-    'nav.about': 'Rreth nesh',
     'nav.login': 'Hyr',
     'nav.register': 'Regjistrohu',
     'nav.open': 'Hap menynë',
@@ -118,20 +99,6 @@ export const landingCopy: Readonly<Record<AppLanguage, Readonly<Record<string, s
       'Zgjidh shërbimin dhe një vend në Kosovë. Krahaso serviset e përshtatshme dhe vendos vetë kë të kontaktosh.',
     'landing.noAccount': 'Kërko dhe zgjidh kontaktin – pa llogari.',
     'landing.invalidPlace': 'Zgjidh një vend nga lista.',
-    'landing.howTitle': 'Në tre hapa drejt servisit të duhur',
-    'landing.stepOneTitle': 'Na trego çfarë kërkon',
-    'landing.stepOneBody':
-      'Zgjidh shërbimin dhe vendin. Për më shumë hollësi, përgatit një kërkesë personale për riparim.',
-    'landing.stepTwoTitle': 'Krahaso me qetësi',
-    'landing.stepTwoBody': 'Shiko shërbimet, të dhënat e biznesit dhe përvojat e publikuara.',
-    'landing.stepThreeTitle': 'Kontakto vetë',
-    'landing.stepThreeBody':
-      'Zgjidh një servis dhe bisedo drejtpërdrejt për riparimin, çmimin dhe datën.',
-    'landing.aboutTitle': 'Një ndjenjë e mirë në rrugën për në shtëpi.',
-    'landing.aboutBody':
-      'AutoKosova të ndihmon të gjesh një servis të përshtatshëm në Kosovë para udhëtimit. Me informacion të qartë dhe kontaktin që e zgjedh vetë.',
-    'landing.verification':
-      'Shenja “Të dhënat e biznesit të kontrolluara” tregon kontrollin e të dhënave të biznesit. Nuk garanton cilësinë e riparimit ose termine të lira. Dëshmitë e vizitave për vlerësimet kontrollohen veçmas.',
     'landing.footer': 'Automjeti yt. Vendimi yt.',
   },
   en: {
@@ -150,9 +117,7 @@ export const landingCopy: Readonly<Record<AppLanguage, Readonly<Record<string, s
     'nav.myRequests': 'My requests',
     'nav.favorites': 'Favorites',
     'nav.privateUnavailable': 'This private view is not available yet.',
-    'nav.how': 'How it works',
     'nav.garages': 'For garages',
-    'nav.about': 'About us',
     'nav.login': 'Log in',
     'nav.register': 'Register',
     'nav.open': 'Open menu',
@@ -184,19 +149,6 @@ export const landingCopy: Readonly<Record<AppLanguage, Readonly<Record<string, s
       'Choose a service and a place in Kosovo. Compare suitable garages and decide whom to contact.',
     'landing.noAccount': 'Search and choose a contact – without an account.',
     'landing.invalidPlace': 'Please choose a place from the list.',
-    'landing.howTitle': 'Three steps to the right garage',
-    'landing.stepOneTitle': 'Tell us what you need',
-    'landing.stepOneBody':
-      'Choose a service and a location. For more detail, prepare a personal repair request.',
-    'landing.stepTwoTitle': 'Compare at your own pace',
-    'landing.stepTwoBody': 'Explore services, company information and published experiences.',
-    'landing.stepThreeTitle': 'Make contact yourself',
-    'landing.stepThreeBody': 'Choose a garage and agree the repair, price and timing directly.',
-    'landing.aboutTitle': 'A good feeling on the way home.',
-    'landing.aboutBody':
-      'AutoKosova helps you find a suitable garage in Kosovo before you travel. With clear information and a contact you choose yourself.',
-    'landing.verification':
-      'The “Company data checked” label indicates a check of company information. It does not guarantee repair quality or available appointments. Visit evidence for reviews is checked separately.',
     'landing.footer': 'Your vehicle. Your decision.',
   },
 };

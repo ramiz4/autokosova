@@ -35,14 +35,12 @@ describe('Header account actions', () => {
         }));
       const desktop = menuItems('#desktop-navigation a.nav-link');
       const mobile = menuItems('#mobile-navigation a.nav-link');
-      expect(desktop).toHaveLength(5);
+      expect(desktop).toHaveLength(3);
       expect(mobile).toEqual(desktop);
       expect(desktop.map((item) => item.href)).toEqual([
         locale ? `/${locale}/inquiry` : '/inquiry',
         locale ? `/${locale}/garages` : '/garages',
         locale ? `/${locale}/garages/new` : '/garages/new',
-        (locale ? `/${locale}` : '/') + '#so-funktionierts',
-        (locale ? `/${locale}` : '/') + '#ueber-uns',
       ]);
     },
   );
