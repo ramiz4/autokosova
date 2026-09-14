@@ -31,6 +31,8 @@ interface RepairRequestRow {
 }
 
 interface VehicleRow {
+  readonly vehicle_class: RepairRequestVehicle['vehicleClass'] | null;
+  readonly fuel: RepairRequestVehicle['fuel'] | null;
   readonly engine_details: string | null;
   readonly make_id: string | null;
   readonly manufacture_year: number | null;
@@ -74,18 +76,20 @@ export class PostgresRepairRequestStore implements RepairRequestStore {
         await client.query(
           `INSERT INTO vehicle (
              id, owner_user_id, label, make_id, model, manufacture_year,
-             engine_details, transmission_details, mileage_km
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+             engine_details, transmission_details, mileage_km, vehicle_class, fuel
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
           [
             vehicleId,
             ownerUserId,
-            `${input.vehicle.makeId} ${input.vehicle.model}`,
+            [input.vehicle.makeId, input.vehicle.model].filter(Boolean).join(' ') || 'Vehicle',
             input.vehicle.makeId,
             input.vehicle.model,
             input.vehicle.year,
             input.vehicle.engineDetails ?? null,
             input.vehicle.transmissionDetails ?? null,
             input.vehicle.mileageKm ?? null,
+            input.vehicle.vehicleClass ?? null,
+            input.vehicle.fuel ?? null,
           ],
         );
       }
@@ -223,24 +227,26 @@ export class PostgresRepairRequestStore implements RepairRequestStore {
 
   private async getVehicle(client: pg.PoolClient, vehicleId: string) {
     const result = await client.query<VehicleRow>(
-      `SELECT make_id, model, manufacture_year, engine_details, transmission_details, mileage_km
+      `SELECT make_id, model, manufacture_year, engine_details, transmission_details, mileage_km, vehicle_class, fuel
        FROM vehicle
        WHERE id = $1`,
       [vehicleId],
     );
     const vehicle = result.rows[0];
-    if (!vehicle || !vehicle.make_id || !vehicle.model || vehicle.manufacture_year === null) {
+    if (!vehicle) {
       throw new AccessError(404, 'Private vehicle not found');
     }
     return {
       ...(vehicle.engine_details ? { engineDetails: vehicle.engine_details } : {}),
-      makeId: vehicle.make_id as RepairRequestVehicle['makeId'],
+      ...(vehicle.make_id ? { makeId: vehicle.make_id as RepairRequestVehicle['makeId'] } : {}),
+      ...(vehicle.vehicle_class ? { vehicleClass: vehicle.vehicle_class } : {}),
+      ...(vehicle.fuel ? { fuel: vehicle.fuel } : {}),
       ...(vehicle.mileage_km === null ? {} : { mileageKm: vehicle.mileage_km }),
-      model: vehicle.model,
+      ...(vehicle.model ? { model: vehicle.model } : {}),
       ...(vehicle.transmission_details
         ? { transmissionDetails: vehicle.transmission_details }
         : {}),
-      year: vehicle.manufacture_year,
+      ...(vehicle.manufacture_year === null ? {} : { year: vehicle.manufacture_year }),
     };
   }
 

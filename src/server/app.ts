@@ -54,6 +54,8 @@ import {
   REPAIR_REQUEST_PLACES,
   REPAIR_REQUEST_SERVICE_CATEGORIES,
   REPAIR_REQUEST_VEHICLE_MAKES,
+  REPAIR_REQUEST_VEHICLE_CLASSES,
+  REPAIR_REQUEST_FUELS,
   type RepairRequestInput,
 } from '../shared/repair-request';
 
@@ -122,6 +124,8 @@ const repairRequestBodySchema = {
     vehicle: {
       additionalProperties: false,
       properties: {
+        vehicleClass: { enum: REPAIR_REQUEST_VEHICLE_CLASSES, type: 'string' },
+        fuel: { enum: REPAIR_REQUEST_FUELS, type: 'string' },
         engineDetails: { maxLength: 120, type: 'string' },
         makeId: { enum: REPAIR_REQUEST_VEHICLE_MAKES, type: 'string' },
         mileageKm: {
@@ -137,7 +141,6 @@ const repairRequestBodySchema = {
           type: 'integer',
         },
       },
-      required: ['makeId', 'model', 'year'],
       type: 'object',
     },
   },

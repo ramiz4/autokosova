@@ -11,6 +11,7 @@ import { IconComponent } from './ui/icon.component';
   templateUrl: './site-header.component.html',
 })
 export class SiteHeaderComponent {
+  readonly compact = input(false);
   readonly active = input<'search' | undefined>();
   protected readonly language = inject(LanguageService);
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');

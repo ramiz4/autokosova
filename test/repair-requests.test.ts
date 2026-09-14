@@ -24,6 +24,8 @@ function validRequest() {
     symptom: 'Fiktives Quietschen beim Bremsen.',
     vehicle: {
       engineDetails: 'Fiktiver Benzinmotor',
+      vehicleClass: 'suv',
+      fuel: 'diesel',
       makeId: 'skoda',
       mileageKm: 128000,
       model: 'Fiktives Modell',
@@ -83,7 +85,7 @@ test('repair requests stay private and hand only service and areas to matching',
   }
 });
 
-test('request API rejects incomplete vehicles, duplicate areas, and inconsistent local dates', async () => {
+test('request API accepts partial vehicles and rejects duplicate areas, and inconsistent local dates', async () => {
   const { app, customerA } = setup();
   try {
     const incompleteVehicle = await app.inject({
@@ -121,7 +123,7 @@ test('request API rejects incomplete vehicles, duplicate areas, and inconsistent
       url: '/api/me/repair-requests',
     });
 
-    assert.equal(incompleteVehicle.statusCode, 400);
+    assert.equal(incompleteVehicle.statusCode, 201);
     assert.equal(duplicateArea.statusCode, 400);
     assert.equal(contradictoryDates.statusCode, 400);
     assert.equal(invalidDay.statusCode, 400);
@@ -149,6 +151,49 @@ test('a repair request cannot reference another customer private upload', async 
 
     assert.equal(uploaded.statusCode, 201);
     assert.equal(foreignReference.statusCode, 404);
+  } finally {
+    await app.close();
+  }
+});
+
+test('request API validates optional vehicle enums and numeric limits', async () => {
+  const { app, customerA } = setup();
+  try {
+    for (const vehicle of [
+      { vehicleClass: 'boat' },
+      { fuel: 'unknown' },
+      { year: 1800 },
+      { mileageKm: -1 },
+      { mileageKm: 2000001 },
+      { engineDetails: 'x'.repeat(121) },
+    ]) {
+      const response = await app.inject({
+        headers: headers(customerA, true),
+        method: 'POST',
+        payload: { ...validRequest(), vehicle },
+        url: '/api/me/repair-requests',
+      });
+      assert.equal(response.statusCode, 400);
+    }
+    for (const vehicle of [
+      undefined,
+      { vehicleClass: 'car', fuel: 'electric' },
+      { mileageKm: 0 },
+    ]) {
+      const response = await app.inject({
+        headers: headers(customerA, true),
+        method: 'POST',
+        payload: { ...validRequest(), vehicle },
+        url: '/api/me/repair-requests',
+      });
+      assert.equal(response.statusCode, 201);
+      const restored = await app.inject({
+        headers: headers(customerA),
+        method: 'GET',
+        url: `/api/me/repair-requests/${response.json().id}`,
+      });
+      assert.deepEqual(restored.json().vehicle, vehicle);
+    }
   } finally {
     await app.close();
   }

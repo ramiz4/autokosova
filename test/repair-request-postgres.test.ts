@@ -32,6 +32,8 @@ test(
         stayEndsOn: '2026-10-08',
         symptom: 'Fiktiver privater Hinweis',
         vehicle: {
+          vehicleClass: 'suv',
+          fuel: 'diesel',
           makeId: 'skoda',
           mileageKm: 128000,
           model: 'Fiktives Modell',
@@ -97,10 +99,24 @@ test(
       assert.equal(restored.stayEndsOn, '2026-10-08');
       assert.equal(restored.symptom, 'Fiktiver privater Hinweis');
       assert.deepEqual(restored.vehicle, {
+        vehicleClass: 'suv',
+        fuel: 'diesel',
         makeId: 'skoda',
         mileageKm: 128000,
         model: 'Fiktives Modell',
         year: 2018,
+      });
+      const partial = await store.createRepairRequest('postgres-customer-a', {
+        areas: [{ placeId: 'xk-peja', radiusKm: 10 }],
+        earliestDropoffOn: '2026-10-02',
+        latestPickupOn: '2026-10-06',
+        stayEndsOn: '2026-10-08',
+        serviceCategoryId: 'bremsen',
+        vehicle: { vehicleClass: 'motorcycle', fuel: 'electric' },
+      });
+      assert.deepEqual((await store.getRepairRequest('postgres-customer-a', partial.id)).vehicle, {
+        vehicleClass: 'motorcycle',
+        fuel: 'electric',
       });
       await assert.rejects(
         () => store.getRepairRequest('postgres-customer-b', created.id),

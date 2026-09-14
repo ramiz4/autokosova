@@ -46,13 +46,31 @@ export interface RepairRequestArea {
   readonly radiusKm: number;
 }
 
+export const REPAIR_REQUEST_VEHICLE_CLASSES = [
+  'car',
+  'suv',
+  'van',
+  'camper',
+  'motorcycle',
+] as const;
+export const REPAIR_REQUEST_FUELS = [
+  'petrol',
+  'diesel',
+  'hybrid',
+  'electric',
+  'lpg',
+  'other',
+] as const;
+
 export interface RepairRequestVehicle {
+  readonly vehicleClass?: (typeof REPAIR_REQUEST_VEHICLE_CLASSES)[number];
+  readonly fuel?: (typeof REPAIR_REQUEST_FUELS)[number];
   readonly engineDetails?: string;
-  readonly makeId: (typeof REPAIR_REQUEST_VEHICLE_MAKES)[number];
+  readonly makeId?: (typeof REPAIR_REQUEST_VEHICLE_MAKES)[number];
   readonly mileageKm?: number;
-  readonly model: string;
+  readonly model?: string;
   readonly transmissionDetails?: string;
-  readonly year: number;
+  readonly year?: number;
 }
 
 export interface RepairRequestInput {

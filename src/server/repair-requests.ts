@@ -4,6 +4,8 @@ import {
   REPAIR_REQUEST_PLACES,
   REPAIR_REQUEST_SERVICE_CATEGORIES,
   REPAIR_REQUEST_VEHICLE_MAKES,
+  REPAIR_REQUEST_VEHICLE_CLASSES,
+  REPAIR_REQUEST_FUELS,
   type RepairRequestInput,
 } from '../shared/repair-request';
 
@@ -44,14 +46,32 @@ export function validateRepairRequest(input: RepairRequestInput): string | undef
   }
 
   if (input.vehicle) {
-    if (!vehicleMakeIds.has(input.vehicle.makeId)) return 'Please choose a known vehicle make';
-    if (!input.vehicle.model.trim() || input.vehicle.model.trim().length > 120) {
+    if (
+      input.vehicle.vehicleClass !== undefined &&
+      !REPAIR_REQUEST_VEHICLE_CLASSES.includes(input.vehicle.vehicleClass)
+    )
+      return 'Unknown vehicle class';
+    if (input.vehicle.fuel !== undefined && !REPAIR_REQUEST_FUELS.includes(input.vehicle.fuel))
+      return 'Unknown fuel';
+    if (
+      [input.vehicle.engineDetails, input.vehicle.transmissionDetails].some(
+        (value) => value !== undefined && value.length > 120,
+      )
+    )
+      return 'Vehicle details are too long';
+    if (input.vehicle.makeId !== undefined && !vehicleMakeIds.has(input.vehicle.makeId))
+      return 'Please choose a known vehicle make';
+    if (
+      input.vehicle.model !== undefined &&
+      (!input.vehicle.model.trim() || input.vehicle.model.length > 120)
+    ) {
       return 'Vehicle model is required and must be at most 120 characters';
     }
     if (
-      !Number.isInteger(input.vehicle.year) ||
-      input.vehicle.year < REPAIR_REQUEST_LIMITS.minVehicleYear ||
-      input.vehicle.year > REPAIR_REQUEST_LIMITS.maxVehicleYear
+      input.vehicle.year !== undefined &&
+      (!Number.isInteger(input.vehicle.year) ||
+        input.vehicle.year < REPAIR_REQUEST_LIMITS.minVehicleYear ||
+        input.vehicle.year > REPAIR_REQUEST_LIMITS.maxVehicleYear)
     ) {
       return 'Vehicle year is outside the supported range';
     }

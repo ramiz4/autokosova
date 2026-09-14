@@ -174,10 +174,13 @@ Qualität vor Billigpreis. Kein Bietermodell. Suche, Profile und Direktkontakt o
 
 ## Reparaturanfrage lokal prüfen
 
-`/anfrage` führt schrittweise durch optionale Fahrzeugdaten, Leistung/Symptom sowie einen bis drei
+`/anfrage` führt in fünf Schritten durch Fahrzeug, Reparatur, Ort & Zeit, Details und Zusammenfassung.
+Alle Fahrzeugfelder sind einzeln optional; Fahrzeugklasse und Kraftstoff verwenden begrenzte Auswahllisten.
+Modell, Motorisierung und Getriebe bleiben Freitext. Die Anfrage enthält Leistung/Symptom sowie einen bis drei
 Orte mit 5–100 km Luftlinienradius und lokale Reisedaten. Gäste behalten den Entwurf nur im
 Browser und können damit zur Suche weitergehen. Nur nach OIDC-Anmeldung kann die Anfrage über die
-private API dauerhaft gespeichert werden. Der Suchübergang enthält ausschließlich Leistung und
+private API dauerhaft gespeichert werden. Die Zusammenfassung zeigt den bestätigten Speicherstatus;
+Speicherfehler behalten den Browserentwurf. Der Suchübergang enthält ausschließlich Leistung und
 Orts-/Radiusfilter; es wird nichts automatisch an Werkstätten gesendet. Fotos und Diagnoseberichte
 bleiben optional und privat; ohne einen konfigurierten Objektspeicher werden sie in der lokalen
 Entwicklungsoberfläche nicht hochgeladen.
