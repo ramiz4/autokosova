@@ -50,3 +50,26 @@ describe('Active navigation', () => {
     expect(links.every((link) => link.getAttribute('href') === href)).toBe(true);
   });
 });
+
+it('dismisses the floating menu with an outside pointer action', async () => {
+  await TestBed.configureTestingModule({
+    imports: [SiteHeaderComponent],
+    providers: [provideRouter([])],
+  }).compileComponents();
+  const fixture = TestBed.createComponent(SiteHeaderComponent);
+  await fixture.whenStable();
+  const page = fixture.nativeElement as HTMLElement;
+  const toggle = page.querySelector<HTMLButtonElement>(
+    'button[aria-controls="mobile-navigation"]',
+  )!;
+  toggle.click();
+  await fixture.whenStable();
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  toggle.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+  await fixture.whenStable();
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+  await fixture.whenStable();
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  expect(page.querySelector<HTMLElement>('#mobile-navigation')!.hidden).toBe(true);
+});

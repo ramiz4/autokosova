@@ -50,7 +50,7 @@ interface Area {
   imports: [ButtonDirective, FormsModule, IconComponent, RouterLink, SiteHeaderComponent],
   selector: 'app-search-handoff',
   template: ` <main class="min-h-screen bg-[#f4f8fe] text-ink" aria-labelledby="search-title">
-    <div class="sticky top-0 z-50 bg-white px-3 shadow-sm lg:px-8">
+    <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
       <app-site-header [compact]="true" active="search" />
     </div>
     <section

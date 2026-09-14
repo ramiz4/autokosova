@@ -7,6 +7,7 @@ import { IconComponent } from './ui/icon.component';
 
 @Component({
   selector: 'app-site-header',
+  host: { '(document:pointerdown)': 'dismissOutside($event)' },
   imports: [RouterLink, LanguageSwitcherComponent, ButtonDirective, IconComponent],
   templateUrl: './site-header.component.html',
 })
@@ -14,12 +15,23 @@ export class SiteHeaderComponent {
   readonly compact = input(false);
   readonly active = input<'search' | 'request' | undefined>();
   protected readonly language = inject(LanguageService);
+  private readonly element = inject(ElementRef<HTMLElement>);
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
   protected readonly menuOpen = signal(false);
 
   protected closeMenu(restoreFocus = false): void {
     this.menuOpen.set(false);
     if (restoreFocus) this.menuButton()?.nativeElement.focus();
+  }
+
+  protected dismissOutside(event: PointerEvent): void {
+    if (
+      this.menuOpen() &&
+      event.target instanceof Node &&
+      !this.element.nativeElement.contains(event.target)
+    ) {
+      this.closeMenu();
+    }
   }
 
   protected loginUrl(register = false): string {

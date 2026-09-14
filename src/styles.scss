@@ -62,3 +62,40 @@ label:has(
 input[type='file']:not(:disabled)::file-selector-button {
   cursor: pointer;
 }
+
+/* A separate backdrop layer lets the floating menu blur the page independently. */
+.site-navbar-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: rgb(255 255 255 / 78%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 70%),
+    0 2px 12px rgb(7 20 62 / 5%);
+}
+
+.site-menu-surface {
+  background: rgb(255 255 255 / 82%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .site-navbar-surface::before,
+  .site-menu-surface {
+    background: #fff;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .site-navbar-surface::before,
+  .site-menu-surface {
+    background: #fff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

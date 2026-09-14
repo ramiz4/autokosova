@@ -28,9 +28,9 @@ Fahrzeugschritt in DE/SQ/EN bei 1448, 1280, 360, 390 und 430 px geprüft. Zusät
 
 - `npm ci`, `npm run dev:demo`: eigene lokale PostgreSQL-DB, Migration 017 und öffentliche Demo-Daten erfolgreich.
 - `npm run format:check`, `npm run lint`, `npm run typecheck`: erfolgreich.
-- `npm test -- --watch=false`: 34 Tests erfolgreich, einschließlich 12 Anfrage-Tests und 6 Routentests.
+- `npm test -- --watch=false`: 35 Tests erfolgreich, einschließlich 12 Anfrage-Tests und 6 Routentests.
 - `npm run test:server` mit der eigenen lokalen `DATABASE_URL`: 57 bestanden, 2 profilspezifische Demo-Seed-Tests übersprungen (keine entsprechenden Testprofil-Flags). Persistenz mit neuen Feldern, Teilfahrzeug und Fremdzugriff tatsächlich gegen PostgreSQL geprüft.
-- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 532 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
+- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 533 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
 - Screenreader-Semantik (`aria-current`, Status-/Fehlermeldungen), Fokuswechsel und Eingabevalidierung automatisiert geprüft. Kein manueller Durchlauf mit einem Screenreader und keine native mobile Browserprüfung.
 - Echter OIDC-Login mit Testkonto nicht ausgeführt: dieser isolierte Worktree hat keine OIDC-Konfiguration. Private Speicherung und Berechtigungen wurden über die authentifizierte API in Tests geprüft; dies ersetzt den realen OIDC-Durchlauf nicht.
 
@@ -57,3 +57,11 @@ Neue Anfrage und Werkstätten finden haben auf ihrer jeweiligen Seite einen blau
 Die Anfrage erfasst nur früheste Abgabe und späteste Abholung. Aufenthaltsende wurde aus Formular, Zusammenfassung, Übersetzungen, API-Vertrag, Speicherung und privaten Datenexporten entfernt. Bestehende Browserentwürfe werden mit dem aktuellen Formularvertrag neu gespeichert, sodass das veraltete Feld entfällt. Browserprüfung: genau zwei Datumsfelder, Zusammenfassung erreichbar und kein veraltetes Feld im Browserentwurf.
 
 Migration 018 entfernt die Spalte samt bisherigen Werten und ersetzt die Datumsbedingung durch `Abgabe ≤ Abholung`. Auf der eigenen lokalen DB blieben alle neun vor der Migration vorhandenen Anfragen erhalten; die Spalte ist nicht mehr vorhanden. Die vollständigen UI-/Server-/PostgreSQL-Prüfungen wurden anschließend erfolgreich wiederholt. Historische Migration 011 bleibt als angewendete Versionshistorie unverändert.
+
+## Schwebendes Menü und Glasoberflächen
+
+Das mobile Menü liegt absolut unter dem Header und verändert den Seitenfluss nicht. Auf Anfrage und Suche bleibt der Hero beim Öffnen bei y=64 px, die Headerhöhe bei 64 px; das Menü liegt zwischen y=72 und y=398 px (390 × 844). [Anfrage mit geöffnetem Menü](inquiry-glass-menu.webp), [Suche mit geöffnetem Menü](garages-glass-menu.webp).
+
+Menü und sticky Navbar nutzen getrennte, leicht transparente Glasflächen mit Backdrop-Blur und Sättigung. Eine eigene Hintergrundebene der Navbar verhindert, dass ihre Unschärfe die Glasschicht des Menüs begrenzt. [Anfrage beim Scrollen](inquiry-glass-scroll.webp), [Suche beim Scrollen](garages-glass-scroll.webp). Bei reduzierter Transparenz oder fehlender Blur-Unterstützung bleiben die Flächen undurchsichtig.
+
+Escape, Menülinks und Tippen außerhalb schließen das Menü. Die Außenaktion ist automatisiert geprüft. Bei nur 390 px Viewporthöhe bleiben alle Menüpunkte durch internes Scrollen erreichbar: Anfrage, Suche und Startseite bei 360, 430 und 1024 px Breite geprüft; kein horizontaler Überlauf und Menüunterkante innerhalb des Viewports.
