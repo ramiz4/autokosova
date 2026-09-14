@@ -130,3 +130,9 @@ Der Suchfilter-Kopf hat oben und unten 12 statt 20 px Kartenabstand; der Desktop
 ## Private Navigation im Konto-Menü
 
 „Meine Anfragen“ und „Favoriten“ sind aus der Top-Navbar entfernt und erscheinen ausschließlich im geöffneten Konto-Menü einer angemeldeten Sitzung. Die bisher nicht angebundenen Übersichtsseiten bleiben deaktiviert und mit einem Verfügbarkeitshinweis versehen. Gastzustand, Zustandswechsel, Menüschließen und Platzierung sind automatisiert geprüft. Desktop und Mobil in DE/SQ/EN ohne Überlauf geprüft; diese Darstellungsnachweise verwenden eine simulierte angemeldete Sitzung: [Desktop](account-menu-fixture-1448.webp), [Mobil](account-menu-fixture-390.webp).
+
+## Einheitliche öffentliche Navigation
+
+Eine gemeinsame Vorlage liefert dieselben fünf Links für Desktop, mobiles Menü und öffentliche Links im kleinen Konto-Menü: Neue Anfrage, Werkstätten finden, So funktioniert’s, Für Werkstätten und Über uns. Desktop-Navigation beginnt bei 1280 px; mobiles Menü und Toggle verwenden denselben Umschaltpunkt. Werkstätten finden führt überall zum sprachabhängigen `/garages`-Pfad.
+
+72 Browserkombinationen aus Startseite/Suche, DE/SQ/EN, Gast/simulierter Kontositzung und 360/390/1024/1279/1280/1448 px geprüft: identische Ziele, kein gleichzeitiges Desktop-/Mobilmenü, keine Überlappung oder horizontalen Überläufe. [Desktop Gast](nav-guest-1280.webp), [Mobiles Menü Gast](nav-guest-1024.webp), [Desktop Konto-Fixture](nav-account-fixture-1280.webp), [Mobiles Menü Konto-Fixture](nav-account-fixture-1024.webp).

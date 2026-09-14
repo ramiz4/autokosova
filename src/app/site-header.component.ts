@@ -1,4 +1,4 @@
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
 import { PLATFORM_ID } from '@angular/core';
 import { AccountSessionService } from './account-session.service';
 import { Component, ElementRef, inject, input, signal, viewChild } from '@angular/core';
@@ -11,7 +11,13 @@ import { IconComponent } from './ui/icon.component';
 @Component({
   selector: 'app-site-header',
   host: { '(document:pointerdown)': 'dismissOutside($event)' },
-  imports: [RouterLink, LanguageSwitcherComponent, ButtonDirective, IconComponent],
+  imports: [
+    RouterLink,
+    NgTemplateOutlet,
+    LanguageSwitcherComponent,
+    ButtonDirective,
+    IconComponent,
+  ],
   templateUrl: './site-header.component.html',
 })
 export class SiteHeaderComponent {

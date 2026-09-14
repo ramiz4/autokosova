@@ -28,6 +28,22 @@ describe('Header account actions', () => {
       expect(page.querySelector('[aria-live]')).toBeNull();
       expect(page.querySelector('nav [aria-disabled="true"]')).toBeNull();
       expect(page.querySelector('#account-menu')).toBeNull();
+      const menuItems = (selector: string) =>
+        Array.from(page.querySelectorAll<HTMLAnchorElement>(selector)).map((link) => ({
+          text: link.textContent!.trim(),
+          href: link.getAttribute('href'),
+        }));
+      const desktop = menuItems('#desktop-navigation a.nav-link');
+      const mobile = menuItems('#mobile-navigation a.nav-link');
+      expect(desktop).toHaveLength(5);
+      expect(mobile).toEqual(desktop);
+      expect(desktop.map((item) => item.href)).toEqual([
+        locale ? `/${locale}/inquiry` : '/inquiry',
+        locale ? `/${locale}/garages` : '/garages',
+        (locale ? `/${locale}` : '/') + '#so-funktionierts',
+        locale ? `/${locale}/garages/new` : '/garages/new',
+        (locale ? `/${locale}` : '/') + '#ueber-uns',
+      ]);
     },
   );
 });
@@ -112,6 +128,13 @@ it('shows notification and account controls instead of login buttons for an auth
   expect(menu.textContent).toContain('Meine Anfragen');
   expect(menu.textContent).toContain('Favoriten');
   expect(menu.querySelectorAll('button:disabled')).toHaveLength(2);
+  expect(
+    Array.from(menu.querySelectorAll('a.nav-link')).map((link) => link.getAttribute('href')),
+  ).toEqual(
+    Array.from(page.querySelectorAll('#desktop-navigation a.nav-link')).map((link) =>
+      link.getAttribute('href'),
+    ),
+  );
   for (const nav of page.querySelectorAll('nav')) {
     expect(nav.textContent).not.toContain('Meine Anfragen');
     expect(nav.textContent).not.toContain('Favoriten');

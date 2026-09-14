@@ -48,7 +48,11 @@ describe('Homepage', () => {
     expect(page.querySelector('picture img')?.getAttribute('fetchpriority')).toBe('high');
     for (const id of ['werkstatt-suche', 'so-funktionierts', 'ueber-uns']) {
       expect(page.querySelector('#' + id)).toBeTruthy();
-      expect(page.querySelector('header a[href="/#' + id + '"]')).toBeTruthy();
+      expect(
+        page.querySelector(
+          'header a[href="' + (id === 'werkstatt-suche' ? '/garages' : '/#' + id) + '"]',
+        ),
+      ).toBeTruthy();
     }
   });
 
@@ -104,7 +108,7 @@ describe('Homepage', () => {
     const { page } = await render();
     expect(page.querySelector('h1')?.textContent).toContain('Para se të nisesh.');
     expect(page.querySelector('a[href="/sq/inquiry"]')).toBeTruthy();
-    expect(page.querySelector('header a[href="/sq#werkstatt-suche"]')).toBeTruthy();
+    expect(page.querySelector('header a[href="/sq/garages"]')).toBeTruthy();
     expect(page.querySelector('header a[href="/en"]')?.textContent).toContain('English');
     expect(page.querySelector('header a[aria-current="page"]')?.textContent).toContain('Shqip');
   });
