@@ -1,4 +1,5 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, Routes } from '@angular/router';
 import { PUBLIC_PAGE_PATHS } from '../shared/public-pages';
 import { FoundationComponent } from './app';
 import { MonetizationComponent } from './monetization.component';
@@ -29,7 +30,12 @@ function localizedRoutes(prefix: string): Routes {
     {
       path: `${childPrefix}monetarisierung`,
       pathMatch: 'full',
-      redirectTo: `${childPrefix}monetization`,
+      // Build the full URL at request time, including server-rendered redirects.
+      redirectTo: ({ queryParams, fragment }) =>
+        inject(Router).createUrlTree([`/${childPrefix}monetization`], {
+          queryParams,
+          fragment: fragment ?? undefined,
+        }),
     },
     // Compatibility redirects only; generated links always use English route names.
     {

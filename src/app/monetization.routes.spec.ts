@@ -22,14 +22,14 @@ it.each(['de', 'sq', 'en'] as const)(
 );
 
 it.each(['', '/sq', '/en'])(
-  'redirects the German alias for %s without losing query parameters',
+  'redirects the German alias for %s without losing query parameters or fragments',
   async (prefix) => {
     const router = TestBed.inject(Router);
-    await router.navigateByUrl(`${prefix}/monetarisierung?source=information`);
-    expect(router.url).toBe(`${prefix}/monetization?source=information`);
-    expect(TestBed.inject(LanguageService).switchUrl('en')).toBe(
-      '/en/monetization?source=information',
-    );
+    for (const suffix of ['', '?source=information', '?source=information#monetization-main']) {
+      await router.navigateByUrl(`${prefix}/monetarisierung${suffix}`);
+      expect(router.url).toBe(`${prefix}/monetization${suffix}`);
+      expect(TestBed.inject(LanguageService).switchUrl('en')).toBe(`/en/monetization${suffix}`);
+    }
   },
 );
 
@@ -41,10 +41,10 @@ it('keeps existing keyed metadata and indexing behavior when accepting localized
   expect(title.getTitle()).toBe(`${language.t('landing.pageTitle')} | AutoKosova`);
   expect(meta.getTag('name="description"')?.content).toBe(language.t('landing.intro'));
   expect(meta.getTag('name="robots"')?.content).toBe('noindex, nofollow');
-  language.setPageText('Monetarisierung', 'Kostenlose Grundlage und mögliche spätere Schritte.');
-  expect(title.getTitle()).toBe('Monetarisierung | AutoKosova');
+  language.setPageText('Kosten & Fairness', 'Die aktuelle kostenlose Phase und unabhängige Suche.');
+  expect(title.getTitle()).toBe('Kosten & Fairness | AutoKosova');
   expect(meta.getTag('name="description"')?.content).toBe(
-    'Kostenlose Grundlage und mögliche spätere Schritte.',
+    'Die aktuelle kostenlose Phase und unabhängige Suche.',
   );
   expect(meta.getTag('name="robots"')).toBeNull();
 });

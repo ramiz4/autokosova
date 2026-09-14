@@ -37,11 +37,26 @@ try {
   assert.equal(health.status, 200);
   assert.deepEqual(await health.json(), { status: 'ok' });
 
+  for (const prefix of ['', '/sq', '/en']) {
+    const alias = `${origin}${prefix}/monetarisierung?source=information`;
+    const response = await fetch(alias, {
+      redirect: 'manual',
+      signal: AbortSignal.timeout(20_000),
+    });
+    assert.ok([301, 302, 307, 308].includes(response.status), `Expected SSR redirect: ${alias}`);
+    const location = response.headers.get('location');
+    assert.ok(location, `Missing redirect target: ${alias}`);
+    assert.equal(new URL(location, origin).href, `${origin}${prefix}/monetization?source=information`);
+  }
+
   // Only local, synthetic public pages. No session or private request is created.
   const pending = new Set([
     '/',
     '/sq',
     '/en',
+    '/monetization',
+    '/sq/monetization',
+    '/en/monetization',
     '/garages/footer-smoke-missing',
     '/sq/garages/footer-smoke-missing',
     '/en/garages/footer-smoke-missing',
