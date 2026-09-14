@@ -1,6 +1,7 @@
 import { Component, input } from '@angular/core';
 
 export type IconName =
+  | 'star'
   | 'pencil'
   | 'info'
   | 'arrow'
@@ -35,6 +36,7 @@ export type IconName =
     <path
       [attr.d]="paths[name()]"
       [attr.fill]="
+        name() === 'star' ||
         name() === 'badge-check' ||
         name() === 'heart-filled' ||
         name() === 'bell' ||
@@ -51,6 +53,7 @@ export type IconName =
 export class IconComponent {
   readonly name = input.required<IconName>();
   protected readonly paths: Record<IconName, string> = {
+    star: 'm12 2 3 6.1 6.7 1-4.85 4.7 1.15 6.7L12 17.3l-6 3.2 1.15-6.7L2.3 9.1l6.7-1L12 2Z',
     pencil: 'm16 3 5 5M4 20l5-1L21 7a2.1 2.1 0 0 0-4-4L5 15l-1 5Z',
     info: 'M12 16v-4m0-4h.01M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z',
     bell: 'M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3V9Zm4 11h4',

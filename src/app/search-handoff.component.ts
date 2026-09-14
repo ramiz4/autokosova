@@ -395,11 +395,42 @@ interface Area {
                           }
                         </div>
                         @if (hasReviews(workshop)) {
-                          <p class="mt-1 text-sm font-semibold text-amber-600">
-                            ★ {{ reviewLabel(workshop.reviewSummary) }}
-                          </p>
+                          <div class="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm">
+                            <span class="rating-stars inline-flex gap-0.5" aria-hidden="true">
+                              @for (star of [0, 1, 2, 3, 4]; track star) {
+                                <span class="relative inline-flex size-3.5">
+                                  <app-icon name="star" class="size-3.5 text-slate-200" />
+                                  <span
+                                    class="absolute inset-y-0 left-0 overflow-hidden"
+                                    [style.width.%]="
+                                      starFill(workshop.reviewSummary.averageRating!, star)
+                                    "
+                                  >
+                                    <app-icon
+                                      name="star"
+                                      class="absolute top-0 left-0 size-3.5 text-amber-500"
+                                    />
+                                  </span>
+                                </span>
+                              }
+                            </span>
+                            <span class="font-bold text-slate-950"
+                              >{{ workshop.reviewSummary.averageRating!.toFixed(1)
+                              }}<span class="sr-only"> {{ ui('search.ui.outOfFive') }}</span></span
+                            >
+                            <span class="text-xs text-slate-500"
+                              >({{
+                                ui(
+                                  workshop.reviewSummary.reviewCount === 1
+                                    ? 'search.ui.reviewCountOne'
+                                    : 'search.ui.reviewCount',
+                                  { count: workshop.reviewSummary.reviewCount! }
+                                )
+                              }})</span
+                            >
+                          </div>
                         } @else {
-                          <p class="mt-1 text-sm font-semibold text-amber-700">
+                          <p class="mt-1 text-sm text-slate-500">
                             {{ language.t('profile.noReviews') }}
                           </p>
                         }
@@ -441,13 +472,16 @@ interface Area {
                             class="size-6"
                           />
                         </button>
-                        <a
-                          [routerLink]="language.link('garage', workshop.id)"
-                          appButton="outline"
-                          size="compact"
-                          class="mt-4 sm:absolute sm:right-5 sm:bottom-3 sm:mt-0"
-                          >{{ ui('search.ui.details') }}<app-icon name="arrow" class="size-4"
-                        /></a>
+                        <div
+                          class="mt-4 flex justify-end pr-0.5 sm:absolute sm:right-3.5 sm:bottom-3 sm:mt-0 sm:pr-0"
+                        >
+                          <a
+                            [routerLink]="language.link('garage', workshop.id)"
+                            appButton="outline-brand"
+                            size="compact"
+                            >{{ ui('search.ui.details') }}<app-icon name="arrow" class="size-4"
+                          /></a>
+                        </div>
                       </div>
                     </li>
                   }
@@ -686,15 +720,18 @@ export class SearchHandoffComponent {
   protected photoUrl(workshop: Result): string {
     return `/api/public/garages/${encodeURIComponent(workshop.id)}/photos/${encodeURIComponent(this.photoIds(workshop)[0])}`;
   }
-  protected reviewLabel(summary: Result['reviewSummary']): string {
-    return summary.state === 'available' && summary.averageRating && summary.reviewCount
-      ? summary.label
-      : this.language.t('profile.noReviews');
+  protected starFill(rating: number, index: number): number {
+    return Math.max(0, Math.min(100, Math.round((rating - index) * 100)));
   }
 
   protected hasReviews(workshop: Result): boolean {
+    const summary = workshop.reviewSummary;
     return (
-      workshop.reviewSummary.state === 'available' && Boolean(workshop.reviewSummary.reviewCount)
+      summary.state === 'available' &&
+      Number.isFinite(summary.averageRating) &&
+      summary.averageRating! >= 1 &&
+      summary.averageRating! <= 5 &&
+      Boolean(summary.reviewCount)
     );
   }
 

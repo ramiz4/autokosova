@@ -30,7 +30,7 @@ Fahrzeugschritt in DE/SQ/EN bei 1448, 1280, 360, 390 und 430 px geprüft. Zusät
 - `npm run format:check`, `npm run lint`, `npm run typecheck`: erfolgreich.
 - `npm test -- --watch=false`: 49 Tests erfolgreich, einschließlich 12 Anfrage-Tests und 6 Routentests.
 - `npm run test:server` mit der eigenen lokalen `DATABASE_URL`: 60 bestanden, 2 profilspezifische Demo-Seed-Tests übersprungen (keine entsprechenden Testprofil-Flags). Persistenz mit neuen Feldern, Teilfahrzeug und Fremdzugriff tatsächlich gegen PostgreSQL geprüft.
-- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 553 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
+- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 556 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
 - Screenreader-Semantik (`aria-current`, Status-/Fehlermeldungen), Fokuswechsel und Eingabevalidierung automatisiert geprüft. Kein manueller Durchlauf mit einem Screenreader und keine native mobile Browserprüfung.
 - Echter Customer-OIDC-Login auf Port 4200 erfolgreich: Favorit per Herz gespeichert, API-Eintrag bestätigt, nach Neuladen erhalten, wieder entfernt und abgemeldet. PostgreSQL- und API-Tests prüfen zusätzlich Besitzer-Isolation, Export und Löschung.
 
@@ -118,3 +118,9 @@ Automatisiert geprüft: unabhängige Radien, Abbrechen ohne Seiteneffekt, Übern
 ## Suchfilter ohne Sprache
 
 Das Feld Sprache und seine Auswahltexte entfallen aus dem Suchfilter in DE/SQ/EN. Alte `language`-Parameter werden weder an die Such-API noch beim Login-Rücksprung weitergegeben und beim Anwenden, Zurücksetzen oder Seitenwechsel entfernt. Die Oberflächensprache in der Navbar bleibt erhalten. Regressionstest und Browser-Netzwerkprüfung mit `?language=Deutsch` bestätigen die Suche ohne unsichtbare Sprachbegrenzung. [Desktop](filter-no-language-desktop.webp), [Mobil](filter-no-language-mobile.webp).
+
+## Bewertungszeile und Details-Aktion nach soll.png
+
+Die Karte zeigt fünf Sterne mit goldener anteiliger Füllung entsprechend dem tatsächlichen Mittelwert (bei 2,7: zwei volle und 70 % des dritten Sterns). Der Wert steht fett in Schwarz, die lokalisierte Anzahl grau in Klammern. Ohne verfügbare Bewertungen erscheint ein grauer Leerzustand ohne Sterne. Sterne sind für Screenreader dekorativ; der numerische Wert ergänzt unsichtbar „von 5“.
+
+Details ansehen verwendet eine blaue Outline-Variante mit blauem Text/Pfeil. Die rechte Buttonkante und die rechte Kante des Herz-Icons stimmen bei 1448, 390 und 360 px exakt überein (gemessen: 0 px Abweichung). [Desktop](rating-card-1448.webp), [Mobil 390](rating-card-390.webp), [Mobil 360](rating-card-360.webp). DE/SQ/EN ohne horizontalen Überlauf geprüft. UI-Test prüft Anzahl und Füllung der Sterne, numerischen Wert, Bewertungsanzahl sowie fehlende Sterne bei nicht verfügbaren Bewertungen.

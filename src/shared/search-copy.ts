@@ -2,6 +2,10 @@ import type { AppLanguage } from './i18n';
 
 export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, string>>>> = {
   de: {
+    'search.ui.outOfFive': 'von 5',
+    'search.ui.reviewCountOne': '{count} Bewertung',
+    'search.ui.reviewCount': '{count} Bewertungen',
+
     'search.ui.selectedAreas': 'Ausgewählte Orte',
     'search.ui.editArea': 'Ort bearbeiten',
     'search.ui.editAreaLabel': '{place}, {radius} km bearbeiten',
@@ -55,6 +59,10 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'search.ui.viewMap': 'Karte',
   },
   sq: {
+    'search.ui.outOfFive': 'nga 5',
+    'search.ui.reviewCountOne': '{count} vlerësim',
+    'search.ui.reviewCount': '{count} vlerësime',
+
     'search.ui.selectedAreas': 'Vendet e zgjedhura',
     'search.ui.editArea': 'Ndrysho vendin',
     'search.ui.editAreaLabel': 'Ndrysho {place}, {radius} km',
@@ -107,6 +115,10 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'search.ui.viewMap': 'Hartë',
   },
   en: {
+    'search.ui.outOfFive': 'out of 5',
+    'search.ui.reviewCountOne': '{count} review',
+    'search.ui.reviewCount': '{count} reviews',
+
     'search.ui.selectedAreas': 'Selected locations',
     'search.ui.editArea': 'Edit location',
     'search.ui.editAreaLabel': 'Edit {place}, {radius} km',

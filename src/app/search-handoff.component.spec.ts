@@ -69,7 +69,12 @@ describe('SearchHandoffComponent', () => {
                   matchingPlace: { id: 'xk-pristina', label: 'Prishtina' },
                   name: 'Fiktive Werkstatt',
                   reasons: ['Unternehmensdaten geprüft', 'Leistung: Bremsen'],
-                  reviewSummary: { label: 'Noch keine Bewertungen' },
+                  reviewSummary: {
+                    state: 'available',
+                    averageRating: 2.7,
+                    reviewCount: 2,
+                    label: '2.7 von 5 · 2 Bewertungen',
+                  },
                   selfReportedSpecializations: [],
                 },
               ],
@@ -108,12 +113,24 @@ describe('SearchHandoffComponent', () => {
       ).toBeTruthy();
       expect(card.querySelector('ul')?.textContent).not.toContain('Unternehmensdaten geprüft');
       expect(card.querySelector('ul')?.textContent).toContain('Leistung: Bremsen');
+      expect(card.querySelectorAll('.rating-stars > span')).toHaveLength(5);
+      expect(
+        Array.from(card.querySelectorAll<HTMLElement>('.rating-stars > span > span')).map(
+          (star) => star.style.width,
+        ),
+      ).toEqual(['100%', '100%', '70%', '0%', '0%']);
+      expect(card.textContent).toContain('2.7');
+      expect(card.textContent).toContain('(2 Bewertungen)');
       const response = fixture.componentInstance['response']!;
       globalThis.fetch = async () =>
         new Response(
           JSON.stringify({
             ...response,
-            results: response.results.map((result) => ({ ...result, companyDataVerified: false })),
+            results: response.results.map((result) => ({
+              ...result,
+              companyDataVerified: false,
+              reviewSummary: { ...result.reviewSummary, state: 'unavailable' },
+            })),
           }),
           { status: 200 },
         );
@@ -125,6 +142,8 @@ describe('SearchHandoffComponent', () => {
           'ol > li [role="img"][aria-label="Unternehmensdaten geprüft"]',
         ),
       ).toBeNull();
+      expect(fixture.nativeElement.querySelector('.rating-stars')).toBeNull();
+      expect(fixture.nativeElement.textContent).toContain('Noch keine Bewertungen');
     } finally {
       globalThis.fetch = originalFetch;
     }
