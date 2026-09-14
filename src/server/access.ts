@@ -65,7 +65,13 @@ import {
   type RetentionPolicyInput,
 } from './moderation';
 
-export type SystemRole = 'admin' | 'customer' | 'moderator';
+import {
+  APPLICATION_ROLES,
+  type ApplicationRole,
+  type AccountProfile,
+  type OwnGarageMembership,
+} from '../shared/account';
+export type SystemRole = ApplicationRole;
 export type MembershipRole = 'editor' | 'owner';
 export type VerificationCheckState = 'not_checked' | 'verified' | 'failed';
 
@@ -105,6 +111,7 @@ export interface PublicGarageProfile {
 }
 
 interface Session {
+  readonly profile: AccountProfile;
   readonly csrfToken: string;
   readonly expiresAt: Date;
   readonly userId: string;
@@ -639,12 +646,55 @@ export class AccessStore implements ReviewStore {
     return garage;
   }
 
-  createSession(userId: string, expiresAt = new Date(Date.now() + 60 * 60 * 1000)) {
+  createSession(
+    userId: string,
+    expiresAt = new Date(Date.now() + 60 * 60 * 1000),
+    profile: AccountProfile = {},
+  ) {
     this.ensureUser(userId);
     const sessionId = randomUUID();
     const csrfToken = randomUUID();
-    this.sessions.set(sessionId, { csrfToken, expiresAt, userId });
+    this.sessions.set(sessionId, {
+      csrfToken,
+      expiresAt,
+      userId,
+      profile: {
+        ...(profile.displayName ? { displayName: profile.displayName } : {}),
+        ...(profile.username ? { username: profile.username } : {}),
+        ...(profile.email ? { email: profile.email } : {}),
+      },
+    });
     return { csrfToken, sessionId };
+  }
+
+  getOwnAccount(principal: Principal) {
+    const current = this.getPrincipal(principal.sessionId);
+    if (!current || current.userId !== principal.userId) {
+      throw new AccessError(401, 'Authentication required');
+    }
+    const session = this.sessions.get(current.sessionId)!;
+    return {
+      userId: current.userId,
+      ...session.profile,
+      roles: APPLICATION_ROLES.filter((role) => current.roles.has(role)),
+      expiresAt: session.expiresAt.toISOString(),
+    };
+  }
+
+  listOwnMemberships(principal: Principal): readonly OwnGarageMembership[] {
+    // Admin access to a garage is not a membership. Never use hasGarageAccess here.
+    return [...this.memberships.values()]
+      .filter(
+        (membership) => membership.userId === principal.userId && membership.state === 'active',
+      )
+      .map((membership) => ({
+        garageId: membership.garageId,
+        ...(this.garages.get(membership.garageId)?.profile.name
+          ? { garageName: this.garages.get(membership.garageId)!.profile.name }
+          : {}),
+        role: membership.role,
+      }))
+      .sort((a, b) => a.garageId.localeCompare(b.garageId));
   }
 
   setVerifiedRoles(userId: string, roles: readonly ('admin' | 'moderator')[]): void {

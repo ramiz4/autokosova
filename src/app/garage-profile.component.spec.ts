@@ -69,6 +69,7 @@ function mockPublicRequests(
 ) {
   return vi.fn(async (input: string | URL | Request) => {
     const url = String(input);
+    if (url === '/api/me') return new Response('{}', { status: 401 });
     if (url === '/api/session') return new Response(JSON.stringify({ authenticated: false }));
     if (url === '/api/me/favorites') return new Response('{}', { status: 401 });
     if (url.includes('/reviews')) return new Response(JSON.stringify({ reviews }));

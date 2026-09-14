@@ -30,24 +30,34 @@
     </nav>
     <div class="flex items-center gap-2 sm:gap-3">
       <app-language-switcher [compact]="true" class="flex items-center" />
-      @if (account.signedIn()) {
+      @if (account.signedIn() || account.state() !== 'guest') {
         <div class="flex items-center gap-2">
-          <button
-            #notificationButton
-            type="button"
-            class="flex size-11 items-center justify-center rounded-full bg-blue-50 text-ink hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-brand"
-            [attr.aria-label]="language.t('account.notifications')"
-            [attr.aria-expanded]="accountPanel() === 'notifications'"
-            aria-controls="account-notifications"
-            (click)="togglePanel('notifications')"
-          >
-            <app-icon name="bell" class="size-5" />
-          </button>
+          @if (account.signedIn()) {
+            <button
+              #notificationButton
+              type="button"
+              class="flex size-11 items-center justify-center rounded-full bg-blue-50 text-ink hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-brand"
+              [attr.aria-label]="language.t('account.notifications')"
+              [attr.aria-expanded]="accountPanel() === 'notifications'"
+              aria-controls="account-notifications"
+              (click)="togglePanel('notifications')"
+            >
+              <app-icon name="bell" class="size-5" />
+            </button>
+          }
           <button
             #accountButton
             type="button"
             class="flex size-11 items-center justify-center rounded-full bg-blue-50 text-ink hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-brand"
-            [attr.aria-label]="language.t('account.title')"
+            [attr.aria-label]="
+              language.t(
+                account.state() === 'loading'
+                  ? 'account.loading'
+                  : account.state() === 'error'
+                    ? 'account.loadError'
+                    : 'account.title'
+              )
+            "
             [attr.aria-expanded]="accountPanel() === 'account'"
             aria-controls="account-menu"
             (click)="togglePanel('account')"
@@ -84,7 +94,7 @@
   >
     <div class="grid gap-1">
       <ng-container [ngTemplateOutlet]="publicNavigation" />
-      @if (!account.signedIn()) {
+      @if (account.state() === 'guest') {
         <div class="mt-2 grid grid-cols-2 gap-3">
           <a appButton="outline" size="compact" [href]="loginUrl()">{{
             language.t('nav.login')
@@ -106,13 +116,49 @@
       </p>
     </section>
   }
-  @if (account.signedIn() && accountPanel() === 'account') {
+  @if (account.state() !== 'guest' && accountPanel() === 'account') {
     <section
       id="account-menu"
       class="site-menu-surface absolute top-full right-0 left-0 mt-2 max-h-[calc(100dvh-10rem)] overflow-y-auto rounded-2xl border border-white/80 p-4 shadow-xl sm:left-auto sm:w-72"
       [attr.aria-label]="language.t('account.title')"
     >
       <h2 class="px-2 py-2 font-semibold">{{ language.t('account.title') }}</h2>
+      @if (account.identity(); as identity) {
+        <p class="px-2 text-xs text-muted">{{ language.t('account.signedInAs') }}</p>
+        <p data-account-name class="px-2 py-1 font-semibold [overflow-wrap:anywhere]">
+          {{ account.displayName() }}
+        </p>
+        <ul data-account-menu-roles class="flex flex-wrap gap-2 px-2 py-2">
+          @for (role of identity.roles; track role) {
+            <li class="rounded-full bg-blue-50 px-2 py-1 text-xs text-brand-dark">
+              {{ language.t('account.role.' + role) }}
+            </li>
+          }
+        </ul>
+      } @else if (account.state() === 'loading') {
+        <p role="status" class="px-2 py-2 text-sm">{{ language.t('account.loading') }}</p>
+      } @else if (account.state() === 'error') {
+        <p role="alert" class="px-2 py-2 text-sm text-rose-800">
+          {{ language.t('account.loadError') }}
+        </p>
+        <button
+          type="button"
+          class="min-h-11 rounded-lg px-2 text-sm font-semibold text-brand-dark focus-visible:outline-2 focus-visible:outline-brand"
+          [disabled]="account.busy()"
+          (click)="account.refresh()"
+        >
+          {{ language.t('common.retry') }}
+        </button>
+      } @else {
+        <p class="px-2 py-2 text-sm">{{ language.t('account.guest') }}</p>
+      }
+      <a
+        data-account-profile
+        [routerLink]="language.link('profile')"
+        (click)="closeMenu()"
+        class="flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
+        >{{ language.t('account.profileTitle') }}</a
+      >
       <div class="mb-2 grid gap-1 border-b border-slate-200/70 pb-2">
         <button
           type="button"
@@ -134,14 +180,16 @@
       <div class="grid gap-1 sm:hidden">
         <ng-container [ngTemplateOutlet]="publicNavigation" />
       </div>
-      <button
-        type="button"
-        class="mt-2 flex min-h-11 w-full items-center rounded-lg px-2 text-left text-sm font-semibold text-brand-dark hover:bg-blue-50 disabled:opacity-50"
-        [disabled]="account.busy()"
-        (click)="logout()"
-      >
-        {{ language.t('account.logout') }}
-      </button>
+      @if (account.signedIn()) {
+        <button
+          type="button"
+          class="mt-2 flex min-h-11 w-full items-center rounded-lg px-2 text-left text-sm font-semibold text-brand-dark hover:bg-blue-50 disabled:opacity-50"
+          [disabled]="account.busy()"
+          (click)="logout()"
+        >
+          {{ language.t('account.logout') }}
+        </button>
+      }
       @if (logoutError()) {
         <p role="alert" class="mt-2 text-sm text-rose-800">
           {{ language.t('account.logoutError') }}

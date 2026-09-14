@@ -1,3 +1,4 @@
+import { accountCopy } from './account-copy';
 import { landingCopy } from './landing-copy';
 import { profileCopy } from './profile-copy';
 import { searchCopy } from './search-copy';
@@ -461,6 +462,7 @@ export function translate(
   replacements: Readonly<Record<string, string | number>> = {},
 ): string {
   const template =
+    (accountCopy[language] as Readonly<Record<string, string>>)[key] ??
     profileCopy[language][key] ??
     searchCopy[language][key] ??
     landingCopy[language][key] ??

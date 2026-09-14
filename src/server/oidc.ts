@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { accountProfileFromClaims } from './account-profile';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const zitadelProjectRolesClaim = 'urn:zitadel:iam:org:project:roles';
@@ -101,6 +102,7 @@ export async function verifyZitadelAccessToken(token: string, config: ZitadelVer
   }
 
   return {
+    profile: accountProfileFromClaims(verification.payload),
     roles: extractZitadelProjectRoles(verification.payload[zitadelProjectRolesClaim]),
     subject: verification.payload.sub,
   };

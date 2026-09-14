@@ -9,6 +9,7 @@ import {
 import { join } from 'node:path';
 import { createServer, isNoIndexPath } from './server/app';
 import { AccessStore } from './server/access';
+import { isAccountPagePath } from './server/account-profile';
 import { readZitadelOidcConfig } from './server/oidc';
 import { PostgresRepairRequestStore } from './server/repair-request-store';
 import { PostgresReviewStore } from './server/review-store';
@@ -54,6 +55,11 @@ app.setNotFoundHandler(async (request, reply) => {
   }
 
   if (isNoIndexPath(request.url)) response.headers.set('x-robots-tag', 'noindex, nofollow');
+  if (isAccountPagePath(request.url)) {
+    response.headers.set('cache-control', 'private, no-store');
+    response.headers.set('vary', 'Cookie');
+    response.headers.set('referrer-policy', 'no-referrer');
+  }
 
   reply.hijack();
   await writeResponseToNodeResponse(response, reply.raw);

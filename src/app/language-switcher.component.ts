@@ -46,7 +46,7 @@ import { IconComponent } from './ui/icon.component';
           <a
             [attr.aria-current]="language.language === item ? 'page' : null"
             [href]="language.switchUrl(item)"
-            class="rounded px-2 py-1 text-sky-800 underline underline-offset-2 aria-[current=page]:bg-sky-100 aria-[current=page]:no-underline"
+            class="inline-flex min-h-11 min-w-11 items-center justify-center rounded px-2 py-1 text-sky-800 underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-brand aria-[current=page]:bg-sky-100 aria-[current=page]:no-underline"
             >{{ item.toUpperCase() }}</a
           >
         }

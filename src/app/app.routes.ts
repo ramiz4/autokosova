@@ -20,6 +20,12 @@ function localizedRoutes(prefix: string): Routes {
       path: prefix,
       pathMatch: 'full',
     },
+    {
+      path: `${childPrefix}profile`,
+      pathMatch: 'full',
+      loadComponent: () =>
+        import('./account-profile.component').then((module) => module.AccountProfileComponent),
+    },
     // Compatibility redirects only; generated links always use English route names.
     {
       path: `${childPrefix}anfrage`,
