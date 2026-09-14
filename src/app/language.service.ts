@@ -14,13 +14,7 @@ import {
 } from '../shared/i18n';
 
 export type AppRoute =
-  | 'home'
-  | 'onboarding'
-  | 'request'
-  | 'search'
-  | 'garage'
-  | 'monetization'
-  | PublicPageId;
+  'home' | 'onboarding' | 'request' | 'search' | 'garage' | 'monetization' | PublicPageId;
 
 @Injectable({ providedIn: 'root' })
 export class LanguageService {
