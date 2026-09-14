@@ -127,6 +127,19 @@ test('OIDC login accepts only safe inquiry and public search return paths', asyn
       store.consumeOidcTransaction(searchState)?.returnTo,
       '/sq/garages?places=xk-pristina%3A20',
     );
+    const profileReturn = await app.inject({
+      method: 'GET',
+      url:
+        '/auth/login?returnTo=' +
+        encodeURIComponent(
+          '/en/garages/demo-garage?places=xk-pristina:20&service=bremsen&symptom=PRIVATE',
+        ),
+    });
+    const profileState = new URL(profileReturn.headers.location!).searchParams.get('state')!;
+    assert.equal(
+      store.consumeOidcTransaction(profileState)?.returnTo,
+      '/en/garages/demo-garage?places=xk-pristina%3A20&service=bremsen',
+    );
     const rejected = await app.inject({
       method: 'GET',
       url: '/auth/login?returnTo=//example.test',

@@ -115,6 +115,11 @@ describe('SearchHandoffComponent', () => {
       ).toBeTruthy();
       expect(card.querySelector('ul')?.textContent).not.toContain('Unternehmensdaten geprüft');
       expect(card.querySelector('ul')?.textContent).toContain('Leistung: Bremsen');
+      const profileLink = card.querySelector<HTMLAnchorElement>('a[href^="/garages/"]')!;
+      const profileUrl = new URL(profileLink.href);
+      expect(profileUrl.pathname).toBe('/garages/fiktive-werkstatt');
+      expect(profileUrl.searchParams.get('places')).toBe('xk-pristina:20');
+      expect(profileUrl.searchParams.get('service')).toBe('bremsen');
       expect(card.querySelectorAll('.rating-stars > span')).toHaveLength(5);
       expect(
         Array.from(card.querySelectorAll<HTMLElement>('.rating-stars > span > span')).map(

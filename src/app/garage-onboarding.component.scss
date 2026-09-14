@@ -11,14 +11,6 @@
   padding-top: 28px;
   border-top: 1px solid #e5edf7;
 }
-.onboarding-info {
-  padding: 24px;
-  border: 1px solid white;
-  border-radius: 14px;
-  background: rgb(255 255 255 / 87%);
-  backdrop-filter: blur(4px);
-  box-shadow: 0 6px 24px rgb(44 105 194 / 5%);
-}
 .step-number {
   display: flex;
   width: 32px;
@@ -33,14 +25,14 @@
   font-weight: 700;
   box-shadow: 0 3px 8px rgb(37 99 235 / 20%);
 }
-.onboarding-section label {
+.onboarding-section label:not(:has(input[type='checkbox'])) {
   display: block;
   margin-bottom: 7px;
   color: #273955;
   font-size: 12px;
   font-weight: 600;
 }
-.onboarding-section input,
+.onboarding-section input:not([type='checkbox']),
 .onboarding-section select {
   box-sizing: border-box;
   min-width: 0;
@@ -54,10 +46,22 @@
   font-size: 14px;
   box-shadow: 0 1px 3px rgb(27 59 108 / 3%);
 }
-.onboarding-section input:focus,
+.onboarding-section input:not([type='checkbox']):focus,
 .onboarding-section select:focus {
   outline: 2px solid #2563eb;
   outline-offset: 1px;
+}
+.onboarding-section label:has(input[type='checkbox']) {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0;
+}
+.onboarding-section input[type='checkbox'] {
+  width: 20px;
+  min-height: 20px;
+  padding: 0;
+  border-radius: 4px;
+  box-shadow: none;
 }
 .onboarding-section [aria-invalid='true'] {
   border-color: #e11d48;

@@ -1,10 +1,13 @@
 import pg from 'pg';
 import type { PublicGarageProfile } from './access';
 import { emptyReviewSummary } from './reviews';
+import { isLocalDemoGarageId, LOCAL_DEMO_PHOTOS } from '../shared/local-demo';
 import {
   toSearchResponse,
+  type PublicGarageSearchArea,
   type PublicGarageSearchInput,
   type PublicGarageSearchResponse,
+  type PublicGarageSearchResult,
   type SearchMatchCandidate,
   type GarageSearchStore,
 } from './garage-search';
@@ -23,6 +26,7 @@ interface SearchRow {
   readonly photo_ids: readonly string[] | null;
   readonly place_id: string;
   readonly public_phone: string | null;
+  readonly public_whatsapp: boolean;
   readonly review_count: number | null;
   readonly self_reported_specializations: readonly string[] | null;
   readonly service_category_ids: readonly string[] | null;
@@ -53,6 +57,7 @@ export class PostgresGarageSearchStore implements GarageSearchStore {
          profile.place_id,
          profile.description,
          profile.public_phone,
+         profile.public_whatsapp,
          profile.languages,
          profile.self_reported_specializations,
          profile.service_category_ids,
@@ -81,11 +86,52 @@ export class PostgresGarageSearchStore implements GarageSearchStore {
     return result.rows.map((row) => row.id);
   }
 
+  async getPublicGarageMatch(
+    garageId: string,
+    areas: readonly PublicGarageSearchArea[],
+  ): Promise<PublicGarageSearchResult | undefined> {
+    if (!areas.length) return undefined;
+    const result = await this.pool.query<SearchRow>(
+      `WITH search_areas AS (
+         SELECT place.id, place.point, requested.radius_m
+         FROM unnest($1::text[], $2::integer[]) AS requested(place_id, radius_m)
+         JOIN place ON place.id = requested.place_id
+       )
+       SELECT profile.id, profile.name, profile.place_id, profile.description,
+              profile.public_phone, profile.public_whatsapp, profile.languages,
+              profile.self_reported_specializations,
+              profile.service_category_ids, profile.vehicle_make_ids,
+              profile.company_data_verified, summary.review_count, summary.average_rating,
+              summary.latest_visit_month, summary.verified_visit_count,
+              ARRAY[]::text[] AS photo_ids, search_areas.id AS matching_place_id,
+              true AS location_available,
+              ST_Distance(profile.garage_point, search_areas.point) AS distance_m
+       FROM public_garage_profile AS profile
+       LEFT JOIN public_garage_review_summary AS summary ON summary.garage_id = profile.id
+       JOIN search_areas
+         ON profile.garage_point IS NOT NULL
+        AND ST_DWithin(profile.garage_point, search_areas.point, search_areas.radius_m)
+       WHERE profile.id = $3
+       ORDER BY ST_Distance(profile.garage_point, search_areas.point), search_areas.id
+       LIMIT 1`,
+      [areas.map((area) => area.placeId), areas.map((area) => area.radiusKm * 1000), garageId],
+    );
+    const candidate = result.rows[0];
+    if (!candidate) return undefined;
+    return toSearchResponse([toCandidate(candidate)], {
+      areas,
+      page: 1,
+      pageSize: 1,
+      sort: 'recommended',
+    }).results[0];
+  }
+
   async searchPublicGarages(input: PublicGarageSearchInput): Promise<PublicGarageSearchResponse> {
     if (input.allResults) {
       const result = await this.pool.query<SearchRow>(
         `SELECT
            profile.id, profile.name, profile.place_id, profile.description, profile.public_phone,
+           profile.public_whatsapp,
            profile.languages, profile.self_reported_specializations, profile.service_category_ids,
            profile.vehicle_make_ids, profile.company_data_verified, summary.review_count,
            summary.average_rating, summary.latest_visit_month, summary.verified_visit_count,
@@ -115,6 +161,7 @@ export class PostgresGarageSearchStore implements GarageSearchStore {
            profile.place_id,
            profile.description,
            profile.public_phone,
+           profile.public_whatsapp,
            profile.languages,
            profile.self_reported_specializations,
            profile.service_category_ids,
@@ -180,12 +227,17 @@ function toPublicProfile(row: SearchRow): PublicGarageProfile {
   const reviewCount = row.review_count ?? 0;
   const averageRating = row.average_rating === null ? undefined : Number(row.average_rating);
   return {
-    contact: row.public_phone ? { phone: row.public_phone } : {},
+    contact: row.public_phone
+      ? { phone: row.public_phone, ...(row.public_whatsapp ? { whatsapp: true } : {}) }
+      : {},
     ...(row.description ? { description: row.description } : {}),
     id: row.id,
     languages: row.languages ?? [],
     name: row.name,
-    photoIds: row.photo_ids ?? [],
+    photoIds:
+      row.photo_ids?.length || !isLocalDemoGarageId(row.id)
+        ? (row.photo_ids ?? [])
+        : LOCAL_DEMO_PHOTOS.map((photo) => photo.id),
     placeId: row.place_id,
     reviewSummary:
       reviewCount > 0 && averageRating !== undefined && Number.isFinite(averageRating)

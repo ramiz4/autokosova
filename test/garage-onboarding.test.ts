@@ -48,6 +48,11 @@ test('address and catalogs validate consistently; existing custom labels can be 
     false,
   );
   assert.equal(validGarageProfile({ ...profile, languages: ['invented'] }), false);
+  assert.equal(validGarageProfile({ ...profile, publicWhatsapp: true }), false);
+  assert.equal(
+    validGarageProfile({ ...profile, publicPhone: '+9990000001', publicWhatsapp: true }),
+    true,
+  );
   assert.equal(
     validGarageProfile(
       { ...profile, selfReportedSpecializations: ['Custom'] },

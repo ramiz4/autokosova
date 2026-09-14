@@ -3,6 +3,7 @@ import test from 'node:test';
 import pg from 'pg';
 import { demoGarages } from '../scripts/db/seed-data.mjs';
 import { PostgresGarageSearchStore } from '../src/server/garage-search-store';
+import { LOCAL_DEMO_PHOTOS } from '../src/shared/local-demo';
 
 const databaseUrl = process.env['DATABASE_URL'];
 const demoDataExpected = process.env['AUTOKOSOVA_EXPECT_DEMO_DATA'] === '1';
@@ -56,6 +57,11 @@ test(
         ['demo-prishtina-bremsen', 'demo-prishtina-bremsen-offen'],
       );
       assert.equal(result.results[0].reviewSummary.state, 'unavailable');
+      assert.deepEqual(
+        result.results[0].photoIds,
+        LOCAL_DEMO_PHOTOS.map((photo) => photo.id),
+      );
+      assert.equal(result.results[0].contact.whatsapp, true);
       assert.equal(JSON.stringify(result).includes('Lokale Demo-Person'), false);
     } finally {
       await client.end();

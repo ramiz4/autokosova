@@ -4,6 +4,14 @@ html {
 body {
   margin: 0;
 }
+.info-card {
+  padding: 24px;
+  border: 1px solid white;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 87%);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 6px 24px rgb(44 105 194 / 5%);
+}
 [hidden] {
   display: none !important;
 }
@@ -57,6 +65,14 @@ label:has(
   :is(input[type='checkbox'], input[type='radio'], input[type='file'], select):not(:disabled)
 ) {
   cursor: pointer;
+}
+
+label:has(input[type='checkbox']) {
+  align-items: center;
+}
+
+label > input[type='checkbox'] {
+  margin-block: 0;
 }
 
 input[type='file']:not(:disabled)::file-selector-button {

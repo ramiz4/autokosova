@@ -25,6 +25,7 @@ import {
   verifyZitadelAccessToken,
 } from './oidc';
 import { buildMatchingPath, validateRepairRequest } from './repair-requests';
+import { localDemoPhotoPath } from '../shared/local-demo';
 import type { RepairRequestStore } from './repair-request-store';
 import { normalizeGaragePhoto, GaragePhotoError } from './garage-photo';
 import {
@@ -154,11 +155,12 @@ const repairRequestBodySchema = {
 function safeReturnTo(value: unknown): string {
   if (typeof value !== 'string' || value.length > 2000) return '/';
   const match = value.match(
-    /^(\/(?:(?:sq|en)\/)?(?:inquiry|anfrage|garages(?:\/new)?))(?:\?([^#]*))?$/,
+    /^(\/(?:(?:sq|en)\/)?(?:inquiry|anfrage|garages(?:\/[A-Za-z0-9_-]{1,128})?))(?:\?([^#]*))?$/,
   );
   if (!match) return '/';
   const path = match[1].replace(/\/anfrage$/, '/inquiry');
-  if (!path.endsWith('/garages')) return match[2] ? '/' : path;
+  const isGarageProfile = /\/garages\/(?!new$)[A-Za-z0-9_-]{1,128}$/.test(path);
+  if (!path.endsWith('/garages') && !isGarageProfile) return match[2] ? '/' : path;
   const input = new URLSearchParams(match[2]);
   const query = new URLSearchParams();
   for (const key of ['all', 'places', 'service', 'vehicleMake', 'language', 'sort', 'page']) {
@@ -201,6 +203,7 @@ const garageProfileSchema = {
     name: { maxLength: 160, minLength: 1, type: 'string' },
     placeId: { maxLength: 80, minLength: 1, pattern: '^xk-[a-z]+$', type: 'string' },
     publicPhone: { maxLength: 40, minLength: 3, type: 'string' },
+    publicWhatsapp: { type: 'boolean' },
     selfReportedSpecializations: stringListSchema,
     serviceCategoryIds: stringListSchema,
     vehicleMakeIds: stringListSchema,
@@ -498,9 +501,29 @@ export function createServer(options: ServerOptions = {}) {
   });
   app.get('/api/public/garages', async () => ({ garages: accessStore.listPublicGarages() }));
   app.get('/api/public/garages/:garageId', async (request, reply) => {
-    const params = request.params as { garageId: string };
-    const garage = await searchStore.getPublicGarage(params.garageId);
-    return garage ? garage : reply.code(404).send({ error: 'Published garage not found' });
+    try {
+      const params = request.params as { garageId: string };
+      const query = request.query as { places?: string };
+      const garage = await searchStore.getPublicGarage(params.garageId);
+      if (!garage) return reply.code(404).send({ error: 'Published garage not found' });
+      if (!query.places || !searchStore.getPublicGarageMatch) return garage;
+      const input = parsePublicGarageSearch({ places: query.places });
+      if (!input) throw new AccessError(400, 'Search context is invalid');
+      const match = await searchStore.getPublicGarageMatch(params.garageId, input.areas);
+      return {
+        ...garage,
+        ...(match?.distanceKm === undefined
+          ? {}
+          : {
+              searchContext: {
+                distanceKm: match.distanceKm,
+                matchingPlace: match.matchingPlace,
+              },
+            }),
+      };
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
   });
   app.get('/api/public/garages/:garageId/reviews', async (request, reply) => {
     try {
@@ -531,7 +554,13 @@ export function createServer(options: ServerOptions = {}) {
   app.get('/api/public/garages/:garageId/photos/:photoId', async (request, reply) => {
     const params = request.params as { photoId: string; garageId: string };
     const photo = accessStore.getGaragePhoto(params.garageId, params.photoId);
-    if (!photo) return reply.code(404).send({ error: 'Published garage photo not found' });
+    if (!photo) {
+      const demoPath = localDemoPhotoPath(params.garageId, params.photoId);
+      const demoProfile = demoPath ? await searchStore.getPublicGarage(params.garageId) : undefined;
+      return demoPath && demoProfile
+        ? reply.redirect(demoPath)
+        : reply.code(404).send({ error: 'Published garage photo not found' });
+    }
     return reply
       .header('cache-control', 'public, max-age=3600')
       .type(photo.contentType)

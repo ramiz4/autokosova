@@ -39,8 +39,10 @@ import {
 } from './reviews';
 import {
   findPublicGarages,
+  type PublicGarageSearchArea,
   type PublicGarageSearchInput,
   type PublicGarageSearchResponse,
+  type PublicGarageSearchResult,
 } from './garage-search';
 import {
   isModerationAction,
@@ -86,7 +88,7 @@ export interface GarageConsent {
 }
 
 export interface PublicGarageProfile {
-  readonly contact: { readonly phone?: string };
+  readonly contact: { readonly phone?: string; readonly whatsapp?: boolean };
   readonly description?: string;
   readonly id: string;
   readonly languages: readonly string[];
@@ -1065,6 +1067,20 @@ export class AccessStore implements ReviewStore {
     );
   }
 
+  getPublicGarageMatch(
+    garageId: string,
+    areas: readonly PublicGarageSearchArea[],
+  ): PublicGarageSearchResult | undefined {
+    const garage = this.garages.get(garageId);
+    if (!garage || garage.publicationState !== 'published') return undefined;
+    return findPublicGarages([this.toSearchableGarage(garage)], {
+      areas,
+      page: 1,
+      pageSize: 1,
+      sort: 'recommended',
+    }).results[0];
+  }
+
   listVehicles(userId: string) {
     return [...this.vehicles.values()]
       .filter((vehicle) => vehicle.ownerUserId === userId)
@@ -1554,7 +1570,12 @@ export class AccessStore implements ReviewStore {
       (state) => state === 'verified',
     );
     return {
-      contact: garage.profile.publicPhone ? { phone: garage.profile.publicPhone } : {},
+      contact: garage.profile.publicPhone
+        ? {
+            phone: garage.profile.publicPhone,
+            ...(garage.profile.publicWhatsapp ? { whatsapp: true } : {}),
+          }
+        : {},
       description: garage.profile.description,
       id: garage.id,
       languages: [...garage.profile.languages],

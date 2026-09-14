@@ -2,8 +2,8 @@
   [class.is-authenticated]="account.signedIn()"
   [class]="
     compact()
-      ? 'relative z-20 mx-auto max-w-[1360px] px-4 py-1.5 text-ink sm:px-6'
-      : 'relative z-20 mx-auto max-w-[1360px] rounded-2xl border border-white/80 bg-white/97 px-4 py-3 text-ink shadow-xl shadow-black/10 sm:px-6 xl:rounded-[18px] xl:py-4'
+      ? 'relative z-20 mx-auto max-w-340 px-4 py-1.5 text-ink sm:px-6'
+      : 'relative z-20 mx-auto max-w-340 rounded-2xl border border-white/80 bg-white/97 px-4 py-3 text-ink shadow-xl shadow-black/10 sm:px-6 xl:rounded-[18px] xl:py-4'
   "
   (keydown.escape)="closeMenu(true)"
 >
@@ -164,7 +164,7 @@
     class="nav-link px-1"
     [class.nav-link-active]="active() === 'search'"
     [attr.aria-current]="active() === 'search' ? 'page' : null"
-    [href]="language.link('search')"
+    [routerLink]="language.link('search')"
     (click)="closeMenu()"
     >{{ language.t('nav.search') }}</a
   >
