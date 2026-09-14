@@ -1,43 +1,54 @@
-# Monetarisierungsseite
+# Kosten & Fairness · aktuelle kostenlose Phase
 
-Umsetzungsvorschlag zu Issue #46. Fachliche Grundlage: `docs/MONETIZATION.md`,
-`docs/PRODUCT_BRIEF.md` sowie die Präzisierungen in #46. Kein öffentlicher Launch.
+Issue #46 / PR #63. Fachliche Grundlage bleiben `docs/MONETIZATION.md`,
+`docs/PRODUCT_BRIEF.md` und `docs/validation/INTERVIEWS.md`.
 
-## Aufbau
+## Korrektur vom 14. September 2026
 
-- Kanonisch `/monetization`, `/sq/monetization` und `/en/monetization`.
-  Die in der älteren Beschreibung genannten `/monetarisierung`-Pfade leiten
-  entsprechend `AGENTS.md` lediglich auf die englischen Pfade weiter.
-- Gemeinsamer `SiteHeaderComponent` mit tatsächlichem Kontozustand und Sprachwahl.
-  Die vorhandenen Bergstraßen-WebPs und das Original-Logo werden wiederverwendet.
-- Vier farblich getrennte Karten: kostenloses Werkstatt-Basisprofil, mögliche
-  Zusatzwerkzeuge, kostenlose Kundennutzung und mögliche Kooperationen.
-  Unter 768 px einspaltig, darüber zwei Spalten; keine feste Seitenhöhe.
-- Eigene kleine, vollständig strukturierte DE/SQ/EN-Textquelle. Auswahl der Sprache,
-  Linkerzeugung und Metadaten erfolgen über den bestehenden `LanguageService`.
-- Aktuelle Pilotgrundlage und Zukunftsideen sind auch textlich unterschieden.
-  Keine Preise, Partnerlogos, erfundenen Kennzahlen, Checkouts oder Datenerfassung.
-  Aktionen führen nur zur vorhandenen Suche, Werkstattaufnahme oder zum echten
-  Abschnitt über Voraussetzungen und nicht käufliches Vertrauen.
+Der Betreiber hat das Monetarisierungs-Mockup ausdrücklich als veraltet verworfen.
+Die anschließende Abschlussanweisung wird mit der besprochenen Kosten-/Fairness-
+Korrektur umgesetzt, nicht mit dem zuvor abgelehnten Vier-Säulen-Entwurf.
+Screenshot 5 und die ersten Screenshots von Head `8890662` sind historische
+Entwürfe, keine gültigen Inhalts- oder visuellen Abnahmevorgaben mehr.
 
-## Noch erforderliche Abnahme
+Die Anwendung beschreibt ausschließlich die aktuelle kostenlose Phase:
+Kundennutzung, kostenloses Werkstatt-Basisprofil und nicht käufliche Suche,
+Bewertungen, Nachweise, Unternehmensprüfung und Moderation. Plattformgebühren
+und direkt mit der Werkstatt vereinbarte Reparaturkosten bleiben unterschieden.
+Private Entwürfe, gesonderte Einreichung und Freigabe sind getrennte Schritte.
+Der öffentliche Pilot wird nicht als bereits gestartet dargestellt.
 
-Der Vorschlag folgt den textlichen Gestaltungsanforderungen des Issues. Ein
-visueller Vergleich mit Screenshot 5 und Browser-Vergleichsbilder sind noch offen.
-Die neutralen Kategorie-Piktogramme ersetzen Partnerlogos; Illustrationstreue,
-Bildausschnitt, Kontrast, Tastaturbedienung und Layout müssen am laufenden Angular
-geprüft werden. Dies ist kein behaupteter pixelgenauer Nachbau der Bildvorlage.
+Die Pro-, Werbe- und Kooperationskarten sowie ihre Angebotsaktionen entfallen.
+Kein neuer Tarif, kein dauerhaftes Kostenfrei-Versprechen und keine Ankündigung
+oder endgültige Absage späterer Abonnements. Preis- und Pro-Hypothesen bleiben
+in der internen Produktdokumentation; das Geschäftsmodell wird nicht geändert.
 
-Prüfbreiten: 1448 × 1086 und 1280 px Desktop sowie 360, 390 und 430 px mobil,
-jeweils DE/SQ/EN. Muttersprachliche SQ-Abnahme bleibt erforderlich.
+## Oberfläche und Integration
 
-Neue Verhaltenstests stehen in `monetization.component.spec.ts` und
-`monetization.routes.spec.ts`. Sie prüfen Texte, vier Karten, Statuskennzeichnung,
-vorhandene Ziele, Informationsanker, Sprachwechsel, Metadaten und Weiterleitungen.
-Die Strukturprüfung einer Grid-Klasse ersetzt keine responsive Browserabnahme.
+- Sichtbarer Titel: „Kosten & Fairness“, mit vollständiger SQ-/EN-Fassung.
+- Die bereits eingeführten englischen Pfade `/monetization`, `/sq/monetization`
+  und `/en/monetization` bleiben stabil. Die deutschen Aliase leiten weiter.
+- Gemeinsamer Header mit tatsächlichem Kontozustand, vorhandene Buttons/Icons,
+  Bergstraßen-WebPs und der aktuelle gemeinsame Footer einschließlich der
+  standardmäßig ausgeschalteten optionalen Messung werden wiederverwendet.
+- Zwei sachliche Zielgruppenabschnitte statt vier farbiger Angebotssäulen;
+  ein separater Fairnessabschnitt. Nur echte Links zu Suche und Werkstattaufnahme.
+- Einspaltig auf Mobilgeräten, zwei Zielgruppenspalten ab 768 px, ohne feste Höhe.
+  Texte können umbrechen; Skip-Link, Fokus und mindestens 44 px hohe Aktionen.
+- Der vorhandene Sprachwechsel-Fix mit `markForCheck()` bleibt erhalten.
 
-Die vollständigen Repository-Befehle sind vor Freigabe tatsächlich auszuführen:
-`npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`,
-`npm run test:server`, `npm run build` und `npm run test:smoke`.
-Ergebnisse und konkrete Umgebungsgrenzen stehen im zugehörigen PR; das Vorhandensein
-von Tests ist kein Nachweis eines erfolgreichen Testlaufs.
+## Prüfung und Abschluss
+
+Komponenten- und Routingtests prüfen die kostenlose Phase, das Fehlen der
+verworfenen Angebotskarten, die Trennung von Reparaturkosten/Plattformgebühren,
+Entwurf/Einreichung/Freigabe, echte lokalisierte Ziele, Sprachwechsel und Metadaten.
+Header-/Footer-Integration und freiwillige Messung bleiben ebenfalls prüfbar.
+Eine Grid-Klassenprüfung ist ausdrücklich kein Browsernachweis.
+
+Vor Merge sind die reguläre CI und neue Browsernachweise für den korrigierten
+Head zu prüfen: DE/SQ/EN bei 1448/1280 und 360/390/430 px, geladene Bilder,
+kein horizontaler Überlauf, Tastatur und funktionierende Aktionen. Ergebnisse,
+Quell-Commit und Screenshot-Artefakt stehen im PR. Ältere grüne Läufe und Bilder
+belegen nicht diesen korrigierten Stand. Keine Tests umgehen oder abschwächen.
+Eine unabhängige muttersprachliche SQ-Prüfung bleibt vor öffentlicher Freigabe
+notwendig. Ein Merge in das private Repository ist kein öffentlicher Pilotstart.
