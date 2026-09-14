@@ -23,6 +23,7 @@ export interface GarageProfileInput {
   readonly name: string;
   readonly placeId: string;
   readonly publicPhone?: string;
+  readonly publicWhatsapp?: boolean;
   readonly selfReportedSpecializations: readonly string[];
   readonly serviceCategoryIds: readonly string[];
   readonly vehicleMakeIds: readonly string[];
@@ -110,6 +111,7 @@ export function validGarageProfile(
       profile.publicPhone.length > 40)
   )
     return false;
+  if (profile.publicWhatsapp && !profile.publicPhone?.trim()) return false;
   for (const list of [
     profile.languages,
     profile.serviceCategoryIds,

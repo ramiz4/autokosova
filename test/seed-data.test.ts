@@ -82,6 +82,7 @@ test('demo fixtures are fiktiv, stable and limited to public profile scenarios',
   assert.ok(demoGarages.every((garage) => garage.name.startsWith('DEMO ·')));
   assert.ok(demoGarages.every((garage) => garage.description.includes('fiktive')));
   assert.ok(demoGarages.every((garage) => garage.publicPhone.startsWith('+999')));
+  assert.ok(demoGarages.every((garage) => garage.publicWhatsapp === true));
   assert.ok(demoGarages.some((garage) => garage.vehicleMakeIds.length === 0));
   assert.ok(demoGarages.some((garage) => garage.verification === 'not_checked'));
   assert.ok(demoGarages.some((garage) => garage.languages.includes('Deutsch')));

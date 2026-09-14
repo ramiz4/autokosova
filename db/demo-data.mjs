@@ -27,6 +27,7 @@ function garage(input) {
   return {
     contactPerson: `Lokale Demo-Person ${input.id}`,
     description: `${baseDescription} ${input.scenario}`,
+    publicWhatsapp: true,
     ...input,
     locationPoint: deterministicDemoPosition(input.id, input.placeId),
   };

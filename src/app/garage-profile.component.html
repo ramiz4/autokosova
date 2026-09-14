@@ -1,0 +1,780 @@
+<div class="min-h-screen bg-white pb-[calc(5rem+env(safe-area-inset-bottom))] text-ink lg:pb-0">
+  <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
+    <app-site-header [compact]="true" active="search" />
+  </div>
+
+  <main
+    class="mx-auto max-w-[1352px] px-4 pt-4 pb-28 sm:px-6 lg:pb-10"
+    aria-labelledby="profile-title"
+  >
+    <div class="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
+      <nav
+        class="flex min-h-11 items-center gap-2 text-muted"
+        [attr.aria-label]="ui('profile.ui.backToResults')"
+      >
+        <a
+          [routerLink]="language.link('home')"
+          class="flex size-11 items-center justify-center rounded-lg hover:bg-white focus-visible:outline-2 focus-visible:outline-brand"
+          [attr.aria-label]="ui('profile.ui.home')"
+        >
+          <app-icon name="home" class="size-5" />
+        </a>
+        <span aria-hidden="true">/</span>
+        <a
+          [routerLink]="language.link('search')"
+          [queryParams]="backQueryParams()"
+          class="flex min-h-11 items-center rounded-lg px-2 font-medium hover:bg-white hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-brand"
+          >{{ language.t('search.title') }}</a
+        >
+        @if (profile) {
+          <span class="hidden sm:inline" aria-hidden="true">/</span>
+          <span class="hidden max-w-64 truncate font-semibold text-ink sm:inline">{{
+            profile.name
+          }}</span>
+        }
+      </nav>
+      @if (profile) {
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="flex size-11 items-center justify-center rounded-xl border border-blue-200 bg-white text-ink hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
+            [attr.aria-label]="
+              language.t(
+                favorites.garageIds().has(profile.id) ? 'favorites.remove' : 'favorites.add',
+                { garage: profile.name }
+              )
+            "
+            [attr.aria-pressed]="favorites.garageIds().has(profile.id)"
+            [disabled]="favorites.pending().has(profile.id) || favorites.state() === 'loading'"
+            (click)="favorites.toggle(profile.id)"
+          >
+            <app-icon
+              [name]="favorites.garageIds().has(profile.id) ? 'heart-filled' : 'heart'"
+              class="size-5"
+              [class.text-brand]="favorites.garageIds().has(profile.id)"
+            />
+          </button>
+          <button
+            type="button"
+            class="inline-flex min-h-11 items-center gap-2 rounded-xl border border-blue-200 bg-white px-4 font-semibold hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
+            (click)="shareProfile()"
+          >
+            <app-icon name="share" class="size-5" />{{ ui('profile.ui.share') }}
+          </button>
+        </div>
+      }
+    </div>
+
+    @if (state === 'loading') {
+      <p class="mt-8 rounded-2xl border border-slate-200 bg-white p-6 text-slate-700" role="status">
+        {{ language.t('profile.loading') }}
+      </p>
+    }
+
+    @if (state === 'error') {
+      <section
+        class="mt-8 rounded-2xl border border-rose-300 bg-rose-50 p-6"
+        aria-labelledby="profile-error-title"
+      >
+        <h1 id="profile-error-title" class="text-xl font-bold">
+          {{ language.t('profile.notAvailable') }}
+        </h1>
+        <p class="mt-2 leading-7 text-slate-700">{{ language.t('profile.notAvailableBody') }}</p>
+        <button type="button" appButton="outline" size="compact" class="mt-5" (click)="load()">
+          {{ language.t('common.retry') }}
+        </button>
+      </section>
+    }
+
+    @if (state === 'ready' && profile) {
+      <section id="photos" class="scroll-mt-28" [attr.aria-label]="ui('profile.ui.photos')">
+        @if (profile.photoIds.length === 1) {
+          <button
+            type="button"
+            class="group relative block h-[280px] w-full overflow-hidden rounded-2xl bg-slate-100 text-left sm:h-[420px]"
+            [attr.aria-label]="ui('profile.ui.allPhotos', { count: 1 })"
+            (click)="openGallery(0, $event)"
+          >
+            <img
+              [src]="photoUrl(profile.photoIds[0])"
+              [alt]="ui('profile.ui.photoOf', { garage: profile.name })"
+              class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.01]"
+            />
+          </button>
+        } @else if (profile.photoIds.length > 1) {
+          <div class="grid h-[330px] gap-2 sm:h-[430px] lg:grid-cols-[2fr_1fr]">
+            <button
+              type="button"
+              class="group relative overflow-hidden rounded-2xl bg-slate-100 text-left"
+              [attr.aria-label]="
+                ui('profile.ui.photoPosition', { current: 1, total: profile.photoIds.length })
+              "
+              (click)="openGallery(0, $event)"
+            >
+              <img
+                [src]="photoUrl(profile.photoIds[0])"
+                [alt]="ui('profile.ui.photoOf', { garage: profile.name })"
+                class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.01]"
+              />
+              <div
+                class="absolute inset-x-0 bottom-0 hidden min-h-14 bg-slate-950/70 px-4 py-3 text-sm text-white backdrop-blur-sm lg:flex lg:flex-wrap lg:items-center lg:gap-x-6 lg:gap-y-2"
+              >
+                <span class="inline-flex items-center gap-1.5"
+                  ><app-icon name="pin" class="size-4" />{{ placeLabel(profile.placeId) }}</span
+                >
+                @if (profile.languages.length) {
+                  <span class="inline-flex items-center gap-1.5"
+                    ><app-icon name="globe" class="size-4" />{{
+                      profile.languages.join(', ')
+                    }}</span
+                  >
+                }
+                @if (profile.selfReportedSpecializations.length) {
+                  <span class="inline-flex items-center"
+                    >{{ ui('profile.ui.selfReported') }}:
+                    {{ profile.selfReportedSpecializations.join(', ') }}</span
+                  >
+                }
+              </div>
+            </button>
+            <div
+              class="grid min-h-0 grid-cols-2 gap-2 lg:grid-cols-1"
+              [class.lg:grid-rows-2]="profile.photoIds.length > 2"
+            >
+              <button
+                type="button"
+                class="group relative min-h-0 overflow-hidden rounded-2xl bg-slate-100 text-left"
+                [attr.aria-label]="
+                  ui('profile.ui.photoPosition', { current: 2, total: profile.photoIds.length })
+                "
+                (click)="openGallery(1, $event)"
+              >
+                <img
+                  [src]="photoUrl(profile.photoIds[1])"
+                  [alt]="ui('profile.ui.photoOf', { garage: profile.name })"
+                  class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                />
+              </button>
+              @if (profile.photoIds.length > 2) {
+                <button
+                  type="button"
+                  class="group relative min-h-0 overflow-hidden rounded-2xl bg-slate-100 text-left"
+                  [attr.aria-label]="ui('profile.ui.allPhotos', { count: profile.photoIds.length })"
+                  (click)="openGallery(2, $event)"
+                >
+                  <img
+                    [src]="photoUrl(profile.photoIds[2])"
+                    [alt]="ui('profile.ui.photoOf', { garage: profile.name })"
+                    class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                  />
+                  <span
+                    class="absolute right-3 bottom-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950/80 px-4 text-sm font-semibold text-white backdrop-blur-sm"
+                  >
+                    <app-icon name="images" class="size-5" />{{
+                      ui('profile.ui.allPhotos', { count: profile.photoIds.length })
+                    }}
+                  </span>
+                </button>
+              }
+            </div>
+          </div>
+        } @else {
+          <div
+            class="flex min-h-56 items-center justify-center rounded-2xl border border-dashed border-blue-200 bg-[linear-gradient(135deg,#eff6ff,#f8fafc)] p-8 text-center sm:min-h-72"
+          >
+            <div>
+              <span
+                class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-white text-brand shadow-sm"
+                ><app-icon name="images" class="size-7"
+              /></span>
+              <h2 class="mt-4 text-lg font-bold">{{ ui('profile.ui.noPhotosTitle') }}</h2>
+              <p class="mt-2 text-sm text-muted">{{ ui('profile.ui.noPhotosBody') }}</p>
+            </div>
+          </div>
+        }
+      </section>
+
+      <div
+        class="contents lg:sticky lg:top-16 lg:z-40 lg:block lg:bg-white lg:shadow-[0_10px_20px_-20px_rgba(15,23,42,0.45)]"
+      >
+        <section
+          class="mt-2 flex flex-col gap-5 py-5 lg:flex-row lg:items-center lg:justify-between"
+        >
+          <div class="flex min-w-0 items-start gap-4">
+            @if (profileImageUrl(); as imageUrl) {
+              <img
+                [src]="imageUrl"
+                [alt]="ui('profile.ui.photoOf', { garage: profile.name })"
+                class="size-16 shrink-0 rounded-full border-2 border-white object-cover shadow-md sm:size-20"
+              />
+            } @else {
+              <span
+                class="flex size-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-dark to-brand text-xl font-bold text-white sm:size-20"
+                role="img"
+                [attr.aria-label]="ui('profile.ui.neutralLogo', { garage: profile.name })"
+                >{{ initials() }}</span
+              >
+            }
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <h1 id="profile-title" class="text-2xl font-bold tracking-tight sm:text-3xl">
+                  {{ profile.name }}
+                </h1>
+                @if (profile.verificationLabel) {
+                  <app-icon
+                    name="badge-check"
+                    class="size-6 text-brand"
+                    [title]="language.t('profile.trustAvailable')"
+                  />
+                  <span
+                    class="inline-flex items-center rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-semibold text-brand-dark"
+                    [title]="language.t('profile.trustAvailable')"
+                  >
+                    {{ language.t('profile.verified') }}
+                  </span>
+                }
+              </div>
+              <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+                @if (hasReviews()) {
+                  <span class="inline-flex items-center gap-2">
+                    <app-rating-stars
+                      [rating]="profile.reviewSummary!.averageRating!"
+                      [label]="ratingLabel(profile.reviewSummary!.averageRating!)"
+                    />
+                    <span class="font-bold text-slate-950">{{
+                      profile.reviewSummary!.averageRating!.toFixed(1)
+                    }}</span>
+                    <a
+                      [routerLink]="language.link('garage', profile.id)"
+                      [queryParams]="backQueryParams()"
+                      fragment="reviews"
+                      class="text-muted underline decoration-slate-300 underline-offset-4 hover:text-brand-dark"
+                      >({{ reviewCountLabel(profile.reviewSummary!.reviewCount) }})</a
+                    >
+                  </span>
+                } @else {
+                  <span class="text-muted">{{ language.t('profile.noReviews') }}</span>
+                }
+                <span class="hidden h-4 w-px bg-blue-200 sm:block" aria-hidden="true"></span>
+                <span class="inline-flex items-center gap-1.5 text-muted">
+                  <app-icon name="pin" class="size-4 text-brand" />{{ locationLabel() }}
+                </span>
+              </div>
+              @if (isLocalDemoProfile()) {
+                <p class="mt-2 text-xs font-semibold text-amber-800">
+                  {{ language.t('profile.localDemo') }}
+                </p>
+              }
+            </div>
+          </div>
+          <div class="hidden shrink-0 gap-3 lg:flex">
+            <button
+              type="button"
+              appButton="outline"
+              size="compact"
+              [disabled]="favorites.pending().has(profile.id) || favorites.state() === 'loading'"
+              (click)="favorites.toggle(profile.id)"
+            >
+              <app-icon
+                [name]="favorites.garageIds().has(profile.id) ? 'heart-filled' : 'heart'"
+                class="size-5"
+              />{{
+                ui(
+                  favorites.garageIds().has(profile.id)
+                    ? 'profile.ui.favoriteSaved'
+                    : 'profile.ui.favorite'
+                )
+              }}
+            </button>
+            <button
+              type="button"
+              class="inline-flex min-h-14 min-w-60 items-center justify-center gap-3 rounded-xl bg-gradient-to-br from-brand to-blue-800 px-6 text-left font-bold text-white shadow-lg shadow-blue-900/15 transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand motion-reduce:transform-none motion-reduce:transition-none"
+              (click)="openContact($event)"
+            >
+              <app-icon name="send" class="size-7" />
+              <span class="leading-tight">
+                <span class="block">{{ ui('profile.ui.contact') }}</span>
+                <span class="mt-1 block text-xs font-medium text-blue-100">{{
+                  ui('profile.ui.contactShort')
+                }}</span>
+              </span>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <div class="grid min-w-0 items-start gap-x-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <section
+          id="about"
+          class="min-w-0 scroll-mt-52 border-b border-blue-100 py-6 lg:col-start-1"
+          aria-labelledby="about-title"
+        >
+          <h2 id="about-title" class="text-xl font-bold">{{ ui('profile.ui.about') }}</h2>
+          @if (profile.description) {
+            <p class="mt-3 leading-7 text-slate-700 whitespace-pre-wrap">
+              {{ profile.description }}
+            </p>
+            <p class="mt-2 text-xs text-muted">{{ ui('profile.ui.originalText') }}</p>
+          }
+          <dl class="mt-5 grid gap-4 sm:grid-cols-2">
+            <div class="py-3 sm:px-4 sm:first:pl-0">
+              <dt class="flex items-center gap-2 font-semibold">
+                <app-icon name="globe" class="size-5 text-brand" />{{ ui('profile.ui.languages') }}
+              </dt>
+              <dd class="mt-2 text-sm text-slate-700">
+                {{ profile.languages.length ? profile.languages.join(', ') : '–' }}
+              </dd>
+            </div>
+            <div class="border-t border-blue-100 py-3 sm:border-t-0 sm:border-l sm:px-4">
+              <dt class="flex items-center gap-2 font-semibold">
+                <app-icon name="info" class="size-5 text-brand" />{{
+                  ui('profile.ui.selfReported')
+                }}
+              </dt>
+              <dd class="mt-2 text-sm text-slate-700">
+                {{
+                  profile.selfReportedSpecializations.length
+                    ? profile.selfReportedSpecializations.join(', ')
+                    : ui('profile.ui.noSpecializations')
+                }}
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <aside
+          class="space-y-4 py-6 lg:sticky lg:top-52 lg:col-start-2 lg:row-start-1 lg:row-span-2"
+        >
+          <section id="services" class="info-card scroll-mt-52" aria-labelledby="services-title">
+            <h2 id="services-title" class="flex items-center gap-3 text-lg font-bold">
+              <span
+                class="flex size-10 items-center justify-center rounded-xl bg-white text-brand shadow-sm"
+                ><app-icon name="wrench" class="size-5"
+              /></span>
+              {{ ui('profile.ui.popularServices') }}
+            </h2>
+            <ul class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              @for (service of profile.serviceCategoryIds; track service) {
+                <li class="flex items-center gap-2 text-sm text-slate-700">
+                  <span
+                    class="flex size-5 items-center justify-center rounded-full bg-emerald-500 text-white"
+                    ><app-icon name="check" class="size-3.5" /></span
+                  >{{ serviceLabel(service) }}
+                </li>
+              }
+            </ul>
+          </section>
+
+          <section id="makes" class="info-card scroll-mt-52" aria-labelledby="makes-title">
+            <h2 id="makes-title" class="flex items-center gap-3 text-lg font-bold">
+              <span
+                class="flex size-10 items-center justify-center rounded-xl bg-white text-brand shadow-sm"
+                ><app-icon name="car" class="size-5"
+              /></span>
+              {{ ui('profile.ui.makes') }}
+            </h2>
+            <div class="mt-4 flex flex-wrap gap-2">
+              @if (profile.vehicleMakeIds.length) {
+                @for (make of profile.vehicleMakeIds; track make) {
+                  <span class="rounded-lg bg-white px-3 py-1.5 text-sm shadow-sm">{{
+                    makeLabel(make)
+                  }}</span>
+                }
+              } @else {
+                <div>
+                  <p class="text-sm font-semibold text-slate-700">
+                    {{ ui('profile.ui.allMakes') }}
+                  </p>
+                  <p class="mt-1 text-xs leading-5 text-muted">
+                    {{ ui('profile.ui.allMakesBody') }}
+                  </p>
+                </div>
+              }
+            </div>
+          </section>
+
+          <section id="location" class="info-card scroll-mt-52" aria-labelledby="location-title">
+            <h2 id="location-title" class="flex items-center gap-3 text-lg font-bold">
+              <span
+                class="flex size-10 items-center justify-center rounded-xl bg-white text-brand shadow-sm"
+                ><app-icon name="pin" class="size-5"
+              /></span>
+              {{ ui('profile.ui.location') }}
+            </h2>
+            <p class="mt-4 text-sm font-semibold text-slate-700">
+              {{ placeLabel(profile.placeId) }}
+            </p>
+            @if (profile.searchContext) {
+              <p class="mt-2 text-sm text-muted">{{ locationLabel() }}</p>
+            } @else {
+              <p class="mt-2 text-sm text-muted">{{ ui('profile.ui.locationUnconfirmed') }}</p>
+            }
+          </section>
+        </aside>
+
+        <section
+          id="reviews"
+          class="min-w-0 scroll-mt-52 border-b border-blue-100 py-6 lg:col-start-1"
+          aria-labelledby="reviews-title"
+        >
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 id="reviews-title" class="text-xl font-bold">{{ ui('profile.ui.reviews') }}</h2>
+              <p class="mt-2 text-sm text-muted">{{ ui('profile.ui.reviewIntro') }}</p>
+            </div>
+            <details class="relative">
+              <summary
+                class="flex min-h-11 items-center gap-2 rounded-lg border border-blue-200 px-3 text-sm font-semibold hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
+              >
+                <app-icon name="filter" class="size-4" />{{ ui('profile.ui.filter') }}
+              </summary>
+              <div
+                class="absolute right-0 z-20 mt-2 grid w-[min(20rem,calc(100vw-3rem))] gap-3 rounded-xl border border-blue-100 bg-white p-4 shadow-xl"
+              >
+                <label class="grid gap-1 text-sm font-semibold"
+                  >{{ language.t('profile.filterService') }}
+                  <select
+                    [(ngModel)]="reviewServiceCategoryId"
+                    class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal"
+                  >
+                    <option value="">{{ language.t('profile.allServices') }}</option>
+                    @for (service of profile.serviceCategoryIds; track service) {
+                      <option [value]="service">{{ serviceLabel(service) }}</option>
+                    }
+                  </select>
+                </label>
+                <label class="grid gap-1 text-sm font-semibold"
+                  >{{ language.t('profile.filterMake') }}
+                  <select
+                    [(ngModel)]="reviewVehicleMakeId"
+                    class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal"
+                  >
+                    <option value="">{{ language.t('profile.allMakes') }}</option>
+                    @for (make of vehicleMakeOptions; track make[0]) {
+                      <option [value]="make[0]">{{ make[1] }}</option>
+                    }
+                  </select>
+                </label>
+                <button type="button" appButton size="compact" (click)="loadReviews()">
+                  {{ language.t('profile.filterReviews') }}
+                </button>
+              </div>
+            </details>
+          </div>
+          @if (reviewState === 'loading') {
+            <p class="mt-5 text-sm text-muted" role="status">
+              {{ language.t('profile.reviewsLoading') }}
+            </p>
+          } @else if (reviewState === 'error') {
+            <p class="mt-5 rounded-xl bg-amber-50 p-4 text-sm text-amber-950" role="status">
+              {{ language.t('profile.reviewsUnavailable') }}
+            </p>
+          } @else if (!reviews.length) {
+            <div class="mt-5 rounded-xl bg-slate-50 p-5">
+              <p class="font-semibold">{{ language.t('profile.noReviews') }}</p>
+              <p class="mt-2 text-sm leading-6 text-muted">
+                {{ language.t('profile.reviewsEmpty') }}
+              </p>
+            </div>
+          } @else {
+            <ol class="mt-5 grid gap-4">
+              @for (review of reviews; track review.id) {
+                <li class="border-t border-slate-200 py-5 first:border-t-0">
+                  <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div class="flex flex-wrap items-center gap-2">
+                        <app-rating-stars
+                          [rating]="review.ratings.overall"
+                          [label]="ratingLabel(review.ratings.overall)"
+                        />
+                        <span class="font-bold">{{ review.ratings.overall.toFixed(1) }}</span>
+                        <span class="text-sm text-muted"
+                          >· {{ serviceLabel(review.serviceCategoryId) }}</span
+                        >
+                      </div>
+                      <p class="mt-1 text-sm text-muted">
+                        {{ ui('profile.ui.reviewVisit', { month: monthLabel(review.visitMonth) }) }}
+                        @if (review.vehicleMakeId) {
+                          · {{ makeLabel(review.vehicleMakeId) }}
+                        }
+                      </p>
+                    </div>
+                    <span
+                      class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800"
+                      ><app-icon name="check" class="size-4" />{{
+                        ui('profile.ui.verifiedVisit')
+                      }}</span
+                    >
+                  </div>
+                  <p class="mt-4 leading-7 text-slate-800 whitespace-pre-wrap">
+                    {{ review.text }}
+                  </p>
+                  <p class="mt-3 text-xs leading-5 text-muted">
+                    {{
+                      ui('profile.ui.ratingDetails', {
+                        work: review.ratings.workQuality,
+                        communication: review.ratings.communication,
+                        price: review.ratings.priceTransparency,
+                        punctuality: review.ratings.punctuality,
+                      })
+                    }}
+                  </p>
+                  @if (review.garageResponse) {
+                    <div class="mt-4 border-l-4 border-blue-200 pl-4">
+                      <p class="font-semibold">{{ ui('profile.ui.response') }}</p>
+                      <p class="mt-1 text-sm leading-6 text-muted">
+                        {{ review.garageResponse.text }}
+                      </p>
+                    </div>
+                  }
+                  @if (review.updates.length) {
+                    <div class="mt-4 border-l-4 border-slate-200 pl-4">
+                      <p class="font-semibold">{{ ui('profile.ui.updates') }}</p>
+                      @for (update of review.updates; track update.createdAt) {
+                        <p class="mt-1 text-sm leading-6 text-muted">
+                          {{
+                            ui(
+                              update.kind === 'rework'
+                                ? 'profile.ui.rework'
+                                : 'profile.ui.complaint'
+                            )
+                          }}: {{ update.text }}
+                        </p>
+                      }
+                    </div>
+                  }
+                </li>
+              }
+            </ol>
+          }
+          <p class="mt-5 border-t border-slate-100 pt-4 text-xs leading-5 text-muted">
+            {{ ui('profile.ui.writeUnavailable') }}
+          </p>
+        </section>
+      </div>
+    }
+  </main>
+
+  <app-site-footer />
+
+  @if (state === 'ready' && profile) {
+    <div
+      class="fixed inset-x-0 bottom-0 z-40 border-t border-blue-100 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden"
+    >
+      <button type="button" appButton class="w-full" (click)="openContact($event)">
+        <app-icon name="message" class="size-5" />{{ ui('profile.ui.contact') }}
+      </button>
+    </div>
+    <app-favorite-notice [loginUrl]="favoriteLoginUrl()" />
+  }
+
+  @if (galleryOpen() && profile) {
+    <section
+      class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/95 p-3 sm:p-8"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="ui('profile.ui.photos')"
+      (keydown.escape)="closeGallery()"
+      (keydown.arrowleft)="moveGallery(-1)"
+      (keydown.arrowright)="moveGallery(1)"
+    >
+      <button
+        #galleryClose
+        type="button"
+        class="absolute top-3 right-3 flex size-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white"
+        [attr.aria-label]="ui('profile.ui.close')"
+        (click)="closeGallery()"
+      >
+        <app-icon name="close" class="size-6" />
+      </button>
+      <button
+        type="button"
+        class="absolute left-2 flex size-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white sm:left-5"
+        [attr.aria-label]="ui('profile.ui.previousPhoto')"
+        (click)="moveGallery(-1)"
+      >
+        <app-icon name="chevron-left" class="size-6" />
+      </button>
+      <figure class="max-h-full max-w-6xl">
+        <img
+          [src]="photoUrl(profile.photoIds[galleryIndex()])"
+          [alt]="ui('profile.ui.photoOf', { garage: profile.name })"
+          class="max-h-[80dvh] max-w-full rounded-xl object-contain"
+        />
+        <figcaption class="mt-3 text-center text-sm text-white">
+          {{
+            ui('profile.ui.photoPosition', {
+              current: galleryIndex() + 1,
+              total: profile.photoIds.length,
+            })
+          }}
+        </figcaption>
+      </figure>
+      <button
+        type="button"
+        class="absolute right-2 flex size-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white sm:right-5"
+        [attr.aria-label]="ui('profile.ui.nextPhoto')"
+        (click)="moveGallery(1)"
+      >
+        <app-icon name="chevron-right" class="size-6" />
+      </button>
+    </section>
+  }
+
+  @if (contactOpen() && profile) {
+    <div
+      class="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/55 p-0 sm:items-center sm:p-5"
+      role="presentation"
+      (click)="closeContact()"
+    >
+      <section
+        class="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl sm:p-7"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="contact-dialog-title"
+        (click)="$event.stopPropagation()"
+        (keydown.escape)="closeContact()"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h2 id="contact-dialog-title" class="text-xl font-bold">
+              {{ ui('profile.ui.contactDialog', { garage: profile.name }) }}
+            </h2>
+            <p class="mt-2 text-sm leading-6 text-muted">
+              {{ ui('profile.ui.contactDialogBody') }}
+            </p>
+          </div>
+          <button
+            #contactClose
+            type="button"
+            class="flex size-11 shrink-0 items-center justify-center rounded-xl hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand"
+            [attr.aria-label]="ui('profile.ui.close')"
+            (click)="closeContact()"
+          >
+            <app-icon name="close" class="size-5" />
+          </button>
+        </div>
+        <label
+          class="mt-5 flex min-h-11 items-center gap-3 rounded-xl bg-blue-50 p-3 text-sm font-medium"
+          ><input class="size-5" [(ngModel)]="includeDetails" type="checkbox" /><span>{{
+            ui('profile.ui.includeDetails')
+          }}</span></label
+        >
+        @if (includeDetails) {
+          <div class="mt-4 grid gap-4 sm:grid-cols-2">
+            <label class="grid gap-1 text-sm font-semibold"
+              >{{ ui('profile.ui.vehicle')
+              }}<input
+                [(ngModel)]="vehicleSummary"
+                maxlength="120"
+                autocomplete="off"
+                class="min-h-11 rounded-lg border border-slate-300 px-3 font-normal"
+                [placeholder]="ui('profile.ui.vehiclePlaceholder')" /></label
+            ><label class="grid gap-1 text-sm font-semibold"
+              >{{ ui('profile.ui.concern')
+              }}<textarea
+                [(ngModel)]="repairSummary"
+                maxlength="500"
+                rows="3"
+                class="rounded-lg border border-slate-300 p-3 font-normal"
+                [placeholder]="ui('profile.ui.concernPlaceholder')"
+              ></textarea>
+            </label>
+          </div>
+        }
+        <label class="mt-5 grid gap-1 text-sm font-semibold"
+          >{{ ui('profile.ui.messageDraft')
+          }}<textarea
+            class="rounded-lg border border-slate-300 bg-slate-50 p-3 font-normal leading-6"
+            [value]="contactPreview()"
+            readonly
+            rows="6"
+          ></textarea>
+        </label>
+        @if (telephoneHref()) {
+          <div class="mt-5 grid gap-3" [class.sm:grid-cols-2]="whatsAppHref()">
+            @if (whatsAppHref()) {
+              <a
+                [href]="whatsAppHref()"
+                target="_blank"
+                rel="noopener noreferrer"
+                appButton
+                (click)="blockLocalDemoContact($event); contactOpened()"
+                ><app-icon name="message" class="size-5" />{{ ui('profile.ui.whatsapp') }}</a
+              >
+            }
+            <a
+              [href]="telephoneHref()"
+              appButton="outline-brand"
+              (click)="blockLocalDemoContact($event); contactOpened()"
+              ><app-icon name="phone" class="size-5" />{{ ui('profile.ui.call') }}</a
+            >
+          </div>
+          <p class="mt-3 text-xs leading-5 text-muted">
+            {{
+              isLocalDemoProfile() ? ui('profile.ui.demoContact') : ui('profile.ui.contactFallback')
+            }}
+          </p>
+        } @else {
+          <p class="mt-5 rounded-xl bg-amber-50 p-4 text-sm text-amber-950">
+            {{ ui('profile.ui.noContact') }}
+          </p>
+        }
+      </section>
+    </div>
+  }
+
+  @if (shareOpen() && profile) {
+    <div
+      class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/55 p-4"
+      role="presentation"
+      (click)="shareOpen.set(false)"
+    >
+      <section
+        class="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="share-dialog-title"
+        (click)="$event.stopPropagation()"
+        (keydown.escape)="shareOpen.set(false)"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h2 id="share-dialog-title" class="text-xl font-bold">
+              {{ ui('profile.ui.shareTitle') }}
+            </h2>
+            <p class="mt-2 text-sm text-muted">{{ ui('profile.ui.shareBody') }}</p>
+          </div>
+          <button
+            type="button"
+            class="flex size-11 shrink-0 items-center justify-center rounded-xl hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand"
+            [attr.aria-label]="ui('profile.ui.close')"
+            (click)="shareOpen.set(false)"
+          >
+            <app-icon name="close" class="size-5" />
+          </button>
+        </div>
+        <div class="mt-5 flex flex-col gap-3 sm:flex-row">
+          <input
+            #shareUrlInput
+            readonly
+            [value]="shareUrl()"
+            class="min-h-11 min-w-0 grow rounded-lg border border-slate-300 px-3 text-sm"
+          /><button type="button" appButton size="compact" (click)="copyShareUrl()">
+            {{ ui('profile.ui.copyLink') }}
+          </button>
+        </div>
+        @if (shareState()) {
+          <p
+            class="mt-3 text-sm"
+            [class.text-emerald-700]="shareState() === 'copied'"
+            [class.text-amber-800]="shareState() === 'error'"
+            role="status"
+          >
+            {{ ui(shareState() === 'copied' ? 'profile.ui.copied' : 'profile.ui.copyFailed') }}
+          </p>
+        }
+      </section>
+    </div>
+  }
+</div>

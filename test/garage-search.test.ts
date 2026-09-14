@@ -375,11 +375,17 @@ test(
 
       const result = await store.searchPublicGarages(query({ places: 'xk-pristina:5' }));
       const profile = await store.getPublicGarage(garageId);
+      const profileMatch = await store.getPublicGarageMatch(garageId, [
+        { placeId: 'xk-pristina', radiusKm: 5 },
+      ]);
 
       const matchingGarage = result.results.find((garage) => garage.id === garageId);
       assert.ok(matchingGarage);
       assert.equal(matchingGarage.distanceKm, 0);
       assert.equal(matchingGarage.companyDataVerified, true);
+      assert.equal(profileMatch?.id, garageId);
+      assert.equal(profileMatch?.distanceKm, 0);
+      assert.deepEqual(profileMatch?.matchingPlace, { id: 'xk-pristina', label: 'Prishtina' });
       assert.equal(JSON.stringify(result).includes('Private fiktive Person'), false);
       assert.deepEqual(profile, {
         contact: { phone: '+383 44 000 010' },

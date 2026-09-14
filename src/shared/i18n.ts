@@ -1,4 +1,5 @@
 import { landingCopy } from './landing-copy';
+import { profileCopy } from './profile-copy';
 import { searchCopy } from './search-copy';
 
 export const APP_LANGUAGES = ['de', 'sq', 'en'] as const;
@@ -460,6 +461,7 @@ export function translate(
   replacements: Readonly<Record<string, string | number>> = {},
 ): string {
   const template =
+    profileCopy[language][key] ??
     searchCopy[language][key] ??
     landingCopy[language][key] ??
     messages[language][key] ??

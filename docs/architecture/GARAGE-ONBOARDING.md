@@ -44,6 +44,10 @@ Kontakt-E-Mail, Zustimmungsdaten, Prüfstatus im Detail und Unternehmensbelege b
 Spezialisierungen heißen im öffentlichen Modell ausdrücklich `selfReportedSpecializations`; sie
 sind Selbstauskünfte und keine verifizierte Qualifikation.
 
+WhatsApp-Unterstützung ist eine getrennte optionale Profilangabe. Sie kann nur zusammen mit einer
+öffentlichen Telefonnummer gesetzt werden. Die öffentliche Profilansicht bietet WhatsApp nur bei
+dieser ausdrücklichen Angabe an; sie leitet die Fähigkeit nicht aus der Telefonnummer ab.
+
 ## Bilder und Belege
 
 Ein Werkstattfoto wird nur als JPEG, PNG oder WebP bis 5 MiB angenommen. Der Server begrenzt die
@@ -51,6 +55,10 @@ Eingabepixel, richtet das Bild aus, skaliert es auf maximal 1600 px Kantenlänge
 neues WebP ohne übernommene EXIF-, XMP- oder IPTC-Metadaten. Das beseitigt insbesondere unnötige
 Standortmetadaten. Das Bild bleibt bis zur Adminfreigabe privat; es ist zusätzlich nur bei einem
 veröffentlichten Profil öffentlich lesbar.
+
+Die lokale Demo-Galerie ist davon getrennt: Sie verwendet ausschließlich versionierte,
+optimierte Konzeptbilder für die klar gekennzeichneten `demo-*`-Profile. Diese Bilder werden nie
+als Nachweis, Foto oder Angebot eines realen Betriebs behandelt.
 
 Unternehmensnachweise verwenden die vorhandene private Datei-Freigabe. Nur aktive Mitglieder
 desselben Betriebs oder Admins bekommen einen kurzlebigen Download-Grant. Der öffentliche View
