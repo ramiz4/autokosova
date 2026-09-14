@@ -363,7 +363,8 @@
       </section>
       <section class="onboarding-info">
         <h2 class="text-lg font-bold tracking-tight">{{ copy.why }}</h2>
-        <ul class="mt-5 space-y-5">
+        <p class="mt-2 text-sm leading-relaxed text-slate-500">{{ copy.whyIntro }}</p>
+        <ul class="mt-6 space-y-6">
           @for (
             benefit of [
               { icon: 'search', title: copy.why1, body: copy.why1Help },
@@ -372,10 +373,9 @@
             ];
             track $index
           ) {
-            <li class="flex items-start gap-3">
-              <span
-                class="flex size-11 shrink-0 items-center justify-center rounded-full bg-blue-50 text-brand"
-                ><app-icon [name]="$any(benefit.icon)" class="size-6"
+            <li class="flex gap-4">
+              <span class="step-number"
+                ><app-icon [name]="$any(benefit.icon)" class="size-4"
               /></span>
               <div>
                 <h3 class="text-sm font-bold">{{ benefit.title }}</h3>

@@ -155,6 +155,20 @@ it.each(['de', 'sq', 'en'] as const)(
     expect(title.className).toBe('text-3xl font-bold tracking-tight sm:text-[34px]');
     expect(title.nextElementSibling?.className).toBe('mt-1 text-muted');
     expect(title.parentElement?.className).toContain('sm:py-6');
+    const infoPanels = page.querySelectorAll<HTMLElement>('aside .onboarding-info');
+    expect(infoPanels).toHaveLength(3);
+    expect(infoPanels[0].querySelector('h2')!.className).toBe('text-lg font-bold tracking-tight');
+    expect(infoPanels[1].querySelector('h2')!.className).toBe('text-lg font-bold tracking-tight');
+    expect(infoPanels[0].querySelector('h2 + p')!.className).toBe(
+      'mt-2 text-sm leading-relaxed text-slate-500',
+    );
+    expect(infoPanels[1].querySelector('h2 + p')!.className).toBe(
+      'mt-2 text-sm leading-relaxed text-slate-500',
+    );
+    expect(infoPanels[0].querySelector('ol')!.className).toBe('mt-6 space-y-6');
+    expect(infoPanels[1].querySelector('ul')!.className).toBe('mt-6 space-y-6');
+    expect(infoPanels[0].querySelector('li')!.className).toBe('flex gap-4');
+    expect(infoPanels[1].querySelector('li')!.className).toBe('flex gap-4');
     expect(page.querySelector<HTMLElement>('fieldset.onboarding-section')!.className).not.toContain(
       'rounded',
     );
