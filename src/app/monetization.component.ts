@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
@@ -27,6 +27,7 @@ interface MonetizationCard {
 export class MonetizationComponent {
   protected readonly language = inject(LanguageService);
   private readonly router = inject(Router);
+  private readonly changeDetector = inject(ChangeDetectorRef);
   protected readonly cards: readonly MonetizationCard[] = [
     {
       id: 'profiles',
@@ -67,7 +68,11 @@ export class MonetizationComponent {
         filter((event) => event instanceof NavigationEnd),
         takeUntilDestroyed(),
       )
-      .subscribe(() => this.updateMetadata());
+      .subscribe(() => {
+        this.updateMetadata();
+        // The copy getter reads the router rather than a template signal.
+        this.changeDetector.markForCheck();
+      });
   }
 
   private updateMetadata(): void {
