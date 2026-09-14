@@ -415,10 +415,12 @@ interface Area {
                           <h2 class="text-xl font-bold tracking-tight">{{ workshop.name }}</h2>
                           @if (workshop.companyDataVerified) {
                             <span
-                              class="inline-flex size-5 items-center justify-center rounded-full bg-brand text-white"
+                              class="inline-flex size-5 shrink-0 text-brand"
+                              role="img"
+                              [title]="language.t('profile.verified')"
                               [attr.aria-label]="language.t('profile.verified')"
                             >
-                              <app-icon name="check" class="size-3.5" />
+                              <app-icon name="badge-check" class="size-5" />
                             </span>
                           }
                         </div>
@@ -556,11 +558,9 @@ export class SearchHandoffComponent {
     });
   }
   protected matchingReasons(workshop: Result): readonly string[] {
-    return workshop.reasons
-      .filter((reason) => !reason.includes('Luftlinie'))
-      .map((reason) =>
-        reason === 'Unternehmensdaten geprüft' ? this.language.t('profile.verified') : reason,
-      );
+    return workshop.reasons.filter(
+      (reason) => !reason.includes('Luftlinie') && reason !== 'Unternehmensdaten geprüft',
+    );
   }
   protected photoIds(workshop: Result): readonly string[] {
     return workshop.photoIds ?? [];

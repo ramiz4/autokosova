@@ -3,6 +3,7 @@ import { Component, input } from '@angular/core';
 export type IconName =
   | 'arrow'
   | 'check'
+  | 'badge-check'
   | 'shield'
   | 'clock'
   | 'thumb'
@@ -26,12 +27,20 @@ export type IconName =
     class="h-full w-full"
     focusable="false"
   >
-    <path [attr.d]="paths[name()]" />
+    <path
+      [attr.d]="paths[name()]"
+      [attr.fill]="name() === 'badge-check' ? 'currentColor' : 'none'"
+    />
+    @if (name() === 'badge-check') {
+      <path d="m8 12 2.5 2.5 5-5" fill="none" stroke="white" stroke-width="2" />
+    }
   </svg>`,
 })
 export class IconComponent {
   readonly name = input.required<IconName>();
   protected readonly paths: Record<IconName, string> = {
+    'badge-check':
+      'M12 1.5 15.25 4.15 19.42 4.58 19.85 8.75 22.5 12 19.85 15.25 19.42 19.42 15.25 19.85 12 22.5 8.75 19.85 4.58 19.42 4.15 15.25 1.5 12 4.15 8.75 4.58 4.58 8.75 4.15Z',
     'chevron-down': 'm6 9 6 6 6-6',
     heart:
       'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.9-8.6a5.5 5.5 0 0 0-.1-7.8Z',

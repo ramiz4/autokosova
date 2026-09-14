@@ -50,7 +50,7 @@ describe('SearchHandoffComponent', () => {
     }
   });
 
-  it('does not render a map column when no map provider is configured', async () => {
+  it('shows verified results without a duplicate verification chip or an unconfigured map', async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async () =>
       new Response(
@@ -64,7 +64,7 @@ describe('SearchHandoffComponent', () => {
               id: 'fiktive-werkstatt',
               matchingPlace: { id: 'xk-pristina', label: 'Prishtina' },
               name: 'Fiktive Werkstatt',
-              reasons: ['Leistung: Bremsen'],
+              reasons: ['Unternehmensdaten geprüft', 'Leistung: Bremsen'],
               reviewSummary: { label: 'Noch keine Bewertungen' },
               selfReportedSpecializations: [],
             },
@@ -98,6 +98,29 @@ describe('SearchHandoffComponent', () => {
         'Kartenansicht ist derzeit nicht verfügbar',
       );
       expect(fixture.nativeElement.querySelectorAll('aside')).toHaveLength(1);
+      const card = (fixture.nativeElement as HTMLElement).querySelector('ol > li')!;
+      expect(
+        card.querySelector('[role="img"][aria-label="Unternehmensdaten geprüft"]'),
+      ).toBeTruthy();
+      expect(card.querySelector('ul')?.textContent).not.toContain('Unternehmensdaten geprüft');
+      expect(card.querySelector('ul')?.textContent).toContain('Leistung: Bremsen');
+      const response = fixture.componentInstance['response']!;
+      globalThis.fetch = async () =>
+        new Response(
+          JSON.stringify({
+            ...response,
+            results: response.results.map((result) => ({ ...result, companyDataVerified: false })),
+          }),
+          { status: 200 },
+        );
+      await fixture.componentInstance['load']();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector(
+          'ol > li [role="img"][aria-label="Unternehmensdaten geprüft"]',
+        ),
+      ).toBeNull();
     } finally {
       globalThis.fetch = originalFetch;
     }
