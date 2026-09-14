@@ -13,7 +13,8 @@ import {
   translate,
 } from '../shared/i18n';
 
-export type AppRoute = 'home' | 'onboarding' | 'request' | 'search' | 'garage' | PublicPageId;
+export type AppRoute =
+  'home' | 'onboarding' | 'request' | 'search' | 'garage' | 'monetization' | PublicPageId;
 
 @Injectable({ providedIn: 'root' })
 export class LanguageService {
@@ -65,8 +66,12 @@ export class LanguageService {
   }
 
   setPage(titleKey: string, descriptionKey: string, noIndex = false): void {
-    this.title.setTitle(`${this.t(titleKey)} | AutoKosova`);
-    this.meta.updateTag({ content: this.t(descriptionKey), name: 'description' });
+    this.setPageText(this.t(titleKey), this.t(descriptionKey), noIndex);
+  }
+
+  setPageText(title: string, description: string, noIndex = false): void {
+    this.title.setTitle(`${title} | AutoKosova`);
+    this.meta.updateTag({ content: description, name: 'description' });
     if (noIndex) this.meta.updateTag({ content: 'noindex, nofollow', name: 'robots' });
     else this.meta.removeTag("name='robots'");
   }
@@ -102,6 +107,7 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
   const segments: Readonly<Record<AppRoute, string>> = {
     ...PUBLIC_PAGE_PATHS,
     home: '',
+    monetization: '/monetization',
     onboarding: '/garages/new',
     request: '/inquiry',
     search: '/garages',
@@ -113,6 +119,9 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
 function identifyRoute(path: string): { readonly parameter?: string; readonly route: AppRoute } {
   const normalized = path.replace(/^\/(?:sq|en)(?=\/|$)/, '') || '/';
   if (normalized === '/') return { route: 'home' };
+  if (normalized === '/monetization' || normalized === '/monetarisierung') {
+    return { route: 'monetization' };
+  }
   if (normalized === '/garages/new') return { route: 'onboarding' };
   if (normalized === '/inquiry') return { route: 'request' };
   if (normalized === '/garages' || normalized === '/suche' || normalized === '/werkstaetten') {
