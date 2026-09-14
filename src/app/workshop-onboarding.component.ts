@@ -1,275 +1,296 @@
-import { Component, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import {
+  ChangeDetectorRef,
+  Component,
+  ElementRef,
+  PLATFORM_ID,
+  inject,
+  viewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { LanguageService } from './language.service';
 import { CATALOG_PLACES, SERVICE_CATEGORY_LABELS, VEHICLE_MAKE_LABELS } from '../shared/catalog';
+import {
+  GARAGE_LANGUAGES,
+  GARAGE_SPECIALIZATIONS,
+  addressMatchesPlace,
+  validGarageAddress,
+} from '../shared/garage-onboarding';
+import { garageOptionLabels, onboardingCopy } from '../shared/onboarding-copy';
+import type {
+  WorkshopProfileInput,
+  VerificationChecklist,
+  WorkshopPublicationState,
+} from '../shared/garage-onboarding';
+import { LanguageService } from './language.service';
+import { AccountSessionService } from './account-session.service';
+import { SiteHeaderComponent } from './site-header.component';
+import { IconComponent } from './ui/icon.component';
+import { MultiSelectComponent, type SelectionOption } from './ui/multi-select.component';
 
-interface OnboardingForm {
-  contactPerson: string;
-  contactPhone: string;
-  languages: string[];
-  name: string;
-  placeId: string;
-  publicPhone: string;
-  selfReportedSpecializations: string[];
-  serviceCategoryIds: string[];
-  vehicleMakeIds: string[];
+type Form = { -readonly [Key in keyof WorkshopProfileInput]: WorkshopProfileInput[Key] } & {
   address: string;
+};
+interface OwnedGarage {
+  id: string;
+  name: string;
+  publicationState: WorkshopPublicationState;
 }
-
-@Component({
-  imports: [FormsModule],
-  selector: 'app-workshop-onboarding',
-  template: `
-    <main class="min-h-screen bg-slate-50 px-4 py-8 text-slate-950 sm:px-6 sm:py-12">
-      <section
-        class="mx-auto max-w-xl rounded-2xl border border-sky-200 bg-white p-5 shadow-sm sm:p-8"
-      >
-        <p class="text-sm font-bold tracking-widest text-sky-700 uppercase">Werkstatt aufnehmen</p>
-        <h1 class="mt-2 text-3xl font-bold tracking-tight">In wenigen Schritten zum Prüfauftrag</h1>
-        <p class="mt-3 text-slate-700">
-          Kein tägliches Dashboard und keine automatische Veröffentlichung. Das Profil bleibt
-          privat, bis es geprüft und freigegeben wurde.
-        </p>
-
-        <div class="mt-6 rounded-xl bg-sky-50 p-4 text-sm text-slate-700">
-          <p class="font-semibold text-slate-900">Vor dem Start</p>
-          <p class="mt-1">Bei einem möglichen bestehenden Profil wird keine Übernahme ausgelöst.</p>
-        </div>
-
-        <form class="mt-6 space-y-8" (ngSubmit)="submit()">
-          <fieldset class="space-y-5">
-            <legend class="font-bold">1. Basisdaten & Standort</legend>
-            <label class="block font-semibold">
-              Werkstattname
-              <input
-                class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 px-3 focus:border-sky-700 focus:ring-2 focus:ring-sky-200"
-                [(ngModel)]="form.name"
-                name="name"
-                required
-              />
-            </label>
-            <label class="block font-semibold"
-              >Betriebsadresse
-              <textarea
-                class="mt-2 min-h-20 w-full rounded-lg border border-slate-300 px-3 py-2"
-                [(ngModel)]="form.address"
-                name="address"
-                placeholder="Strasse, Hausnummer; bei Bedarf Standortbeschreibung"
-              ></textarea>
-            </label>
-            <label class="block font-semibold">
-              Ort
-              <select
-                class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 focus:border-sky-700 focus:ring-2 focus:ring-sky-200"
-                [(ngModel)]="form.placeId"
-                name="placeId"
-                required
-              >
-                @for (place of places; track place.id) {
-                  <option [value]="place.id">{{ place.label }}</option>
-                }
-              </select>
-            </label>
-            <p class="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-              Standort noch zu bestätigen. Eine Adresse erzeugt keine Entfernung; diese ist
-              Luftlinie zum gewählten Suchort nach separater Prüfung.
-            </p>
-          </fieldset>
-          <fieldset class="space-y-5">
-            <legend class="font-bold">2. Kontakt für die Prüfung</legend>
-            <fieldset class="grid gap-5 sm:grid-cols-2">
-              <label class="block font-semibold">
-                Ansprechpartner (privat)
-                <input
-                  class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 px-3 focus:border-sky-700 focus:ring-2 focus:ring-sky-200"
-                  [(ngModel)]="form.contactPerson"
-                  name="contactPerson"
-                  required
-                />
-              </label>
-              <label class="block font-semibold">
-                Telefon für die Prüfung (privat)
-                <input
-                  class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 px-3 focus:border-sky-700 focus:ring-2 focus:ring-sky-200"
-                  [(ngModel)]="form.contactPhone"
-                  name="contactPhone"
-                  required
-                  type="tel"
-                />
-              </label>
-            </fieldset>
-            <label class="block font-semibold">
-              Öffentliches Telefon (optional)
-              <input
-                class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 px-3 focus:border-sky-700 focus:ring-2 focus:ring-sky-200"
-                [(ngModel)]="form.publicPhone"
-                name="publicPhone"
-                type="tel"
-              />
-            </label>
-          </fieldset>
-          <fieldset class="space-y-5">
-            <legend class="font-bold">3. Leistungen & Spezialisierung</legend>
-            <p class="text-sm text-slate-600">Mehrfach auswählen; markenoffen bleibt möglich.</p>
-            <label class="block font-semibold"
-              >Leistungen <span class="sr-only">Mehrfachauswahl</span
-              ><select
-                class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 p-2"
-                [(ngModel)]="form.serviceCategoryIds"
-                name="serviceCategoryIds"
-                multiple
-                required
-              >
-                @for (item of services; track item.id) {
-                  <option [value]="item.id">{{ item.label }}</option>
-                }
-              </select></label
-            >
-            <label class="block font-semibold"
-              >Fahrzeugmarken
-              <select
-                class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 p-2"
-                [(ngModel)]="form.vehicleMakeIds"
-                name="vehicleMakeIds"
-                multiple
-              >
-                @for (item of makes; track item.id) {
-                  <option [value]="item.id">{{ item.label }}</option>
-                }
-              </select></label
-            >
-            <label class="block font-semibold"
-              >Sprachen
-              <select
-                class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 p-2"
-                [(ngModel)]="form.languages"
-                name="languages"
-                multiple
-                required
-              >
-                <option>Deutsch</option>
-                <option>Shqip</option>
-                <option>English</option>
-              </select></label
-            >
-            <label class="block font-semibold"
-              >Spezialisierungen (Selbstauskunft)
-              <select
-                class="mt-2 min-h-11 w-full rounded-lg border border-slate-300 p-2"
-                [(ngModel)]="form.selfReportedSpecializations"
-                name="selfReportedSpecializations"
-                multiple
-              >
-                <option>Diagnose</option>
-                <option>Bremsen</option>
-                <option>Reifenwechsel</option>
-                <option>Klimaanlage</option>
-              </select></label
-            >
-          </fieldset>
-
-          <label
-            class="flex min-h-11 items-start gap-3 rounded-lg border border-slate-200 p-3 text-sm text-slate-700"
-          >
-            <input
-              class="mt-1 size-5"
-              [(ngModel)]="consentAccepted"
-              name="consent"
-              required
-              type="checkbox"
-            />
-            <span>
-              Ich stimme der Aufnahme meines Profils zur Prüfung zu. Ein Prüfkennzeichen ist keine
-              Reparaturqualitätsgarantie.
-            </span>
-          </label>
-
-          @if (message) {
-            <p class="rounded-lg bg-slate-100 p-3 text-sm" role="status">{{ message }}</p>
-          }
-
-          <button
-            class="min-h-11 w-full rounded-lg bg-sky-700 px-4 py-2 font-bold text-white hover:bg-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-700 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-400"
-            [disabled]="sending || !consentAccepted"
-            type="submit"
-          >
-            {{ sending ? 'Wird gespeichert …' : 'Privaten Entwurf erstellen' }}
-          </button>
-        </form>
-      </section>
-    </main>
-  `,
-})
-export class WorkshopOnboardingComponent {
-  private readonly language = inject(LanguageService);
-  protected consentAccepted = false;
-  protected form: OnboardingForm = {
+interface PrivateGarage {
+  id: string;
+  profile: WorkshopProfileInput;
+  consentVersion: string;
+  publicationState: WorkshopPublicationState;
+  verification: VerificationChecklist;
+}
+function blankForm(): Form {
+  return {
+    name: '',
+    placeId: '',
     contactPerson: '',
     contactPhone: '',
-    languages: [],
-    name: '',
-    placeId: 'xk-pristina',
     publicPhone: '',
+    languages: [],
     selfReportedSpecializations: [],
     serviceCategoryIds: [],
     vehicleMakeIds: [],
     address: '',
   };
-  protected message = '';
-  protected sending = false;
-  protected readonly places = CATALOG_PLACES;
-  protected readonly services = Object.entries(SERVICE_CATEGORY_LABELS).map(([id, label]) => ({
-    id,
-    label,
-  }));
-  protected readonly makes = Object.entries(VEHICLE_MAKE_LABELS).map(([id, label]) => ({
-    id,
-    label,
-  }));
+}
 
+@Component({
+  selector: 'app-workshop-onboarding',
+  imports: [FormsModule, SiteHeaderComponent, IconComponent, MultiSelectComponent],
+  templateUrl: './workshop-onboarding.component.html',
+  styleUrl: './workshop-onboarding.component.scss',
+})
+export class WorkshopOnboardingComponent {
+  protected readonly language = inject(LanguageService);
+  protected readonly account = inject(AccountSessionService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly formElement = viewChild<ElementRef<HTMLFormElement>>('formElement');
+  protected form = blankForm();
+  protected consentAccepted = false;
+  protected sending = false;
+  protected loading = false;
+  protected message = '';
+  protected needsLogin = false;
+  protected errors: Record<string, string> = {};
+  protected garageId?: string;
+  protected publicationState: WorkshopPublicationState = 'draft';
+  protected locationVerified = false;
+  protected savedSnapshot = '';
+  protected owned: OwnedGarage[] = [];
+  protected readonly places = CATALOG_PLACES;
+  protected get copy() {
+    return onboardingCopy[this.language.language];
+  }
+  protected get services(): SelectionOption[] {
+    return Object.keys(SERVICE_CATEGORY_LABELS).map((id) => ({
+      id,
+      label: this.language.serviceLabel(id),
+      aliases: [SERVICE_CATEGORY_LABELS[id]],
+    }));
+  }
+  protected get makes(): SelectionOption[] {
+    return Object.entries(VEHICLE_MAKE_LABELS).map(([id, label]) => ({ id, label }));
+  }
+  protected options(kind: 'languages' | 'selfReportedSpecializations'): SelectionOption[] {
+    const choices = kind === 'languages' ? GARAGE_LANGUAGES : GARAGE_SPECIALIZATIONS;
+    return [...new Set([...choices, ...this.form[kind]])].map((id) => ({
+      id,
+      label: garageOptionLabels[this.language.language][id] ?? id,
+    }));
+  }
+  protected get loginUrl(): string {
+    return '/auth/login?returnTo=' + encodeURIComponent(this.language.link('onboarding'));
+  }
+  protected get unchanged(): boolean {
+    return JSON.stringify(this.form) === this.savedSnapshot;
+  }
+  protected get stateLabel(): string {
+    const labels = {
+      draft: this.copy.stateDraft,
+      pending_review: this.copy.statePending,
+      published: this.copy.statePublished,
+      rejected: this.copy.stateRejected,
+      suspended: this.copy.stateSuspended,
+    };
+    return labels[this.publicationState];
+  }
   constructor() {
     this.language.setPage('home.workshopOnboarding', 'home.intro', true);
+    if (isPlatformBrowser(inject(PLATFORM_ID))) void this.refreshSession();
   }
-
-  protected async submit() {
-    const csrfToken = document.cookie
+  protected async refreshSession(): Promise<void> {
+    await this.account.refresh();
+    this.needsLogin = !this.account.signedIn();
+    if (this.account.signedIn()) await this.loadOwned();
+    else this.owned = [];
+    this.cdr.markForCheck();
+  }
+  private async loadOwned(): Promise<void> {
+    try {
+      const response = await fetch('/api/me/garages', { cache: 'no-store' });
+      if (!response.ok) throw new Error();
+      this.owned = ((await response.json()) as { garages: OwnedGarage[] }).garages;
+    } catch {
+      this.message = this.copy.loadError;
+    }
+  }
+  protected addressChanged(): void {
+    this.locationVerified = false;
+  }
+  protected validate(): boolean {
+    const errors: Record<string, string> = {};
+    for (const field of ['name', 'placeId', 'contactPerson'] as const)
+      if (!this.form[field].trim()) errors[field] = this.copy.required;
+    if (this.form.contactPhone.trim().length < 3) errors['contactPhone'] = this.copy.phoneError;
+    if (this.form.publicPhone && this.form.publicPhone.trim().length < 3)
+      errors['publicPhone'] = this.copy.phoneError;
+    for (const field of ['serviceCategoryIds', 'languages'] as const)
+      if (!this.form[field].length) errors[field] = this.copy.selectRequired;
+    if (!validGarageAddress(this.profile().address, this.form.placeId))
+      errors['street'] = this.copy.addressError;
+    if (
+      this.form.address.trim() &&
+      this.form.placeId &&
+      !addressMatchesPlace(this.form.address, this.form.placeId)
+    )
+      errors['street'] = this.copy.conflict;
+    if (!this.garageId && !this.consentAccepted) errors['consent'] = this.copy.required;
+    this.errors = errors;
+    if (Object.keys(errors).length) {
+      this.message = this.copy.invalid;
+      this.cdr.detectChanges();
+      this.formElement()
+        ?.nativeElement.querySelector<HTMLElement>('[aria-invalid="true"]')
+        ?.focus();
+      return false;
+    }
+    return true;
+  }
+  private profile(): Form {
+    return {
+      ...this.form,
+      name: this.form.name.trim(),
+      contactPerson: this.form.contactPerson.trim(),
+      contactPhone: this.form.contactPhone.trim(),
+      publicPhone: this.form.publicPhone?.trim() || undefined,
+      address: this.form.address.trim(),
+    };
+  }
+  protected async submit(): Promise<void> {
+    if (this.sending || this.loading || !this.validate()) return;
+    const csrf = document.cookie
       .split('; ')
       .find((cookie) => cookie.startsWith('autokosova_csrf='))
       ?.split('=')[1];
-    if (!csrfToken) {
-      globalThis.location.assign('/auth/login');
+    if (!csrf) {
+      this.needsLogin = true;
+      this.message = this.copy.signIn;
       return;
     }
-
     this.sending = true;
     this.message = '';
     try {
-      const response = await fetch('/api/garages', {
-        body: JSON.stringify({
-          consentVersion: 'workshop-onboarding-v1',
-          profile: {
-            contactPerson: this.form.contactPerson,
-            contactPhone: this.form.contactPhone,
-            languages: this.form.languages,
-            name: this.form.name,
-            placeId: this.form.placeId,
-            ...(this.form.publicPhone ? { publicPhone: this.form.publicPhone } : {}),
-            selfReportedSpecializations: this.form.selfReportedSpecializations,
-            serviceCategoryIds: this.form.serviceCategoryIds,
-            vehicleMakeIds: this.form.vehicleMakeIds,
-          },
-        }),
-        headers: { 'content-type': 'application/json', 'x-csrf-token': csrfToken },
-        method: 'POST',
-      });
-      const result = (await response.json()) as { error?: string };
-      this.message = response.ok
-        ? 'Dein Entwurf ist privat gespeichert und kann jetzt zur Prüfung eingereicht werden.'
-        : (result.error ?? 'Der Entwurf konnte nicht gespeichert werden.');
+      const profile = this.profile();
+      const response = await fetch(
+        this.garageId ? '/api/garages/' + encodeURIComponent(this.garageId) : '/api/garages',
+        {
+          method: this.garageId ? 'PUT' : 'POST',
+          credentials: 'same-origin',
+          headers: { 'content-type': 'application/json', 'x-csrf-token': csrf },
+          body: JSON.stringify(
+            this.garageId ? profile : { consentVersion: 'workshop-onboarding-v1', profile },
+          ),
+        },
+      );
+      if (response.status === 401 || response.status === 403) {
+        this.needsLogin = true;
+        this.message = this.copy.signIn;
+        return;
+      }
+      if (response.status === 409) {
+        this.message = this.copy.duplicate;
+        await this.loadOwned();
+        return;
+      }
+      if (!response.ok) throw new Error();
+      if (!this.garageId) this.garageId = ((await response.json()) as { id: string }).id;
+      if (this.publicationState === 'pending_review') this.publicationState = 'draft';
+      this.form = profile;
+      this.savedSnapshot = JSON.stringify(this.form);
+      this.message =
+        this.publicationState === 'published' ? this.copy.publicSaved : this.copy.saved;
+      await this.loadOwned();
     } catch {
-      this.message = 'Der Entwurf konnte nicht gespeichert werden. Bitte versuche es erneut.';
+      this.message = this.copy.error;
     } finally {
       this.sending = false;
+      this.cdr.markForCheck();
+    }
+  }
+  protected async open(id: string): Promise<void> {
+    if (this.sending || this.loading) return;
+    if (
+      !this.unchanged &&
+      (this.form.name || this.form.address) &&
+      !window.confirm(this.copy.discard)
+    )
+      return;
+    this.loading = true;
+    this.message = '';
+    try {
+      const response = await fetch('/api/garages/' + encodeURIComponent(id), { cache: 'no-store' });
+      if (!response.ok) throw new Error();
+      const garage = (await response.json()) as PrivateGarage;
+      this.form = { ...garage.profile, address: garage.profile.address ?? blankForm().address };
+      this.garageId = garage.id;
+      this.publicationState = garage.publicationState;
+      this.consentAccepted = true;
+      this.locationVerified =
+        !!garage.profile.locationPoint && garage.verification.location === 'verified';
+      this.savedSnapshot = JSON.stringify(this.form);
+      this.errors = {};
+    } catch {
+      this.message = this.copy.loadError;
+    } finally {
+      this.loading = false;
+      this.cdr.markForCheck();
+    }
+  }
+  protected reset(): void {
+    if (!this.unchanged && this.form.name && !window.confirm(this.copy.discard)) return;
+    this.form = blankForm();
+    this.garageId = undefined;
+    this.consentAccepted = false;
+    this.locationVerified = false;
+    this.publicationState = 'draft';
+    this.message = '';
+    this.errors = {};
+    this.savedSnapshot = '';
+  }
+  protected async submitForReview(): Promise<void> {
+    if (!this.garageId || !this.unchanged || this.sending) return;
+    this.sending = true;
+    try {
+      const csrf =
+        document.cookie
+          .split('; ')
+          .find((cookie) => cookie.startsWith('autokosova_csrf='))
+          ?.split('=')[1] ?? '';
+      const response = await fetch(
+        '/api/garages/' + encodeURIComponent(this.garageId) + '/submit-for-review',
+        { method: 'POST', headers: { 'x-csrf-token': csrf } },
+      );
+      if (!response.ok) throw new Error();
+      this.publicationState = 'pending_review';
+      this.message = this.copy.submitted;
+    } catch {
+      this.message = this.copy.error;
+    } finally {
+      this.sending = false;
+      this.cdr.markForCheck();
     }
   }
 }

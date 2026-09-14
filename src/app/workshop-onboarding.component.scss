@@ -1,0 +1,96 @@
+:host {
+  display: block;
+}
+.onboarding-page {
+  background: linear-gradient(145deg, #f4faff 30%, #eaf4ff 60%, #f8fbff);
+}
+.onboarding-hero {
+  background-image:
+    linear-gradient(90deg, #edf7ff 0%, #f2f8ff 52%, rgb(244 249 255 / 40%) 70%, transparent),
+    url('/images/home/hero-mountain-road-1672.webp');
+  background-size:
+    cover,
+    auto 460px;
+  background-repeat: no-repeat;
+  background-position:
+    center,
+    right 57%;
+}
+.onboarding-section {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #e5edf7;
+  border-radius: 12px;
+  background: linear-gradient(120deg, #f8fbff, #f4f8fd);
+}
+.onboarding-info {
+  padding: 24px;
+  border: 1px solid white;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 87%);
+  box-shadow: 0 6px 24px rgb(44 105 194 / 5%);
+}
+.step-number {
+  display: flex;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 100%;
+  background: #2563eb;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 3px 8px rgb(37 99 235 / 20%);
+}
+.onboarding-section label {
+  display: block;
+  margin-bottom: 7px;
+  color: #273955;
+  font-size: 12px;
+  font-weight: 600;
+}
+.onboarding-section input,
+.onboarding-section select {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #d9e2ef;
+  border-radius: 7px;
+  background-color: white;
+  color: #223654;
+  font-size: 14px;
+  box-shadow: 0 1px 3px rgb(27 59 108 / 3%);
+}
+.onboarding-section input:focus,
+.onboarding-section select:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+.onboarding-section [aria-invalid='true'] {
+  border-color: #e11d48;
+}
+.field-error {
+  margin-top: 5px;
+  color: #be123c;
+  font-size: 12px;
+}
+.field-error:empty {
+  display: none;
+}
+@media (max-width: 639px) {
+  .onboarding-section {
+    padding: 16px;
+  }
+  .onboarding-hero {
+    background-position:
+      center,
+      75% center;
+    background-image:
+      linear-gradient(90deg, #edf7ff 0%, rgb(242 248 255 / 96%) 55%, rgb(242 248 255 / 84%)),
+      url('/images/home/hero-mountain-road-1672.webp');
+  }
+}

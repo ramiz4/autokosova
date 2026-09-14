@@ -1,4 +1,5 @@
 import type { FavoriteStore } from './favorites';
+import type { GarageOnboardingStore } from './garage-onboarding-store';
 import cookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import Fastify from 'fastify';
@@ -61,6 +62,7 @@ import {
 } from '../shared/repair-request';
 
 interface ServerOptions {
+  readonly garageStore?: GarageOnboardingStore;
   readonly favoriteStore?: FavoriteStore;
   readonly accessStore?: AccessStore;
   readonly analyticsEnabled?: boolean;
@@ -151,7 +153,9 @@ const repairRequestBodySchema = {
 
 function safeReturnTo(value: unknown): string {
   if (typeof value !== 'string' || value.length > 2000) return '/';
-  const match = value.match(/^(\/(?:(?:sq|en)\/)?(?:inquiry|anfrage|garages))(?:\?([^#]*))?$/);
+  const match = value.match(
+    /^(\/(?:(?:sq|en)\/)?(?:inquiry|anfrage|garages(?:\/new)?))(?:\?([^#]*))?$/,
+  );
   if (!match) return '/';
   const path = match[1].replace(/\/anfrage$/, '/inquiry');
   if (!path.endsWith('/garages')) return match[2] ? '/' : path;
@@ -179,6 +183,7 @@ const stringListSchema = {
 const workshopProfileSchema = {
   additionalProperties: false,
   properties: {
+    address: { type: 'string', minLength: 8, maxLength: 500 },
     contactEmail: { format: 'email', maxLength: 254, type: 'string' },
     contactPerson: { maxLength: 120, minLength: 1, type: 'string' },
     contactPhone: { maxLength: 40, minLength: 3, type: 'string' },
@@ -348,6 +353,8 @@ export function createServer(options: ServerOptions = {}) {
     },
   });
   const accessStore = options.accessStore ?? new AccessStore();
+  const garageStore: GarageOnboardingStore = options.garageStore ?? accessStore;
+  if (garageStore.close) app.addHook('onClose', async () => garageStore.close?.());
   const favoriteStore: FavoriteStore = options.favoriteStore ?? accessStore;
   if (favoriteStore.close) app.addHook('onClose', async () => favoriteStore.close?.());
   const repairRequestStore: RepairRequestStore = options.repairRequestStore ?? accessStore;
@@ -716,9 +723,10 @@ export function createServer(options: ServerOptions = {}) {
   });
 
   app.get('/api/me/garages', async (request, reply) => {
+    reply.header('cache-control', 'private, no-store');
     try {
       const principal = requirePrincipal(request);
-      return { garages: accessStore.listOwnedWorkshops(principal) };
+      return { garages: await garageStore.listOwnedWorkshops(principal) };
     } catch (error) {
       return errorResponse(error, reply);
     }
@@ -876,7 +884,9 @@ export function createServer(options: ServerOptions = {}) {
       if (!query.name?.trim() || !query.placeId?.trim()) {
         throw new AccessError(400, 'Name and placeId are required for duplicate checks');
       }
-      return { candidates: accessStore.listPublicDuplicateCandidates(query.name, query.placeId) };
+      return {
+        candidates: await garageStore.listPublicDuplicateCandidates(query.name, query.placeId),
+      };
     } catch (error) {
       return errorResponse(error, reply);
     }
@@ -901,7 +911,7 @@ export function createServer(options: ServerOptions = {}) {
       try {
         const principal = requirePrincipal(request, true);
         const body = request.body as { consentVersion: string; profile: WorkshopProfileInput };
-        const workshop = accessStore.createWorkshopRegistration(
+        const workshop = await garageStore.createWorkshopRegistration(
           principal,
           body.profile,
           body.consentVersion,
@@ -919,7 +929,8 @@ export function createServer(options: ServerOptions = {}) {
     try {
       const principal = requirePrincipal(request);
       const params = request.params as { garageId: string };
-      return accessStore.getPrivateWorkshop(principal, params.garageId);
+      reply.header('cache-control', 'private, no-store');
+      return await garageStore.getPrivateWorkshop(principal, params.garageId);
     } catch (error) {
       return errorResponse(error, reply);
     }
@@ -932,7 +943,7 @@ export function createServer(options: ServerOptions = {}) {
       try {
         const principal = requirePrincipal(request, true);
         const params = request.params as { garageId: string };
-        accessStore.updateWorkshopProfile(
+        await garageStore.updateWorkshopProfile(
           principal,
           params.garageId,
           request.body as WorkshopProfileInput,
@@ -948,7 +959,7 @@ export function createServer(options: ServerOptions = {}) {
     try {
       const principal = requirePrincipal(request, true);
       const params = request.params as { garageId: string };
-      accessStore.submitWorkshopForReview(principal, params.garageId);
+      await garageStore.submitWorkshopForReview(principal, params.garageId);
       return reply.code(204).send();
     } catch (error) {
       return errorResponse(error, reply);
@@ -1294,7 +1305,7 @@ export function createServer(options: ServerOptions = {}) {
           consentVersion: string;
           profile: WorkshopProfileInput;
         };
-        const workshop = accessStore.createAssistedWorkshop(
+        const workshop = await garageStore.createAssistedWorkshop(
           principal,
           body.applicantUserId,
           body.profile,
@@ -1335,7 +1346,12 @@ export function createServer(options: ServerOptions = {}) {
           decision: 'published' | 'rejected' | 'suspended';
           verification: VerificationChecklist;
         };
-        accessStore.reviewWorkshop(principal, params.garageId, body.decision, body.verification);
+        await garageStore.reviewWorkshop(
+          principal,
+          params.garageId,
+          body.decision,
+          body.verification,
+        );
         return reply.code(204).send();
       } catch (error) {
         return errorResponse(error, reply);

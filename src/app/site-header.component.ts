@@ -22,6 +22,8 @@ import { IconComponent } from './ui/icon.component';
 })
 export class SiteHeaderComponent {
   readonly compact = input(false);
+  readonly smallLogo = input(false);
+  readonly loginReturnTo = input<string>();
   readonly active = input<'search' | 'request' | undefined>();
   protected readonly account = inject(AccountSessionService);
   protected readonly accountPanel = signal<'account' | 'notifications' | null>(null);
@@ -78,6 +80,6 @@ export class SiteHeaderComponent {
   }
 
   protected loginUrl(register = false): string {
-    return `/auth/login?returnTo=${encodeURIComponent(this.language.link('request'))}${register ? '&prompt=create' : ''}`;
+    return `/auth/login?returnTo=${encodeURIComponent(this.loginReturnTo() ?? this.language.link('request'))}${register ? '&prompt=create' : ''}`;
   }
 }

@@ -63,6 +63,14 @@ Erlaubte zentrale Zustände:
 
 Alle Zustandsübergänge sind transaktional. Der Fachservice prüft erlaubten Vorgänger, schreibt die Änderung und fügt im selben Commit ein `ModerationEvent` oder Outbox-Ereignis ein. Wiederholung darf keinen zweiten Kontakt oder eine zweite Mail erzeugen.
 
+## Manuelle Betriebsadresse
+
+`workshop.business_address` enthält die manuell eingegebene vollständige Adresse oder eine
+nachvollziehbare Standortbeschreibung inklusive Ort. Bestandsprofile dürfen noch keine Adresse
+haben. Der Wert ist getrennt von `place_id` und `location_point`, wird im privaten Profil gespeichert
+und ist derzeit nicht Teil der öffentlichen View. Weder Adresse noch Ortszuordnung erzeugen
+automatisch einen bestätigten Werkstattpunkt. Siehe [Aufnahme #61](../design/ONBOARDING-61.md).
+
 ## Geosuche und Relevanz
 
 `Place.point` und die Workshopposition verwenden `geography(Point,4326)` mit GiST-Index. Für ein oder mehrere `SearchArea`-Objekte gilt:

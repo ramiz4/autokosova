@@ -1,0 +1,403 @@
+<main class="onboarding-page min-h-screen text-ink">
+  <div class="relative z-40 bg-white shadow-sm shadow-blue-900/5">
+    <app-site-header
+      [compact]="true"
+      [smallLogo]="true"
+      [loginReturnTo]="language.link('onboarding')"
+    />
+  </div>
+  <section class="onboarding-hero relative" aria-labelledby="onboarding-hero-title">
+    <div
+      class="relative mx-auto flex max-w-[1200px] items-center justify-between gap-10 px-5 pt-6 pb-12 sm:px-8"
+    >
+      <div class="max-w-[700px]">
+        <h1
+          id="onboarding-hero-title"
+          class="text-3xl leading-[1.12] font-extrabold tracking-tight sm:text-4xl"
+        >
+          {{ copy.hero }}<br /><span class="text-brand">{{ copy.heroAccent }}</span>
+        </h1>
+        <p class="mt-3 max-w-xl text-sm text-slate-600 sm:text-base">{{ copy.heroIntro }}</p>
+      </div>
+      <div
+        class="hidden shrink-0 items-center gap-3 rounded-2xl border border-white/35 bg-slate-800/70 p-4 text-white shadow-xl backdrop-blur-sm lg:flex"
+      >
+        <span class="flex size-12 items-center justify-center rounded-full bg-brand"
+          ><app-icon name="shield" class="size-7"
+        /></span>
+        <p class="text-sm font-semibold">
+          {{ copy.badge }}<br /><span class="font-normal">{{ copy.badgeDetail }}</span>
+        </p>
+      </div>
+    </div>
+  </section>
+  <div
+    class="relative mx-auto -mt-7 grid max-w-[1200px] items-start gap-5 px-4 pb-16 sm:px-8 lg:grid-cols-[minmax(0,2.05fr)_minmax(0,1fr)]"
+  >
+    <section
+      class="min-w-0 rounded-2xl border border-white bg-white p-5 shadow-xl shadow-blue-900/5 sm:p-8"
+      aria-labelledby="form-title"
+    >
+      <p class="text-xs font-bold tracking-wider text-brand uppercase">{{ copy.eyebrow }}</p>
+      <h2
+        id="form-title"
+        class="mt-2 text-2xl leading-tight font-extrabold tracking-tight sm:text-[28px]"
+      >
+        {{ copy.title }}
+      </h2>
+      <p class="mt-2 text-sm leading-relaxed text-slate-600">{{ copy.intro }}</p>
+      @if (owned.length) {
+        <details class="mt-5 rounded-xl border border-blue-100 bg-blue-50/40 px-3 text-sm">
+          <summary class="min-h-11 py-3 font-semibold">{{ copy.ownDrafts }}</summary>
+          @for (garage of owned; track garage.id) {
+            <button
+              type="button"
+              class="mb-2 flex min-h-11 w-full items-center justify-between gap-3 rounded-lg bg-white p-3 text-left hover:bg-blue-50"
+              [disabled]="sending || loading"
+              (click)="open(garage.id)"
+            >
+              <span class="break-all">{{ garage.name }}</span
+              ><span class="text-brand">{{ copy.open }}</span>
+            </button>
+          }
+        </details>
+      }
+      <form #formElement class="mt-6 space-y-6" (ngSubmit)="submit()" novalidate>
+        <fieldset
+          class="onboarding-section"
+          [disabled]="sending || loading || publicationState === 'suspended'"
+        >
+          <legend class="sr-only">{{ copy.basics }}</legend>
+          <div class="mb-5 flex items-start gap-3">
+            <span class="step-number">1</span>
+            <div>
+              <h3 class="text-base font-bold">{{ copy.basics }}</h3>
+              <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ copy.basicsHelp }}</p>
+            </div>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label for="garage-name">{{ copy.name }} <span class="text-rose-600">*</span></label
+              ><input
+                id="garage-name"
+                name="name"
+                [(ngModel)]="form.name"
+                [placeholder]="copy.namePlaceholder"
+                maxlength="160"
+                required
+                [attr.aria-invalid]="!!errors['name']"
+                aria-describedby="name-error"
+              />
+              <p id="name-error" class="field-error">{{ errors['name'] }}</p>
+            </div>
+            <div>
+              <label for="garage-place">{{ copy.place }} <span class="text-rose-600">*</span></label
+              ><select
+                id="garage-place"
+                name="placeId"
+                [(ngModel)]="form.placeId"
+                (ngModelChange)="addressChanged()"
+                required
+                [attr.aria-invalid]="!!errors['placeId']"
+                aria-describedby="place-error"
+              >
+                <option value="">{{ copy.choose }}</option>
+                @for (place of places; track place.id) {
+                  <option [value]="place.id">{{ place.label }}</option>
+                }
+              </select>
+              <p id="place-error" class="field-error">{{ errors['placeId'] }}</p>
+            </div>
+          </div>
+          <div class="mt-4">
+            <label for="garage-street"
+              >{{ copy.address }} <span class="text-rose-600">*</span></label
+            ><input
+              id="garage-street"
+              name="address"
+              [(ngModel)]="form.address"
+              (ngModelChange)="addressChanged()"
+              [placeholder]="copy.directionsPlaceholder"
+              maxlength="500"
+              autocomplete="street-address"
+              required
+              [attr.aria-invalid]="!!errors['street']"
+              aria-describedby="street-error"
+            />
+            <p id="street-error" class="field-error">{{ errors['street'] }}</p>
+          </div>
+          <div class="mt-4 flex items-start gap-2 text-xs leading-relaxed text-slate-600">
+            <app-icon name="pin" class="mt-0.5 size-4 text-brand" />
+            <p>
+              <strong class="font-semibold text-brand-dark">{{
+                locationVerified ? copy.locationChecked : copy.locationPending
+              }}</strong
+              ><br />{{ copy.locationHelp }}
+            </p>
+          </div>
+        </fieldset>
+        <fieldset
+          class="onboarding-section"
+          [disabled]="sending || loading || publicationState === 'suspended'"
+        >
+          <legend class="sr-only">{{ copy.contact }}</legend>
+          <div class="mb-5 flex items-start gap-3">
+            <span class="step-number">2</span>
+            <div>
+              <h3 class="text-base font-bold">{{ copy.contact }}</h3>
+              <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ copy.contactHelp }}</p>
+            </div>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label for="garage-person"
+                >{{ copy.person }} <span class="text-rose-600">*</span></label
+              ><input
+                id="garage-person"
+                name="contactPerson"
+                [(ngModel)]="form.contactPerson"
+                maxlength="120"
+                required
+                autocomplete="name"
+                [attr.aria-invalid]="!!errors['contactPerson']"
+                aria-describedby="person-error"
+              />
+              <p id="person-error" class="field-error">{{ errors['contactPerson'] }}</p>
+            </div>
+            <div>
+              <label for="garage-phone">{{ copy.phone }} <span class="text-rose-600">*</span></label
+              ><input
+                id="garage-phone"
+                name="contactPhone"
+                [(ngModel)]="form.contactPhone"
+                type="tel"
+                maxlength="40"
+                required
+                autocomplete="tel"
+                [attr.aria-invalid]="!!errors['contactPhone']"
+                aria-describedby="phone-error"
+              />
+              <p id="phone-error" class="field-error">{{ errors['contactPhone'] }}</p>
+            </div>
+          </div>
+          <div class="mt-4">
+            <label for="garage-public-phone">{{ copy.publicPhone }}</label
+            ><input
+              id="garage-public-phone"
+              name="publicPhone"
+              [(ngModel)]="form.publicPhone"
+              type="tel"
+              maxlength="40"
+              [attr.aria-invalid]="!!errors['publicPhone']"
+              aria-describedby="public-phone-error"
+            />
+            <p id="public-phone-error" class="field-error">{{ errors['publicPhone'] }}</p>
+          </div>
+        </fieldset>
+        <fieldset
+          class="onboarding-section"
+          [disabled]="sending || loading || publicationState === 'suspended'"
+        >
+          <legend class="sr-only">{{ copy.capabilities }}</legend>
+          <div class="mb-5 flex items-start gap-3">
+            <span class="step-number">3</span>
+            <div>
+              <h3 class="text-base font-bold">{{ copy.capabilities }}</h3>
+              <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ copy.capabilitiesHelp }}</p>
+            </div>
+          </div>
+          <div class="grid gap-5 sm:grid-cols-2">
+            <div>
+              <app-multi-select
+                controlId="garage-services"
+                [label]="copy.services"
+                [options]="services"
+                [(values)]="form.serviceCategoryIds"
+                [required]="true"
+                [invalid]="!!errors['serviceCategoryIds']"
+                [disabled]="sending || loading"
+              />
+              <p class="field-error">{{ errors['serviceCategoryIds'] }}</p>
+            </div>
+            <div>
+              <app-multi-select
+                controlId="garage-makes"
+                [label]="copy.makes"
+                [options]="makes"
+                [(values)]="form.vehicleMakeIds"
+                [disabled]="sending || loading"
+              />
+              <p class="mt-2 text-xs leading-relaxed text-slate-500">{{ copy.brandsHelp }}</p>
+            </div>
+            <div>
+              <app-multi-select
+                controlId="garage-languages"
+                [label]="copy.languages"
+                [options]="options('languages')"
+                [(values)]="form.languages"
+                [required]="true"
+                [invalid]="!!errors['languages']"
+                [disabled]="sending || loading"
+              />
+              <p class="field-error">{{ errors['languages'] }}</p>
+            </div>
+            <div>
+              <app-multi-select
+                controlId="garage-specializations"
+                [label]="copy.specializations"
+                [options]="options('selfReportedSpecializations')"
+                [(values)]="form.selfReportedSpecializations"
+                [disabled]="sending || loading"
+              />
+              <p class="mt-2 text-xs leading-relaxed text-slate-500">
+                {{ copy.specializationHelp }}
+              </p>
+            </div>
+          </div>
+        </fieldset>
+        @if (!garageId) {
+          <label class="flex min-h-11 items-start gap-3 text-xs leading-relaxed text-slate-600"
+            ><input
+              class="mt-0.5 size-5 shrink-0 accent-brand"
+              [(ngModel)]="consentAccepted"
+              name="consent"
+              type="checkbox"
+              [disabled]="sending"
+              [attr.aria-invalid]="!!errors['consent']"
+            /><span>{{ copy.consent }}</span></label
+          >
+        }
+        @if (needsLogin) {
+          <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm">
+            <p>{{ copy.signIn }}</p>
+            <div class="mt-2 flex flex-wrap gap-3">
+              <a
+                [href]="loginUrl"
+                target="_blank"
+                rel="noopener"
+                class="inline-flex min-h-11 items-center font-semibold text-brand underline"
+                >{{ copy.login }}</a
+              ><button
+                type="button"
+                class="min-h-11 text-brand underline"
+                (click)="refreshSession()"
+              >
+                {{ copy.refresh }}
+              </button>
+            </div>
+          </div>
+        }
+        @if (message) {
+          <p class="rounded-xl bg-blue-50 p-4 text-sm leading-relaxed" role="status">
+            {{ message }}
+          </p>
+        }
+        @if (garageId) {
+          <p class="text-sm font-semibold text-brand-dark">{{ stateLabel }}</p>
+        }
+        <button
+          type="submit"
+          class="flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white shadow-md shadow-blue-600/20 transition hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-50"
+          [disabled]="sending || loading || publicationState === 'suspended'"
+        >
+          <app-icon name="pencil" class="size-4" />{{
+            sending ? copy.saving : garageId ? copy.update : copy.save
+          }}<app-icon name="arrow" class="size-5" />
+        </button>
+        @if (garageId) {
+          <div class="flex flex-wrap gap-3 text-sm">
+            <button
+              type="button"
+              class="min-h-11 rounded-lg border border-blue-200 px-3 text-brand"
+              [disabled]="sending || loading"
+              (click)="open(garageId)"
+            >
+              {{ copy.reload }}
+            </button>
+            @if (publicationState === 'draft' || publicationState === 'rejected') {
+              <button
+                type="button"
+                class="min-h-11 rounded-lg border border-blue-200 px-3 text-brand disabled:opacity-50"
+                [disabled]="sending || !unchanged"
+                (click)="submitForReview()"
+              >
+                {{ copy.submit }}
+              </button>
+            }
+            <button
+              type="button"
+              class="min-h-11 px-2 text-brand underline"
+              [disabled]="sending || loading"
+              (click)="reset()"
+            >
+              {{ copy.newDraft }}
+            </button>
+          </div>
+        }
+        @if (publicationState !== 'published') {
+          <p class="flex items-center justify-center gap-1.5 text-center text-xs text-slate-500">
+            <app-icon name="shield" class="size-3.5" />{{ copy.privateNote }}
+          </p>
+        }
+      </form>
+    </section>
+    <aside class="space-y-4" [attr.aria-label]="copy.nextTitle">
+      <section class="onboarding-info">
+        <h2 class="text-lg font-bold tracking-tight">{{ copy.nextTitle }}</h2>
+        <p class="mt-2 text-sm leading-relaxed text-slate-500">{{ copy.nextIntro }}</p>
+        <ol class="mt-6 space-y-6">
+          @for (
+            step of [
+              { title: copy.step1, body: copy.step1Help },
+              { title: copy.step2, body: copy.step2Help },
+              { title: copy.step3, body: copy.step3Help },
+            ];
+            track $index
+          ) {
+            <li class="flex gap-4">
+              <span class="step-number">{{ $index + 1 }}</span>
+              <div>
+                <h3 class="text-sm font-bold">{{ step.title }}</h3>
+                <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ step.body }}</p>
+              </div>
+            </li>
+          }
+        </ol>
+      </section>
+      <section class="onboarding-info">
+        <h2 class="text-lg font-bold tracking-tight">{{ copy.why }}</h2>
+        <ul class="mt-5 space-y-5">
+          @for (
+            benefit of [
+              { icon: 'search', title: copy.why1, body: copy.why1Help },
+              { icon: 'badge-check', title: copy.why2, body: copy.why2Help },
+              { icon: 'info', title: copy.why3, body: copy.why3Help },
+            ];
+            track $index
+          ) {
+            <li class="flex items-start gap-3">
+              <span
+                class="flex size-11 shrink-0 items-center justify-center rounded-full bg-blue-50 text-brand"
+                ><app-icon [name]="$any(benefit.icon)" class="size-6"
+              /></span>
+              <div>
+                <h3 class="text-sm font-bold">{{ benefit.title }}</h3>
+                <p class="mt-1 text-xs leading-relaxed text-slate-500">{{ benefit.body }}</p>
+              </div>
+            </li>
+          }
+        </ul>
+      </section>
+      <section class="onboarding-info flex items-start gap-3">
+        <span
+          class="flex size-12 shrink-0 items-center justify-center rounded-full bg-blue-50 text-brand"
+          ><app-icon name="shield" class="size-8"
+        /></span>
+        <div>
+          <h2 class="text-sm font-bold text-brand">{{ copy.privacy }}</h2>
+          <p class="mt-2 text-xs leading-relaxed text-slate-500">{{ copy.privacyHelp }}</p>
+        </div>
+      </section>
+    </aside>
+  </div>
+</main>

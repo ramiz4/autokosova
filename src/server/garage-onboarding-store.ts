@@ -1,0 +1,334 @@
+import { randomUUID } from 'node:crypto';
+import pg from 'pg';
+import {
+  AccessError,
+  DuplicateWorkshopError,
+  type Principal,
+  type WorkshopConsent,
+} from './access';
+import {
+  validGarageProfile,
+  type WorkshopProfileInput,
+  type WorkshopPublicationState,
+  type VerificationChecklist,
+} from '../shared/garage-onboarding';
+
+export interface PrivateGarage {
+  readonly id: string;
+  readonly profile: WorkshopProfileInput;
+  readonly publicationState: WorkshopPublicationState;
+  readonly consentVersion: string;
+  readonly verification: VerificationChecklist;
+}
+type Maybe<T> = T | Promise<T>;
+export interface GarageOnboardingStore {
+  close?(): Promise<void>;
+  createWorkshopRegistration(
+    principal: Principal,
+    profile: WorkshopProfileInput,
+    consentVersion: string,
+  ): Maybe<{ id: string; publicationState: WorkshopPublicationState }>;
+  getPrivateWorkshop(principal: Principal, garageId: string): Maybe<PrivateGarage>;
+  listOwnedWorkshops(
+    principal: Principal,
+  ): Maybe<readonly { id: string; name: string; publicationState: WorkshopPublicationState }[]>;
+  updateWorkshopProfile(
+    principal: Principal,
+    garageId: string,
+    profile: WorkshopProfileInput,
+  ): Maybe<void>;
+  submitWorkshopForReview(principal: Principal, garageId: string): Maybe<void>;
+  reviewWorkshop(
+    principal: Principal,
+    garageId: string,
+    decision: 'published' | 'rejected' | 'suspended',
+    verification: VerificationChecklist,
+  ): Maybe<void>;
+  createAssistedWorkshop(
+    principal: Principal,
+    applicantUserId: string,
+    profile: WorkshopProfileInput,
+    consent: WorkshopConsent,
+  ): Maybe<{ id: string; publicationState: WorkshopPublicationState }>;
+  listPublicDuplicateCandidates(name: string, placeId: string): Maybe<readonly unknown[]>;
+}
+
+// Onboarding uses the existing relational workshop/point/membership model. No second position or
+// browser-side persistence is introduced. Each save and its audit event commit together.
+export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
+  private readonly pool: pg.Pool;
+  constructor(url: string) {
+    this.pool = new pg.Pool({ connectionString: url });
+  }
+  async close(): Promise<void> {
+    await this.pool.end();
+  }
+  async listPublicDuplicateCandidates(name: string, placeId: string) {
+    const result = await this.pool.query(
+      'SELECT id, name, place_id AS "placeId" FROM public_workshop_profile WHERE lower(trim(name)) = lower(trim($1)) AND place_id = $2 ORDER BY id',
+      [name, placeId],
+    );
+    return result.rows;
+  }
+  async createWorkshopRegistration(
+    principal: Principal,
+    profile: WorkshopProfileInput,
+    consentVersion: string,
+  ) {
+    return this.create(principal, principal.userId, profile, {
+      source: 'self_service',
+      version: consentVersion,
+    });
+  }
+  async createAssistedWorkshop(
+    principal: Principal,
+    applicantUserId: string,
+    profile: WorkshopProfileInput,
+    consent: WorkshopConsent,
+  ) {
+    if (!principal.roles.has('admin')) throw new AccessError(403, 'Admin access denied');
+    if (consent.source !== 'documented_support_request')
+      throw new AccessError(422, 'Documented consent required');
+    return this.create(principal, applicantUserId, profile, consent);
+  }
+  private async create(
+    principal: Principal,
+    owner: string,
+    profile: WorkshopProfileInput,
+    consent: WorkshopConsent,
+  ) {
+    if (!validGarageProfile(profile) || !consent.version.trim() || consent.version.length > 80)
+      throw new AccessError(422, 'Invalid garage profile');
+    return this.transaction(principal, async (client) => {
+      await this.ensureUser(client, owner);
+      // Serialize the same normalized name/place so retries cannot create a second draft.
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
+        profile.name.trim().toLowerCase() + ':' + profile.placeId,
+      ]);
+      const existing = await client.query(
+        `SELECT id FROM workshop WHERE lower(trim(name)) = lower(trim($1)) AND place_id = $2
+         UNION SELECT id FROM public_workshop_profile WHERE lower(trim(name)) = lower(trim($1)) AND place_id = $2`,
+        [profile.name, profile.placeId],
+      );
+      if (existing.rowCount) throw new DuplicateWorkshopError([]);
+      const id = randomUUID();
+      await client.query(
+        "INSERT INTO workshop (id, name, publication_state, created_by_user_id) VALUES ($1, $2, 'draft', $3)",
+        [id, profile.name, owner],
+      );
+      await client.query(
+        "INSERT INTO membership(user_id, workshop_id, role, state, granted_by) VALUES($1,$2,'owner','active',$3)",
+        [owner, id, principal.userId],
+      );
+      await this.writeProfile(client, id, profile);
+      await client.query(
+        'INSERT INTO workshop_consent(id,workshop_id,applicant_user_id,recorded_by_user_id,source,consent_version) VALUES($1,$2,$3,$4,$5,$6)',
+        [randomUUID(), id, owner, principal.userId, consent.source, consent.version],
+      );
+      await client.query(
+        "INSERT INTO workshop_verification(workshop_id,phone_state,contact_person_state,company_document_state,location_state) VALUES($1,'not_checked','not_checked','not_checked','not_checked')",
+        [id],
+      );
+      await this.audit(client, principal, id, 'workshop-registration-started');
+      return { id, publicationState: 'draft' as const };
+    });
+  }
+  async listOwnedWorkshops(principal: Principal) {
+    return this.transaction(principal, async (client) => {
+      const result = await client.query(
+        'SELECT w.id, w.name, w.publication_state AS "publicationState" FROM workshop w JOIN membership m ON m.workshop_id = w.id WHERE m.user_id=$1 AND m.state=\'active\' ORDER BY w.name,w.id',
+        [principal.userId],
+      );
+      return result.rows;
+    });
+  }
+  async getPrivateWorkshop(principal: Principal, id: string): Promise<PrivateGarage> {
+    return this.transaction(principal, async (client) => {
+      await this.authorize(client, principal, id);
+      return this.read(client, id);
+    });
+  }
+  async updateWorkshopProfile(
+    principal: Principal,
+    id: string,
+    profile: WorkshopProfileInput,
+  ): Promise<void> {
+    await this.transaction(principal, async (client) => {
+      await this.authorize(client, principal, id);
+      const existing = await this.read(client, id);
+      if (existing.publicationState === 'suspended') throw new AccessError(409, 'Suspended garage');
+      if (!validGarageProfile(profile, existing.profile))
+        throw new AccessError(422, 'Invalid garage profile');
+      const changed =
+        existing.profile.placeId !== profile.placeId ||
+        existing.profile.address !== profile.address ||
+        JSON.stringify(existing.profile.locationPoint) !== JSON.stringify(profile.locationPoint);
+      await this.writeProfile(client, id, profile);
+      if (changed)
+        await client.query(
+          "UPDATE workshop_verification SET location_state='not_checked', checked_at=NULL, checked_by_user_id=NULL WHERE workshop_id=$1",
+          [id],
+        );
+      await client.query(
+        "UPDATE workshop SET publication_state=CASE WHEN publication_state='pending_review' THEN 'draft' ELSE publication_state END WHERE id=$1",
+        [id],
+      );
+      await this.audit(client, principal, id, 'workshop-profile-updated');
+    });
+  }
+  async submitWorkshopForReview(principal: Principal, id: string): Promise<void> {
+    await this.transaction(principal, async (client) => {
+      await this.authorize(client, principal, id);
+      const garage = await this.read(client, id);
+      if (!validGarageProfile(garage.profile, garage.profile))
+        throw new AccessError(422, 'Invalid garage profile');
+      if (!['draft', 'rejected'].includes(garage.publicationState))
+        throw new AccessError(409, 'Invalid garage state');
+      await client.query("UPDATE workshop SET publication_state='pending_review' WHERE id=$1", [
+        id,
+      ]);
+      await this.audit(client, principal, id, 'workshop-submitted');
+    });
+  }
+  async reviewWorkshop(
+    principal: Principal,
+    id: string,
+    decision: 'published' | 'rejected' | 'suspended',
+    verification: VerificationChecklist,
+  ): Promise<void> {
+    if (!principal.roles.has('admin')) throw new AccessError(403, 'Admin access denied');
+    await this.transaction(principal, async (client) => {
+      await this.authorize(client, principal, id);
+      const garage = await this.read(client, id);
+      const valid =
+        (garage.publicationState === 'pending_review' &&
+          ['published', 'rejected'].includes(decision)) ||
+        (garage.publicationState === 'published' && decision === 'suspended');
+      if (!valid) throw new AccessError(409, 'Invalid garage state');
+      await client.query('UPDATE workshop SET publication_state=$2 WHERE id=$1', [id, decision]);
+      await client.query(
+        'UPDATE workshop_verification SET phone_state=$2,contact_person_state=$3,company_document_state=$4,location_state=$5,checked_by_user_id=$6,checked_at=now() WHERE workshop_id=$1',
+        [
+          id,
+          verification.phone,
+          verification.contactPerson,
+          verification.companyDocument,
+          verification.location,
+          principal.userId,
+        ],
+      );
+      await this.audit(client, principal, id, 'workshop-' + decision);
+    });
+  }
+  private async authorize(client: pg.PoolClient, principal: Principal, id: string): Promise<void> {
+    // Locks prevent membership revocation or another profile update from racing a save.
+    const garage = await client.query('SELECT id FROM workshop WHERE id=$1 FOR UPDATE', [id]);
+    if (!garage.rowCount) throw new AccessError(403, 'Garage access denied');
+    if (principal.roles.has('admin')) return;
+    const membership = await client.query(
+      "SELECT user_id FROM membership WHERE user_id=$1 AND workshop_id=$2 AND state='active' AND role IN ('owner','editor') FOR SHARE",
+      [principal.userId, id],
+    );
+    if (!membership.rowCount) throw new AccessError(403, 'Garage access denied');
+  }
+  private async read(client: pg.PoolClient, id: string): Promise<PrivateGarage> {
+    const result = await client.query(
+      `SELECT w.id, w.publication_state AS "publicationState", c.consent_version AS "consentVersion",
+      jsonb_build_object('phone',v.phone_state,'contactPerson',v.contact_person_state,'companyDocument',v.company_document_state,'location',v.location_state) AS verification,
+      jsonb_strip_nulls(jsonb_build_object('name',w.name,'placeId',w.place_id,'address',w.business_address,'contactPerson',w.contact_person,'contactPhone',w.contact_phone,'publicPhone',w.public_phone,'contactEmail',w.contact_email,'description',w.description,'languages',w.languages,'selfReportedSpecializations',w.self_reported_specializations,
+      'serviceCategoryIds',ARRAY(SELECT service_category_id FROM workshop_service_category WHERE workshop_id=w.id ORDER BY service_category_id),
+      'vehicleMakeIds',ARRAY(SELECT vehicle_make_id FROM workshop_vehicle_make WHERE workshop_id=w.id ORDER BY vehicle_make_id),
+      'locationPoint',CASE WHEN w.location_point IS NOT NULL THEN jsonb_build_object('latitude',ST_Y(w.location_point::geometry),'longitude',ST_X(w.location_point::geometry)) END)) AS profile
+      FROM workshop w LEFT JOIN workshop_consent c ON c.workshop_id=w.id LEFT JOIN workshop_verification v ON v.workshop_id=w.id WHERE w.id=$1`,
+      [id],
+    );
+    if (!result.rows[0]) throw new AccessError(404, 'Garage not found');
+    return result.rows[0];
+  }
+  private async writeProfile(
+    client: pg.PoolClient,
+    id: string,
+    profile: WorkshopProfileInput,
+  ): Promise<void> {
+    await client.query(
+      `UPDATE workshop SET name=$2,place_id=$3,business_address=$4,contact_person=$5,contact_phone=$6,public_phone=$7,contact_email=$8,description=$9,languages=$10,self_reported_specializations=$11,
+      location_source=CASE WHEN $12::double precision IS NULL THEN NULL WHEN location_point IS NOT DISTINCT FROM ST_SetSRID(ST_MakePoint($13,$12),4326)::geography THEN location_source ELSE 'self_reported' END,
+      location_point=CASE WHEN $12::double precision IS NULL THEN NULL ELSE ST_SetSRID(ST_MakePoint($13,$12),4326)::geography END WHERE id=$1`,
+      [
+        id,
+        profile.name.trim(),
+        profile.placeId,
+        profile.address ?? null,
+        profile.contactPerson.trim(),
+        profile.contactPhone.trim(),
+        profile.publicPhone ?? null,
+        profile.contactEmail ?? null,
+        profile.description ?? null,
+        profile.languages,
+        profile.selfReportedSpecializations,
+        profile.locationPoint?.latitude ?? null,
+        profile.locationPoint?.longitude ?? null,
+      ],
+    );
+    await client.query(
+      'DELETE FROM workshop_service_category WHERE workshop_id=$1 AND NOT(service_category_id=ANY($2::text[]))',
+      [id, profile.serviceCategoryIds],
+    );
+    await client.query(
+      'INSERT INTO workshop_service_category(workshop_id,service_category_id) SELECT $1,unnest($2::text[]) ON CONFLICT DO NOTHING',
+      [id, profile.serviceCategoryIds],
+    );
+    await client.query(
+      'DELETE FROM workshop_vehicle_make WHERE workshop_id=$1 AND NOT(vehicle_make_id=ANY($2::text[]))',
+      [id, profile.vehicleMakeIds],
+    );
+    await client.query(
+      'INSERT INTO workshop_vehicle_make(workshop_id,vehicle_make_id) SELECT $1,unnest($2::text[]) ON CONFLICT DO NOTHING',
+      [id, profile.vehicleMakeIds],
+    );
+  }
+  private async ensureUser(client: pg.PoolClient, id: string): Promise<void> {
+    await client.query(
+      "INSERT INTO app_user(id,oidc_subject,status) VALUES($1,$1,'active') ON CONFLICT DO NOTHING",
+      [id],
+    );
+    const active = await client.query(
+      "SELECT id FROM app_user WHERE id=$1 AND status='active' FOR SHARE",
+      [id],
+    );
+    if (!active.rowCount) throw new AccessError(403, 'Account unavailable');
+  }
+  private async audit(
+    client: pg.PoolClient,
+    principal: Principal,
+    id: string,
+    event: string,
+  ): Promise<void> {
+    await client.query(
+      "INSERT INTO moderation_event(id,actor_user_id,subject_type,subject_id,event_type) VALUES($1,$2,'workshop',$3,$4)",
+      [randomUUID(), principal.userId, id, event],
+    );
+  }
+  private async transaction<T>(
+    principal: Principal,
+    action: (client: pg.PoolClient) => Promise<T>,
+  ): Promise<T> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        "SELECT set_config('app.user_id',$1,true),set_config('app.system_role',$2,true)",
+        [principal.userId, principal.roles.has('admin') ? 'admin' : 'customer'],
+      );
+      await this.ensureUser(client, principal.userId);
+      const result = await action(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+}

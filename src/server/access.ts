@@ -1,3 +1,15 @@
+import type {
+  WorkshopPublicationState,
+  WorkshopLocationPoint,
+  WorkshopProfileInput,
+  VerificationChecklist,
+} from '../shared/garage-onboarding';
+export type {
+  WorkshopPublicationState,
+  WorkshopLocationPoint,
+  WorkshopProfileInput,
+  VerificationChecklist,
+} from '../shared/garage-onboarding';
 import { randomUUID } from 'node:crypto';
 import type { RepairRequestInput } from '../shared/repair-request';
 import { SERVICE_CATEGORY_LABELS, VEHICLE_MAKE_LABELS } from '../shared/catalog';
@@ -52,14 +64,7 @@ import {
 
 export type SystemRole = 'admin' | 'customer' | 'moderator';
 export type MembershipRole = 'editor' | 'owner';
-export type WorkshopPublicationState =
-  'draft' | 'pending_review' | 'published' | 'rejected' | 'suspended';
 export type VerificationCheckState = 'not_checked' | 'verified' | 'failed';
-
-export interface WorkshopLocationPoint {
-  readonly latitude: number;
-  readonly longitude: number;
-}
 
 export interface Principal {
   readonly userId: string;
@@ -74,32 +79,9 @@ export interface FileGrant {
   readonly grantId: string;
 }
 
-export interface WorkshopProfileInput {
-  readonly contactEmail?: string;
-  readonly contactPerson: string;
-  readonly contactPhone: string;
-  readonly description?: string;
-  readonly languages: readonly string[];
-  /** A self-reported point is private until an administrator confirms the location check. */
-  readonly locationPoint?: WorkshopLocationPoint;
-  readonly name: string;
-  readonly placeId: string;
-  readonly publicPhone?: string;
-  readonly selfReportedSpecializations: readonly string[];
-  readonly serviceCategoryIds: readonly string[];
-  readonly vehicleMakeIds: readonly string[];
-}
-
 export interface WorkshopConsent {
   readonly source: 'self_service' | 'documented_support_request';
   readonly version: string;
-}
-
-export interface VerificationChecklist {
-  readonly companyDocument: VerificationCheckState;
-  readonly contactPerson: VerificationCheckState;
-  readonly location: VerificationCheckState;
-  readonly phone: VerificationCheckState;
 }
 
 export interface PublicWorkshopProfile {
@@ -1175,7 +1157,8 @@ export class AccessStore implements ReviewStore {
     if (!['draft', 'rejected'].includes(workshop.publicationState)) {
       throw new AccessError(409, 'Only a draft or rejected workshop can be submitted for review');
     }
-    this.validateProfile(workshop.profile);
+    if (!validGarageProfile(workshop.profile, workshop.profile))
+      throw new AccessError(422, 'Invalid garage profile');
     workshop.publicationState = 'pending_review';
     this.auditEvents.push({
       actorUserId: principal.userId,
@@ -1190,11 +1173,12 @@ export class AccessStore implements ReviewStore {
     if (workshop.publicationState === 'suspended') {
       throw new AccessError(409, 'A suspended workshop cannot be changed through self-service');
     }
-    this.validateProfile(profile);
-    const locationChanged = !sameLocationPoint(
-      workshop.profile.locationPoint,
-      profile.locationPoint,
-    );
+    if (!validGarageProfile(profile, workshop.profile))
+      throw new AccessError(422, 'Invalid garage profile');
+    const locationChanged =
+      workshop.profile.placeId !== profile.placeId ||
+      JSON.stringify(workshop.profile.address) !== JSON.stringify(profile.address) ||
+      !sameLocationPoint(workshop.profile.locationPoint, profile.locationPoint);
     workshop.profile = this.copyProfile(profile);
     if (locationChanged) {
       workshop.verification = { ...workshop.verification, location: 'not_checked' };
@@ -1600,6 +1584,9 @@ export class AccessStore implements ReviewStore {
   }
 
   private validateProfile(profile: WorkshopProfileInput) {
+    if (!validGarageProfile(profile)) {
+      throw new AccessError(422, 'Garage address or catalog selection is invalid');
+    }
     const requiredValues = [
       profile.name,
       profile.placeId,
@@ -1651,3 +1638,4 @@ function sameLocationPoint(
 function sameWorkshopName(left: string, right: string) {
   return left.trim().toLocaleLowerCase('de-DE') === right.trim().toLocaleLowerCase('de-DE');
 }
+import { validGarageProfile } from '../shared/garage-onboarding';

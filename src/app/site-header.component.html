@@ -18,7 +18,9 @@
         width="640"
         height="122"
         alt="AutoKosova"
-        class="site-logo block h-auto w-44 sm:w-52 xl:w-56"
+        [class]="
+          smallLogo() ? 'block h-auto w-32 sm:w-36' : 'site-logo block h-auto w-44 sm:w-52 xl:w-56'
+        "
       />
     </a>
     <nav
