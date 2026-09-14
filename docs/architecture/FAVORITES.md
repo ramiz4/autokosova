@@ -13,7 +13,9 @@ Alle Antworten sind privat und nicht cachebar. Schreibzugriffe benötigen eine e
 
 ## Oberfläche
 
-Das Herz zeigt den bestätigten Serverzustand, sperrt parallele Änderungen derselben Karte und meldet Fehler ohne falschen Speichererfolg. Die Speicherung verwendet keinen lokalen Browser-Speicher. Ein Neuladen oder eine weitere Sitzung desselben Kontos liest denselben Datenbestand.
+Das Herz zeigt den bestätigten Serverzustand, sperrt parallele Änderungen derselben Karte und meldet Fehler ohne falschen Speichererfolg. Die Speicherung verwendet keinen lokalen Browser-Speicher. Vor einem privaten Lesezugriff wird der öffentliche Sitzungsstatus geprüft; parallele Abfragen teilen denselben laufenden Request. Gäste rufen den privaten Favoriten-Endpunkt nicht auf. Toasts verschwinden nach 5 Sekunden, Hinweise zur Anmeldung und Fehler nach 8 Sekunden; erneute Meldungen setzen die Laufzeit zurück.
+
+Ein Neuladen oder eine weitere Sitzung desselben Kontos liest denselben Datenbestand.
 
 Die gemeinsame Navbar liest den echten Sitzungsstatus. Angemeldet erscheinen Glocke und Konto-Menü statt Login/Registrieren; Abmeldung erfolgt mit CSRF-Schutz. Die Glocke erklärt, dass Benachrichtigungen noch nicht verfügbar sind. Escape und Außenklick schließen die Menüs.
 

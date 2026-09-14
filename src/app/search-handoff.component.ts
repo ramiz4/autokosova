@@ -502,7 +502,7 @@ interface Area {
             type="button"
             class="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-slate-100 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             [attr.aria-label]="ui('favorites.dismiss')"
-            (click)="favorites.message.set(null)"
+            (click)="favorites.dismiss()"
           >
             <app-icon name="close" class="size-[18px]" />
           </button>

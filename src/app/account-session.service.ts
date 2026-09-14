@@ -5,8 +5,15 @@ export class AccountSessionService {
   readonly signedIn = signal(false);
   readonly busy = signal(false);
   private version = 0;
+  private refreshInFlight?: Promise<void>;
 
-  async refresh(): Promise<void> {
+  refresh(): Promise<void> {
+    return (this.refreshInFlight ??= this.readSession().finally(() => {
+      this.refreshInFlight = undefined;
+    }));
+  }
+
+  private async readSession(): Promise<void> {
     const version = ++this.version;
     try {
       const response = await fetch('/api/session', {

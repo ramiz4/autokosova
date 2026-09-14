@@ -1,8 +1,29 @@
+import { signal } from '@angular/core';
+import { AccountSessionService } from './account-session.service';
 import { TestBed } from '@angular/core/testing';
 import { FavoritesService } from './favorites.service';
 
-beforeEach(() => TestBed.configureTestingModule({ providers: [FavoritesService] }));
-afterEach(() => vi.unstubAllGlobals());
+let signedIn: ReturnType<typeof signal<boolean>>;
+beforeEach(() => {
+  signedIn = signal(true);
+  TestBed.configureTestingModule({
+    providers: [
+      FavoritesService,
+      {
+        provide: AccountSessionService,
+        useValue: {
+          signedIn,
+          refresh: vi.fn(async () => {}),
+          invalidate: () => signedIn.set(false),
+        },
+      },
+    ],
+  });
+});
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
 
 it('updates the saved state only after a successful account write and can remove it', async () => {
   const service = TestBed.inject(FavoritesService);
@@ -45,4 +66,48 @@ it('does not claim a favorite on a failed write and asks guests to sign in', asy
   await service.toggle('demo-garage');
   expect(service.state()).toBe('guest');
   expect(service.message()).toBe('signIn');
+});
+
+it('does not request private favorites when the confirmed session is a guest', async () => {
+  signedIn.set(false);
+  const request = vi.fn();
+  vi.stubGlobal('fetch', request);
+  const service = TestBed.inject(FavoritesService);
+  expect(await service.load()).toBe(false);
+  await service.toggle('demo-garage');
+  expect(request).not.toHaveBeenCalled();
+  expect(service.state()).toBe('guest');
+  expect(service.message()).toBe('signIn');
+});
+
+it('dismisses notifications automatically and gives each new message its full duration', async () => {
+  vi.useFakeTimers();
+  const service = TestBed.inject(FavoritesService);
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ garageIds: [] })))
+      .mockResolvedValue(new Response(null, { status: 204 })),
+  );
+  await service.load();
+  await service.toggle('demo-garage');
+  await vi.advanceTimersByTimeAsync(4000);
+  expect(service.message()).toBe('saved');
+  await service.toggle('demo-garage');
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(service.message()).toBe('removed');
+  await vi.advanceTimersByTimeAsync(4000);
+  expect(service.message()).toBeNull();
+  signedIn.set(false);
+  await service.load();
+  await service.toggle('demo-garage');
+  await vi.advanceTimersByTimeAsync(7999);
+  expect(service.message()).toBe('signIn');
+  await vi.advanceTimersByTimeAsync(1);
+  expect(service.message()).toBeNull();
+  await service.toggle('demo-garage');
+  service.dismiss();
+  expect(service.message()).toBeNull();
+  expect(vi.getTimerCount()).toBe(0);
 });

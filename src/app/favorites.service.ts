@@ -1,5 +1,5 @@
 import { AccountSessionService } from './account-session.service';
-import { Injectable, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 
 type FavoriteMessage = 'saved' | 'removed' | 'signIn' | 'error' | null;
 
@@ -9,10 +9,37 @@ export class FavoritesService {
   readonly garageIds = signal<ReadonlySet<string>>(new Set());
   readonly state = signal<'loading' | 'guest' | 'ready' | 'error'>('loading');
   readonly pending = signal<ReadonlySet<string>>(new Set());
-  readonly message = signal<FavoriteMessage>(null);
+  private readonly messageState = signal<FavoriteMessage>(null);
+  readonly message = this.messageState.asReadonly();
+  private dismissTimer?: ReturnType<typeof setTimeout>;
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => this.dismiss());
+  }
+
+  dismiss(): void {
+    clearTimeout(this.dismissTimer);
+    this.dismissTimer = undefined;
+    this.messageState.set(null);
+  }
+
+  private notify(message: Exclude<FavoriteMessage, null>): void {
+    this.dismiss();
+    this.messageState.set(message);
+    this.dismissTimer = setTimeout(
+      () => this.dismiss(),
+      message === 'saved' || message === 'removed' ? 5000 : 8000,
+    );
+  }
 
   async load(): Promise<boolean> {
     try {
+      await this.account.refresh();
+      if (!this.account.signedIn()) {
+        this.garageIds.set(new Set());
+        this.state.set('guest');
+        return false;
+      }
       const response = await fetch('/api/me/favorites', {
         credentials: 'same-origin',
         cache: 'no-store',
@@ -40,10 +67,10 @@ export class FavoritesService {
   async toggle(garageId: string): Promise<void> {
     if (this.pending().has(garageId)) return;
     this.pending.set(new Set([...this.pending(), garageId]));
-    this.message.set(null);
+    this.dismiss();
     try {
       if (this.state() !== 'ready' && !(await this.load())) {
-        this.message.set(this.state() === 'guest' ? 'signIn' : 'error');
+        this.notify(this.state() === 'guest' ? 'signIn' : 'error');
         return;
       }
       const saved = this.garageIds().has(garageId);
@@ -61,7 +88,7 @@ export class FavoritesService {
         this.garageIds.set(new Set());
         this.state.set('guest');
         this.account.invalidate();
-        this.message.set('signIn');
+        this.notify('signIn');
         return;
       }
       if (!response.ok) throw new Error();
@@ -69,9 +96,9 @@ export class FavoritesService {
       if (saved) next.delete(garageId);
       else next.add(garageId);
       this.garageIds.set(next);
-      this.message.set(saved ? 'removed' : 'saved');
+      this.notify(saved ? 'removed' : 'saved');
     } catch {
-      this.message.set('error');
+      this.notify('error');
     } finally {
       const pending = new Set(this.pending());
       pending.delete(garageId);
