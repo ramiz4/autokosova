@@ -1,0 +1,261 @@
+diff --git a/src/server/access.ts b/src/server/access.ts
+index 606c445..f743c7e 100644
+--- a/src/server/access.ts
++++ b/src/server/access.ts
+@@ -1,3 +1,10 @@
++import {
++  repairRequestSummary,
++  validRepairRequestPageOptions,
++  type RepairRequestPage,
++  type RepairRequestPageOptions,
++  type SavedRepairRequest,
++} from '../shared/saved-repair-request';
+ import type {
+   GaragePublicationState,
+   GarageLocationPoint,
+@@ -151,17 +158,7 @@ interface PrivateRepairRequest {
+   readonly ownerUserId: string;
+ }
+ 
+-export interface StoredRepairRequest {
+-  readonly areas: RepairRequestInput['areas'];
+-  readonly attachmentIds: readonly string[];
+-  readonly createdAt: string;
+-  readonly earliestDropoffOn: string;
+-  readonly id: string;
+-  readonly latestPickupOn: string;
+-  readonly serviceCategoryId: string;
+-  readonly symptom?: string;
+-  readonly vehicle?: RepairRequestInput['vehicle'];
+-}
++export type StoredRepairRequest = SavedRepairRequest;
+ 
+ interface Garage {
+   readonly consent: GarageConsent;
+@@ -799,6 +796,23 @@ export class AccessStore implements ReviewStore {
+     return transaction;
+   }
+ 
++  listRepairRequests(ownerUserId: string, options: RepairRequestPageOptions): RepairRequestPage {
++    if (!validRepairRequestPageOptions(options)) throw new AccessError(400, 'Invalid request page');
++    const own = [...this.repairRequests.values()]
++      .filter((request) => request.ownerUserId === ownerUserId)
++      .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
++    const cursorIndex = options.cursor ? own.findIndex((item) => item.id === options.cursor) : -1;
++    if (options.cursor && cursorIndex < 0) throw new AccessError(404, 'Request page unavailable');
++    const page = own.slice(cursorIndex + 1, cursorIndex + 1 + options.limit + 1);
++    const requests = page.slice(0, options.limit).map((item) =>
++      repairRequestSummary(this.toStoredRepairRequest(item)),
++    );
++    return {
++      requests,
++      nextCursor: page.length > options.limit ? requests[requests.length - 1].id : null,
++    };
++  }
++
+   getRepairRequest(userId: string, repairRequestId: string): StoredRepairRequest {
+     const request = this.repairRequests.get(repairRequestId);
+     if (!request || request.ownerUserId !== userId) {
+diff --git a/src/server/app.ts b/src/server/app.ts
+index 28eb63e..d6590ac 100644
+--- a/src/server/app.ts
++++ b/src/server/app.ts
+@@ -1,3 +1,4 @@
++import { parseRepairRequestPage } from './repair-request-list';
+ import type { FavoriteStore } from './favorites';
+ import { isAccountPagePath } from './account-profile';
+ import type { GarageOnboardingStore } from './garage-onboarding-store';
+@@ -156,7 +157,7 @@ const repairRequestBodySchema = {
+ function safeReturnTo(value: unknown): string {
+   if (typeof value !== 'string' || value.length > 2000) return '/';
+   const match = value.match(
+-    /^(\/(?:(?:sq|en)\/)?(?:profile|inquiry|anfrage|garages(?:\/[A-Za-z0-9_-]{1,128})?))(?:\?([^#]*))?$/,
++    /^(\/(?:(?:sq|en)\/)?(?:profile|inquiries|inquiry|anfrage|garages(?:\/[A-Za-z0-9_-]{1,128})?))(?:\?([^#]*))?$/,
+   );
+   if (!match) return '/';
+   const path = match[1].replace(/\/anfrage$/, '/inquiry');
+@@ -351,7 +352,7 @@ export function createServer(options: ServerOptions = {}) {
+       serializers: {
+         req: (request) => ({
+           method: request.method,
+-          url: request.url.split('?')[0],
++          url: request.url.split('?')[0].replace(/(\/api\/me\/repair-requests)\/[^/]+$/, '$1/:id'),
+         }),
+       },
+     },
+@@ -454,7 +455,7 @@ export function createServer(options: ServerOptions = {}) {
+     const sitemap = options.publicSiteUrl
+       ? `\nSitemap: ${siteUrl(options.publicSiteUrl, '/sitemap.xml')}`
+       : '';
+-    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /profile\nDisallow: /sq/profile\nDisallow: /en/profile\nDisallow: /inquiry\nDisallow: /sq/inquiry\nDisallow: /en/inquiry\nDisallow: /garages/new\nDisallow: /sq/garages/new\nDisallow: /en/garages/new\nDisallow: /garages$\nDisallow: /garages?\nDisallow: /sq/garages$\nDisallow: /sq/garages?\nDisallow: /en/garages$\nDisallow: /en/garages?\nDisallow: /suche\nDisallow: /werkstaetten${sitemap}\n`;
++    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /profile\nDisallow: /sq/profile\nDisallow: /en/profile\nDisallow: /inquiries\nDisallow: /sq/inquiries\nDisallow: /en/inquiries\nDisallow: /inquiry\nDisallow: /sq/inquiry\nDisallow: /en/inquiry\nDisallow: /garages/new\nDisallow: /sq/garages/new\nDisallow: /en/garages/new\nDisallow: /garages$\nDisallow: /garages?\nDisallow: /sq/garages$\nDisallow: /sq/garages?\nDisallow: /en/garages$\nDisallow: /en/garages?\nDisallow: /suche\nDisallow: /werkstaetten${sitemap}\n`;
+   });
+   app.get('/sitemap.xml', async (_request, reply) => {
+     if (!options.publicSiteUrl) {
+@@ -774,13 +775,34 @@ export function createServer(options: ServerOptions = {}) {
+     },
+   );
+ 
++  app.get('/api/me/repair-requests', async (request, reply) => {
++    try {
++      const principal = requirePrincipal(request);
++      const page = await repairRequestStore.listRepairRequests(
++        principal.userId,
++        parseRepairRequestPage(request.query),
++      );
++      // Expiry/revocation during an asynchronous store read must not release private data.
++      accessStore.getOwnAccount(principal);
++      return page;
++    } catch (error) {
++      if (error instanceof AccessError) return errorResponse(error, reply);
++      return reply.code(503).send({ error: 'Private repair requests unavailable' });
++    }
++  });
++
+   app.get('/api/me/repair-requests/:repairRequestId', async (request, reply) => {
+     try {
+       const principal = requirePrincipal(request);
+       const params = request.params as { repairRequestId: string };
+-      return await repairRequestStore.getRepairRequest(principal.userId, params.repairRequestId);
++      if (!/^[A-Za-z0-9_-]{1,128}$/.test(params.repairRequestId))
++        throw new AccessError(404, 'Private repair request not found');
++      const detail = await repairRequestStore.getRepairRequest(principal.userId, params.repairRequestId);
++      accessStore.getOwnAccount(principal);
++      return detail;
+     } catch (error) {
+-      return errorResponse(error, reply);
++      if (error instanceof AccessError) return errorResponse(error, reply);
++      return reply.code(503).send({ error: 'Private repair request unavailable' });
+     }
+   });
+ 
+diff --git a/src/server/repair-request-store.ts b/src/server/repair-request-store.ts
+index 1579971..c4b0c05 100644
+--- a/src/server/repair-request-store.ts
++++ b/src/server/repair-request-store.ts
+@@ -1,3 +1,9 @@
++import {
++  repairRequestSummary,
++  validRepairRequestPageOptions,
++  type RepairRequestPage,
++  type RepairRequestPageOptions,
++} from '../shared/saved-repair-request';
+ import { randomUUID } from 'node:crypto';
+ import pg from 'pg';
+ import { AccessError, type StoredRepairRequest } from './access';
+@@ -9,6 +15,10 @@ pg.types.setTypeParser(1082, (value: string) => value);
+ 
+ export interface RepairRequestStore {
+   close?(): Promise<void>;
++  listRepairRequests(
++    ownerUserId: string,
++    options: RepairRequestPageOptions,
++  ): RepairRequestPage | Promise<RepairRequestPage>;
+   createRepairRequest(
+     ownerUserId: string,
+     input: RepairRequestInput,
+@@ -140,6 +150,79 @@ export class PostgresRepairRequestStore implements RepairRequestStore {
+     }
+   }
+ 
++  async listRepairRequests(
++    ownerUserId: string,
++    options: RepairRequestPageOptions,
++  ): Promise<RepairRequestPage> {
++    if (!validRepairRequestPageOptions(options)) throw new AccessError(400, 'Invalid request page');
++    const client = await this.pool.connect();
++    try {
++      await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
++      await this.setPrincipal(client, ownerUserId);
++      if (options.cursor) {
++        const anchor = await client.query(
++          'SELECT id FROM repair_request WHERE owner_user_id = $1 AND id = $2',
++          [ownerUserId, options.cursor],
++        );
++        if (!anchor.rowCount) throw new AccessError(404, 'Request page unavailable');
++      }
++      // Resolve the cursor timestamp in SQL: JS Date would lose PostgreSQL microseconds.
++      // Both the anchor and every joined vehicle are explicitly owner-bound, in addition to RLS.
++      const result = await client.query<{
++        id: string;
++        created_at: Date;
++        service_category_id: string;
++        symptom: string | null;
++        areas: RepairRequestInput['areas'];
++        make_id: RepairRequestVehicle['makeId'] | null;
++        vehicle_class: RepairRequestVehicle['vehicleClass'] | null;
++        model: string | null;
++        manufacture_year: number | null;
++      }>(
++        `SELECT r.id, r.created_at, r.service_category_id, left(r.symptom, 160) AS symptom,
++                v.make_id, v.model, v.manufacture_year, v.vehicle_class,
++                COALESCE((SELECT jsonb_agg(jsonb_build_object(
++                  'placeId', a.place_id, 'radiusKm', a.radius_m / 1000
++                ) ORDER BY a.position) FROM request_search_area a
++                  WHERE a.repair_request_id = r.id), '[]'::jsonb) AS areas
++         FROM repair_request r
++         LEFT JOIN vehicle v ON v.id = r.vehicle_id AND v.owner_user_id = $1
++         WHERE r.owner_user_id = $1 AND ($2::text IS NULL OR (r.created_at, r.id) < (
++           SELECT c.created_at, c.id FROM repair_request c
++           WHERE c.owner_user_id = $1 AND c.id = $2
++         ))
++         ORDER BY r.created_at DESC, r.id DESC
++         LIMIT $3`,
++        [ownerUserId, options.cursor ?? null, options.limit + 1],
++      );
++      const requests = result.rows.slice(0, options.limit).map((row) =>
++        repairRequestSummary({
++          id: row.id,
++          createdAt: row.created_at.toISOString(),
++          serviceCategoryId: row.service_category_id,
++          symptom: row.symptom ?? undefined,
++          areas: row.areas,
++          vehicle: {
++            ...(row.make_id ? { makeId: row.make_id } : {}),
++            ...(row.vehicle_class ? { vehicleClass: row.vehicle_class } : {}),
++            ...(row.model ? { model: row.model } : {}),
++            ...(row.manufacture_year === null ? {} : { year: row.manufacture_year }),
++          },
++        }),
++      );
++      await client.query('COMMIT');
++      return {
++        requests,
++        nextCursor: result.rows.length > options.limit ? requests[requests.length - 1].id : null,
++      };
++    } catch (error) {
++      await client.query('ROLLBACK');
++      throw error;
++    } finally {
++      client.release();
++    }
++  }
++
+   async getRepairRequest(
+     ownerUserId: string,
+     repairRequestId: string,
+@@ -170,7 +253,7 @@ export class PostgresRepairRequestStore implements RepairRequestStore {
+         [request.id],
+       );
+       const vehicle = request.vehicle_id
+-        ? await this.getVehicle(client, request.vehicle_id)
++        ? await this.getVehicle(client, ownerUserId, request.vehicle_id)
+         : undefined;
+       await client.query('COMMIT');
+ 
+@@ -221,12 +304,12 @@ export class PostgresRepairRequestStore implements RepairRequestStore {
+     }
+   }
+ 
+-  private async getVehicle(client: pg.PoolClient, vehicleId: string) {
++  private async getVehicle(client: pg.PoolClient, ownerUserId: string, vehicleId: string) {
+     const result = await client.query<VehicleRow>(
+       `SELECT make_id, model, manufacture_year, engine_details, transmission_details, mileage_km, vehicle_class, fuel
+        FROM vehicle
+-       WHERE id = $1`,
+-      [vehicleId],
++       WHERE id = $1 AND owner_user_id = $2`,
++      [vehicleId, ownerUserId],
+     );
+     const vehicle = result.rows[0];
+     if (!vehicle) {

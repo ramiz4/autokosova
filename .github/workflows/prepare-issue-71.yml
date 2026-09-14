@@ -1,0 +1,27 @@
+name: Prepare issue 71 branch
+
+on:
+  push:
+    branches: [feat/71-my-inquiries]
+    paths:
+      - scripts/prepare-issue-71.mjs
+      - .github/issue-71.patch
+      - .github/workflows/prepare-issue-71.yml
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    if: github.repository == 'ramiz4/autokosova' && github.ref == 'refs/heads/feat/71-my-inquiries'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm install --global npm@11.19.0
+      - run: npm ci
+      - run: node scripts/prepare-issue-71.mjs
