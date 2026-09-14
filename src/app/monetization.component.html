@@ -1,0 +1,149 @@
+<a
+  href="#monetization-main"
+  class="fixed left-4 top-4 z-[60] -translate-y-24 rounded-xl bg-white p-4 font-bold text-ink focus:translate-y-0"
+  >{{ language.t('landing.skip') }}</a
+>
+<div class="relative z-40 border-b border-blue-100 bg-white px-4 sm:px-8">
+  <app-site-header class="mx-auto block max-w-7xl" [compact]="true" />
+</div>
+<main id="monetization-main" tabindex="-1" class="bg-white font-sans text-ink">
+  <section
+    class="relative isolate overflow-hidden bg-blue-50 px-4 py-12 sm:px-8 lg:py-16"
+    aria-labelledby="monetization-title"
+  >
+    <picture class="pointer-events-none absolute inset-0 -z-20">
+      <source media="(max-width: 640px)" srcset="/images/home/hero-mountain-road-800.webp" />
+      <img
+        src="/images/home/hero-mountain-road-1672.webp"
+        width="1672"
+        height="941"
+        alt=""
+        fetchpriority="high"
+        class="h-full w-full object-cover object-right"
+      />
+    </picture>
+    <div
+      class="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(255,255,255,0.98)_0%,rgba(255,255,255,0.92)_48%,rgba(255,255,255,0.5)_100%)]"
+    ></div>
+    <div class="mx-auto max-w-6xl">
+      <div class="max-w-2xl">
+        <h1 id="monetization-title" class="text-4xl font-bold tracking-tight sm:text-5xl">
+          {{ copy.title }}
+        </h1>
+        <p class="mt-4 text-2xl font-semibold text-brand-dark">{{ copy.subtitle }}</p>
+        <p class="mt-4 text-lg leading-relaxed">{{ copy.description }}</p>
+        <ul class="mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm font-semibold">
+          @for (benefit of copy.benefits; track benefit) {
+            <li class="flex items-center gap-2">
+              <app-icon name="check" class="size-5 text-brand-dark" />{{ benefit }}
+            </li>
+          }
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <div class="mx-auto max-w-6xl px-4 py-8 sm:px-8 lg:py-12">
+    <p class="mb-8 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-relaxed">
+      {{ copy.pilotNotice }}
+    </p>
+    <div class="grid gap-6 md:grid-cols-2 lg:gap-8">
+      @for (card of cards; track card.id) {
+        <article
+          class="flex min-w-0 flex-col rounded-3xl border p-6 sm:p-8"
+          [class]="card.theme"
+          [attr.data-card]="card.id"
+          [attr.aria-labelledby]="'monetization-' + card.id"
+        >
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-sm font-semibold" data-offer-status>
+                {{ card.future ? copy.futureLabel : copy.currentLabel }}
+              </p>
+              <h2 [id]="'monetization-' + card.id" class="mt-3 text-2xl font-bold text-ink">
+                {{ copy.cards[card.id].title }}
+              </h2>
+            </div>
+            <span
+              class="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-white/80"
+            >
+              <app-icon [name]="card.icon" class="size-9" />
+            </span>
+          </div>
+          <p class="mt-4 leading-relaxed text-ink">{{ copy.cards[card.id].description }}</p>
+          <ul class="my-6 grid gap-3 text-ink">
+            @for (point of copy.cards[card.id].points; track point) {
+              <li class="flex items-start gap-3">
+                <app-icon name="check" class="mt-0.5 size-5" /><span>{{ point }}</span>
+              </li>
+            }
+          </ul>
+          <div class="mt-auto pt-2">
+            @if (card.route; as route) {
+              <a appButton="outline" [routerLink]="language.link(route)" class="max-w-full">
+                {{ copy.cards[card.id].action }}<app-icon name="arrow" class="size-5" />
+              </a>
+            } @else {
+              <a
+                href="#monetization-principles"
+                class="inline-flex min-h-11 items-center gap-2 rounded-lg font-bold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-brand"
+              >
+                {{ copy.cards[card.id].action }}<app-icon name="arrow" class="size-5" />
+              </a>
+            }
+          </div>
+        </article>
+      }
+    </div>
+
+    <section
+      id="monetization-principles"
+      class="mt-10 scroll-mt-8 rounded-2xl border border-blue-100 p-6 sm:p-8"
+      aria-labelledby="monetization-principles-title"
+      tabindex="-1"
+    >
+      <h2 id="monetization-principles-title" class="text-2xl font-bold">
+        {{ copy.principlesTitle }}
+      </h2>
+      <p class="mt-4 leading-relaxed text-muted">{{ copy.principlesBody }}</p>
+      <p class="mt-4 leading-relaxed text-muted">{{ copy.conditions }}</p>
+    </section>
+
+    <section
+      class="mt-8 grid items-center gap-6 rounded-3xl bg-blue-50 p-6 sm:p-8 lg:grid-cols-[1fr_auto]"
+      aria-labelledby="monetization-closing-title"
+    >
+      <div>
+        <img
+          src="/branding/autokosova-logo-header.png"
+          width="640"
+          height="122"
+          alt="AutoKosova"
+          loading="lazy"
+          class="h-auto w-44"
+        />
+        <h2 id="monetization-closing-title" class="mt-5 text-2xl font-bold">
+          {{ copy.closingTitle }}
+        </h2>
+        <p class="mt-3 max-w-2xl leading-relaxed text-muted">{{ copy.closingBody }}</p>
+      </div>
+      <div class="flex min-w-0 flex-col items-start gap-3">
+        <a appButton [routerLink]="language.link('search')" class="max-w-full">
+          {{ copy.searchAction }}<app-icon name="arrow" class="size-5" />
+        </a>
+        <a
+          [routerLink]="language.link('onboarding')"
+          class="inline-flex min-h-11 items-center rounded-lg font-semibold text-brand-dark underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-brand"
+          >{{ copy.onboardingAction }}</a
+        >
+      </div>
+    </section>
+  </div>
+  <footer class="mx-auto max-w-6xl px-4 pb-8 sm:px-8">
+    <a
+      [routerLink]="language.link('home')"
+      class="inline-flex min-h-11 items-center rounded-lg font-semibold text-brand-dark underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-brand"
+      >{{ language.t('common.backHome') }}</a
+    >
+  </footer>
+</main>

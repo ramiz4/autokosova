@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { FoundationComponent } from './app';
+import { MonetizationComponent } from './monetization.component';
 import { RepairRequestComponent } from './repair-request.component';
 import { SearchHandoffComponent } from './search-handoff.component';
 import { GarageProfileComponent } from './garage-profile.component';
@@ -18,6 +19,16 @@ function localizedRoutes(prefix: string): Routes {
       component: FoundationComponent,
       path: prefix,
       pathMatch: 'full',
+    },
+    {
+      component: MonetizationComponent,
+      path: `${childPrefix}monetization`,
+      pathMatch: 'full',
+    },
+    {
+      path: `${childPrefix}monetarisierung`,
+      pathMatch: 'full',
+      redirectTo: `${childPrefix}monetization`,
     },
     // Compatibility redirects only; generated links always use English route names.
     {
