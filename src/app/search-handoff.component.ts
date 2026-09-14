@@ -3,6 +3,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RadiusSliderComponent } from './ui/radius-slider.component';
 import { isPlatformBrowser } from '@angular/common';
 import {
+  afterNextRender,
+  ElementRef,
+  Injector,
   ChangeDetectorRef,
   Component,
   DestroyRef,
@@ -129,110 +132,144 @@ interface Area {
               novalidate
             >
               <div class="grid gap-5">
-                <div class="grid gap-3">
+                <section aria-labelledby="area-label" class="grid gap-3">
+                  <h3 id="area-label" class="text-sm font-semibold">{{ ui('search.ui.place') }}</h3>
                   @if (!areas.length) {
-                    <div class="flex items-start gap-3 py-2 text-sm">
-                      <app-icon name="pin" class="mt-0.5 size-5 text-muted" />
+                    <div class="flex items-start gap-2 text-sm">
+                      <app-icon name="pin" class="mt-0.5 size-4 text-muted" />
                       <div>
-                        <p class="font-semibold">{{ ui('search.ui.allLocations') }}</p>
+                        <p class="font-medium">{{ ui('search.ui.allLocations') }}</p>
                         <p class="mt-1 leading-5 text-muted">
                           {{ ui('search.ui.locationOptional') }}
                         </p>
                       </div>
                     </div>
                   }
-                  @for (area of areas; track $index; let index = $index) {
-                    <fieldset
-                      class="min-w-0 border-slate-100"
-                      [class.border-t]="index > 0"
-                      [class.pt-2]="index > 0"
-                    >
-                      <button
-                        type="button"
-                        [id]="'area-toggle-' + index"
-                        class="flex min-h-11 w-full items-center gap-3 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-                        [attr.aria-controls]="'area-fields-' + index"
-                        [attr.aria-expanded]="expandedArea() === index"
-                        (click)="expandedArea.set(expandedArea() === index ? -1 : index)"
+                  <ul
+                    class="flex flex-wrap gap-2"
+                    [attr.aria-label]="ui('search.ui.selectedAreas')"
+                  >
+                    @for (area of areas; track area.placeId; let index = $index) {
+                      <li
+                        class="inline-flex max-w-full items-center rounded-lg bg-blue-50 text-brand-dark"
+                        [class.ring-1]="areaEditor()?.index === index"
+                        [class.ring-brand]="areaEditor()?.index === index"
                       >
-                        <app-icon name="pin" class="size-5 text-brand" />
-                        <span class="min-w-0 grow text-sm font-semibold"
-                          >{{
-                            area.placeId ? placeLabel(area.placeId) : ui('search.ui.chooseLocation')
-                          }}
-                          @if (area.placeId) {
-                            <span class="font-normal text-muted">· {{ area.radiusKm }} km</span>
-                          }
-                        </span>
-                        <app-icon
-                          name="chevron-down"
-                          class="size-4 text-muted"
-                          [class.rotate-180]="expandedArea() === index"
-                        />
-                      </button>
-                      <div
-                        [id]="'area-fields-' + index"
-                        [hidden]="expandedArea() !== index"
-                        [attr.aria-labelledby]="'area-toggle-' + index"
-                        class="pt-3 pb-1"
-                      >
-                        <label class="grid gap-2 text-sm font-semibold">
-                          {{ ui('search.ui.place') }}
-                          <span class="relative">
-                            <app-icon
-                              name="pin"
-                              class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted"
-                            />
-                            <select
-                              [(ngModel)]="area.placeId"
-                              [name]="'place-' + index"
-                              class="min-h-11 w-full rounded-lg border border-slate-200 bg-white py-2 pr-3 pl-9 text-sm font-normal focus-visible:border-brand focus-visible:outline-2 focus-visible:outline-brand/30"
-                            >
-                              <option value="" disabled>
-                                {{ ui('search.ui.chooseLocation') }}
-                              </option>
-                              @for (place of places; track place.id) {
-                                <option
-                                  [value]="place.id"
-                                  [disabled]="placeSelectedElsewhere(place.id, index)"
-                                >
-                                  {{ place.label }}
-                                </option>
-                              }
-                            </select>
-                          </span>
-                        </label>
-                        @if (area.placeId) {
-                          <app-radius-slider
-                            class="mt-3"
-                            [inputId]="'search-radius-' + index"
-                            [(ngModel)]="area.radiusKm"
-                            [name]="'radius-range-' + index"
-                          />
-                        }
-                        @if (areas.length > 0) {
-                          <button
-                            type="button"
-                            class="mt-1 inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-sm font-medium text-muted hover:text-ink"
-                            (click)="removeArea(index)"
+                        <button
+                          type="button"
+                          [id]="'edit-area-' + index"
+                          class="flex min-h-11 min-w-0 items-center gap-2 rounded-l-lg py-1 pr-2 pl-3 text-left text-sm hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                          [attr.aria-label]="
+                            ui('search.ui.editAreaLabel', {
+                              place: placeLabel(area.placeId),
+                              radius: area.radiusKm,
+                            })
+                          "
+                          aria-controls="area-editor"
+                          [attr.aria-expanded]="areaEditor()?.index === index"
+                          (click)="editArea(areas.indexOf(area))"
+                        >
+                          <span
+                            >{{ placeLabel(area.placeId) }}
+                            <span class="whitespace-nowrap">· {{ area.radiusKm }} km</span></span
                           >
-                            <app-icon name="close" class="size-4" />{{ ui('search.ui.removeArea') }}
-                          </button>
-                        }
+                          <app-icon name="pencil" class="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          class="flex size-11 shrink-0 items-center justify-center rounded-r-lg text-muted hover:bg-blue-100 hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                          [attr.aria-label]="
+                            ui('search.ui.removeAreaLabel', { place: placeLabel(area.placeId) })
+                          "
+                          (click)="removeArea(areas.indexOf(area))"
+                        >
+                          <app-icon name="close" class="size-3.5" />
+                        </button>
+                      </li>
+                    }
+                  </ul>
+                  @if (areaEditor(); as editor) {
+                    <div
+                      id="area-editor"
+                      role="group"
+                      aria-labelledby="area-editor-title"
+                      class="border-t border-blue-100 pt-3"
+                      (keydown.escape)="cancelArea(); $event.stopPropagation()"
+                    >
+                      <h4 id="area-editor-title" class="mb-2 text-sm font-semibold">
+                        {{ ui(editor.index < 0 ? 'search.ui.addFirstArea' : 'search.ui.editArea') }}
+                      </h4>
+                      <label for="area-place" class="sr-only">{{ ui('search.ui.place') }}</label>
+                      <div class="relative">
+                        <app-icon
+                          name="pin"
+                          class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted"
+                        />
+                        <select
+                          id="area-place"
+                          [(ngModel)]="editor.area.placeId"
+                          name="area-place"
+                          [attr.aria-invalid]="areaEditorError() ? 'true' : null"
+                          [attr.aria-describedby]="areaEditorError() ? 'area-error' : null"
+                          class="min-h-11 w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 text-sm focus-visible:outline-2 focus-visible:outline-brand/30"
+                        >
+                          <option value="" disabled>{{ ui('search.ui.chooseLocation') }}</option>
+                          @for (place of places; track place.id) {
+                            <option
+                              [value]="place.id"
+                              [disabled]="placeSelectedElsewhere(place.id, editor.index)"
+                            >
+                              {{ place.label }}
+                            </option>
+                          }
+                        </select>
                       </div>
-                    </fieldset>
-                  }
-                  @if (areas.length < limits.maxAreas) {
+                      @if (editor.area.placeId) {
+                        <app-radius-slider
+                          class="mt-3"
+                          inputId="area-radius"
+                          [(ngModel)]="editor.area.radiusKm"
+                          name="area-radius"
+                        />
+                      }
+                      @if (areaEditorError()) {
+                        <p id="area-error" role="alert" class="mt-2 text-sm text-rose-800">
+                          {{ ui('search.ui.areaError') }}
+                        </p>
+                      }
+                      <div class="mt-2 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          appButton
+                          size="compact"
+                          [disabled]="!editor.area.placeId"
+                          (click)="saveArea()"
+                        >
+                          {{ ui('search.ui.confirmArea') }}
+                        </button>
+                        <button
+                          type="button"
+                          class="min-h-11 rounded-lg px-3 text-sm font-medium text-muted hover:bg-slate-100 hover:text-ink focus-visible:outline-2 focus-visible:outline-brand"
+                          (click)="cancelArea()"
+                        >
+                          {{ ui('search.ui.cancelArea') }}
+                        </button>
+                      </div>
+                    </div>
+                  } @else if (areas.length < limits.maxAreas) {
                     <button
+                      id="add-area"
                       type="button"
-                      class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-dashed border-blue-200 px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50"
+                      class="inline-flex min-h-11 items-center gap-2 justify-self-start rounded-lg text-left text-sm font-medium text-brand-dark hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                      aria-controls="area-editor"
+                      aria-expanded="false"
                       (click)="addArea()"
                     >
                       <span aria-hidden="true" class="text-lg">+</span
                       >{{ ui(areas.length ? 'search.ui.addArea' : 'search.ui.addFirstArea') }}
                     </button>
                   }
-                </div>
+                </section>
                 <div class="grid gap-4 border-t border-slate-100 pt-5">
                   <label class="grid gap-2 text-sm font-semibold"
                     >{{ ui('search.ui.make') }}
@@ -282,6 +319,7 @@ interface Area {
                   }
                   <button
                     type="submit"
+                    [disabled]="areaEditor() !== null"
                     appButton
                     size="compact"
                     class="w-full"
@@ -316,6 +354,7 @@ interface Area {
                 <select
                   [(ngModel)]="sort"
                   name="sort"
+                  [disabled]="areaEditor() !== null"
                   class="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 sm:flex-none"
                   (change)="applyFilters()"
                 >
@@ -527,7 +566,10 @@ export class SearchHandoffComponent {
   protected areas: Area[] = [];
   protected service = '';
   protected readonly filtersOpen = signal(false);
-  protected readonly expandedArea = signal(0);
+  protected readonly areaEditor = signal<{ index: number; area: Area } | null>(null);
+  protected readonly areaEditorError = signal(false);
+  private readonly element: ElementRef<HTMLElement> = inject(ElementRef);
+  private readonly injector = inject(Injector);
   protected readonly filterError = signal(false);
   private readonly destroyRef = inject(DestroyRef);
   private loadVersion = 0;
@@ -572,18 +614,68 @@ export class SearchHandoffComponent {
   }
   protected addArea(): void {
     if (this.areas.length >= this.limits.maxAreas) return;
-    this.areas.push({ placeId: '', radiusKm: 20 });
-    this.expandedArea.set(this.areas.length - 1);
+    this.areaEditor.set({ index: -1, area: { placeId: '', radiusKm: 20 } });
+    this.areaEditorError.set(false);
+    this.focusAreaControl('area-place');
+  }
+  protected editArea(index: number): void {
+    if (!this.areas[index]) return;
+    this.areaEditor.set({ index, area: { ...this.areas[index] } });
+    this.areaEditorError.set(false);
+    this.focusAreaControl('area-place');
+  }
+  protected cancelArea(restoreFocus = true): void {
+    const index = this.areaEditor()?.index ?? -1;
+    this.areaEditor.set(null);
+    this.areaEditorError.set(false);
+    if (restoreFocus) this.focusAreaControl(index < 0 ? 'add-area' : `edit-area-${index}`);
+  }
+  protected saveArea(): void {
+    const editor = this.areaEditor();
+    if (!editor) return;
+    const { index, area } = editor;
+    if (
+      !this.places.some((place) => place.id === area.placeId) ||
+      this.placeSelectedElsewhere(area.placeId, index) ||
+      !Number.isInteger(area.radiusKm) ||
+      area.radiusKm < this.limits.minRadiusKm ||
+      area.radiusKm > this.limits.maxRadiusKm ||
+      (index < 0 && this.areas.length >= this.limits.maxAreas)
+    ) {
+      this.areaEditorError.set(true);
+      return;
+    }
+    const savedIndex = index < 0 ? this.areas.length : index;
+    this.areas =
+      index < 0
+        ? [...this.areas, { ...area }]
+        : this.areas.map((existing, current) => (current === index ? { ...area } : existing));
+    this.cancelArea(false);
+    this.focusAreaControl(`edit-area-${savedIndex}`);
   }
   protected placeSelectedElsewhere(placeId: string, index: number): boolean {
     return this.areas.some((area, current) => current !== index && area.placeId === placeId);
   }
   protected removeArea(index: number): void {
-    if (!this.areas.length) return;
-    this.areas.splice(index, 1);
-    const expanded = this.expandedArea();
-    this.expandedArea.set(
-      expanded > index ? expanded - 1 : Math.min(expanded, this.areas.length - 1),
+    if (!this.areas[index]) return;
+    this.areas = this.areas.filter((_, current) => current !== index);
+    const editor = this.areaEditor();
+    if (editor?.index === index) this.cancelArea(false);
+    else if (editor && editor.index > index)
+      this.areaEditor.set({ ...editor, index: editor.index - 1 });
+    this.focusAreaControl(
+      this.areaEditor()
+        ? 'area-place'
+        : this.areas.length
+          ? `edit-area-${Math.min(index, this.areas.length - 1)}`
+          : 'add-area',
+    );
+  }
+  private focusAreaControl(id: string): void {
+    if (!this.browser) return;
+    afterNextRender(
+      () => this.element.nativeElement.querySelector<HTMLElement>(`#${id}`)?.focus(),
+      { injector: this.injector },
     );
   }
   protected aerialDistance(distance: number, place: string): string {
@@ -644,6 +736,11 @@ export class SearchHandoffComponent {
     this.navigate({ page: String(page) });
   }
   protected applyFilters(): void {
+    if (this.areaEditor()) {
+      this.filtersOpen.set(true);
+      this.focusAreaControl('area-place');
+      return;
+    }
     const selectedAreas = this.areas.filter((area) => area.placeId);
     const valid =
       (!this.service || this.serviceIds.includes(this.service)) &&
@@ -678,6 +775,7 @@ export class SearchHandoffComponent {
     });
   }
   protected resetFilters(): void {
+    this.cancelArea(false);
     this.areas = [];
     this.filterError.set(false);
     this.service = '';
@@ -736,7 +834,7 @@ export class SearchHandoffComponent {
       })
       .filter((area) => area.placeId && Number.isFinite(area.radiusKm));
     this.areas = values?.length ? values : [];
-    this.expandedArea.set(Math.min(this.expandedArea(), this.areas.length - 1));
+    this.cancelArea(false);
     this.service = q.get('service') ?? '';
     this.filterError.set(false);
     this.sort = q.get('sort') === 'rating' ? 'rating' : 'recommended';

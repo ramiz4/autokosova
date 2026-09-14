@@ -2,6 +2,15 @@ import type { AppLanguage } from './i18n';
 
 export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, string>>>> = {
   de: {
+    'search.ui.selectedAreas': 'Ausgewählte Orte',
+    'search.ui.editArea': 'Ort bearbeiten',
+    'search.ui.editAreaLabel': '{place}, {radius} km bearbeiten',
+    'search.ui.removeAreaLabel': '{place} entfernen',
+    'search.ui.confirmArea': 'Übernehmen',
+    'search.ui.cancelArea': 'Abbrechen',
+    'search.ui.areaError':
+      'Wähle einen noch nicht verwendeten Ort und einen Radius von 5 bis 100 km.',
+
     'favorites.login': 'Anmelden',
     'favorites.dismiss': 'Hinweis schließen',
     'favorites.add': '{garage} als Favorit speichern',
@@ -49,6 +58,14 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'search.ui.viewMap': 'Karte',
   },
   sq: {
+    'search.ui.selectedAreas': 'Vendet e zgjedhura',
+    'search.ui.editArea': 'Ndrysho vendin',
+    'search.ui.editAreaLabel': 'Ndrysho {place}, {radius} km',
+    'search.ui.removeAreaLabel': 'Hiq {place}',
+    'search.ui.confirmArea': 'Zbato',
+    'search.ui.cancelArea': 'Anulo',
+    'search.ui.areaError': 'Zgjidh një vend tjetër dhe një rreze nga 5 deri në 100 km.',
+
     'favorites.login': 'Hyr',
     'favorites.dismiss': 'Mbyll njoftimin',
     'favorites.add': 'Ruaj {garage} te të preferuarat',
@@ -96,6 +113,14 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'search.ui.viewMap': 'Hartë',
   },
   en: {
+    'search.ui.selectedAreas': 'Selected locations',
+    'search.ui.editArea': 'Edit location',
+    'search.ui.editAreaLabel': 'Edit {place}, {radius} km',
+    'search.ui.removeAreaLabel': 'Remove {place}',
+    'search.ui.confirmArea': 'Apply',
+    'search.ui.cancelArea': 'Cancel',
+    'search.ui.areaError': 'Choose an unused location and a radius from 5 to 100 km.',
+
     'favorites.login': 'Sign in',
     'favorites.dismiss': 'Dismiss notification',
     'favorites.add': 'Save {garage} to favorites',

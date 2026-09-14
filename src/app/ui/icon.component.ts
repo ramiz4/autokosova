@@ -1,6 +1,7 @@
 import { Component, input } from '@angular/core';
 
 export type IconName =
+  | 'pencil'
   | 'info'
   | 'arrow'
   | 'check'
@@ -50,6 +51,7 @@ export type IconName =
 export class IconComponent {
   readonly name = input.required<IconName>();
   protected readonly paths: Record<IconName, string> = {
+    pencil: 'm16 3 5 5M4 20l5-1L21 7a2.1 2.1 0 0 0-4-4L5 15l-1 5Z',
     info: 'M12 16v-4m0-4h.01M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z',
     bell: 'M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3V9Zm4 11h4',
     user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM5 21v-2a7 7 0 0 1 14 0v2H5Z',

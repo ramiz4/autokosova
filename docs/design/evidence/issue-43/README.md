@@ -28,9 +28,9 @@ Fahrzeugschritt in DE/SQ/EN bei 1448, 1280, 360, 390 und 430 px geprüft. Zusät
 
 - `npm ci`, `npm run dev:demo`: eigene lokale PostgreSQL-DB, Migration 017 und öffentliche Demo-Daten erfolgreich.
 - `npm run format:check`, `npm run lint`, `npm run typecheck`: erfolgreich.
-- `npm test -- --watch=false`: 45 Tests erfolgreich, einschließlich 12 Anfrage-Tests und 6 Routentests.
+- `npm test -- --watch=false`: 48 Tests erfolgreich, einschließlich 12 Anfrage-Tests und 6 Routentests.
 - `npm run test:server` mit der eigenen lokalen `DATABASE_URL`: 60 bestanden, 2 profilspezifische Demo-Seed-Tests übersprungen (keine entsprechenden Testprofil-Flags). Persistenz mit neuen Feldern, Teilfahrzeug und Fremdzugriff tatsächlich gegen PostgreSQL geprüft.
-- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 549 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
+- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 555 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
 - Screenreader-Semantik (`aria-current`, Status-/Fehlermeldungen), Fokuswechsel und Eingabevalidierung automatisiert geprüft. Kein manueller Durchlauf mit einem Screenreader und keine native mobile Browserprüfung.
 - Echter Customer-OIDC-Login auf Port 4200 erfolgreich: Favorit per Herz gespeichert, API-Eintrag bestätigt, nach Neuladen erhalten, wieder entfernt und abgemeldet. PostgreSQL- und API-Tests prüfen zusätzlich Besitzer-Isolation, Export und Löschung.
 
@@ -70,7 +70,8 @@ Escape, Menülinks und Tippen außerhalb schließen das Menü. Die Außenaktion 
 
 Startseite, Anfrage und Suche verwenden denselben formularfähigen Radius-Regler: 4-px-Spur, weißer 20-px-Griff mit 2-px-blauem Rand, 14-px-Beschriftungen und Grenzen von 5 bis 100 km. Die native Bedienfläche bleibt 44 px hoch. [Startseite](radius-home.webp), [Anfrage](radius-inquiry.webp), [Suche](radius-search.webp). Pfeiltasten, Home/End, Formwert-Synchronisierung, Touched-/Disabled-Zustand und Rücknavigation sind geprüft.
 
-Die Suchfilter haben eine flache Gestaltung ohne verschachtelte Karten. Standorte erscheinen als aufklappbare Zeilen mit Ort und Radius; ein neuer Ort öffnet sich direkt und klappt die anderen zu. Doppelte Ortsauswahlen werden verhindert, jeder Radius bleibt unabhängig. Leistung ist ein eindeutiges Auswahlfeld entsprechend der unterstützten Einzelauswahl. Alle Feldlabels sind einheitlich 14 px groß. [Desktop](filter-desktop.webp), [Mobil eingeklappt](filter-mobile-collapsed.webp), [Mobil geöffnet](filter-mobile-open.webp).
+Die Suchfilter haben eine flache Gestaltung ohne verschachtelte Karten. Orte werden als Chips mit eigenem Radius sowie getrennten Bearbeiten-/Entfernen-Buttons dargestellt. Ein einzelner Editor öffnet sich direkt darunter. Übernehmen bestätigt den Entwurf, Abbrechen und Escape verwerfen ihn. Neue Orte starten leer; doppelte Orte werden verhindert. Leistung ist ein eindeutiges Auswahlfeld entsprechend der unterstützten Einzelauswahl. Alle Feldlabels sind einheitlich 14 px groß. Die früheren aufklappbaren Standortzeilen sind durch den unten dokumentierten Chip-Editor ersetzt.
+
 
 Mobil ist der gesamte Filter aufklappbar. Ergebnisse bleiben während einer Aktualisierung erhalten und werden als beschäftigt markiert. Änderungen der URL-Filter laden die Treffer neu; ältere verspätete Antworten können neuere Ergebnisse nicht überschreiben. Anwenden änderte im lokalen Browsernachweis die Trefferzahl von 6 auf 25. Zurücksetzen lädt alle Ergebnisse und setzt die Eingaben zurück. DE/SQ/EN bei 360/430 px ohne horizontale Überläufe und mit einheitlicher Labelgröße geprüft.
 
@@ -101,3 +102,13 @@ Toasts sind maximal 576 px breit und unten mittig positioniert. Status-Icon, 14-
 Alle nativen Dropdown-Selects erhalten über `src/styles.scss` denselben Chevron mit 14 px Randabstand, 16 px Icongröße und 44 px Textreserve rechts. Mehrfachauswahl und Listboxen behalten ihre native Darstellung. Im erzwungenen Kontrastmodus wird der native Pfeil verwendet. Berechnete CSS-Werte auf Suche, Anfrage, Startseite, Aufnahme und Profil geprüft; Tastaturfokus und mobile Darstellung ohne Überlauf bestätigt. [Desktop](select-inset-desktop.webp), [Mobil](select-inset-mobile.webp).
 
 Favoriten werden erst nach bestätigtem öffentlichem Sitzungsstatus geladen; parallele Sitzungsabfragen werden zusammengefasst. Live als Gast geprüft: Seitenaufruf und Herz-Klick erzeugen keine `/api/me/`-Requests und keine 401-Antworten. Ein späterer Sitzungsablauf wird weiterhin serverseitig abgefangen. Toasts verschwinden nach 5 Sekunden (gespeichert/entfernt) beziehungsweise 8 Sekunden (Anmeldung/Fehler). Neue Hinweise starten ihren eigenen Timer; manuelles Schließen und Komponentenabbau räumen ihn auf. Automatisierte Tests prüfen Laufzeit und Ersatz; der Gast-Hinweis verschwand im Browser nach etwa 8 Sekunden.
+
+## Orts-Chips und getrennte Bearbeitung
+
+[Chips Desktop](location-chips-desktop.webp), [Editor Desktop](location-editor-desktop.webp), [DE Mobil](location-editor-de-360.webp), [SQ Mobil](location-editor-sq-360.webp), [EN Mobil](location-editor-en-360.webp).
+
+Jeder Chip zeigt den Ort und seinen bestätigten Radius. Bearbeiten öffnet eine Kopie; währenddessen bleibt der Chip unverändert. Übernehmen validiert den Katalogort, Eindeutigkeit, höchstens drei Orte und 5–100 km. Abbrechen/Escape verwerfen den Entwurf. Filter anwenden und Sortierung sind während der Ortsbearbeitung gesperrt. Entfernen des letzten Orts erlaubt weiterhin die Suche in ganz Kosovo. Neue Orte beginnen leer.
+
+Automatisiert geprüft: unabhängige Radien, Abbrechen ohne Seiteneffekt, Übernahme, URL-Übergabe, Duplikate, Grenzen, Entfernen bei geöffnetem Editor, Escape und Rücknavigation. Live geprüft: Fokus beim Öffnen, Tastaturbedienung des Sliders, Abbrechen, dritter Ort und Such-URL `places=xk-prizren:35,xk-peja:50,xk-ferizaj:10`. DE/SQ/EN bei 360 px ohne horizontalen Überlauf. Der Editor belegt die verfügbare Filterbreite.
+
+[Optionaler Leerzustand mobil](location-empty-mobile.webp). Auch unmittelbar aufeinanderfolgende Entfernen-Aktionen vor dem nächsten Rendern entfernen die richtigen Orte: Chips und Aktionen sind an die jeweilige Ortsidentität gebunden. Regressionstest und Browserdurchlauf erfolgreich.

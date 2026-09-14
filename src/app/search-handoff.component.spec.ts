@@ -1,7 +1,7 @@
 import { BehaviorSubject, of } from 'rxjs';
 import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, ActivatedRoute, convertToParamMap } from '@angular/router';
+import { provideRouter, ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 import { SearchHandoffComponent } from './search-handoff.component';
 
 function routeWith(query: Record<string, string>) {
@@ -188,7 +188,10 @@ it('refreshes results from changed URL filters and ignores stale responses', asy
     await loads.mock.results[0].value;
     await fixture.whenStable();
     expect(fixture.nativeElement.textContent).not.toContain('99 passende');
+    fixture.componentInstance['editArea'](0);
+    fixture.componentInstance['areaEditor']()!.area.radiusKm = 80;
     params.next(convertToParamMap({}));
+    expect(fixture.componentInstance['areaEditor']()).toBeNull();
     expect(calls[2]).toContain('all=true');
     expect(fixture.componentInstance['areas']).toEqual([]);
     pending[2](response(25));
@@ -201,26 +204,138 @@ it('refreshes results from changed URL filters and ignores stale responses', asy
   }
 });
 
-it('adds unselected optional locations and allows clearing the last location', async () => {
+async function areaFixture(query: Record<string, string> = {}) {
   await TestBed.configureTestingModule({
     imports: [SearchHandoffComponent],
     providers: [
       provideRouter([]),
-      { provide: ActivatedRoute, useValue: routeWith({}) },
+      { provide: ActivatedRoute, useValue: routeWith(query) },
       { provide: PLATFORM_ID, useValue: 'server' },
     ],
   }).compileComponents();
-  const component = TestBed.createComponent(SearchHandoffComponent).componentInstance;
-  component['areas'] = [{ placeId: 'xk-prizren', radiusKm: 30 }];
+  return TestBed.createComponent(SearchHandoffComponent);
+}
+
+it('keeps location edits private to the editor until confirmed and preserves each radius in the search URL', async () => {
+  const component = (await areaFixture({ places: 'xk-prizren:30,xk-peja:50' })).componentInstance;
+  const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+  component['editArea'](0);
+  component['areaEditor']()!.area.radiusKm = 75;
+  expect(component['areas'][0].radiusKm).toBe(30);
+  component['applyFilters']();
+  expect(navigate).not.toHaveBeenCalled();
+  component['cancelArea']();
+  expect(component['areas'][0].radiusKm).toBe(30);
+  component['editArea'](0);
+  component['areaEditor']()!.area = { placeId: 'xk-ferizaj', radiusKm: 75 };
+  component['saveArea']();
+  expect(component['areaEditor']()).toBeNull();
+  expect(component['areas']).toEqual([
+    { placeId: 'xk-ferizaj', radiusKm: 75 },
+    { placeId: 'xk-peja', radiusKm: 50 },
+  ]);
+  component['applyFilters']();
+  expect(navigate).toHaveBeenCalledWith(
+    ['/garages'],
+    expect.objectContaining({
+      queryParams: expect.objectContaining({ places: 'xk-ferizaj:75,xk-peja:50', all: null }),
+    }),
+  );
+});
+
+it('validates new chips, keeps only one draft, and allows clearing the final location', async () => {
+  const component = (await areaFixture({ places: 'xk-prizren:30' })).componentInstance;
   component['addArea']();
+  expect(component['areas']).toHaveLength(1);
+  expect(component['areaEditor']()!.area.placeId).toBe('');
+  component['saveArea']();
+  expect(component['areaEditorError']()).toBe(true);
+  component['areaEditor']()!.area = { placeId: 'xk-prizren', radiusKm: 40 };
+  component['saveArea']();
+  expect(component['areas']).toHaveLength(1);
+  component['areaEditor']()!.area = { placeId: 'xk-peja', radiusKm: 101 };
+  component['saveArea']();
+  expect(component['areas']).toHaveLength(1);
+  component['areaEditor']()!.area.radiusKm = 50;
+  component['saveArea']();
   component['addArea']();
+  component['areaEditor']()!.area = { placeId: 'xk-ferizaj', radiusKm: 10 };
+  component['saveArea']();
   component['addArea']();
+  expect(component['areaEditor']()).toBeNull();
   expect(component['areas']).toHaveLength(3);
-  expect(component['expandedArea']()).toBe(2);
-  expect(component['areas'].slice(1).every((area) => area.placeId === '')).toBe(true);
+  component['editArea'](2);
   component['removeArea'](0);
+  expect(component['areaEditor']()!.index).toBe(1);
+  component['areaEditor']()!.area.radiusKm = 60;
+  component['saveArea']();
+  expect(component['areas'][1]).toEqual({ placeId: 'xk-ferizaj', radiusKm: 60 });
+  component['removeArea'](1);
+  component['editArea'](0);
   component['removeArea'](0);
-  component['removeArea'](0);
-  expect(component['areas']).toHaveLength(0);
-  expect(component['expandedArea']()).toBe(-1);
+  expect(component['areaEditor']()).toBeNull();
+  expect(component['areas']).toEqual([]);
+  component['addArea']();
+  component['cancelArea']();
+  expect(component['areas']).toEqual([]);
+});
+
+it('renders separate edit/remove buttons and cancels the single editor with Escape', async () => {
+  const fixture = await areaFixture({ places: 'xk-prizren:30,xk-peja:50' });
+  const component = fixture.componentInstance;
+  component['response'] = {
+    allResults: false,
+    page: 1,
+    pageSize: 10,
+    results: [],
+    searchAreas: [],
+    serviceCategory: { id: 'all', label: 'Alle Leistungen' },
+    sort: 'recommended',
+    total: 0,
+    totalPages: 1,
+  };
+  fixture.detectChanges();
+  const page = fixture.nativeElement as HTMLElement;
+  const edit = page.querySelector<HTMLButtonElement>('#edit-area-0')!;
+  expect(edit.textContent).toContain('30 km');
+  expect(page.querySelector('[aria-label="Prizren entfernen"]')).toBeTruthy();
+  edit.click();
+  fixture.detectChanges();
+  expect(page.querySelectorAll('#area-editor')).toHaveLength(1);
+  expect(page.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true);
+  expect(
+    page.querySelector<HTMLOptionElement>('#area-place option[value="xk-peja"]')!.disabled,
+  ).toBe(true);
+  component['areaEditor']()!.area.radiusKm = 80;
+  page
+    .querySelector('#area-editor')!
+    .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  fixture.detectChanges();
+  expect(page.querySelector('#area-editor')).toBeNull();
+  expect(component['areas'][0].radiusKm).toBe(30);
+  expect(page.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(false);
+});
+
+it('removes the intended chips even when clicks arrive before the next render', async () => {
+  const fixture = await areaFixture({ places: 'xk-prizren:30,xk-peja:50,xk-ferizaj:10' });
+  const component = fixture.componentInstance;
+  component['response'] = {
+    allResults: false,
+    page: 1,
+    pageSize: 10,
+    results: [],
+    searchAreas: [],
+    serviceCategory: { id: 'all', label: 'Alle Leistungen' },
+    sort: 'recommended',
+    total: 0,
+    totalPages: 1,
+  };
+  fixture.detectChanges();
+  const page = fixture.nativeElement as HTMLElement;
+  page.querySelector<HTMLButtonElement>('[aria-label="Prizren entfernen"]')!.click();
+  page.querySelector<HTMLButtonElement>('[aria-label="Pejë entfernen"]')!.click();
+  expect(component['areas']).toEqual([{ placeId: 'xk-ferizaj', radiusKm: 10 }]);
+  fixture.detectChanges();
+  page.querySelector<HTMLButtonElement>('[aria-label="Ferizaj entfernen"]')!.click();
+  expect(component['areas']).toEqual([]);
 });
