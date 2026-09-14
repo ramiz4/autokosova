@@ -329,7 +329,7 @@ interface PublicWorkshopReview {
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
               @for (photoId of profile.photoIds; track photoId) {
                 <img
-                  [src]="'/api/public/workshops/' + profile.id + '/photos/' + photoId"
+                  [src]="'/api/public/garages/' + profile.id + '/photos/' + photoId"
                   [alt]="'Veröffentlichtes Foto von ' + profile.name"
                   class="aspect-[4/3] w-full rounded-xl object-cover"
                 />
@@ -515,7 +515,7 @@ export class WorkshopProfileComponent {
   }
 
   protected async load(): Promise<void> {
-    const workshopId = this.route.snapshot.paramMap.get('workshopId');
+    const workshopId = this.route.snapshot.paramMap.get('garageId');
     if (!this.browser || !workshopId) {
       this.state = 'error';
       return;
@@ -524,7 +524,7 @@ export class WorkshopProfileComponent {
   }
 
   private async loadForServer(request: Request): Promise<void> {
-    const workshopId = this.route.snapshot.paramMap.get('workshopId');
+    const workshopId = this.route.snapshot.paramMap.get('garageId');
     if (!workshopId) {
       this.state = 'error';
       return;
@@ -536,7 +536,7 @@ export class WorkshopProfileComponent {
     this.state = 'loading';
     try {
       const response = await fetch(
-        this.publicApiUrl(`/api/public/workshops/${encodeURIComponent(workshopId)}`, requestUrl),
+        this.publicApiUrl(`/api/public/garages/${encodeURIComponent(workshopId)}`, requestUrl),
         {
           credentials: 'same-origin',
         },
@@ -569,7 +569,7 @@ export class WorkshopProfileComponent {
       const suffix = query.size ? `?${query.toString()}` : '';
       const response = await fetch(
         this.publicApiUrl(
-          `/api/public/workshops/${encodeURIComponent(workshopId)}/reviews${suffix}`,
+          `/api/public/garages/${encodeURIComponent(workshopId)}/reviews${suffix}`,
           requestUrl,
         ),
         { credentials: 'same-origin' },

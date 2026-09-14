@@ -1,3 +1,4 @@
+import { PostgresFavoriteStore } from './server/favorites';
 import {
   AngularNodeAppEngine,
   createNodeRequestHandler,
@@ -25,6 +26,7 @@ if (process.env['NODE_ENV'] === 'production' && !databaseUrl) {
 const accessStore = new AccessStore();
 const app = createServer({
   accessStore,
+  ...(databaseUrl ? { favoriteStore: new PostgresFavoriteStore(databaseUrl) } : {}),
   oidcConfig: readZitadelOidcConfig(process.env),
   ...(databaseUrl ? { repairRequestStore: new PostgresRepairRequestStore(databaseUrl) } : {}),
   ...(databaseUrl ? { reviewStore: new PostgresReviewStore(databaseUrl) } : {}),

@@ -1,3 +1,4 @@
+import type { FavoriteStore } from './favorites';
 import cookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import Fastify from 'fastify';
@@ -54,10 +55,13 @@ import {
   REPAIR_REQUEST_PLACES,
   REPAIR_REQUEST_SERVICE_CATEGORIES,
   REPAIR_REQUEST_VEHICLE_MAKES,
+  REPAIR_REQUEST_VEHICLE_CLASSES,
+  REPAIR_REQUEST_FUELS,
   type RepairRequestInput,
 } from '../shared/repair-request';
 
 interface ServerOptions {
+  readonly favoriteStore?: FavoriteStore;
   readonly accessStore?: AccessStore;
   readonly analyticsEnabled?: boolean;
   readonly analyticsStore?: AnalyticsStore;
@@ -105,7 +109,7 @@ const repairRequestBodySchema = {
         type: 'object',
       },
       maxItems: REPAIR_REQUEST_LIMITS.maxAreas,
-      minItems: 1,
+      minItems: 0,
       type: 'array',
     },
     attachmentIds: {
@@ -117,11 +121,12 @@ const repairRequestBodySchema = {
     earliestDropoffOn: { pattern: '^\\d{4}-\\d{2}-\\d{2}$', type: 'string' },
     latestPickupOn: { pattern: '^\\d{4}-\\d{2}-\\d{2}$', type: 'string' },
     serviceCategoryId: { enum: REPAIR_REQUEST_SERVICE_CATEGORIES, type: 'string' },
-    stayEndsOn: { pattern: '^\\d{4}-\\d{2}-\\d{2}$', type: 'string' },
     symptom: { maxLength: REPAIR_REQUEST_LIMITS.maxSymptomLength, type: 'string' },
     vehicle: {
       additionalProperties: false,
       properties: {
+        vehicleClass: { enum: REPAIR_REQUEST_VEHICLE_CLASSES, type: 'string' },
+        fuel: { enum: REPAIR_REQUEST_FUELS, type: 'string' },
         engineDetails: { maxLength: 120, type: 'string' },
         makeId: { enum: REPAIR_REQUEST_VEHICLE_MAKES, type: 'string' },
         mileageKm: {
@@ -137,16 +142,31 @@ const repairRequestBodySchema = {
           type: 'integer',
         },
       },
-      required: ['makeId', 'model', 'year'],
       type: 'object',
     },
   },
-  required: ['areas', 'earliestDropoffOn', 'latestPickupOn', 'serviceCategoryId', 'stayEndsOn'],
+  required: ['areas', 'earliestDropoffOn', 'latestPickupOn', 'serviceCategoryId'],
   type: 'object',
 };
 
 function safeReturnTo(value: unknown): string {
-  return value === '/anfrage' || value === '/sq/anfrage' || value === '/en/anfrage' ? value : '/';
+  if (typeof value !== 'string' || value.length > 2000) return '/';
+  const match = value.match(/^(\/(?:(?:sq|en)\/)?(?:inquiry|anfrage|garages))(?:\?([^#]*))?$/);
+  if (!match) return '/';
+  const path = match[1].replace(/\/anfrage$/, '/inquiry');
+  if (!path.endsWith('/garages')) return match[2] ? '/' : path;
+  const input = new URLSearchParams(match[2]);
+  const query = new URLSearchParams();
+  for (const key of ['all', 'places', 'service', 'vehicleMake', 'language', 'sort', 'page']) {
+    const entry = input.get(key);
+    if (entry) query.set(key, entry);
+  }
+  try {
+    parsePublicWorkshopSearch(Object.fromEntries(query));
+  } catch {
+    return path;
+  }
+  return `${path}${query.size ? `?${query}` : ''}`;
 }
 
 const stringListSchema = {
@@ -319,6 +339,8 @@ export function createServer(options: ServerOptions = {}) {
     },
   });
   const accessStore = options.accessStore ?? new AccessStore();
+  const favoriteStore: FavoriteStore = options.favoriteStore ?? accessStore;
+  if (favoriteStore.close) app.addHook('onClose', async () => favoriteStore.close?.());
   const repairRequestStore: RepairRequestStore = options.repairRequestStore ?? accessStore;
   const reviewStore: ReviewStore = options.reviewStore ?? accessStore;
   const searchStore: WorkshopSearchStore = options.searchStore ?? accessStore;
@@ -407,7 +429,7 @@ export function createServer(options: ServerOptions = {}) {
     const sitemap = options.publicSiteUrl
       ? `\nSitemap: ${siteUrl(options.publicSiteUrl, '/sitemap.xml')}`
       : '';
-    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /anfrage\nDisallow: /sq/anfrage\nDisallow: /en/anfrage\nDisallow: /werkstatt/aufnahme\nDisallow: /sq/werkstatt/aufnahme\nDisallow: /en/werkstatt/aufnahme\nDisallow: /garages\nDisallow: /sq/garages\nDisallow: /en/garages\nDisallow: /workshops\nDisallow: /suche\nDisallow: /werkstaetten${sitemap}\n`;
+    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /inquiry\nDisallow: /sq/inquiry\nDisallow: /en/inquiry\nDisallow: /garages/new\nDisallow: /sq/garages/new\nDisallow: /en/garages/new\nDisallow: /garages$\nDisallow: /garages?\nDisallow: /sq/garages$\nDisallow: /sq/garages?\nDisallow: /en/garages$\nDisallow: /en/garages?\nDisallow: /suche\nDisallow: /werkstaetten${sitemap}\n`;
   });
   app.get('/sitemap.xml', async (_request, reply) => {
     if (!options.publicSiteUrl) {
@@ -421,9 +443,9 @@ export function createServer(options: ServerOptions = {}) {
       '/sq',
       '/en',
       ...workshopIds.flatMap((id) => [
-        `/werkstatt/${encodeURIComponent(id)}`,
-        `/sq/werkstatt/${encodeURIComponent(id)}`,
-        `/en/werkstatt/${encodeURIComponent(id)}`,
+        `/garages/${encodeURIComponent(id)}`,
+        `/sq/garages/${encodeURIComponent(id)}`,
+        `/en/garages/${encodeURIComponent(id)}`,
       ]),
     ];
     reply.type('application/xml; charset=utf-8');
@@ -458,15 +480,15 @@ export function createServer(options: ServerOptions = {}) {
       return errorResponse(error, reply);
     }
   });
-  app.get('/api/public/workshops', async () => ({ workshops: accessStore.listPublicWorkshops() }));
-  app.get('/api/public/workshops/:workshopId', async (request, reply) => {
-    const params = request.params as { workshopId: string };
-    const workshop = await searchStore.getPublicWorkshop(params.workshopId);
+  app.get('/api/public/garages', async () => ({ garages: accessStore.listPublicWorkshops() }));
+  app.get('/api/public/garages/:garageId', async (request, reply) => {
+    const params = request.params as { garageId: string };
+    const workshop = await searchStore.getPublicWorkshop(params.garageId);
     return workshop ? workshop : reply.code(404).send({ error: 'Published workshop not found' });
   });
-  app.get('/api/public/workshops/:workshopId/reviews', async (request, reply) => {
+  app.get('/api/public/garages/:garageId/reviews', async (request, reply) => {
     try {
-      const params = request.params as { workshopId: string };
+      const params = request.params as { garageId: string };
       const query = request.query as { serviceCategoryId?: string; vehicleMakeId?: string };
       if (
         query.serviceCategoryId &&
@@ -481,7 +503,7 @@ export function createServer(options: ServerOptions = {}) {
         throw new AccessError(400, 'Please choose a known vehicle make');
       }
       return {
-        reviews: await reviewStore.listPublicReviews(params.workshopId, {
+        reviews: await reviewStore.listPublicReviews(params.garageId, {
           ...(query.serviceCategoryId ? { serviceCategoryId: query.serviceCategoryId } : {}),
           ...(query.vehicleMakeId ? { vehicleMakeId: query.vehicleMakeId } : {}),
         }),
@@ -490,9 +512,9 @@ export function createServer(options: ServerOptions = {}) {
       return errorResponse(error, reply);
     }
   });
-  app.get('/api/public/workshops/:workshopId/photos/:photoId', async (request, reply) => {
-    const params = request.params as { photoId: string; workshopId: string };
-    const photo = accessStore.getWorkshopPhoto(params.workshopId, params.photoId);
+  app.get('/api/public/garages/:garageId/photos/:photoId', async (request, reply) => {
+    const params = request.params as { photoId: string; garageId: string };
+    const photo = accessStore.getWorkshopPhoto(params.garageId, params.photoId);
     if (!photo) return reply.code(404).send({ error: 'Published workshop photo not found' });
     return reply
       .header('cache-control', 'public, max-age=3600')
@@ -562,6 +584,63 @@ export function createServer(options: ServerOptions = {}) {
     }
   });
 
+  app.get('/api/session', async (request, reply) => {
+    reply.header('cache-control', 'private, no-store');
+    return {
+      authenticated: Boolean(accessStore.getPrincipal(request.cookies['autokosova_session'])),
+    };
+  });
+  app.get('/api/me/favorites', async (request, reply) => {
+    reply.header('cache-control', 'private, no-store');
+    try {
+      return {
+        garageIds: await favoriteStore.listFavoriteGarageIds(requirePrincipal(request).userId),
+      };
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+  const favoriteParams = {
+    type: 'object',
+    required: ['garageId'],
+    properties: { garageId: { type: 'string', minLength: 1, maxLength: 128 } },
+    additionalProperties: false,
+  };
+  app.put(
+    '/api/me/favorites/:garageId',
+    { schema: { params: favoriteParams } },
+    async (request, reply) => {
+      reply.header('cache-control', 'private, no-store');
+      try {
+        const principal = requirePrincipal(request, true);
+        const { garageId } = request.params as { garageId: string };
+        if (!(await searchStore.getPublicWorkshop(garageId)))
+          throw new AccessError(404, 'Garage not available');
+        await favoriteStore.saveFavorite(principal.userId, garageId);
+        return reply.code(204).send();
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+  app.delete(
+    '/api/me/favorites/:garageId',
+    { schema: { params: favoriteParams } },
+    async (request, reply) => {
+      reply.header('cache-control', 'private, no-store');
+      try {
+        const principal = requirePrincipal(request, true);
+        await favoriteStore.removeFavorite(
+          principal.userId,
+          (request.params as { garageId: string }).garageId,
+        );
+        return reply.code(204).send();
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+
   app.get('/api/me/vehicles', async (request, reply) => {
     try {
       const principal = requirePrincipal(request);
@@ -627,10 +706,10 @@ export function createServer(options: ServerOptions = {}) {
     }
   });
 
-  app.get('/api/me/workshops', async (request, reply) => {
+  app.get('/api/me/garages', async (request, reply) => {
     try {
       const principal = requirePrincipal(request);
-      return { workshops: accessStore.listOwnedWorkshops(principal) };
+      return { garages: accessStore.listOwnedWorkshops(principal) };
     } catch (error) {
       return errorResponse(error, reply);
     }
@@ -781,7 +860,7 @@ export function createServer(options: ServerOptions = {}) {
     }
   });
 
-  app.get('/api/workshops/duplicate-candidates', async (request, reply) => {
+  app.get('/api/garages/duplicate-candidates', async (request, reply) => {
     try {
       requirePrincipal(request);
       const query = request.query as { name?: string; placeId?: string };
@@ -795,7 +874,7 @@ export function createServer(options: ServerOptions = {}) {
   });
 
   app.post(
-    '/api/workshops',
+    '/api/garages',
     {
       schema: {
         body: {
@@ -827,26 +906,26 @@ export function createServer(options: ServerOptions = {}) {
     },
   );
 
-  app.get('/api/workshops/:workshopId', async (request, reply) => {
+  app.get('/api/garages/:garageId', async (request, reply) => {
     try {
       const principal = requirePrincipal(request);
-      const params = request.params as { workshopId: string };
-      return accessStore.getPrivateWorkshop(principal, params.workshopId);
+      const params = request.params as { garageId: string };
+      return accessStore.getPrivateWorkshop(principal, params.garageId);
     } catch (error) {
       return errorResponse(error, reply);
     }
   });
 
   app.put(
-    '/api/workshops/:workshopId',
+    '/api/garages/:garageId',
     { schema: { body: workshopProfileSchema } },
     async (request, reply) => {
       try {
         const principal = requirePrincipal(request, true);
-        const params = request.params as { workshopId: string };
+        const params = request.params as { garageId: string };
         accessStore.updateWorkshopProfile(
           principal,
-          params.workshopId,
+          params.garageId,
           request.body as WorkshopProfileInput,
         );
         return reply.code(204).send();
@@ -856,37 +935,37 @@ export function createServer(options: ServerOptions = {}) {
     },
   );
 
-  app.post('/api/workshops/:workshopId/submit-for-review', async (request, reply) => {
+  app.post('/api/garages/:garageId/submit-for-review', async (request, reply) => {
     try {
       const principal = requirePrincipal(request, true);
-      const params = request.params as { workshopId: string };
-      accessStore.submitWorkshopForReview(principal, params.workshopId);
+      const params = request.params as { garageId: string };
+      accessStore.submitWorkshopForReview(principal, params.garageId);
       return reply.code(204).send();
     } catch (error) {
       return errorResponse(error, reply);
     }
   });
 
-  app.post('/api/workshops/:workshopId/verification-document-grants', async (request, reply) => {
+  app.post('/api/garages/:garageId/verification-document-grants', async (request, reply) => {
     try {
       const principal = requirePrincipal(request, true);
-      const params = request.params as { workshopId: string };
+      const params = request.params as { garageId: string };
       return reply
         .code(201)
-        .send(accessStore.createWorkshopDocumentGrant(principal, params.workshopId));
+        .send(accessStore.createWorkshopDocumentGrant(principal, params.garageId));
     } catch (error) {
       return errorResponse(error, reply);
     }
   });
 
-  app.post('/api/workshops/:workshopId/photos', async (request, reply) => {
+  app.post('/api/garages/:garageId/photos', async (request, reply) => {
     try {
       const principal = requirePrincipal(request, true);
-      const params = request.params as { workshopId: string };
+      const params = request.params as { garageId: string };
       const body = request.body;
       if (!Buffer.isBuffer(body)) throw new AccessError(415, 'A binary workshop photo is required');
       const normalized = await normalizeWorkshopPhoto(body, request.headers['content-type']);
-      const photo = accessStore.registerWorkshopPhoto(principal, params.workshopId, normalized);
+      const photo = accessStore.registerWorkshopPhoto(principal, params.garageId, normalized);
       return reply.code(201).send({
         contentType: photo.contentType,
         height: photo.height,
@@ -901,11 +980,11 @@ export function createServer(options: ServerOptions = {}) {
     }
   });
 
-  app.get('/api/workshops/:workshopId/photos/:photoId', async (request, reply) => {
+  app.get('/api/garages/:garageId/photos/:photoId', async (request, reply) => {
     try {
       const principal = requirePrincipal(request);
-      const params = request.params as { photoId: string; workshopId: string };
-      const photo = accessStore.getWorkshopPhoto(params.workshopId, params.photoId, principal);
+      const params = request.params as { photoId: string; garageId: string };
+      const photo = accessStore.getWorkshopPhoto(params.garageId, params.photoId, principal);
       if (!photo) throw new AccessError(404, 'Workshop photo not found');
       return reply.type(photo.contentType).send(photo.content);
     } catch (error) {
@@ -914,7 +993,7 @@ export function createServer(options: ServerOptions = {}) {
   });
 
   app.post(
-    '/api/workshops/:workshopId/profile',
+    '/api/garages/:garageId/profile',
     {
       schema: {
         body: {
@@ -928,8 +1007,8 @@ export function createServer(options: ServerOptions = {}) {
     async (request, reply) => {
       try {
         const principal = requirePrincipal(request, true);
-        const params = request.params as { workshopId: string };
-        accessStore.requireWorkshopMembership(principal, params.workshopId);
+        const params = request.params as { garageId: string };
+        accessStore.requireWorkshopMembership(principal, params.garageId);
         return reply.code(204).send();
       } catch (error) {
         return errorResponse(error, reply);
@@ -938,7 +1017,7 @@ export function createServer(options: ServerOptions = {}) {
   );
 
   app.post(
-    '/api/workshops/:workshopId/reviews/:reviewId/response',
+    '/api/garages/:garageId/reviews/:reviewId/response',
     {
       schema: {
         body: {
@@ -957,11 +1036,11 @@ export function createServer(options: ServerOptions = {}) {
     },
     async (request, reply) => {
       try {
-        const params = request.params as { reviewId: string; workshopId: string };
+        const params = request.params as { reviewId: string; garageId: string };
         const body = request.body as { text: string };
         await reviewStore.postWorkshopResponse(
           requirePrincipal(request, true),
-          params.workshopId,
+          params.garageId,
           params.reviewId,
           body.text,
         );
@@ -1181,7 +1260,7 @@ export function createServer(options: ServerOptions = {}) {
   );
 
   app.post(
-    '/api/admin/workshops/assisted-onboarding',
+    '/api/admin/garages/assisted-onboarding',
     {
       schema: {
         body: {
@@ -1225,7 +1304,7 @@ export function createServer(options: ServerOptions = {}) {
   );
 
   app.post(
-    '/api/admin/workshops/:workshopId/decision',
+    '/api/admin/garages/:garageId/decision',
     {
       schema: {
         body: {
@@ -1242,12 +1321,12 @@ export function createServer(options: ServerOptions = {}) {
     async (request, reply) => {
       try {
         const principal = requirePrincipal(request, true);
-        const params = request.params as { workshopId: string };
+        const params = request.params as { garageId: string };
         const body = request.body as {
           decision: 'published' | 'rejected' | 'suspended';
           verification: VerificationChecklist;
         };
-        accessStore.reviewWorkshop(principal, params.workshopId, body.decision, body.verification);
+        accessStore.reviewWorkshop(principal, params.garageId, body.decision, body.verification);
         return reply.code(204).send();
       } catch (error) {
         return errorResponse(error, reply);
@@ -1256,7 +1335,7 @@ export function createServer(options: ServerOptions = {}) {
   );
 
   app.post(
-    '/api/admin/workshops/:workshopId/photos/:photoId/decision',
+    '/api/admin/garages/:garageId/photos/:photoId/decision',
     {
       schema: {
         body: {
@@ -1270,14 +1349,9 @@ export function createServer(options: ServerOptions = {}) {
     async (request, reply) => {
       try {
         const principal = requirePrincipal(request, true);
-        const params = request.params as { photoId: string; workshopId: string };
+        const params = request.params as { photoId: string; garageId: string };
         const body = request.body as { approved: boolean };
-        accessStore.publishWorkshopPhoto(
-          principal,
-          params.workshopId,
-          params.photoId,
-          body.approved,
-        );
+        accessStore.publishWorkshopPhoto(principal, params.garageId, params.photoId, body.approved);
         return reply.code(204).send();
       } catch (error) {
         return errorResponse(error, reply);
@@ -1376,12 +1450,15 @@ export function isNoIndexPath(url: string): boolean {
     path === '/werkstatt/aufnahme' ||
     path === '/sq/werkstatt/aufnahme' ||
     path === '/en/werkstatt/aufnahme' ||
+    path === '/inquiry' ||
+    path === '/sq/inquiry' ||
+    path === '/en/inquiry' ||
+    path === '/garages/new' ||
+    path === '/sq/garages/new' ||
+    path === '/en/garages/new' ||
     path === '/garages' ||
     path === '/sq/garages' ||
     path === '/en/garages' ||
-    path === '/workshops' ||
-    path === '/sq/workshops' ||
-    path === '/en/workshops' ||
     path === '/suche' ||
     path === '/sq/suche' ||
     path === '/en/suche' ||

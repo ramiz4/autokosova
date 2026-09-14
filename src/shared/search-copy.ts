@@ -2,10 +2,42 @@ import type { AppLanguage } from './i18n';
 
 export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, string>>>> = {
   de: {
+    'search.ui.finishArea': 'Übernimm den Ort oder brich die Bearbeitung ab, bevor du fortfährst.',
+    'search.ui.outOfFive': 'von 5',
+    'search.ui.reviewCountOne': '{count} Bewertung',
+    'search.ui.reviewCount': '{count} Bewertungen',
+
+    'search.ui.selectedAreas': 'Ausgewählte Orte',
+    'search.ui.editArea': 'Ort bearbeiten',
+    'search.ui.editAreaLabel': '{place}, {radius} km bearbeiten',
+    'search.ui.removeAreaLabel': '{place} entfernen',
+    'search.ui.confirmArea': 'Übernehmen',
+    'search.ui.cancelArea': 'Abbrechen',
+    'search.ui.areaError':
+      'Wähle einen noch nicht verwendeten Ort und einen Radius von 5 bis 100 km.',
+
+    'favorites.login': 'Anmelden',
+    'favorites.dismiss': 'Hinweis schließen',
+    'favorites.add': '{garage} als Favorit speichern',
+    'favorites.remove': '{garage} aus Favoriten entfernen',
+    'favorites.saved': 'Im Benutzerkonto als Favorit gespeichert.',
+    'favorites.removed': 'Aus deinen Favoriten entfernt.',
+    'favorites.signIn': 'Favorit speichern?',
+    'favorites.error': 'Favoriten konnten nicht aktualisiert werden. Bitte versuche es erneut.',
+
+    'search.ui.allLocations': 'Ganz Kosovo',
+    'search.ui.chooseLocation': 'Ort auswählen',
+    'search.ui.addFirstArea': 'Ort hinzufügen',
+    'search.ui.allMakes': 'Alle Marken',
+
+    'search.ui.previousResults': 'Vorherige Ergebnisse – Aktualisierung fehlgeschlagen',
+    'search.ui.openFilters': 'Anpassen',
+    'search.ui.closeFilters': 'Schließen',
+    'search.ui.make': 'Marke',
+    'search.ui.allServices': 'Alle Leistungen',
+
     'search.ui.slogan': 'Mehr als eine Werkstatt. Ein gutes Gefühl.',
     'search.ui.details': 'Details ansehen',
-    'search.ui.heroIntro':
-      'Vergleiche geprüfte Werkstätten in deiner Nähe und finde den passenden Service für dein Fahrzeug – schnell, transparent und nachvollziehbar.',
     'search.ui.addArea': 'Weiteren Ort hinzufügen',
     'search.ui.apply': 'Filter anwenden',
     'search.ui.clear': 'Zurücksetzen',
@@ -28,10 +60,41 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'search.ui.viewMap': 'Karte',
   },
   sq: {
+    'search.ui.finishArea': 'Zbato vendin ose anulo ndryshimet para se të vazhdosh.',
+    'search.ui.outOfFive': 'nga 5',
+    'search.ui.reviewCountOne': '{count} vlerësim',
+    'search.ui.reviewCount': '{count} vlerësime',
+
+    'search.ui.selectedAreas': 'Vendet e zgjedhura',
+    'search.ui.editArea': 'Ndrysho vendin',
+    'search.ui.editAreaLabel': 'Ndrysho {place}, {radius} km',
+    'search.ui.removeAreaLabel': 'Hiq {place}',
+    'search.ui.confirmArea': 'Zbato',
+    'search.ui.cancelArea': 'Anulo',
+    'search.ui.areaError': 'Zgjidh një vend tjetër dhe një rreze nga 5 deri në 100 km.',
+
+    'favorites.login': 'Hyr',
+    'favorites.dismiss': 'Mbyll njoftimin',
+    'favorites.add': 'Ruaj {garage} te të preferuarat',
+    'favorites.remove': 'Hiq {garage} nga të preferuarat',
+    'favorites.saved': 'U ruajt te të preferuarat në llogarinë tënde.',
+    'favorites.removed': 'U hoq nga të preferuarat.',
+    'favorites.signIn': 'Ruaj të preferuarat?',
+    'favorites.error': 'Të preferuarat nuk u përditësuan. Provo përsëri.',
+
+    'search.ui.allLocations': 'Gjithë Kosova',
+    'search.ui.chooseLocation': 'Zgjidh vendin',
+    'search.ui.addFirstArea': 'Shto vend',
+    'search.ui.allMakes': 'Të gjitha markat',
+
+    'search.ui.previousResults': 'Rezultatet e mëparshme – përditësimi dështoi',
+    'search.ui.openFilters': 'Përshtat',
+    'search.ui.closeFilters': 'Mbyll',
+    'search.ui.make': 'Marka e automjetit',
+    'search.ui.allServices': 'Të gjitha shërbimet',
+
     'search.ui.slogan': 'Më shumë se një servis. Një ndjenjë e mirë.',
     'search.ui.details': 'Shiko detajet',
-    'search.ui.heroIntro':
-      'Krahaso servise të kontrolluara pranë teje dhe gjej shërbimin e përshtatshëm për automjetin tënd – shpejt, qartë dhe në mënyrë të kuptueshme.',
     'search.ui.addArea': 'Shto një vend tjetër',
     'search.ui.apply': 'Zbato filtrat',
     'search.ui.clear': 'Rivendos',
@@ -54,10 +117,41 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'search.ui.viewMap': 'Hartë',
   },
   en: {
+    'search.ui.finishArea': 'Apply the location or cancel editing before continuing.',
+    'search.ui.outOfFive': 'out of 5',
+    'search.ui.reviewCountOne': '{count} review',
+    'search.ui.reviewCount': '{count} reviews',
+
+    'search.ui.selectedAreas': 'Selected locations',
+    'search.ui.editArea': 'Edit location',
+    'search.ui.editAreaLabel': 'Edit {place}, {radius} km',
+    'search.ui.removeAreaLabel': 'Remove {place}',
+    'search.ui.confirmArea': 'Apply',
+    'search.ui.cancelArea': 'Cancel',
+    'search.ui.areaError': 'Choose an unused location and a radius from 5 to 100 km.',
+
+    'favorites.login': 'Sign in',
+    'favorites.dismiss': 'Dismiss notification',
+    'favorites.add': 'Save {garage} to favorites',
+    'favorites.remove': 'Remove {garage} from favorites',
+    'favorites.saved': 'Saved to favorites in your account.',
+    'favorites.removed': 'Removed from your favorites.',
+    'favorites.signIn': 'Save your favorites?',
+    'favorites.error': 'Favorites could not be updated. Please try again.',
+
+    'search.ui.allLocations': 'All of Kosovo',
+    'search.ui.chooseLocation': 'Choose a location',
+    'search.ui.addFirstArea': 'Add location',
+    'search.ui.allMakes': 'All makes',
+
+    'search.ui.previousResults': 'Previous results – refresh failed',
+    'search.ui.openFilters': 'Adjust',
+    'search.ui.closeFilters': 'Close',
+    'search.ui.make': 'Vehicle make',
+    'search.ui.allServices': 'All services',
+
     'search.ui.slogan': 'More than a garage. A good feeling.',
     'search.ui.details': 'View details',
-    'search.ui.heroIntro':
-      'Compare checked garages near you and find the suitable service for your vehicle — quickly, transparently and with clear reasons.',
     'search.ui.addArea': 'Add another location',
     'search.ui.apply': 'Apply filters',
     'search.ui.clear': 'Reset',

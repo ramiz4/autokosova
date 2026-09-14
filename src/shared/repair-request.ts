@@ -46,13 +46,31 @@ export interface RepairRequestArea {
   readonly radiusKm: number;
 }
 
+export const REPAIR_REQUEST_VEHICLE_CLASSES = [
+  'car',
+  'suv',
+  'van',
+  'camper',
+  'motorcycle',
+] as const;
+export const REPAIR_REQUEST_FUELS = [
+  'petrol',
+  'diesel',
+  'hybrid',
+  'electric',
+  'lpg',
+  'other',
+] as const;
+
 export interface RepairRequestVehicle {
+  readonly vehicleClass?: (typeof REPAIR_REQUEST_VEHICLE_CLASSES)[number];
+  readonly fuel?: (typeof REPAIR_REQUEST_FUELS)[number];
   readonly engineDetails?: string;
-  readonly makeId: (typeof REPAIR_REQUEST_VEHICLE_MAKES)[number];
+  readonly makeId?: (typeof REPAIR_REQUEST_VEHICLE_MAKES)[number];
   readonly mileageKm?: number;
-  readonly model: string;
+  readonly model?: string;
   readonly transmissionDetails?: string;
-  readonly year: number;
+  readonly year?: number;
 }
 
 export interface RepairRequestInput {
@@ -61,9 +79,20 @@ export interface RepairRequestInput {
   readonly earliestDropoffOn: string;
   readonly latestPickupOn: string;
   readonly serviceCategoryId: (typeof REPAIR_REQUEST_SERVICE_CATEGORIES)[number];
-  readonly stayEndsOn: string;
   readonly symptom?: string;
   readonly vehicle?: RepairRequestVehicle;
+}
+
+/** An empty list explicitly means all of Kosovo, while keeping private request data out of the URL. */
+export function buildRepairRequestSearchParams(
+  input: Pick<RepairRequestInput, 'areas' | 'serviceCategoryId'>,
+): URLSearchParams {
+  const query = new URLSearchParams();
+  if (input.areas.length)
+    query.set('places', input.areas.map((area) => `${area.placeId}:${area.radiusKm}`).join(','));
+  else query.set('all', 'true');
+  query.set('service', input.serviceCategoryId);
+  return query;
 }
 
 const localDatePattern = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -75,13 +104,11 @@ export function isLocalCalendarDate(value: string): boolean {
 }
 
 export function hasConsistentTravelDates(
-  input: Pick<RepairRequestInput, 'earliestDropoffOn' | 'latestPickupOn' | 'stayEndsOn'>,
+  input: Pick<RepairRequestInput, 'earliestDropoffOn' | 'latestPickupOn'>,
 ): boolean {
   return (
     isLocalCalendarDate(input.earliestDropoffOn) &&
     isLocalCalendarDate(input.latestPickupOn) &&
-    isLocalCalendarDate(input.stayEndsOn) &&
-    input.earliestDropoffOn <= input.latestPickupOn &&
-    input.latestPickupOn <= input.stayEndsOn
+    input.earliestDropoffOn <= input.latestPickupOn
   );
 }

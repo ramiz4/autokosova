@@ -17,6 +17,7 @@ describe('Homepage', () => {
       providers: [
         provideRouter([
           { path: 'sq', component: FoundationComponent },
+          { path: 'inquiry', component: FoundationComponent },
           { path: 'en', component: FoundationComponent },
         ]),
         { provide: AnalyticsService, useValue: analytics },
@@ -36,8 +37,10 @@ describe('Homepage', () => {
       '/branding/autokosova-logo-header.png',
     );
     expect(page.querySelector('h1')?.textContent).toContain('Schon vor der Reise.');
+    expect(page.textContent).not.toContain('Gjithmonë një hap më afër shtëpisë.');
+    expect(page.textContent).not.toContain('AUTOKOSOVA');
     expect(
-      [...page.querySelectorAll<HTMLAnchorElement>('a[href="/anfrage"]')].some((link) =>
+      [...page.querySelectorAll<HTMLAnchorElement>('a[href="/inquiry"]')].some((link) =>
         link.textContent?.includes('Jetzt Anfrage erstellen'),
       ),
     ).toBe(true);
@@ -47,7 +50,11 @@ describe('Homepage', () => {
     expect(page.querySelector('picture img')?.getAttribute('fetchpriority')).toBe('high');
     for (const id of ['werkstatt-suche', 'so-funktionierts', 'ueber-uns']) {
       expect(page.querySelector('#' + id)).toBeTruthy();
-      expect(page.querySelector('header a[href="/#' + id + '"]')).toBeTruthy();
+      expect(
+        page.querySelector(
+          'header a[href="' + (id === 'werkstatt-suche' ? '/garages' : '/#' + id) + '"]',
+        ),
+      ).toBeTruthy();
     }
   });
 
@@ -81,8 +88,7 @@ describe('Homepage', () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const form = page.querySelector('form')!;
     const radius = page.querySelector<HTMLInputElement>('#search-radius')!;
-    radius.value = '101';
-    radius.dispatchEvent(new Event('input'));
+    fixture.componentInstance['radiusKm'] = 101;
     await fixture.whenStable();
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await fixture.whenStable();
@@ -103,8 +109,8 @@ describe('Homepage', () => {
     await TestBed.inject(Router).navigateByUrl('/sq');
     const { page } = await render();
     expect(page.querySelector('h1')?.textContent).toContain('Para se të nisesh.');
-    expect(page.querySelector('a[href="/sq/anfrage"]')).toBeTruthy();
-    expect(page.querySelector('header a[href="/sq#werkstatt-suche"]')).toBeTruthy();
+    expect(page.querySelector('a[href="/sq/inquiry"]')).toBeTruthy();
+    expect(page.querySelector('header a[href="/sq/garages"]')).toBeTruthy();
     expect(page.querySelector('header a[href="/en"]')?.textContent).toContain('English');
     expect(page.querySelector('header a[aria-current="page"]')?.textContent).toContain('Shqip');
   });
@@ -128,6 +134,32 @@ describe('Homepage', () => {
       expect(Object.values(landingCopy[locale]).every((value) => value.trim().length > 0)).toBe(
         true,
       );
+    }
+  });
+  it('docks the floating landing header at its inset and restores it on scrolling back', async () => {
+    const scrollDescriptor = Object.getOwnPropertyDescriptor(window, 'scrollY')!;
+    const widthDescriptor = Object.getOwnPropertyDescriptor(window, 'innerWidth')!;
+    try {
+      Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 });
+      const { fixture } = await render();
+      expect(fixture.componentInstance['navbarDocked']()).toBe(false);
+      Object.defineProperty(window, 'scrollY', { configurable: true, value: 54 });
+      window.dispatchEvent(new Event('scroll'));
+      await fixture.whenStable();
+      expect(fixture.componentInstance['navbarDocked']()).toBe(true);
+      Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
+      window.dispatchEvent(new Event('scroll'));
+      await fixture.whenStable();
+      expect(fixture.componentInstance['navbarDocked']()).toBe(false);
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+      Object.defineProperty(window, 'scrollY', { configurable: true, value: 20 });
+      window.dispatchEvent(new Event('resize'));
+      await fixture.whenStable();
+      expect(fixture.componentInstance['navbarDocked']()).toBe(true);
+    } finally {
+      Object.defineProperty(window, 'scrollY', scrollDescriptor);
+      Object.defineProperty(window, 'innerWidth', widthDescriptor);
     }
   });
 });

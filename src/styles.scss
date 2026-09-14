@@ -14,10 +14,10 @@ body {
   border-bottom: 3px solid transparent;
 }
 .nav-link:hover {
-  color: #0061ff;
+  color: #0038c9;
 }
 .nav-link-active {
-  color: #0061ff;
+  color: #0038c9;
   border-bottom: 3px solid #0061ff;
 }
 .nav-link:focus-visible {
@@ -31,5 +31,127 @@ form[id] {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+}
+
+:where(
+    a[href],
+    button,
+    select,
+    summary,
+    [role='button'],
+    [role='link'],
+    [role='tab'],
+    [role='switch'],
+    input[type='button'],
+    input[type='submit'],
+    input[type='reset'],
+    input[type='checkbox'],
+    input[type='radio'],
+    input[type='file']
+  ):not(:disabled):not([aria-disabled='true']) {
+  cursor: pointer;
+}
+
+label:has(
+  :is(input[type='checkbox'], input[type='radio'], input[type='file'], select):not(:disabled)
+) {
+  cursor: pointer;
+}
+
+input[type='file']:not(:disabled)::file-selector-button {
+  cursor: pointer;
+}
+
+/* Keep native select behavior while giving every dropdown the same chevron inset. */
+select:not([multiple]):not([size]),
+select:not([multiple])[size='1'] {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23506b96' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.875rem center;
+  background-size: 1rem 1rem;
+  padding-right: 2.75rem;
+}
+
+@media (forced-colors: active) {
+  select:not([multiple]):not([size]),
+  select:not([multiple])[size='1'] {
+    appearance: auto;
+    background-image: none;
+  }
+}
+
+/* A separate backdrop layer lets the floating menu blur the page independently. */
+.site-navbar-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: rgb(255 255 255 / 78%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 70%),
+    0 2px 12px rgb(7 20 62 / 5%);
+}
+
+.site-menu-surface {
+  background: rgb(255 255 255 / 82%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .site-navbar-surface::before,
+  .site-menu-surface {
+    background: #fff;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .site-navbar-surface::before,
+  .site-menu-surface {
+    background: #fff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (width < 640px) {
+  .is-authenticated .site-logo {
+    width: 112px;
+  }
+  .is-authenticated .mobile-menu-toggle {
+    display: none;
+  }
+}
+
+/* The landing header floats over the hero, then docks without changing document flow. */
+.landing-navbar {
+  --landing-navbar-inset: 20px;
+  transform: translateY(max(0px, calc(var(--landing-navbar-inset) - var(--landing-scroll-y, 0px))));
+}
+.landing-navbar.is-docked {
+  padding-inline: 0.75rem;
+}
+.landing-navbar:not(.is-docked) app-site-header > header {
+  background: transparent;
+}
+.landing-navbar app-site-header::before {
+  border-radius: inherit;
+}
+@media (width >= 640px) {
+  .landing-navbar {
+    --landing-navbar-inset: 32px;
+  }
+}
+@media (width >= 1024px) {
+  .landing-navbar {
+    --landing-navbar-inset: 54px;
+  }
+  .landing-navbar.is-docked {
+    padding-inline: 2rem;
   }
 }

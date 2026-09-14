@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { InMemoryAnalyticsStore } from '../src/server/analytics';
-import { createServer } from '../src/server/app';
+import { createServer, isNoIndexPath } from '../src/server/app';
 import { localizedServiceLabel, translate } from '../src/shared/i18n';
 
 test('the three UI catalogs keep product strings and catalog labels separate from user content', () => {
@@ -63,18 +63,38 @@ test('public analytics accepts only aggregate event names and stays disabled by 
 });
 
 test('private and parameterized paths are noindex while the sitemap contains public language routes only', async () => {
-  const app = createServer({ publicSiteUrl: 'https://autokosova.example' });
+  const app = createServer({
+    publicSiteUrl: 'https://autokosova.example',
+    searchStore: {
+      listPublicWorkshopIds: () => ['demo-garage'],
+      getPublicWorkshop: () => undefined,
+      searchPublicWorkshops: () => {
+        throw new Error('Not used');
+      },
+    },
+  });
   try {
     const robots = await app.inject({ method: 'GET', url: '/robots.txt' });
     const sitemap = await app.inject({ method: 'GET', url: '/sitemap.xml' });
-    const privateRequest = await app.inject({ method: 'GET', url: '/en/anfrage' });
+    const privateRequest = await app.inject({ method: 'GET', url: '/en/inquiry' });
     const search = await app.inject({ method: 'GET', url: '/suche?places=xk-pristina:20' });
 
     assert.equal(robots.statusCode, 200);
     assert.match(robots.body, /Disallow: \/api\//);
     assert.equal(sitemap.statusCode, 200);
     assert.match(sitemap.body, /https:\/\/autokosova\.example\/sq/);
-    assert.equal(sitemap.body.includes('/anfrage'), false);
+    assert.equal(sitemap.body.includes('/inquiry'), false);
+    assert.ok(sitemap.body.includes('/garages/demo-garage'));
+    assert.ok(sitemap.body.includes('/sq/garages/demo-garage'));
+    assert.ok(!sitemap.body.includes('/workshop'));
+    const rules = robots.body.split('\n');
+    for (const prefix of ['', '/sq', '/en']) {
+      assert.ok(rules.includes(`Disallow: ${prefix}/garages$`));
+      assert.ok(!rules.includes(`Disallow: ${prefix}/garages`));
+      assert.equal(isNoIndexPath(`${prefix}/garages/demo-garage`), false);
+      assert.equal(isNoIndexPath(`${prefix}/inquiry`), true);
+      assert.equal(isNoIndexPath(`${prefix}/garages/new`), true);
+    }
     assert.equal(privateRequest.headers['x-robots-tag'], 'noindex, nofollow');
     assert.equal(search.headers['x-robots-tag'], 'noindex, nofollow');
   } finally {

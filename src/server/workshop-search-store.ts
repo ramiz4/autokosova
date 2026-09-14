@@ -93,7 +93,11 @@ export class PostgresWorkshopSearchStore implements WorkshopSearchStore {
            ARRAY[]::text[] AS photo_ids, profile.place_id AS matching_place_id,
            0::double precision AS distance_m
          FROM public_workshop_profile AS profile
-         LEFT JOIN public_workshop_review_summary AS summary ON summary.workshop_id = profile.id`,
+         LEFT JOIN public_workshop_review_summary AS summary ON summary.workshop_id = profile.id
+         WHERE ($1::text IS NULL OR $1 = ANY(COALESCE(profile.service_category_ids, ARRAY[]::text[])))
+           AND ($2::text IS NULL OR cardinality(COALESCE(profile.vehicle_make_ids, ARRAY[]::text[])) = 0 OR $2 = ANY(profile.vehicle_make_ids))
+           AND ($3::text IS NULL OR EXISTS (SELECT 1 FROM unnest(COALESCE(profile.languages, ARRAY[]::text[])) AS language(value) WHERE lower(language.value) = lower($3)))`,
+        [input.serviceCategoryId ?? null, input.vehicleMakeId ?? null, input.language ?? null],
       );
       return toSearchResponse(result.rows.map(toCandidate), input);
     }

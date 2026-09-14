@@ -158,7 +158,6 @@ export interface StoredRepairRequest {
   readonly id: string;
   readonly latestPickupOn: string;
   readonly serviceCategoryId: string;
-  readonly stayEndsOn: string;
   readonly symptom?: string;
   readonly vehicle?: RepairRequestInput['vehicle'];
 }
@@ -247,6 +246,7 @@ interface AppealRecord {
 }
 
 export interface PersonalDataExport {
+  readonly favoriteGarageIds: readonly string[];
   readonly exportedAt: string;
   readonly files: readonly { readonly id: string; readonly status: 'active' | 'deleted' }[];
   readonly repairRequests: readonly StoredRepairRequest[];
@@ -277,6 +277,7 @@ export class DuplicateWorkshopError extends AccessError {
 
 export class AccessStore implements ReviewStore {
   readonly auditEvents: AuditEvent[] = [];
+  private readonly favorites = new Map<string, Set<string>>();
   private readonly appeals = new Map<string, AppealRecord>();
   private readonly deletionRequests = new Map<string, DataDeletionRequest>();
   private readonly deletedStorageKeys = new Set<string>();
@@ -495,9 +496,22 @@ export class AccessStore implements ReviewStore {
     );
   }
 
+  listFavoriteGarageIds(ownerUserId: string): readonly string[] {
+    return [...(this.favorites.get(ownerUserId) ?? [])];
+  }
+  saveFavorite(ownerUserId: string, garageId: string): void {
+    const favorites = this.favorites.get(ownerUserId) ?? new Set<string>();
+    favorites.add(garageId);
+    this.favorites.set(ownerUserId, favorites);
+  }
+  removeFavorite(ownerUserId: string, garageId: string): void {
+    this.favorites.get(ownerUserId)?.delete(garageId);
+  }
+
   exportPersonalData(principal: Principal): PersonalDataExport {
     return {
       exportedAt: new Date().toISOString(),
+      favoriteGarageIds: this.listFavoriteGarageIds(principal.userId),
       files: [...this.files.values()]
         .filter((file) => file.ownerUserId === principal.userId)
         .map((file) => ({ id: file.id, status: file.retentionState })),
@@ -565,6 +579,7 @@ export class AccessStore implements ReviewStore {
       throw new AccessError(409, 'Data deletion requires the configured operator policy');
     }
     const userId = request.userId;
+    this.favorites.delete(userId);
     for (const [id, repairRequest] of this.repairRequests) {
       if (repairRequest.ownerUserId === userId) this.repairRequests.delete(id);
     }
@@ -1333,7 +1348,6 @@ export class AccessStore implements ReviewStore {
       id: request.id,
       latestPickupOn: request.input.latestPickupOn,
       serviceCategoryId: request.input.serviceCategoryId,
-      stayEndsOn: request.input.stayEndsOn,
       symptom: request.input.symptom,
       vehicle: request.input.vehicle,
     };

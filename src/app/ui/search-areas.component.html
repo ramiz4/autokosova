@@ -1,0 +1,135 @@
+<section [attr.aria-labelledby]="id('label')" class="grid gap-3">
+  <h3 [id]="id('label')" class="text-sm font-semibold">{{ ui('search.ui.place') }}</h3>
+  @if (!areas.length) {
+    <div class="flex items-start gap-2 text-sm">
+      <app-icon name="pin" class="mt-0.5 size-4 text-muted" />
+      <div>
+        <p class="font-medium">{{ ui('search.ui.allLocations') }}</p>
+      </div>
+    </div>
+  }
+  <ul class="flex flex-wrap gap-2" [attr.aria-label]="ui('search.ui.selectedAreas')">
+    @for (area of areas; track area.placeId; let index = $index) {
+      <li
+        class="inline-flex max-w-full items-center rounded-lg bg-blue-50 text-brand-dark"
+        [class.ring-1]="areaEditor()?.index === index"
+        [class.ring-brand]="areaEditor()?.index === index"
+      >
+        <button
+          type="button"
+          [disabled]="disabled()"
+          [id]="id('edit-area-' + index)"
+          class="flex min-h-11 min-w-0 items-center gap-2 rounded-l-lg py-1 pr-2 pl-3 text-left text-sm hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          [attr.aria-label]="
+            ui('search.ui.editAreaLabel', {
+              place: placeLabel(area.placeId),
+              radius: area.radiusKm,
+            })
+          "
+          [attr.aria-controls]="id('area-editor')"
+          [attr.aria-expanded]="areaEditor()?.index === index"
+          (click)="editArea(areas.indexOf(area))"
+        >
+          <span
+            >{{ placeLabel(area.placeId) }}
+            <span class="whitespace-nowrap">· {{ area.radiusKm }} km</span></span
+          >
+          <app-icon name="pencil" class="size-3.5" />
+        </button>
+        <button
+          type="button"
+          [disabled]="disabled()"
+          class="flex size-11 shrink-0 items-center justify-center rounded-r-lg text-muted hover:bg-blue-100 hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          [attr.aria-label]="ui('search.ui.removeAreaLabel', { place: placeLabel(area.placeId) })"
+          (click)="removeArea(areas.indexOf(area))"
+        >
+          <app-icon name="close" class="size-3.5" />
+        </button>
+      </li>
+    }
+  </ul>
+  @if (areaEditor(); as editor) {
+    <div
+      [id]="id('area-editor')"
+      role="group"
+      [attr.aria-labelledby]="id('area-editor-title')"
+      class="border-t border-blue-100 pt-3"
+      (keydown.escape)="cancelArea(); $event.stopPropagation()"
+    >
+      <h4 [id]="id('area-editor-title')" class="mb-2 text-sm font-semibold">
+        {{ ui(editor.index < 0 ? 'search.ui.addFirstArea' : 'search.ui.editArea') }}
+      </h4>
+      <label [for]="id('area-place')" class="sr-only">{{ ui('search.ui.place') }}</label>
+      <div class="relative">
+        <app-icon
+          name="pin"
+          class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted"
+        />
+        <select
+          [id]="id('area-place')"
+          [(ngModel)]="editor.area.placeId"
+          [ngModelOptions]="{ standalone: true }"
+          [disabled]="disabled()"
+          name="area-place"
+          [attr.aria-invalid]="areaEditorError() ? 'true' : null"
+          [attr.aria-describedby]="areaEditorError() ? id('area-error') : null"
+          class="min-h-11 w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 text-sm focus-visible:outline-2 focus-visible:outline-brand/30"
+        >
+          <option value="" disabled>{{ ui('search.ui.chooseLocation') }}</option>
+          @for (place of places; track place.id) {
+            <option [value]="place.id" [disabled]="placeSelectedElsewhere(place.id, editor.index)">
+              {{ place.label }}
+            </option>
+          }
+        </select>
+      </div>
+      @if (editor.area.placeId) {
+        <app-radius-slider
+          class="mt-3"
+          [inputId]="id('area-radius')"
+          [(ngModel)]="editor.area.radiusKm"
+          [ngModelOptions]="{ standalone: true }"
+          [disabled]="disabled()"
+          name="area-radius"
+        />
+      }
+      @if (areaEditorError()) {
+        <p [id]="id('area-error')" role="alert" class="mt-2 text-sm text-rose-800">
+          {{ ui('search.ui.areaError') }}
+        </p>
+      }
+      <div class="mt-2 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          appButton
+          size="compact"
+          [disabled]="disabled() || !editor.area.placeId"
+          (click)="saveArea()"
+        >
+          {{ ui('search.ui.confirmArea') }}
+        </button>
+        <button
+          type="button"
+          [disabled]="disabled()"
+          class="min-h-11 rounded-lg px-3 text-sm font-medium text-muted hover:bg-slate-100 hover:text-ink focus-visible:outline-2 focus-visible:outline-brand"
+          (click)="cancelArea()"
+        >
+          {{ ui('search.ui.cancelArea') }}
+        </button>
+      </div>
+    </div>
+  } @else if (areas.length < limits.maxAreas) {
+    <button
+      [id]="id('add-area')"
+      type="button"
+      [disabled]="disabled()"
+      class="inline-flex min-h-11 items-center gap-2 justify-self-start rounded-lg px-3 text-left text-sm font-medium text-brand-dark transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+      [attr.aria-controls]="id('area-editor')"
+      aria-expanded="false"
+      (click)="addArea()"
+    >
+      <span aria-hidden="true" class="text-lg">+</span
+      >{{ ui(areas.length ? 'search.ui.addArea' : 'search.ui.addFirstArea') }}
+    </button>
+  }
+</section>

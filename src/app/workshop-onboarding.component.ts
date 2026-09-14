@@ -193,7 +193,7 @@ export class WorkshopOnboardingComponent {
     this.sending = true;
     this.message = '';
     try {
-      const response = await fetch('/api/workshops', {
+      const response = await fetch('/api/garages', {
         body: JSON.stringify({
           consentVersion: 'workshop-onboarding-v1',
           profile: {

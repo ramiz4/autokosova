@@ -1,0 +1,164 @@
+# Reparaturanfrage: lokaler Vergleich für #43
+
+Vergleich vom 14.09.2026 mit [Screenshot 2](../../references/2026-09-13/mockups/02-reparaturanfrage.png).
+Alle eingegebenen Fahrzeug-/Reisedaten sind fiktive DEMO-Daten. Aufnahmen stammen vom eigenen lokalen Worktree, ohne öffentliche Bereitstellung.
+
+| Ansicht | Nachweis |
+| --- | --- |
+| Fahrzeug, Desktop 1448 × 1086 | [DE, fiktive Eingaben](vehicle-demo-1448.webp), [SQ](sq-1448.webp), [EN](en-1448.webp) |
+| Fahrzeug, Desktop 1280 | [DE](de-1280.webp) |
+| Fahrzeug, Mobil | [DE 360](de-360.webp), [DE 390](de-390.webp), [DE 430](de-430.webp), [SQ 360](sq-360.webp), [EN 360](en-360.webp) |
+| Reparatur | [Desktop](step-2.webp) |
+| Ort & Zeit | [Desktop](travel-1448.webp), [Mobil](travel-360.webp) |
+| Details ohne Upload-Anbindung | [Mobil](details-430.webp) |
+| Zusammenfassung / Browserentwurf | [Desktop](summary-1448.webp), [Mobil](summary-360.webp) |
+
+Die Bilder zeigen die gesamte scrollbare Seite; die Viewporthöhe betrug 1086 px.
+Fahrzeugschritt in DE/SQ/EN bei 1448, 1280, 360, 390 und 430 px geprüft. Zusätzlich Reise- und Zusammenfassungsschritt bei allen fünf Breiten geprüft; keine horizontalen Überläufe. Der Gastdurchlauf durch alle fünf Schritte und die anschließende Suche funktionierten im Browser. Ein realer nicht angemeldeter Speicheraufruf zeigte den Login-Hinweis und ließ die Suche weiterhin zu. Die Such-URL enthielt ausschließlich `places` und `service`.
+
+## Bewusste Unterschiede zur Vorlage
+
+- Vorhandenes optimiertes Bergstraßenmotiv und gemeinsamer Header; vorhandene Navigation bleibt bestehen. Kompakte Headerdarstellung nur auf der Anfrageseite.
+- Keine Beispielperson, Sterne, Angebotsversprechen oder automatische Weitergabe. Freie Seitenfläche statt erfundenem Testimonial.
+- Alle Fahrzeugfelder einzeln optional, anfangs leer. Klasse lässt sich durch erneutes Anklicken abwählen. Modell und Motorisierung bleiben Freitext; Getriebe verwendet eine optionale Auswahl.
+- Mindestens 44 px hohe Eingaben und Bedienflächen. Mobil stapeln sich Felder und Karten.
+- Fünfter Schritt zeigt Zusammenfassung und tatsächlichen Speicherstatus. Dateien bleiben ohne Speicheranbindung lokal und werden ausdrücklich nicht mitgespeichert.
+
+## Prüfungen und Grenzen
+
+- `npm ci`, `npm run dev:demo`: eigene lokale PostgreSQL-DB, Migration 017 und öffentliche Demo-Daten erfolgreich.
+- `npm run format:check`, `npm run lint`, `npm run typecheck`: erfolgreich.
+- `npm test -- --watch=false`: 56 Tests erfolgreich, einschließlich 17 Anfrage-Tests und 6 Routentests.
+- `npm run test:server` mit der eigenen lokalen `DATABASE_URL`: 61 bestanden, 2 profilspezifische Demo-Seed-Tests übersprungen (keine entsprechenden Testprofil-Flags). Persistenz mit neuen Feldern, Teilfahrzeug und Fremdzugriff tatsächlich gegen PostgreSQL geprüft.
+- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 561 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
+- Screenreader-Semantik (`aria-current`, Status-/Fehlermeldungen), Fokuswechsel und Eingabevalidierung automatisiert geprüft. Kein manueller Durchlauf mit einem Screenreader und keine native mobile Browserprüfung.
+- Echter Customer-OIDC-Login auf Port 4200 erfolgreich: Favorit per Herz gespeichert, API-Eintrag bestätigt, nach Neuladen erhalten, wieder entfernt und abgemeldet. PostgreSQL- und API-Tests prüfen zusätzlich Besitzer-Isolation, Export und Löschung.
+
+Pointer-Cursor zentral für aktive Links, Buttons, Auswahllisten, aufklappbare Elemente und Auswahl-/Upload-Bedienelemente ergänzt. Im Browser auf Header, Fahrzeugklassen, Auswahllisten und Formularaktionen über die berechneten CSS-Werte geprüft. Deaktivierte Elemente sind ausgenommen.
+
+## Kanonische englische Routen
+
+Der Assistent liegt unter `/inquiry`; Profile und Aufnahme unter `/garages/:garageId` und `/garages/new`. Alle drei Sprachen verwenden dieselben englischen Pfadsegmente. Alte deutsche UI-Pfade sind ausschließlich Weiterleitungen. API-Pfade verwenden `/api/garages`, `/api/public/garages`, `/api/me/garages` und `/api/admin/garages`; Collection-Antworten heißen `garages`. Die früheren API-Pfade werden nicht weiter angeboten. Die API-Berechtigungsmatrix wurde unter den neuen Pfaden erneut geprüft. Ein öffentliches Demo-Profil wurde über die neue UI-/API-Route im Browser erfolgreich geladen.
+
+Sitemap und Robots-Regeln berücksichtigen die neuen Pfade: Suchlisten und Aufnahme bleiben ausgeschlossen, öffentliche Profilpfade werden nicht durch eine zu breite `/garages`-Regel gesperrt. Login-Rücksprünge akzeptieren den kanonischen Anfragepfad, bekannte deutsche Vorgänger (normalisiert auf `/inquiry`) und `/garages` mit validierten öffentlichen Suchfiltern.
+
+Die Anfrageseite hat eine sticky Navigation: im Mobilbrowser nach 800 px Scrollen bleibt die Kopfzeile bei 0–64 px sichtbar. [Scrollnachweis](sticky-mobile.webp). Getriebe ist eine optionale Auswahl; ältere Freitexte bleiben als bisheriger Wert erhalten.
+
+## Mobile Schrittanzeige und gemeinsame Navigation
+
+Auf schmalen Displays zeigt die Schrittleiste fünf nummerierte Indikatoren und die vollständige Bezeichnung des aktuellen Schritts in einer eigenen Zeile. Alle fünf Beschriftungen bleiben für Screenreader verfügbar. [Mobile Schrittanzeige](mobile-steps.webp).
+
+Im ersten Schritt stehen Abbrechen und Weiter nebeneinander: bei 360 px jeweils 130,5 × 52 px. In Folgeschritten stehen Zurück und Weiter in derselben Zeile, Abbrechen darunter; die lange Suchaktion erhält im Abschluss eine volle Zeile. [Mobile Aktionen](mobile-actions.webp).
+
+Neue Anfrage und Werkstätten finden haben auf ihrer jeweiligen Seite einen blauen 3-px-Unterstrich sowie `aria-current="page"`, auch im mobilen Menü. Die Suche verwendet denselben kompakten sticky Header wie die Anfrage. Nach 800 px Scrollen bleibt er auf beiden Seiten bei 0–64 px: [Suche Desktop](garages-sticky-1448.webp), [Suche Mobil](garages-sticky-390.webp). DE/SQ/EN wurden erneut in allen fünf Vergleichsbreiten ohne horizontalen Überlauf geprüft.
+
+## Vereinfachte Reisedaten
+
+Die Anfrage erfasst nur früheste Abgabe und späteste Abholung. Aufenthaltsende wurde aus Formular, Zusammenfassung, Übersetzungen, API-Vertrag, Speicherung und privaten Datenexporten entfernt. Bestehende Browserentwürfe werden mit dem aktuellen Formularvertrag neu gespeichert, sodass das veraltete Feld entfällt. Browserprüfung: genau zwei Datumsfelder, Zusammenfassung erreichbar und kein veraltetes Feld im Browserentwurf.
+
+Migration 018 entfernt die Spalte samt bisherigen Werten und ersetzt die Datumsbedingung durch `Abgabe ≤ Abholung`. Auf der eigenen lokalen DB blieben alle neun vor der Migration vorhandenen Anfragen erhalten; die Spalte ist nicht mehr vorhanden. Die vollständigen UI-/Server-/PostgreSQL-Prüfungen wurden anschließend erfolgreich wiederholt. Historische Migration 011 bleibt als angewendete Versionshistorie unverändert.
+
+## Schwebendes Menü und Glasoberflächen
+
+Das mobile Menü liegt absolut unter dem Header und verändert den Seitenfluss nicht. Auf Anfrage und Suche bleibt der Hero beim Öffnen bei y=64 px, die Headerhöhe bei 64 px; das Menü liegt zwischen y=72 und y=398 px (390 × 844). [Anfrage mit geöffnetem Menü](inquiry-glass-menu.webp), [Suche mit geöffnetem Menü](garages-glass-menu.webp).
+
+Menü und sticky Navbar nutzen getrennte, leicht transparente Glasflächen mit Backdrop-Blur und Sättigung. Eine eigene Hintergrundebene der Navbar verhindert, dass ihre Unschärfe die Glasschicht des Menüs begrenzt. [Anfrage beim Scrollen](inquiry-glass-scroll.webp), [Suche beim Scrollen](garages-glass-scroll.webp). Bei reduzierter Transparenz oder fehlender Blur-Unterstützung bleiben die Flächen undurchsichtig.
+
+Escape, Menülinks und Tippen außerhalb schließen das Menü. Die Außenaktion ist automatisiert geprüft. Bei nur 390 px Viewporthöhe bleiben alle Menüpunkte durch internes Scrollen erreichbar: Anfrage, Suche und Startseite bei 360, 430 und 1024 px Breite geprüft; kein horizontaler Überlauf und Menüunterkante innerhalb des Viewports.
+
+## Gemeinsamer Radius-Regler und Suchfilter
+
+Startseite, Anfrage und Suche verwenden denselben formularfähigen Radius-Regler: 4-px-Spur, weißer 20-px-Griff mit 2-px-blauem Rand, 14-px-Beschriftungen und Grenzen von 5 bis 100 km. Die native Bedienfläche bleibt 44 px hoch. [Startseite](radius-home.webp), [Anfrage](radius-inquiry.webp), [Suche](radius-search.webp). Pfeiltasten, Home/End, Formwert-Synchronisierung, Touched-/Disabled-Zustand und Rücknavigation sind geprüft.
+
+Die Suchfilter haben eine flache Gestaltung ohne verschachtelte Karten. Orte werden als Chips mit eigenem Radius sowie getrennten Bearbeiten-/Entfernen-Buttons dargestellt. Ein einzelner Editor öffnet sich direkt darunter. Übernehmen bestätigt den Entwurf, Abbrechen und Escape verwerfen ihn. Neue Orte starten leer; doppelte Orte werden verhindert. Leistung ist ein eindeutiges Auswahlfeld entsprechend der unterstützten Einzelauswahl. Alle Feldlabels sind einheitlich 14 px groß. Die früheren aufklappbaren Standortzeilen sind durch den unten dokumentierten Chip-Editor ersetzt.
+
+
+Mobil ist der gesamte Filter aufklappbar. Ergebnisse bleiben während einer Aktualisierung erhalten und werden als beschäftigt markiert. Änderungen der URL-Filter laden die Treffer neu; ältere verspätete Antworten können neuere Ergebnisse nicht überschreiben. Anwenden änderte im lokalen Browsernachweis die Trefferzahl von 6 auf 25. Zurücksetzen lädt alle Ergebnisse und setzt die Eingaben zurück. DE/SQ/EN bei 360/430 px ohne horizontale Überläufe und mit einheitlicher Labelgröße geprüft.
+
+## Unternehmensprüfung in Ergebniskarten
+
+Der zusätzliche Chip „Unternehmensdaten geprüft“ entfällt. Die Prüfung erscheint ausschließlich als blaues, sternförmiges Badge mit weißem Haken neben dem Werkstattnamen. Tooltip und Screenreader-Name benennen weiterhin präzise die Unternehmensdatenprüfung. Ohne bestätigten `companyDataVerified`-Wert wird das Icon nicht angezeigt. Diese Grenze und die Entfernung des doppelten Chips sind im UI-Test geprüft. [Ergebniskarte](verification-badge.webp).
+
+## Ergebnisfokus, optionale Orte und Favoriten
+
+Die Suche beginnt direkt mit Filter und Ergebnissen. Bild-Hero, Hero-Suchfeld, Vorteilsblöcke und sichtbare Seitenüberschrift entfallen nach der letzten Nutzerentscheidung. Die semantische H1 bleibt für Screenreader erhalten. [Desktop](search-results-1448.webp), [Mobil 390](search-results-390.webp), [Mobil 360](search-results-360.webp).
+
+Ohne gesetzten Ortsfilter bleibt die Ortsauswahl leer: „Ganz Kosovo“. Marke und Leistung gelten auch für die globale Suche. Die Reihenfolge ist Marke, Leistung. Der Filter bleibt nach dem Scrollen bei y=80 unter der 64 px hohen Navbar, bei Bedarf mit internem Scrollbereich.
+
+Migration 019 speichert private Favoriten im Konto. Angemeldete Navbar: [Desktop](account-navbar.webp), [Mobil](account-mobile.webp). [Bestätigter Favorit und fiktive Demo-Bewertung](favorite-card.webp). Sechs veröffentlichte fiktive Workflow-Bewertungen auf drei ausdrücklich als DEMO bezeichneten Profilen zeigen echte berechnete Mittelwerte und Anzahlen. `npm run test:demo-workflow-seed` wurde separat mit eigener lokaler DB erfolgreich ausgeführt.
+
+Die finale Suche wurde in DE/SQ/EN bei 1920, 1448, 390 und 360 px ohne horizontalen Überlauf geprüft. Keine öffentliche Bereitstellung; keine echten Kundendaten in den Nachweisen.
+
+Navbar-Inhalt und Suchinhalt teilen exakt dieselben Außenkanten: bei allen vier Breiten und in allen drei Sprachen wurden links und rechts 0 px Abweichung gemessen. [Großer Desktop](search-results-1920.webp).
+
+## Kompakte Favoriten-Hinweise
+
+Toasts sind maximal 576 px breit und unten mittig positioniert. Status-Icon, 14-px-Text und Schließen-Button bilden eine gemeinsame Zeile; der kurze Gast-Hinweis „Favorit speichern?“ enthält direkt daneben den Textlink „Anmelden“. Mobile Seitenabstände und Safe Area bleiben berücksichtigt. Fehler werden als Alert angekündigt, andere Hinweise als Status.
+
+[Echter Gast-Hinweis Desktop](toast-login-1448.webp), [Mobil 360](toast-login-360.webp). Die Zustände [Gespeichert](toast-saved-fixture.webp), [Entfernt](toast-removed-fixture.webp) und [Fehler](toast-error-fixture.webp) wurden für diese reine Darstellungsprüfung mit simulierten API-Antworten aufgenommen; der echte OIDC-/Persistenznachweis ist separat oben dokumentiert. Schließen und Anmelden-Link sind bedienbar, keine horizontalen Überläufe.
+
+## Zentraler Select-Pfeil
+
+Alle nativen Dropdown-Selects erhalten über `src/styles.scss` denselben Chevron mit 14 px Randabstand, 16 px Icongröße und 44 px Textreserve rechts. Mehrfachauswahl und Listboxen behalten ihre native Darstellung. Im erzwungenen Kontrastmodus wird der native Pfeil verwendet. Berechnete CSS-Werte auf Suche, Anfrage, Startseite, Aufnahme und Profil geprüft; Tastaturfokus und mobile Darstellung ohne Überlauf bestätigt. [Desktop](select-inset-desktop.webp), [Mobil](select-inset-mobile.webp).
+
+Favoriten werden erst nach bestätigtem öffentlichem Sitzungsstatus geladen; parallele Sitzungsabfragen werden zusammengefasst. Live als Gast geprüft: Seitenaufruf und Herz-Klick erzeugen keine `/api/me/`-Requests und keine 401-Antworten. Ein späterer Sitzungsablauf wird weiterhin serverseitig abgefangen. Toasts verschwinden nach 5 Sekunden (gespeichert/entfernt) beziehungsweise 8 Sekunden (Anmeldung/Fehler). Neue Hinweise starten ihren eigenen Timer; manuelles Schließen und Komponentenabbau räumen ihn auf. Automatisierte Tests prüfen Laufzeit und Ersatz; der Gast-Hinweis verschwand im Browser nach etwa 8 Sekunden.
+
+## Orts-Chips und getrennte Bearbeitung
+
+[Chips Desktop](location-chips-desktop.webp), [Editor Desktop](location-editor-desktop.webp), [DE Mobil](location-editor-de-360.webp), [SQ Mobil](location-editor-sq-360.webp), [EN Mobil](location-editor-en-360.webp).
+
+Jeder Chip zeigt den Ort und seinen bestätigten Radius. Bearbeiten öffnet eine Kopie; währenddessen bleibt der Chip unverändert. Übernehmen validiert den Katalogort, Eindeutigkeit, höchstens drei Orte und 5–100 km. Abbrechen/Escape verwerfen den Entwurf. Filter anwenden und Sortierung sind während der Ortsbearbeitung gesperrt. Entfernen des letzten Orts erlaubt weiterhin die Suche in ganz Kosovo. Neue Orte beginnen leer.
+
+Automatisiert geprüft: unabhängige Radien, Abbrechen ohne Seiteneffekt, Übernahme, URL-Übergabe, Duplikate, Grenzen, Entfernen bei geöffnetem Editor, Escape und Rücknavigation. Live geprüft: Fokus beim Öffnen, Tastaturbedienung des Sliders, Abbrechen, dritter Ort und Such-URL `places=xk-prizren:35,xk-peja:50,xk-ferizaj:10`. DE/SQ/EN bei 360 px ohne horizontalen Überlauf. Der Editor belegt die verfügbare Filterbreite.
+
+[Optionaler Leerzustand mobil](location-empty-mobile.webp). Auch unmittelbar aufeinanderfolgende Entfernen-Aktionen vor dem nächsten Rendern entfernen die richtigen Orte: Chips und Aktionen sind an die jeweilige Ortsidentität gebunden. Regressionstest und Browserdurchlauf erfolgreich.
+
+„Weiteren Ort hinzufügen“ ist ein Button mit Innenabstand und dezentem flächigem Hover, ohne Unterstreichung. [Hover-Nachweis](add-location-hover.webp).
+
+## Suchfilter ohne Sprache
+
+Das Feld Sprache und seine Auswahltexte entfallen aus dem Suchfilter in DE/SQ/EN. Alte `language`-Parameter werden weder an die Such-API noch beim Login-Rücksprung weitergegeben und beim Anwenden, Zurücksetzen oder Seitenwechsel entfernt. Die Oberflächensprache in der Navbar bleibt erhalten. Regressionstest und Browser-Netzwerkprüfung mit `?language=Deutsch` bestätigen die Suche ohne unsichtbare Sprachbegrenzung. [Desktop](filter-no-language-desktop.webp), [Mobil](filter-no-language-mobile.webp).
+
+## Bewertungszeile und Details-Aktion nach soll.png
+
+Die Karte zeigt fünf Sterne mit goldener anteiliger Füllung entsprechend dem tatsächlichen Mittelwert (bei 2,7: zwei volle und 70 % des dritten Sterns). Der Wert steht fett in Schwarz, die lokalisierte Anzahl grau in Klammern. Ohne verfügbare Bewertungen erscheint ein grauer Leerzustand ohne Sterne. Sterne sind für Screenreader dekorativ; der numerische Wert ergänzt unsichtbar „von 5“.
+
+Details ansehen verwendet eine blaue Outline-Variante mit blauem Text/Pfeil. Die rechte Buttonkante und die rechte Kante des Herz-Icons stimmen bei 1448, 390 und 360 px exakt überein (gemessen: 0 px Abweichung). [Desktop](rating-card-1448.webp), [Mobil 390](rating-card-390.webp), [Mobil 360](rating-card-360.webp). DE/SQ/EN ohne horizontalen Überlauf geprüft. UI-Test prüft Anzahl und Füllung der Sterne, numerischen Wert, Bewertungsanzahl sowie fehlende Sterne bei nicht verfügbaren Bewertungen.
+
+Der Suchfilter-Kopf hat oben und unten 12 statt 20 px Kartenabstand; der Desktop-Titel beginnt bei etwa 16 px Abstand zur oberen Kante. Eine dezente Trennlinie grenzt den offenen Inhalt ab. Mobil bleiben die Bedienflächen 44 px hoch; eingeklappt entfällt die Linie. [Desktop](filter-header-desktop.webp), [Mobil](filter-header-mobile.webp).
+
+## Private Navigation im Konto-Menü
+
+„Meine Anfragen“ und „Favoriten“ sind aus der Top-Navbar entfernt und erscheinen ausschließlich im geöffneten Konto-Menü einer angemeldeten Sitzung. Die bisher nicht angebundenen Übersichtsseiten bleiben deaktiviert und mit einem Verfügbarkeitshinweis versehen. Gastzustand, Zustandswechsel, Menüschließen und Platzierung sind automatisiert geprüft. Desktop und Mobil in DE/SQ/EN ohne Überlauf geprüft; diese Darstellungsnachweise verwenden eine simulierte angemeldete Sitzung: [Desktop](account-menu-fixture-1448.webp), [Mobil](account-menu-fixture-390.webp).
+
+## Einheitliche öffentliche Navigation
+
+Eine gemeinsame Vorlage liefert dieselben fünf Links für Desktop, mobiles Menü und öffentliche Links im kleinen Konto-Menü: Neue Anfrage, Werkstätten finden, So funktioniert’s, Für Werkstätten und Über uns. Desktop-Navigation beginnt bei 1280 px; mobiles Menü und Toggle verwenden denselben Umschaltpunkt. Werkstätten finden führt überall zum sprachabhängigen `/garages`-Pfad.
+
+72 Browserkombinationen aus Startseite/Suche, DE/SQ/EN, Gast/simulierter Kontositzung und 360/390/1024/1279/1280/1448 px geprüft: identische Ziele, kein gleichzeitiges Desktop-/Mobilmenü, keine Überlappung oder horizontalen Überläufe. [Desktop Gast](nav-guest-1280.webp), [Mobiles Menü Gast](nav-guest-1024.webp), [Desktop Konto-Fixture](nav-account-fixture-1280.webp), [Mobiles Menü Konto-Fixture](nav-account-fixture-1024.webp).
+
+## Gemeinsame Ortsauswahl in Anfrage und Suche
+
+`SearchAreasComponent` ist ein gemeinsamer Angular-Formularbaustein (ControlValueAccessor) für die templatebasierte Suche und das reaktive Anfrageformular. Chips, Bestätigen/Abbrechen, Eindeutigkeit, bis zu drei Orte und die einzelnen Radien sind einmal implementiert. Steuerelement-IDs sind je Einbindung eindeutig. Änderungen werden erst nach Übernehmen an das Elternformular und damit den Browserentwurf übergeben.
+
+Die Ortsauswahl ist auf beiden Seiten optional. Ohne Auswahl steht „Ganz Kosovo“, auch in der Zusammenfassung. Bestehende leere Ortsplatzhalter werden beim Wiederherstellen zu einer leeren Liste. API und PostgreSQL speichern `areas: []`; keine Schemaänderung nötig, da die bestehende Relation bereits null zugehörige Ortszeilen erlaubt. Die Suche erhält dann ausschließlich `all=true&service=…`. Gewählte Orte verwenden weiterhin `places=…&service=…`. Frontend und Server teilen dieselbe Erzeugung der Suchparameter. Abgabe-/Abholdaten bleiben privat und werden separat von optionalen Ortsangaben validiert.
+
+[Editor Desktop](inquiry-area-editor-desktop.webp), [Chips Mobil](inquiry-area-chips-mobile.webp), [Leerzustand](inquiry-area-empty-mobile.webp), [Ganz Kosovo in der Zusammenfassung](inquiry-all-kosovo-mobile.webp), [Editor DE](inquiry-shared-editor-de-mobile.webp), [Editor SQ](inquiry-shared-editor-sq-mobile.webp), [Editor EN](inquiry-shared-editor-en-mobile.webp).
+
+Live in DE/SQ/EN geprüft: Bearbeiten ohne Veränderung des gespeicherten Entwurfs, Übernehmen, Abbrechen, Vor/Zurück, Wiederherstellung nach Neuladen, eigener Radius pro Ort, optionaler Leerzustand und Suchübergang für Orte bzw. ganz Kosovo. Formular-, API- und PostgreSQL-Tests prüfen den leeren Fall einschließlich Besitzergrenzen. Der gemeinsame Baustein ist zusätzlich auf externe Formularwerte, Disabled-Zustand und schnelle aufeinanderfolgende Löschaktionen geprüft.
+
+## Landingpage: schwebende Navbar und ruhiger Hero
+
+Die Navbar startet abgerundet über dem Hero (Desktop 54 px, Mobil 20 px Abstand zur Oberkante). Beim Scrollen gleitet sie bis top 0 und verwendet dort den kompakten 64-px-Header mit durchgehender Glasoberfläche. Der Aufbau verändert den Seitenfluss nicht; der Dokumentabstand des Hero-Titels blieb beim Andocken unverändert. Das mobile Menü überlagert den Inhalt weiterhin ohne Verschiebung. Reduzierte Transparenz und fehlende Blur-Unterstützung verwenden die vorhandenen undurchsichtigen Fallbacks.
+
+Der albanische Dekospruch sowie der AUTOKOSOVA-Schriftzug über der Hauptüberschrift sind entfernt. Die rechte Infokarte sitzt auf großen Ansichten höher (64 statt 20 px Abstand zum unteren Rand ihres Inhaltsblocks); auf schmaleren Ansichten bleibt sie im normalen Seitenfluss.
+
+[Start Desktop](landing-clean-1448.webp), [Start Mobil](landing-clean-390.webp), [Angedockt Desktop](landing-docked-1448.webp), [Angedockt Mobil](landing-docked-390.webp), [Mobiles Menü](landing-sticky-menu.webp). DE/SQ/EN bei 360, 390, 1024, 1280 und 1448 px geprüft: Titelposition stabil, Header nach etwa 1600 px Scrollen bei y=0 mit Blur, keine horizontalen Überläufe. Angemeldete Darstellung zusätzlich mit einer Sitzungs-Fixture geprüft. Der Zustand beim Scrollen, Zurückscrollen und Ändern der Viewportbreite ist automatisiert abgedeckt.
+
+## Finale breite Desktop-Ansicht und Merge-Prüfung
+
+Ab 1536 px entfällt das zusätzliche vertikale Padding im Hero-Inhaltsblock; stattdessen fluchten Text und Karte mit den Innenkanten der Navbar (bis auf deren 1-px-Rand). Die Kartenunterkante liegt näher an der Hauptaktion. Bei 1720 × 920 px enden Hauptaktion und Karte bei etwa y=801/805 px, also mit rund 115 px Abstand zum unteren Viewportrand. [1720 × 920](landing-final-1720.webp), [1920 × 1080](landing-final-1920.webp), [Mobil](landing-final-390.webp). Zusätzlich 1720 × 980, 1536 × 864 und 1448 × 900 geprüft: keine Überlagerung von Karte und Hauptaktion, kein horizontaler Überlauf.
+
+Abschließende lokale Prüfung: Format, Lint, Typecheck, 16 Entwicklungstests, 56 UI-Tests, 61 Servertests (2 profilspezifische Seedtests im allgemeinen Lauf übersprungen), Build und Smoke erfolgreich. Für den npm-Installationsschutztest wurde die auch in CI festgelegte npm-Version 11.19.0 verwendet; das lokal vorinstallierte npm 11.12.1 unterstützt diese Schutzregel noch nicht. Es wurde keine globale Toolinstallation geändert.
+
+Vor Merge wurden insbesondere die privaten Besitzergrenzen, CSRF, Export/Löschung von Favoriten, Migrationen 017–019, gemeinsame Suchparameter und englische Routen erneut geprüft. Die genaue Werkstattposition bleibt ausdrücklich Folgearbeit in [#59](https://github.com/ramiz4/autokosova/issues/59); dieser PR ändert die vorhandene ortsbasierte Geometrie nicht.

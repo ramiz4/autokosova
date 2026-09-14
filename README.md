@@ -15,6 +15,7 @@ Privates Repository mit Produktplanung und technischer Grundlage. Der Stack ist 
 - [Designrichtung und Präzisierungen](docs/design/README.md)
 - [ZITADEL-Integration und offenes Login-Gate](docs/architecture/AUTH-INTEGRATION.md)
 - [Werkstattaufnahme, Prüfung und Bildschutz](docs/architecture/WORKSHOP-ONBOARDING.md)
+- [Kontogebundene Favoriten und Sitzungsanzeige](docs/architecture/FAVORITES.md)
 - [Öffentliche Mehrortsuche und nachvollziehbares Matching](docs/architecture/SEARCH-MATCHING.md)
 - [Bewusster Direktkontakt über WhatsApp oder Telefon](docs/architecture/DIRECT-CONTACT.md)
 - [Bewertungen und private Besuchsnachweise](docs/architecture/REVIEWS.md)
@@ -174,10 +175,13 @@ Qualität vor Billigpreis. Kein Bietermodell. Suche, Profile und Direktkontakt o
 
 ## Reparaturanfrage lokal prüfen
 
-`/anfrage` führt schrittweise durch optionale Fahrzeugdaten, Leistung/Symptom sowie einen bis drei
-Orte mit 5–100 km Luftlinienradius und lokale Reisedaten. Gäste behalten den Entwurf nur im
+`/inquiry` führt in fünf Schritten durch Fahrzeug, Reparatur, Ort & Zeit, Details und Zusammenfassung.
+Alle Fahrzeugfelder sind einzeln optional; Fahrzeugklasse und Kraftstoff verwenden begrenzte Auswahllisten.
+Modell und Motorisierung bleiben Freitext; Getriebe verwendet eine optionale Auswahl. Die Anfrage enthält Leistung/Symptom sowie einen bis drei
+Orte mit 5–100 km Luftlinienradius. Als lokale Kalendertage werden nur früheste Abgabe und späteste Abholung erfasst; Abgabe darf nicht nach Abholung liegen. Gäste behalten den Entwurf nur im
 Browser und können damit zur Suche weitergehen. Nur nach OIDC-Anmeldung kann die Anfrage über die
-private API dauerhaft gespeichert werden. Der Suchübergang enthält ausschließlich Leistung und
+private API dauerhaft gespeichert werden. Die Zusammenfassung zeigt den bestätigten Speicherstatus;
+Speicherfehler behalten den Browserentwurf. Der Suchübergang enthält ausschließlich Leistung und
 Orts-/Radiusfilter; es wird nichts automatisch an Werkstätten gesendet. Fotos und Diagnoseberichte
 bleiben optional und privat; ohne einen konfigurierten Objektspeicher werden sie in der lokalen
 Entwicklungsoberfläche nicht hochgeladen.
@@ -192,7 +196,7 @@ die Ergebnisliste mit Entfernung zum passenden Suchort funktionsfähig.
 
 ## Direktkontakt lokal prüfen
 
-Ein veröffentlichtes Profil unter `/werkstatt/<id>` zeigt nur freigegebene Profildaten sowie den
+Ein veröffentlichtes Profil unter `/garages/<id>` zeigt nur freigegebene Profildaten sowie den
 ehrlichen Bewertungsleerzustand. WhatsApp und Telefon sind bewusst ausgewählte externe Aktionen:
 Die Nachrichtenvorschau ist vor dem Öffnen sichtbar, enthält keine gespeicherten privaten
 Anfragewerte und wird nicht durch AutoKosova gesendet. Ohne gültige öffentliche Telefonnummer gibt
@@ -222,3 +226,7 @@ Ausschliesslich GitHub Issues und Pull Requests; kein Jira und keine doppelte Ti
 ## Lizenz
 
 Noch keine Open-Source-Lizenz festgelegt. Veröffentlichung oder Lizenzierung erfordert eine Betreiberentscheidung.
+
+## URL-Konvention
+
+Kanonische Pfade bleiben in allen UI-Sprachen Englisch: `/inquiry`, `/garages`, `/garages/new` und `/garages/:garageId`, jeweils optional mit `/sq` oder `/en`. Alte deutsche UI-Pfade leiten weiter. Werkstatt-API-Pfade verwenden ebenfalls `garages`; Collection-Antworten verwenden den Schlüssel `garages`.

@@ -29,9 +29,10 @@ test(
         earliestDropoffOn: '2026-10-02',
         latestPickupOn: '2026-10-06',
         serviceCategoryId: 'bremsen',
-        stayEndsOn: '2026-10-08',
         symptom: 'Fiktiver privater Hinweis',
         vehicle: {
+          vehicleClass: 'suv',
+          fuel: 'diesel',
           makeId: 'skoda',
           mileageKm: 128000,
           model: 'Fiktives Modell',
@@ -61,7 +62,6 @@ test(
                 earliestDropoffOn: '2026-10-02',
                 latestPickupOn: '2026-10-06',
                 serviceCategoryId: 'bremsen',
-                stayEndsOn: '2026-10-08',
               },
               url: '/api/me/repair-requests',
             });
@@ -86,6 +86,20 @@ test(
           }
         },
       );
+      const allKosovo = await store.createRepairRequest('postgres-customer-a', {
+        areas: [],
+        earliestDropoffOn: '2026-10-02',
+        latestPickupOn: '2026-10-06',
+        serviceCategoryId: 'bremsen',
+      });
+      assert.deepEqual(
+        (await store.getRepairRequest('postgres-customer-a', allKosovo.id)).areas,
+        [],
+      );
+      await assert.rejects(
+        store.getRepairRequest('postgres-customer-b', allKosovo.id),
+        (error: unknown) => error instanceof AccessError && error.statusCode === 404,
+      );
       const restored = await store.getRepairRequest('postgres-customer-a', created.id);
 
       assert.deepEqual(restored.areas, [
@@ -94,13 +108,25 @@ test(
       ]);
       assert.equal(restored.earliestDropoffOn, '2026-10-02');
       assert.equal(restored.latestPickupOn, '2026-10-06');
-      assert.equal(restored.stayEndsOn, '2026-10-08');
       assert.equal(restored.symptom, 'Fiktiver privater Hinweis');
       assert.deepEqual(restored.vehicle, {
+        vehicleClass: 'suv',
+        fuel: 'diesel',
         makeId: 'skoda',
         mileageKm: 128000,
         model: 'Fiktives Modell',
         year: 2018,
+      });
+      const partial = await store.createRepairRequest('postgres-customer-a', {
+        areas: [{ placeId: 'xk-peja', radiusKm: 10 }],
+        earliestDropoffOn: '2026-10-02',
+        latestPickupOn: '2026-10-06',
+        serviceCategoryId: 'bremsen',
+        vehicle: { vehicleClass: 'motorcycle', fuel: 'electric' },
+      });
+      assert.deepEqual((await store.getRepairRequest('postgres-customer-a', partial.id)).vehicle, {
+        vehicleClass: 'motorcycle',
+        fuel: 'electric',
       });
       await assert.rejects(
         () => store.getRepairRequest('postgres-customer-b', created.id),

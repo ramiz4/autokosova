@@ -70,14 +70,14 @@ test('verified OIDC roles replace stale local elevated roles while retaining cus
 
 test('OIDC transaction preserves a local return path for the saved draft', () => {
   const store = new AccessStore();
-  store.createOidcTransaction('state', 'verifier', '/anfrage');
+  store.createOidcTransaction('state', 'verifier', '/inquiry');
   const transaction = store.consumeOidcTransaction('state');
   assert.equal(transaction?.codeVerifier, 'verifier');
-  assert.equal(transaction?.returnTo, '/anfrage');
+  assert.equal(transaction?.returnTo, '/inquiry');
   assert.ok(transaction?.expiresAt instanceof Date);
 });
 
-test('OIDC login only accepts the repair-request return path', async () => {
+test('OIDC login accepts only safe inquiry and public search return paths', async () => {
   const store = new AccessStore();
   const app = createServer({
     accessStore: store,
@@ -94,7 +94,7 @@ test('OIDC login only accepts the repair-request return path', async () => {
   try {
     const registration = await app.inject({
       method: 'GET',
-      url: '/auth/login?returnTo=/sq/anfrage&prompt=create',
+      url: '/auth/login?returnTo=/sq/inquiry&prompt=create',
     });
     const registrationUrl = new URL(registration.headers.location!);
     assert.equal(registration.statusCode, 302);
@@ -102,9 +102,31 @@ test('OIDC login only accepts the repair-request return path', async () => {
     assert.equal(registrationUrl.searchParams.get('code_challenge_method'), 'S256');
     assert.equal(
       store.consumeOidcTransaction(registrationUrl.searchParams.get('state')!)?.returnTo,
-      '/sq/anfrage',
+      '/sq/inquiry',
     );
-    const accepted = await app.inject({ method: 'GET', url: '/auth/login?returnTo=/anfrage' });
+    const accepted = await app.inject({
+      method: 'GET',
+      url: '/auth/login?returnTo=/inquiry',
+    });
+    for (const legacy of ['/anfrage', '/sq/anfrage', '/en/anfrage']) {
+      const response = await app.inject({ method: 'GET', url: `/auth/login?returnTo=${legacy}` });
+      const state = new URL(response.headers.location!).searchParams.get('state')!;
+      assert.equal(
+        store.consumeOidcTransaction(state)?.returnTo,
+        legacy.replace('/anfrage', '/inquiry'),
+      );
+    }
+    const searchReturn = await app.inject({
+      method: 'GET',
+      url:
+        '/auth/login?returnTo=' +
+        encodeURIComponent('/sq/garages?places=xk-pristina:20&symptom=PRIVATE'),
+    });
+    const searchState = new URL(searchReturn.headers.location!).searchParams.get('state')!;
+    assert.equal(
+      store.consumeOidcTransaction(searchState)?.returnTo,
+      '/sq/garages?places=xk-pristina%3A20',
+    );
     const rejected = await app.inject({
       method: 'GET',
       url: '/auth/login?returnTo=//example.test',
@@ -112,7 +134,7 @@ test('OIDC login only accepts the repair-request return path', async () => {
     const acceptedState = new URL(accepted.headers.location!).searchParams.get('state')!;
     const rejectedState = new URL(rejected.headers.location!).searchParams.get('state')!;
 
-    assert.equal(store.consumeOidcTransaction(acceptedState)?.returnTo, '/anfrage');
+    assert.equal(store.consumeOidcTransaction(acceptedState)?.returnTo, '/inquiry');
     assert.equal(store.consumeOidcTransaction(rejectedState)?.returnTo, '/');
   } finally {
     await app.close();
@@ -163,19 +185,19 @@ test('workshop A cannot change workshop B', async () => {
       headers: headers(workshopA, true),
       method: 'POST',
       payload: { description: 'Fiktives Profil' },
-      url: '/api/workshops/garage-a/profile',
+      url: '/api/garages/garage-a/profile',
     });
     const foreign = await app.inject({
       headers: headers(workshopA, true),
       method: 'POST',
       payload: { description: 'Fiktives Profil' },
-      url: '/api/workshops/garage-b/profile',
+      url: '/api/garages/garage-b/profile',
     });
     const other = await app.inject({
       headers: headers(workshopB, true),
       method: 'POST',
       payload: { description: 'Fiktives Profil' },
-      url: '/api/workshops/garage-a/profile',
+      url: '/api/garages/garage-a/profile',
     });
     assert.equal(own.statusCode, 204);
     assert.equal(foreign.statusCode, 403);

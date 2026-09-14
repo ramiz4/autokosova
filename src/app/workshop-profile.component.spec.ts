@@ -3,8 +3,8 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { WorkshopProfileComponent } from './workshop-profile.component';
 
-function routeWith(workshopId: string) {
-  return { snapshot: { paramMap: convertToParamMap({ workshopId }) } };
+function routeWith(garageId: string) {
+  return { snapshot: { paramMap: convertToParamMap({ garageId }) } };
 }
 
 describe('WorkshopProfileComponent', () => {
