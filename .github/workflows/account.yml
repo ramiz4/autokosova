@@ -1,0 +1,36 @@
+name: Account browser
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: account-browser-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  account-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm install --global npm@11.19.0
+      - run: npm ci
+      - run: npm run build
+      - run: node scripts/account-browser-smoke.mjs
+      - name: Upload account viewport evidence (fictional fixtures only)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-viewport-screenshots
+          path: test-results/account
+          if-no-files-found: ignore
+          retention-days: 7
