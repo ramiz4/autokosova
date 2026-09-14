@@ -24,7 +24,7 @@ in einer Zeile; Prüf-Icon und Status-Badge sind getrennte Elemente. Mobil bleib
 Kontaktleiste am unteren Rand erreichbar.
 
 Es gibt keine Tab-Leiste. Über uns und Bewertungen folgen links als natürlicher Lesefluss;
-Leistungen, Marken und Standort bleiben rechts sticky in drei einheitlichen blauen Info-Cards
+Leistungen, Marken und Standort bleiben rechts sticky in den drei einheitlichen hellen Info-Cards
 sichtbar. Fotos werden nur oben gezeigt. Die Anker `#reviews`, `#services`, `#makes`, `#location`
 und `#photos` bleiben direkt adressierbar.
 

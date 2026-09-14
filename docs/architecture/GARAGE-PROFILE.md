@@ -41,7 +41,7 @@ werden. Der Fokus kehrt zum auslösenden Foto zurück.
 Der Profilkopf bleibt am Desktop unter der Top-Navigation stehen. Favorit und Kontakt bleiben
 dadurch sichtbar; eine zweite Kontaktkarte im Inhaltsbereich ist nicht erforderlich. Über uns und
 Bewertungen folgen links als flacher Lesefluss. Leistungen, Marken und Standort bleiben rechts in
-drei einheitlichen, dezenten blauen Info-Cards sticky sichtbar. Fotos erscheinen ausschließlich
+drei einheitlichen hellen Info-Cards aus dem Onboarding sticky sichtbar. Fotos erscheinen ausschließlich
 in der Galerie am Seitenanfang.
 
 Die Abschnitte besitzen weiterhin direkte Anker (`#about`, `#reviews`, `#services`, `#makes`,
