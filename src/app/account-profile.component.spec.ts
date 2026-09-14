@@ -32,6 +32,9 @@ async function render(path = '/profile') {
   await TestBed.inject(Router).navigateByUrl(path);
   const fixture = TestBed.createComponent(AccountProfileComponent);
   await fixture.whenStable();
+  // Browser-only native fetch starts after rendering and is not a TestBed pending task.
+  await vi.waitFor(() => expect(TestBed.inject(AccountSessionService).state()).not.toBe('loading'));
+  await fixture.whenStable();
   return { fixture, page: fixture.nativeElement as HTMLElement };
 }
 
@@ -61,6 +64,7 @@ it.each(['de', 'sq', 'en'] as const)(
     expect(page.querySelector('main app-language-switcher a[href="/en/profile"]')).toBeTruthy();
     const toggle = page.querySelector<HTMLButtonElement>('[aria-controls="account-menu"]')!;
     toggle.click();
+    await vi.waitFor(() => expect(TestBed.inject(AccountSessionService).state()).toBe('ready'));
     await fixture.whenStable();
     expect(page.querySelector('[data-account-name]')?.textContent).toContain(identity.displayName);
     expect(page.querySelector('[data-account-menu-roles]')?.children).toHaveLength(3);
@@ -125,6 +129,7 @@ it('retries a failed read without retaining the previous identity and logs out t
     vi.fn().mockImplementation(async () => new Response(JSON.stringify(identity))),
   );
   page.querySelector<HTMLButtonElement>('main button')!.click();
+  await vi.waitFor(() => expect(TestBed.inject(AccountSessionService).state()).toBe('ready'));
   await fixture.whenStable();
   const logout = vi.spyOn(TestBed.inject(AccountSessionService), 'logout').mockResolvedValue(true);
   const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
