@@ -6,17 +6,17 @@ Stand: 13. September 2026. Diese Regeln setzen #12 um und ergänzen [ADR-001](AD
 
 Die öffentliche Suchanfrage enthält ausschließlich eine Leistung, einen bis drei Orts-IDs mit jeweils 5–100 km Radius sowie optionale Fahrzeugmarke und Sprache. Sie enthält nie Fahrzeugmodell, Symptom, Reisezeitraum, VIN, Kennzeichen, Datei-ID oder gespeicherte Anfrage-ID. Ein Klick auf Suche versendet keine Anfrage an Werkstätten.
 
-Der produktive Server nutzt ausschließlich `public_workshop_profile` und die daraus abgeleiteten Ortsreferenzpunkte. Private Mitgliedschaften, Ansprechpartner, Prüfbelege und Kundenanfragen werden nicht gejoint. Nicht veröffentlichte Profile sind aus dem Suchmodell ausgeschlossen.
+Der produktive Server nutzt ausschließlich `public_workshop_profile`. Der Ortsreferenzpunkt bleibt vom bestätigten Werkstattpunkt getrennt: Nur ein vorhandener, separat bestätigter Werkstattpunkt darf serverseitig gegen einen Suchort gerechnet werden. Private Mitgliedschaften, Ansprechpartner, Prüfbelege und Kundenanfragen werden nicht gejoint. Nicht veröffentlichte Profile sind aus dem Suchmodell ausgeschlossen.
 
 ## Geometrie und Filter
 
-- Radius bedeutet Luftlinie in Kilometern. PostgreSQL verwendet `ST_DWithin` und `ST_Distance` auf `geography`; die lokale Entwicklungsimplementierung verwendet dieselbe Großkreis-Definition.
+- Radius bedeutet Luftlinie in Kilometern. PostgreSQL verwendet `ST_DWithin` und `ST_Distance` auf bestätigten Werkstattpunkten als `geography`; die lokale Entwicklungsimplementierung verwendet dieselbe Großkreis-Definition. Eine Ortszuordnung oder Unternehmensprüfung ersetzt nie diesen Punkt.
 - Mehrere Orte sind eine ODER-Vereinigung. Ein Betrieb im Überlappungsbereich wird anhand seiner stabilen Workshop-ID einmal ausgegeben.
-- Die angezeigte Entfernung gehört zum nächstliegenden passenden Suchort und benennt diesen Ort ausdrücklich. Ein Treffer am Radiusrand zählt; außerhalb folgt keine automatische Erweiterung.
+- Die angezeigte Entfernung gehört zum nächstliegenden passenden Suchort und benennt diesen Ort ausdrücklich. Ein Treffer am Radiusrand zählt; außerhalb folgt keine automatische Erweiterung. Fehlt die Standortbestätigung, ist ein Betrieb nur ohne Radius auffindbar und die Oberfläche zeigt ausschließlich seinen Werkstattort, nie `0 km` als Ersatz.
 - Leistung ist ein harter, gepflegter Katalogfilter. Bei einer Fahrzeugmarke bleibt eine Werkstatt ohne eingeschränkte Markenliste als **markenoffen** auffindbar. Eine ausdrücklich abweichende Markenliste wird ausgeschlossen.
 - Der Sprachfilter ist optional und nur eine exakte, gross-/kleinschreibungsunabhängige Sprachübereinstimmung; keine Annahme über Sprachkenntnisse.
 
-Die aktuelle Standortreferenz ist der mit GeoNames belegte Ortsdatensatz aus #9, nicht eine behauptete exakte Werkstattadresse, Fahrzeit oder Verfügbarkeit. Kartenanbieter sind optional. Wenn sie fehlen oder ausfallen, bleibt die Liste mit Luftlinienentfernung nutzbar.
+Die Suchreferenz ist der mit GeoNames belegte Ortsdatensatz aus #9. Die Werkstattposition wird getrennt erfasst und eine Änderung nimmt ihre Bestätigung zurück; bestehende Ortsmittelpunkte werden nie migriert oder automatisch bestätigt. Kartenanbieter sind optional. Wenn sie fehlen oder ausfallen, bleibt die Liste mit Luftlinienentfernung nutzbar.
 
 ## Organische Reihenfolge und Erklärungen
 

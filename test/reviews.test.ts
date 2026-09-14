@@ -7,6 +7,7 @@ const workshopProfile: WorkshopProfileInput = {
   contactPerson: 'Fiktive Ansprechperson',
   contactPhone: '+383 44 000 110',
   languages: ['Deutsch', 'Shqip'],
+  locationPoint: { latitude: 42.67272, longitude: 21.16688 },
   name: 'Fiktive Bewertungswerkstatt',
   placeId: 'xk-pristina',
   publicPhone: '+383 44 000 111',

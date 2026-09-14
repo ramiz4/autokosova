@@ -184,6 +184,15 @@ const workshopProfileSchema = {
     contactPhone: { maxLength: 40, minLength: 3, type: 'string' },
     description: { maxLength: 2000, type: 'string' },
     languages: stringListSchema,
+    locationPoint: {
+      additionalProperties: false,
+      properties: {
+        latitude: { maximum: 90, minimum: -90, type: 'number' },
+        longitude: { maximum: 180, minimum: -180, type: 'number' },
+      },
+      required: ['latitude', 'longitude'],
+      type: 'object',
+    },
     name: { maxLength: 160, minLength: 1, type: 'string' },
     placeId: { maxLength: 80, minLength: 1, pattern: '^xk-[a-z]+$', type: 'string' },
     publicPhone: { maxLength: 40, minLength: 3, type: 'string' },

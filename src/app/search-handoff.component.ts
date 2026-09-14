@@ -23,8 +23,9 @@ import { IconComponent } from './ui/icon.component';
 
 interface Result {
   readonly companyDataVerified: boolean;
-  readonly distanceKm: number;
+  readonly distanceKm?: number;
   readonly id: string;
+  readonly locationAvailable: boolean;
   readonly matchingPlace: { readonly id: string; readonly label: string };
   readonly name: string;
   readonly photoIds: readonly string[];
@@ -536,9 +537,19 @@ export class SearchHandoffComponent {
   }
 
   protected locationLabel(workshop: Result): string {
-    return this.response?.allResults
-      ? workshop.matchingPlace.label
+    return workshop.distanceKm === undefined
+      ? workshop.locationAvailable
+        ? workshop.matchingPlace.label
+        : `${workshop.matchingPlace.label} · ${this.locationUnavailableLabel()}`
       : this.aerialDistance(workshop.distanceKm, workshop.matchingPlace.label);
+  }
+
+  protected locationUnavailableLabel(): string {
+    return this.language.language === 'sq'
+      ? 'Pozicioni i punëtorisë nuk është konfirmuar'
+      : this.language.language === 'en'
+        ? 'Workshop position not confirmed'
+        : 'Werkstattposition nicht bestätigt';
   }
 
   protected placeLabel(placeId: string): string {

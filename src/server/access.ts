@@ -56,6 +56,11 @@ export type WorkshopPublicationState =
   'draft' | 'pending_review' | 'published' | 'rejected' | 'suspended';
 export type VerificationCheckState = 'not_checked' | 'verified' | 'failed';
 
+export interface WorkshopLocationPoint {
+  readonly latitude: number;
+  readonly longitude: number;
+}
+
 export interface Principal {
   readonly userId: string;
   readonly roles: ReadonlySet<SystemRole>;
@@ -75,6 +80,8 @@ export interface WorkshopProfileInput {
   readonly contactPhone: string;
   readonly description?: string;
   readonly languages: readonly string[];
+  /** A self-reported point is private until an administrator confirms the location check. */
+  readonly locationPoint?: WorkshopLocationPoint;
   readonly name: string;
   readonly placeId: string;
   readonly publicPhone?: string;
@@ -100,6 +107,8 @@ export interface PublicWorkshopProfile {
   readonly description?: string;
   readonly id: string;
   readonly languages: readonly string[];
+  /** Internal-only search data; public route serializers must remove this field. */
+  readonly locationPoint?: WorkshopLocationPoint;
   readonly name: string;
   readonly photoIds: readonly string[];
   readonly placeId: string;
@@ -1070,7 +1079,12 @@ export class AccessStore implements ReviewStore {
   }
 
   searchPublicWorkshops(input: PublicWorkshopSearchInput): PublicWorkshopSearchResponse {
-    return findPublicWorkshops(this.listPublicWorkshops(), input);
+    return findPublicWorkshops(
+      [...this.workshops.values()]
+        .filter((workshop) => workshop.publicationState === 'published')
+        .map((workshop) => this.toSearchableWorkshop(workshop)),
+      input,
+    );
   }
 
   listVehicles(userId: string) {
@@ -1177,7 +1191,14 @@ export class AccessStore implements ReviewStore {
       throw new AccessError(409, 'A suspended workshop cannot be changed through self-service');
     }
     this.validateProfile(profile);
+    const locationChanged = !sameLocationPoint(
+      workshop.profile.locationPoint,
+      profile.locationPoint,
+    );
     workshop.profile = this.copyProfile(profile);
+    if (locationChanged) {
+      workshop.verification = { ...workshop.verification, location: 'not_checked' };
+    }
     if (workshop.publicationState === 'pending_review') workshop.publicationState = 'draft';
     this.auditEvents.push({
       actorUserId: principal.userId,
@@ -1512,6 +1533,7 @@ export class AccessStore implements ReviewStore {
     return {
       ...profile,
       languages: [...profile.languages],
+      ...(profile.locationPoint ? { locationPoint: { ...profile.locationPoint } } : {}),
       selfReportedSpecializations: [...profile.selfReportedSpecializations],
       serviceCategoryIds: [...profile.serviceCategoryIds],
       vehicleMakeIds: [...profile.vehicleMakeIds],
@@ -1570,6 +1592,13 @@ export class AccessStore implements ReviewStore {
     };
   }
 
+  private toSearchableWorkshop(workshop: Workshop): PublicWorkshopProfile {
+    const publicProfile = this.toPublicWorkshop(workshop);
+    return workshop.verification.location === 'verified' && workshop.profile.locationPoint
+      ? { ...publicProfile, locationPoint: { ...workshop.profile.locationPoint } }
+      : publicProfile;
+  }
+
   private validateProfile(profile: WorkshopProfileInput) {
     const requiredValues = [
       profile.name,
@@ -1596,7 +1625,27 @@ export class AccessStore implements ReviewStore {
         throw new AccessError(422, 'Profile lists must contain unique non-empty values');
       }
     }
+    if (profile.locationPoint) {
+      const { latitude, longitude } = profile.locationPoint;
+      if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        latitude < -90 ||
+        latitude > 90 ||
+        longitude < -180 ||
+        longitude > 180
+      ) {
+        throw new AccessError(422, 'Workshop location coordinates are invalid');
+      }
+    }
   }
+}
+
+function sameLocationPoint(
+  left: WorkshopLocationPoint | undefined,
+  right: WorkshopLocationPoint | undefined,
+): boolean {
+  return left?.latitude === right?.latitude && left?.longitude === right?.longitude;
 }
 
 function sameWorkshopName(left: string, right: string) {

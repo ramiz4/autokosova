@@ -1,10 +1,34 @@
 const baseDescription = 'Ausschliesslich fiktive lokale Entwicklungsdaten.';
 
+const demoPlacePoints = {
+  'xk-pristina': [42.67272, 21.16688],
+  'xk-prizren': [42.21389, 20.73972],
+  'xk-peja': [42.65913, 20.28828],
+  'xk-gjakova': [42.38028, 20.43083],
+  'xk-ferizaj': [42.37056, 21.15528],
+  'xk-gjilan': [42.46045, 21.46986],
+  'xk-mitrovica': [42.88333, 20.86667],
+};
+
+function deterministicDemoPosition(id, placeId) {
+  const [latitude, longitude] = demoPlacePoints[placeId];
+  const hash = [...id].reduce(
+    (value, character) => (value * 31 + character.charCodeAt(0)) >>> 0,
+    7,
+  );
+  // These are deliberately fictional offsets, never a geocoding result or a real business address.
+  return {
+    latitude: latitude + ((hash % 17) - 8) * 0.0011,
+    longitude: longitude + ((Math.floor(hash / 17) % 17) - 8) * 0.0014,
+  };
+}
+
 function workshop(input) {
   return {
     contactPerson: `Lokale Demo-Person ${input.id}`,
     description: `${baseDescription} ${input.scenario}`,
     ...input,
+    locationPoint: deterministicDemoPosition(input.id, input.placeId),
   };
 }
 
