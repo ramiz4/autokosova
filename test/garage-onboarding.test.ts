@@ -174,6 +174,27 @@ test(
       assert.equal(restored.profile.address, profile.address);
       assert.equal(restored.publicationState, 'draft');
       assert.equal((await store.listOwnedGarages(owner)).length, 2);
+      const memberships = await store.listOwnMemberships(owner);
+      assert.deepEqual(memberships.map((item) => item.garageId).sort(), [...ids].sort());
+      assert.ok(memberships.every((item) => item.role === 'owner' && item.garageName));
+      assert.deepEqual(await store.listOwnMemberships(admin), []);
+      assert.deepEqual(await store.listOwnMemberships(outsider), []);
+      await client.query(
+        "INSERT INTO membership(user_id,garage_id,role,state,granted_by) VALUES($1,$2,'editor','active',$3)",
+        [outsider.userId, ids[1], owner.userId],
+      );
+      assert.deepEqual(
+        (await store.listOwnMemberships(outsider)).map((item) => ({
+          garageId: item.garageId,
+          role: item.role,
+        })),
+        [{ garageId: ids[1], role: 'editor' }],
+      );
+      await client.query(
+        "UPDATE membership SET state='revoked' WHERE user_id=$1 AND garage_id=$2",
+        [outsider.userId, ids[1]],
+      );
+      assert.deepEqual(await store.listOwnMemberships(outsider), []);
       await assert.rejects(() => store.updateGarageProfile(outsider, ids[0], profile), AccessError);
       await assert.rejects(
         () => store.reviewGarage(owner, ids[0], 'published', verified),

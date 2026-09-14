@@ -17,7 +17,7 @@ describe('SearchHandoffComponent', () => {
   it('loads the explicit all-results default when no filters are supplied', async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async (input) => {
-      if (String(input).startsWith('/api/me/') || String(input) === '/api/session')
+      if (String(input).startsWith('/api/me') || String(input) === '/api/session')
         return new Response('{}', { status: 401 });
       expect(String(input)).toContain('/api/public/search?all=true');
       return new Response(
@@ -57,7 +57,7 @@ describe('SearchHandoffComponent', () => {
   it('shows verified results without a duplicate verification chip or an unconfigured map', async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async (input) =>
-      String(input).startsWith('/api/me/') || String(input) === '/api/session'
+      String(input).startsWith('/api/me') || String(input) === '/api/session'
         ? new Response('{}', { status: 401 })
         : new Response(
             JSON.stringify({
@@ -166,7 +166,7 @@ it('refreshes results from changed URL filters and ignores stale responses', asy
   const calls: string[] = [];
   const pending: ((response: Response) => void)[] = [];
   vi.stubGlobal('fetch', (url: string) => {
-    if (url.startsWith('/api/me/') || url === '/api/session')
+    if (url.startsWith('/api/me') || url === '/api/session')
       return Promise.resolve(new Response('{}', { status: 401 }));
     calls.push(String(url));
     return new Promise<Response>((resolve) => pending.push(resolve));

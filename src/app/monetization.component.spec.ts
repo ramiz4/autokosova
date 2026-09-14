@@ -22,6 +22,10 @@ describe('Costs and fairness page', () => {
           provide: AccountSessionService,
           useValue: {
             signedIn: signal(false),
+            state: signal('guest'),
+            identity: signal(null),
+            loginAvailable: signal(true),
+            displayName: () => '',
             busy: signal(false),
             refresh: vi.fn().mockResolvedValue(undefined),
             logout: vi.fn().mockResolvedValue(true),

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { OwnGarageMembership } from '../shared/account';
 import pg from 'pg';
 import { AccessError, DuplicateGarageError, type Principal, type GarageConsent } from './access';
 import {
@@ -18,6 +19,7 @@ export interface PrivateGarage {
 type Maybe<T> = T | Promise<T>;
 export interface GarageOnboardingStore {
   close?(): Promise<void>;
+  listOwnMemberships(principal: Principal): Maybe<readonly OwnGarageMembership[]>;
   createGarageRegistration(
     principal: Principal,
     profile: GarageProfileInput,
@@ -126,6 +128,17 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
       );
       await this.audit(client, principal, id, 'garage-registration-started');
       return { id, publicationState: 'draft' as const };
+    });
+  }
+  async listOwnMemberships(principal: Principal): Promise<readonly OwnGarageMembership[]> {
+    return this.transaction(principal, async (client) => {
+      const result = await client.query<OwnGarageMembership>(
+        `SELECT m.garage_id AS "garageId", g.name AS "garageName", m.role
+         FROM membership m JOIN garage g ON g.id = m.garage_id
+         WHERE m.user_id = $1 AND m.state = 'active' ORDER BY m.garage_id`,
+        [principal.userId],
+      );
+      return result.rows;
     });
   }
   async listOwnedGarages(principal: Principal) {

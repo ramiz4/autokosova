@@ -1,4 +1,5 @@
 import type { FavoriteStore } from './favorites';
+import { isAccountPagePath } from './account-profile';
 import type { GarageOnboardingStore } from './garage-onboarding-store';
 import cookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
@@ -155,7 +156,7 @@ const repairRequestBodySchema = {
 function safeReturnTo(value: unknown): string {
   if (typeof value !== 'string' || value.length > 2000) return '/';
   const match = value.match(
-    /^(\/(?:(?:sq|en)\/)?(?:inquiry|anfrage|garages(?:\/[A-Za-z0-9_-]{1,128})?))(?:\?([^#]*))?$/,
+    /^(\/(?:(?:sq|en)\/)?(?:profile|inquiry|anfrage|garages(?:\/[A-Za-z0-9_-]{1,128})?))(?:\?([^#]*))?$/,
   );
   if (!match) return '/';
   const path = match[1].replace(/\/anfrage$/, '/inquiry');
@@ -367,6 +368,11 @@ export function createServer(options: ServerOptions = {}) {
 
   app.addHook('onRequest', async (request, reply) => {
     if (isNoIndexPath(request.url)) reply.header('x-robots-tag', 'noindex, nofollow');
+    if (isAccountPagePath(request.url) || /^\/api\/me(?:[/?]|$)/.test(request.url)) {
+      reply.header('cache-control', 'private, no-store');
+      reply.header('vary', 'Cookie');
+      reply.header('referrer-policy', 'no-referrer');
+    }
   });
 
   app.register(cookie);
@@ -448,7 +454,7 @@ export function createServer(options: ServerOptions = {}) {
     const sitemap = options.publicSiteUrl
       ? `\nSitemap: ${siteUrl(options.publicSiteUrl, '/sitemap.xml')}`
       : '';
-    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /inquiry\nDisallow: /sq/inquiry\nDisallow: /en/inquiry\nDisallow: /garages/new\nDisallow: /sq/garages/new\nDisallow: /en/garages/new\nDisallow: /garages$\nDisallow: /garages?\nDisallow: /sq/garages$\nDisallow: /sq/garages?\nDisallow: /en/garages$\nDisallow: /en/garages?\nDisallow: /suche\nDisallow: /werkstaetten${sitemap}\n`;
+    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /profile\nDisallow: /sq/profile\nDisallow: /en/profile\nDisallow: /inquiry\nDisallow: /sq/inquiry\nDisallow: /en/inquiry\nDisallow: /garages/new\nDisallow: /sq/garages/new\nDisallow: /en/garages/new\nDisallow: /garages$\nDisallow: /garages?\nDisallow: /sq/garages$\nDisallow: /sq/garages?\nDisallow: /en/garages$\nDisallow: /en/garages?\nDisallow: /suche\nDisallow: /werkstaetten${sitemap}\n`;
   });
   app.get('/sitemap.xml', async (_request, reply) => {
     if (!options.publicSiteUrl) {
@@ -609,7 +615,9 @@ export function createServer(options: ServerOptions = {}) {
       );
       const identity = await verifyZitadelAccessToken(idToken, options.oidcConfig);
       accessStore.setVerifiedRoles(identity.subject, identity.roles);
-      const session = accessStore.createSession(identity.subject);
+      const session = accessStore.createSession(identity.subject, undefined, identity.profile);
+      const previousSession = request.cookies['autokosova_session'];
+      if (previousSession) accessStore.revokeSession(previousSession);
       const secure = process.env['NODE_ENV'] === 'production';
       reply.setCookie('autokosova_session', session.sessionId, {
         httpOnly: true,
@@ -634,6 +642,31 @@ export function createServer(options: ServerOptions = {}) {
     return {
       authenticated: Boolean(accessStore.getPrincipal(request.cookies['autokosova_session'])),
     };
+  });
+  app.get('/api/me', async (request, reply) => {
+    const principal = accessStore.getPrincipal(request.cookies['autokosova_session']);
+    if (!principal) {
+      return reply.code(401).send({
+        error: 'Authentication required',
+        loginAvailable: Boolean(options.oidcConfig),
+      });
+    }
+    try {
+      const memberships = await garageStore.listOwnMemberships(principal);
+      // Recheck expiry after the asynchronous store read, then whitelist the response.
+      return {
+        ...accessStore.getOwnAccount(principal),
+        garageMemberships: memberships.map((membership) => ({
+          garageId: membership.garageId,
+          ...(membership.garageName ? { garageName: membership.garageName } : {}),
+          role: membership.role,
+        })),
+      };
+    } catch (error) {
+      if (error instanceof AccessError) return errorResponse(error, reply);
+      // Do not expose or log database errors containing account or membership values.
+      return reply.code(503).send({ error: 'Account information unavailable' });
+    }
   });
   app.get('/api/me/favorites', async (request, reply) => {
     reply.header('cache-control', 'private, no-store');
@@ -1492,6 +1525,7 @@ export function createServer(options: ServerOptions = {}) {
 export function isNoIndexPath(url: string): boolean {
   const path = url.split('?', 1)[0];
   return (
+    isAccountPagePath(path) ||
     path.startsWith('/api/') ||
     path.startsWith('/auth/') ||
     path === '/anfrage' ||

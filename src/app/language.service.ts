@@ -14,7 +14,14 @@ import {
 } from '../shared/i18n';
 
 export type AppRoute =
-  'home' | 'onboarding' | 'request' | 'search' | 'garage' | 'monetization' | PublicPageId;
+  | 'home'
+  | 'onboarding'
+  | 'request'
+  | 'search'
+  | 'garage'
+  | 'monetization'
+  | 'profile'
+  | PublicPageId;
 
 @Injectable({ providedIn: 'root' })
 export class LanguageService {
@@ -108,6 +115,7 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
     ...PUBLIC_PAGE_PATHS,
     home: '',
     monetization: '/monetization',
+    profile: '/profile',
     onboarding: '/garages/new',
     request: '/inquiry',
     search: '/garages',
@@ -119,6 +127,7 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
 function identifyRoute(path: string): { readonly parameter?: string; readonly route: AppRoute } {
   const normalized = path.replace(/^\/(?:sq|en)(?=\/|$)/, '') || '/';
   if (normalized === '/') return { route: 'home' };
+  if (normalized === '/profile') return { route: 'profile' };
   if (normalized === '/monetization' || normalized === '/monetarisierung') {
     return { route: 'monetization' };
   }

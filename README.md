@@ -14,6 +14,8 @@ Privates Repository mit Produktplanung und technischer Grundlage. Der Stack ist 
 - [Arbeitsregeln für Entwickler und AI Agents](AGENTS.md)
 - [Designrichtung und Präzisierungen](docs/design/README.md)
 - [ZITADEL-Integration und offenes Login-Gate](docs/architecture/AUTH-INTEGRATION.md)
+
+Die eigene Kontoauskunft, Profilseite `/profile` und noch offene echte Test-OIDC-Abnahme sind in [ACCOUNT-PROFILE.md](docs/architecture/ACCOUNT-PROFILE.md) beschrieben.
 - [Werkstattaufnahme, Prüfung und Bildschutz](docs/architecture/GARAGE-ONBOARDING.md)
 - [Kontogebundene Favoriten und Sitzungsanzeige](docs/architecture/FAVORITES.md)
 - [Öffentliche Mehrortsuche und nachvollziehbares Matching](docs/architecture/SEARCH-MATCHING.md)

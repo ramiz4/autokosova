@@ -1,54 +1,157 @@
-import { Injectable, signal } from '@angular/core';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
+import { DestroyRef, Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
+import { accountName, isOwnAccount, type OwnAccount } from '../shared/account';
+
+type AccountState = 'loading' | 'guest' | 'ready' | 'error';
 
 @Injectable({ providedIn: 'root' })
 export class AccountSessionService {
   readonly signedIn = signal(false);
   readonly busy = signal(false);
+  readonly state = signal<AccountState>('loading');
+  readonly identity = signal<OwnAccount | null>(null);
+  readonly loginAvailable = signal<boolean | null>(null);
+  private readonly document = inject(DOCUMENT);
+  private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
   private version = 0;
   private refreshInFlight?: Promise<void>;
+  private controller?: AbortController;
+  private expiryTimer?: ReturnType<typeof setTimeout>;
+  private channel?: BroadcastChannel;
+
+  constructor() {
+    const destroyRef = inject(DestroyRef);
+    if (!this.browser) return;
+    const refresh = () => {
+      void this.refresh();
+    };
+    const forget = () => this.clear('loading');
+    const visibility = () => {
+      if (this.document.visibilityState === 'hidden') forget();
+      else refresh();
+    };
+    const restore = (event: PageTransitionEvent) => {
+      if (event.persisted) refresh();
+    };
+    window.addEventListener('focus', refresh);
+    window.addEventListener('pagehide', forget);
+    window.addEventListener('pageshow', restore);
+    this.document.addEventListener('visibilitychange', visibility);
+    if (typeof BroadcastChannel !== 'undefined') {
+      this.channel = new BroadcastChannel('autokosova-session');
+      this.channel.onmessage = () => {
+        this.clear('loading');
+        if (this.document.visibilityState !== 'hidden') refresh();
+      };
+    }
+    destroyRef.onDestroy(() => {
+      this.clear('loading');
+      this.channel?.close();
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('pagehide', forget);
+      window.removeEventListener('pageshow', restore);
+      this.document.removeEventListener('visibilitychange', visibility);
+    });
+  }
+
+  displayName(): string {
+    const identity = this.identity();
+    return identity ? accountName(identity) : '';
+  }
 
   refresh(): Promise<void> {
-    return (this.refreshInFlight ??= this.readSession().finally(() => {
-      this.refreshInFlight = undefined;
-    }));
+    // No private fetch during SSR, and no refresh may overtake an in-flight logout.
+    if (!this.browser || this.busy()) return Promise.resolve();
+    if (this.refreshInFlight) return this.refreshInFlight;
+    const task = this.readAccount().finally(() => {
+      if (this.refreshInFlight === task) this.refreshInFlight = undefined;
+    });
+    this.refreshInFlight = task;
+    return task;
   }
 
-  private async readSession(): Promise<void> {
-    const version = ++this.version;
+  private async readAccount(): Promise<void> {
+    this.clear('loading');
+    const version = this.version;
+    this.controller = new AbortController();
     try {
-      const response = await fetch('/api/session', {
+      const response = await fetch('/api/me', {
         credentials: 'same-origin',
         cache: 'no-store',
+        signal: this.controller.signal,
       });
-      if (!response.ok) throw new Error();
-      const data = (await response.json()) as { authenticated?: boolean };
-      if (version === this.version) this.signedIn.set(data.authenticated === true);
+      if (version !== this.version) return;
+      if (response.status === 401) {
+        const data = (await response.json().catch(() => ({}))) as { loginAvailable?: unknown };
+        if (version !== this.version) return;
+        this.loginAvailable.set(
+          typeof data.loginAvailable === 'boolean' ? data.loginAvailable : null,
+        );
+        this.state.set('guest');
+        return;
+      }
+      if (!response.ok) throw new Error('Account unavailable');
+      const data: unknown = await response.json();
+      if (version !== this.version) return;
+      if (!isOwnAccount(data)) throw new Error('Invalid account response');
+      const remaining = Date.parse(data.expiresAt) - Date.now();
+      if (remaining <= 0) {
+        this.invalidate();
+        return;
+      }
+      this.identity.set(data);
+      this.signedIn.set(true);
+      this.loginAvailable.set(true);
+      this.state.set('ready');
+      this.expiryTimer = setTimeout(() => this.invalidate(), Math.min(remaining, 2_147_483_647));
     } catch {
-      if (version === this.version) this.signedIn.set(false);
+      if (version === this.version) this.state.set('error');
     }
   }
-  invalidate(): void {
+
+  private clear(state: AccountState): void {
     this.version++;
+    this.controller?.abort();
+    this.controller = undefined;
+    this.refreshInFlight = undefined;
+    clearTimeout(this.expiryTimer);
+    this.expiryTimer = undefined;
+    this.identity.set(null);
     this.signedIn.set(false);
+    this.state.set(state);
   }
+
+  invalidate(): void {
+    this.clear('guest');
+  }
+
   async logout(): Promise<boolean> {
-    if (this.busy()) return false;
+    if (!this.browser || this.busy()) return false;
     this.busy.set(true);
+    // Drop personal fields immediately; late reads cannot repopulate an old identity.
+    this.clear('loading');
     try {
       const csrf =
-        document.cookie
+        this.document.cookie
           .split('; ')
           .find((cookie) => cookie.startsWith('autokosova_csrf='))
           ?.split('=')[1] ?? '';
       const response = await fetch('/auth/logout', {
         method: 'POST',
         credentials: 'same-origin',
+        cache: 'no-store',
         headers: { 'x-csrf-token': csrf },
       });
-      if (!response.ok && response.status !== 401) return false;
+      if (!response.ok && response.status !== 401) {
+        this.state.set('error');
+        return false;
+      }
       this.invalidate();
+      // Only an invalidation signal crosses tabs, never account data or credentials.
+      this.channel?.postMessage('changed');
       return true;
     } catch {
+      this.state.set('error');
       return false;
     } finally {
       this.busy.set(false);

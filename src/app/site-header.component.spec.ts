@@ -4,6 +4,14 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { SiteHeaderComponent } from './site-header.component';
 
+beforeEach(() =>
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockImplementation(async () => new Response('{}', { status: 401 })),
+  ),
+);
+afterEach(() => vi.unstubAllGlobals());
+
 describe('Header account actions', () => {
   it.each(['', 'sq', 'en'])(
     'links login and registration directly to OIDC for /%s',
@@ -14,6 +22,9 @@ describe('Header account actions', () => {
       }).compileComponents();
       await TestBed.inject(Router).navigateByUrl('/' + locale);
       const fixture = TestBed.createComponent(SiteHeaderComponent);
+      await fixture.whenStable();
+      // Wait for the browser-only session request, rather than asserting the loading shell.
+      await vi.waitFor(() => expect(TestBed.inject(AccountSessionService).state()).toBe('guest'));
       await fixture.whenStable();
       const page = fixture.nativeElement as HTMLElement;
       const links = Array.from(page.querySelectorAll<HTMLAnchorElement>('a[href^="/auth/login"]'));
@@ -110,6 +121,10 @@ it('dismisses the floating menu with an outside pointer action', async () => {
 it('shows notification and account controls instead of login buttons for an authenticated session', async () => {
   const account = {
     signedIn: signal(true),
+    state: signal('ready'),
+    identity: signal({ userId: 'fictitious-user', roles: ['customer'], garageMemberships: [] }),
+    displayName: () => 'Fiktives Konto',
+    loginAvailable: signal(true),
     busy: signal(false),
     refresh: vi.fn().mockResolvedValue(undefined),
     logout: vi.fn().mockResolvedValue(true),
@@ -159,6 +174,8 @@ it('shows notification and account controls instead of login buttons for an auth
   profile.click();
   await fixture.whenStable();
   account.signedIn.set(false);
+  account.state.set('guest');
+  account.identity.set(null!);
   await fixture.whenStable();
   expect(page.querySelector('#account-menu')).toBeNull();
   expect(page.textContent).not.toContain('Meine Anfragen');

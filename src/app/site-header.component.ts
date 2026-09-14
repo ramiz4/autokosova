@@ -1,5 +1,5 @@
-import { isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
-import { PLATFORM_ID } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { afterNextRender } from '@angular/core';
 import { AccountSessionService } from './account-session.service';
 import { Component, ElementRef, inject, input, signal, viewChild } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
@@ -39,11 +39,14 @@ export class SiteHeaderComponent {
   protected readonly menuOpen = signal(false);
 
   constructor() {
-    if (isPlatformBrowser(inject(PLATFORM_ID))) void this.account.refresh();
+    afterNextRender(() => {
+      void this.account.refresh();
+    });
   }
   protected togglePanel(panel: 'account' | 'notifications'): void {
     this.menuOpen.set(false);
     this.accountPanel.set(this.accountPanel() === panel ? null : panel);
+    if (this.accountPanel() === 'account') void this.account.refresh();
   }
   protected toggleMenu(): void {
     this.accountPanel.set(null);

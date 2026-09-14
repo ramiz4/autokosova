@@ -37,6 +37,12 @@ function localizedRoutes(prefix: string): Routes {
           fragment: fragment ?? undefined,
         }),
     },
+    {
+      path: `${childPrefix}profile`,
+      pathMatch: 'full',
+      loadComponent: () =>
+        import('./account-profile.component').then((module) => module.AccountProfileComponent),
+    },
     // Compatibility redirects only; generated links always use English route names.
     {
       path: `${childPrefix}anfrage`,
