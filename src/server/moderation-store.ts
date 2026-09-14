@@ -412,6 +412,10 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
 
   async exportPersonalData(principal: Principal): Promise<PersonalDataExport> {
     return this.transaction(principal, async (client) => {
+      const favorites = await client.query<{ garage_id: string }>(
+        'SELECT garage_id FROM garage_favorite WHERE owner_user_id = $1 ORDER BY created_at, garage_id',
+        [principal.userId],
+      );
       const files = await client.query<{
         readonly id: string;
         readonly retention_state: 'active' | 'deleted_after_retention';
@@ -468,6 +472,7 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
         : { rows: [] as readonly { file_id: string; repair_request_id: string }[] };
       return {
         exportedAt: new Date().toISOString(),
+        favoriteGarageIds: favorites.rows.map((row) => row.garage_id),
         files: files.rows.map((file) => ({
           id: file.id,
           status: file.retention_state === 'active' ? ('active' as const) : ('deleted' as const),
@@ -588,6 +593,8 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
       if (!policy.rows[0])
         throw new AccessError(409, 'Data deletion requires the configured operator policy');
       const userId = row.user_id;
+      // Serialize account erasure with new favorites, which take a shared owner lock.
+      await client.query('SELECT id FROM app_user WHERE id = $1 FOR UPDATE', [userId]);
       const files = await client.query<{ readonly id: string; readonly storage_key: string }>(
         "SELECT id, storage_key FROM file_object WHERE owner_user_id = $1 AND retention_state = 'active'",
         [userId],
@@ -663,6 +670,10 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
       );
       await client.query('DELETE FROM repair_request WHERE owner_user_id = $1', [userId]);
       await client.query('DELETE FROM vehicle WHERE owner_user_id = $1', [userId]);
+      // The admin has authorized this erasure; keep the favorite table's owner-only RLS intact.
+      await client.query("SELECT set_config('app.user_id', $1, true)", [userId]);
+      await client.query('DELETE FROM garage_favorite WHERE owner_user_id = $1', [userId]);
+      await client.query("SELECT set_config('app.user_id', $1, true)", [admin.userId]);
       await client.query('DELETE FROM moderation_appeal WHERE appellant_user_id = $1', [userId]);
       await client.query('UPDATE content_report SET details = NULL WHERE reporter_user_id = $1', [
         userId,

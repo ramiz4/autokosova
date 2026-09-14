@@ -2,18 +2,31 @@ import type { AppLanguage } from './i18n';
 
 export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, string>>>> = {
   de: {
+    'favorites.login': 'Anmelden',
+    'favorites.dismiss': 'Hinweis schließen',
+    'favorites.add': '{garage} als Favorit speichern',
+    'favorites.remove': '{garage} aus Favoriten entfernen',
+    'favorites.saved': 'Im Benutzerkonto als Favorit gespeichert.',
+    'favorites.removed': 'Aus deinen Favoriten entfernt.',
+    'favorites.signIn': 'Melde dich an, um Favoriten in deinem Konto zu speichern.',
+    'favorites.error': 'Favoriten konnten nicht aktualisiert werden. Bitte versuche es erneut.',
+
+    'search.ui.allLocations': 'Ganz Kosovo',
+    'search.ui.locationOptional': 'Ort und Radius sind optional.',
+    'search.ui.chooseLocation': 'Ort auswählen',
+    'search.ui.addFirstArea': 'Ort hinzufügen',
+    'search.ui.allMakes': 'Alle Marken',
+
     'search.ui.previousResults': 'Vorherige Ergebnisse – Aktualisierung fehlgeschlagen',
     'search.ui.openFilters': 'Anpassen',
     'search.ui.closeFilters': 'Schließen',
-    'search.ui.make': 'Fahrzeugmarke',
+    'search.ui.make': 'Marke',
     'search.ui.language': 'Sprache',
     'search.ui.allServices': 'Alle Leistungen',
     'search.ui.allLanguages': 'Alle Sprachen',
 
     'search.ui.slogan': 'Mehr als eine Werkstatt. Ein gutes Gefühl.',
     'search.ui.details': 'Details ansehen',
-    'search.ui.heroIntro':
-      'Vergleiche geprüfte Werkstätten in deiner Nähe und finde den passenden Service für dein Fahrzeug – schnell, transparent und nachvollziehbar.',
     'search.ui.addArea': 'Weiteren Ort hinzufügen',
     'search.ui.apply': 'Filter anwenden',
     'search.ui.clear': 'Zurücksetzen',
@@ -36,6 +49,21 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'search.ui.viewMap': 'Karte',
   },
   sq: {
+    'favorites.login': 'Hyr',
+    'favorites.dismiss': 'Mbyll njoftimin',
+    'favorites.add': 'Ruaj {garage} te të preferuarat',
+    'favorites.remove': 'Hiq {garage} nga të preferuarat',
+    'favorites.saved': 'U ruajt te të preferuarat në llogarinë tënde.',
+    'favorites.removed': 'U hoq nga të preferuarat.',
+    'favorites.signIn': 'Hyr për të ruajtur të preferuarat në llogarinë tënde.',
+    'favorites.error': 'Të preferuarat nuk u përditësuan. Provo përsëri.',
+
+    'search.ui.allLocations': 'Gjithë Kosova',
+    'search.ui.locationOptional': 'Vendi dhe rrezja janë opsionale.',
+    'search.ui.chooseLocation': 'Zgjidh vendin',
+    'search.ui.addFirstArea': 'Shto vend',
+    'search.ui.allMakes': 'Të gjitha markat',
+
     'search.ui.previousResults': 'Rezultatet e mëparshme – përditësimi dështoi',
     'search.ui.openFilters': 'Përshtat',
     'search.ui.closeFilters': 'Mbyll',
@@ -46,8 +74,6 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
 
     'search.ui.slogan': 'Më shumë se një servis. Një ndjenjë e mirë.',
     'search.ui.details': 'Shiko detajet',
-    'search.ui.heroIntro':
-      'Krahaso servise të kontrolluara pranë teje dhe gjej shërbimin e përshtatshëm për automjetin tënd – shpejt, qartë dhe në mënyrë të kuptueshme.',
     'search.ui.addArea': 'Shto një vend tjetër',
     'search.ui.apply': 'Zbato filtrat',
     'search.ui.clear': 'Rivendos',
@@ -70,6 +96,21 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'search.ui.viewMap': 'Hartë',
   },
   en: {
+    'favorites.login': 'Sign in',
+    'favorites.dismiss': 'Dismiss notification',
+    'favorites.add': 'Save {garage} to favorites',
+    'favorites.remove': 'Remove {garage} from favorites',
+    'favorites.saved': 'Saved to favorites in your account.',
+    'favorites.removed': 'Removed from your favorites.',
+    'favorites.signIn': 'Sign in to save favorites in your account.',
+    'favorites.error': 'Favorites could not be updated. Please try again.',
+
+    'search.ui.allLocations': 'All of Kosovo',
+    'search.ui.locationOptional': 'Location and radius are optional.',
+    'search.ui.chooseLocation': 'Choose a location',
+    'search.ui.addFirstArea': 'Add location',
+    'search.ui.allMakes': 'All makes',
+
     'search.ui.previousResults': 'Previous results – refresh failed',
     'search.ui.openFilters': 'Adjust',
     'search.ui.closeFilters': 'Close',
@@ -80,8 +121,6 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
 
     'search.ui.slogan': 'More than a garage. A good feeling.',
     'search.ui.details': 'View details',
-    'search.ui.heroIntro':
-      'Compare checked garages near you and find the suitable service for your vehicle — quickly, transparently and with clear reasons.',
     'search.ui.addArea': 'Add another location',
     'search.ui.apply': 'Apply filters',
     'search.ui.clear': 'Reset',

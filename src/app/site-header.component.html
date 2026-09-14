@@ -1,4 +1,5 @@
 <header
+  [class.is-authenticated]="account.signedIn()"
   [class]="
     compact()
       ? 'relative z-20 mx-auto max-w-[1352px] px-4 py-1.5 text-ink sm:px-6'
@@ -17,11 +18,11 @@
         width="640"
         height="122"
         alt="AutoKosova"
-        class="block h-auto w-44 sm:w-52 xl:w-56"
+        class="site-logo block h-auto w-44 sm:w-52 xl:w-56"
       />
     </a>
     <nav
-      class="hidden h-full items-center gap-8 text-[13px] font-semibold text-[#475569] md:flex"
+      class="hidden h-full items-center gap-8 text-[13px] font-semibold text-[#475569] lg:flex"
       [attr.aria-label]="language.t('nav.main')"
     >
       <a
@@ -53,18 +54,47 @@
     </nav>
     <div class="flex items-center gap-2 sm:gap-3">
       <app-language-switcher [compact]="true" class="flex items-center" />
-      <div class="hidden items-center gap-3 xl:flex">
-        <a appButton="outline" size="compact" [href]="loginUrl()">{{ language.t('nav.login') }}</a>
-        <a appButton size="compact" [href]="loginUrl(true)">{{ language.t('nav.register') }}</a>
-      </div>
+      @if (account.signedIn()) {
+        <div class="flex items-center gap-2">
+          <button
+            #notificationButton
+            type="button"
+            class="flex size-11 items-center justify-center rounded-full bg-blue-50 text-ink hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-brand"
+            [attr.aria-label]="language.t('account.notifications')"
+            [attr.aria-expanded]="accountPanel() === 'notifications'"
+            aria-controls="account-notifications"
+            (click)="togglePanel('notifications')"
+          >
+            <app-icon name="bell" class="size-5" />
+          </button>
+          <button
+            #accountButton
+            type="button"
+            class="flex size-11 items-center justify-center rounded-full bg-blue-50 text-ink hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-brand"
+            [attr.aria-label]="language.t('account.title')"
+            [attr.aria-expanded]="accountPanel() === 'account'"
+            aria-controls="account-menu"
+            (click)="togglePanel('account')"
+          >
+            <app-icon name="user" class="size-5" />
+          </button>
+        </div>
+      } @else {
+        <div class="hidden items-center gap-3 xl:flex">
+          <a appButton="outline" size="compact" [href]="loginUrl()">{{
+            language.t('nav.login')
+          }}</a>
+          <a appButton size="compact" [href]="loginUrl(true)">{{ language.t('nav.register') }}</a>
+        </div>
+      }
       <button
         #menuButton
         type="button"
-        class="flex size-11 items-center justify-center rounded-lg hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand xl:hidden"
+        class="mobile-menu-toggle flex size-11 items-center justify-center rounded-lg hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand xl:hidden"
         [attr.aria-label]="language.t(menuOpen() ? 'nav.close' : 'nav.open')"
         [attr.aria-expanded]="menuOpen()"
         aria-controls="mobile-navigation"
-        (click)="menuOpen.set(!menuOpen())"
+        (click)="toggleMenu()"
       >
         <app-icon [name]="menuOpen() ? 'close' : 'menu'" class="size-6" />
       </button>
@@ -105,10 +135,59 @@
       <a class="nav-link" [href]="language.link('home') + '#ueber-uns'" (click)="closeMenu()">{{
         language.t('nav.about')
       }}</a>
-      <div class="mt-2 grid grid-cols-2 gap-3">
-        <a appButton="outline" size="compact" [href]="loginUrl()">{{ language.t('nav.login') }}</a>
-        <a appButton size="compact" [href]="loginUrl(true)">{{ language.t('nav.register') }}</a>
-      </div>
+      @if (!account.signedIn()) {
+        <div class="mt-2 grid grid-cols-2 gap-3">
+          <a appButton="outline" size="compact" [href]="loginUrl()">{{
+            language.t('nav.login')
+          }}</a>
+          <a appButton size="compact" [href]="loginUrl(true)">{{ language.t('nav.register') }}</a>
+        </div>
+      }
     </div>
   </nav>
+  @if (account.signedIn() && accountPanel() === 'notifications') {
+    <section
+      id="account-notifications"
+      class="site-menu-surface absolute top-full right-0 left-0 mt-2 rounded-2xl border border-white/80 p-5 shadow-xl sm:left-auto sm:w-80"
+      [attr.aria-label]="language.t('account.notifications')"
+    >
+      <h2 class="font-semibold">{{ language.t('account.notifications') }}</h2>
+      <p class="mt-2 text-sm leading-6 text-muted">
+        {{ language.t('account.notificationsUnavailable') }}
+      </p>
+    </section>
+  }
+  @if (account.signedIn() && accountPanel() === 'account') {
+    <section
+      id="account-menu"
+      class="site-menu-surface absolute top-full right-0 left-0 mt-2 max-h-[calc(100dvh-10rem)] overflow-y-auto rounded-2xl border border-white/80 p-4 shadow-xl sm:left-auto sm:w-72"
+      [attr.aria-label]="language.t('account.title')"
+    >
+      <h2 class="px-2 py-2 font-semibold">{{ language.t('account.title') }}</h2>
+      <div class="grid gap-1 sm:hidden">
+        <a class="nav-link px-2" [routerLink]="language.link('request')" (click)="closeMenu()">{{
+          language.t('nav.newRequest')
+        }}</a>
+        <a class="nav-link px-2" [routerLink]="language.link('search')" (click)="closeMenu()">{{
+          language.t('nav.search')
+        }}</a>
+        <a class="nav-link px-2" [routerLink]="language.link('onboarding')" (click)="closeMenu()">{{
+          language.t('nav.workshops')
+        }}</a>
+      </div>
+      <button
+        type="button"
+        class="mt-2 flex min-h-11 w-full items-center rounded-lg px-2 text-left text-sm font-semibold text-brand-dark hover:bg-blue-50 disabled:opacity-50"
+        [disabled]="account.busy()"
+        (click)="logout()"
+      >
+        {{ language.t('account.logout') }}
+      </button>
+      @if (logoutError()) {
+        <p role="alert" class="mt-2 text-sm text-rose-800">
+          {{ language.t('account.logoutError') }}
+        </p>
+      }
+    </section>
+  }
 </header>

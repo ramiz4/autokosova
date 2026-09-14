@@ -77,7 +77,7 @@ test('OIDC transaction preserves a local return path for the saved draft', () =>
   assert.ok(transaction?.expiresAt instanceof Date);
 });
 
-test('OIDC login only accepts the repair-request return path', async () => {
+test('OIDC login accepts only safe inquiry and public search return paths', async () => {
   const store = new AccessStore();
   const app = createServer({
     accessStore: store,
@@ -116,6 +116,17 @@ test('OIDC login only accepts the repair-request return path', async () => {
         legacy.replace('/anfrage', '/inquiry'),
       );
     }
+    const searchReturn = await app.inject({
+      method: 'GET',
+      url:
+        '/auth/login?returnTo=' +
+        encodeURIComponent('/sq/garages?places=xk-pristina:20&symptom=PRIVATE'),
+    });
+    const searchState = new URL(searchReturn.headers.location!).searchParams.get('state')!;
+    assert.equal(
+      store.consumeOidcTransaction(searchState)?.returnTo,
+      '/sq/garages?places=xk-pristina%3A20',
+    );
     const rejected = await app.inject({
       method: 'GET',
       url: '/auth/login?returnTo=//example.test',

@@ -15,6 +15,7 @@ Privates Repository mit Produktplanung und technischer Grundlage. Der Stack ist 
 - [Designrichtung und Präzisierungen](docs/design/README.md)
 - [ZITADEL-Integration und offenes Login-Gate](docs/architecture/AUTH-INTEGRATION.md)
 - [Werkstattaufnahme, Prüfung und Bildschutz](docs/architecture/WORKSHOP-ONBOARDING.md)
+- [Kontogebundene Favoriten und Sitzungsanzeige](docs/architecture/FAVORITES.md)
 - [Öffentliche Mehrortsuche und nachvollziehbares Matching](docs/architecture/SEARCH-MATCHING.md)
 - [Bewusster Direktkontakt über WhatsApp oder Telefon](docs/architecture/DIRECT-CONTACT.md)
 - [Bewertungen und private Besuchsnachweise](docs/architecture/REVIEWS.md)

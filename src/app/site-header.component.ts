@@ -1,5 +1,8 @@
+import { isPlatformBrowser } from '@angular/common';
+import { PLATFORM_ID } from '@angular/core';
+import { AccountSessionService } from './account-session.service';
 import { Component, ElementRef, inject, input, signal, viewChild } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { LanguageService } from './language.service';
 import { LanguageSwitcherComponent } from './language-switcher.component';
 import { ButtonDirective } from './ui/button.directive';
@@ -14,19 +17,53 @@ import { IconComponent } from './ui/icon.component';
 export class SiteHeaderComponent {
   readonly compact = input(false);
   readonly active = input<'search' | 'request' | undefined>();
+  protected readonly account = inject(AccountSessionService);
+  protected readonly accountPanel = signal<'account' | 'notifications' | null>(null);
+  protected readonly logoutError = signal(false);
+  private readonly router = inject(Router);
+  private readonly accountButton = viewChild<ElementRef<HTMLButtonElement>>('accountButton');
+  private readonly notificationButton =
+    viewChild<ElementRef<HTMLButtonElement>>('notificationButton');
   protected readonly language = inject(LanguageService);
   private readonly element = inject(ElementRef<HTMLElement>);
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
   protected readonly menuOpen = signal(false);
 
-  protected closeMenu(restoreFocus = false): void {
+  constructor() {
+    if (isPlatformBrowser(inject(PLATFORM_ID))) void this.account.refresh();
+  }
+  protected togglePanel(panel: 'account' | 'notifications'): void {
     this.menuOpen.set(false);
-    if (restoreFocus) this.menuButton()?.nativeElement.focus();
+    this.accountPanel.set(this.accountPanel() === panel ? null : panel);
+  }
+  protected toggleMenu(): void {
+    this.accountPanel.set(null);
+    this.menuOpen.set(!this.menuOpen());
+  }
+  protected async logout(): Promise<void> {
+    this.logoutError.set(false);
+    if (await this.account.logout()) {
+      this.closeMenu();
+      void this.router.navigateByUrl(this.language.link('home'));
+    } else this.logoutError.set(true);
+  }
+
+  protected closeMenu(restoreFocus = false): void {
+    const panel = this.accountPanel();
+    this.menuOpen.set(false);
+    this.accountPanel.set(null);
+    if (restoreFocus)
+      (panel === 'account'
+        ? this.accountButton()
+        : panel === 'notifications'
+          ? this.notificationButton()
+          : this.menuButton()
+      )?.nativeElement.focus();
   }
 
   protected dismissOutside(event: PointerEvent): void {
     if (
-      this.menuOpen() &&
+      (this.menuOpen() || this.accountPanel()) &&
       event.target instanceof Node &&
       !this.element.nativeElement.contains(event.target)
     ) {

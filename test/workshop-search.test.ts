@@ -354,3 +354,16 @@ test(
     }
   },
 );
+
+test('location-free search preserves and validates make and language filters', () => {
+  const input = parsePublicWorkshopSearch({
+    all: 'true',
+    vehicleMake: 'skoda',
+    language: 'Deutsch',
+  })!;
+  assert.deepEqual(input.areas, []);
+  assert.equal(input.vehicleMakeId, 'skoda');
+  assert.equal(input.language, 'Deutsch');
+  assert.throws(() => parsePublicWorkshopSearch({ all: 'true', vehicleMake: 'unknown' }));
+  assert.throws(() => parsePublicWorkshopSearch({ all: 'true', language: 'x'.repeat(41) }));
+});

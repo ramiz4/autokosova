@@ -15,6 +15,8 @@ describe('SearchHandoffComponent', () => {
   it('loads the explicit all-results default when no filters are supplied', async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async (input) => {
+      if (String(input).startsWith('/api/me/') || String(input) === '/api/session')
+        return new Response('{}', { status: 401 });
       expect(String(input)).toContain('/api/public/search?all=true');
       return new Response(
         JSON.stringify({
@@ -52,30 +54,32 @@ describe('SearchHandoffComponent', () => {
 
   it('shows verified results without a duplicate verification chip or an unconfigured map', async () => {
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = async () =>
-      new Response(
-        JSON.stringify({
-          page: 1,
-          pageSize: 10,
-          results: [
-            {
-              companyDataVerified: true,
-              distanceKm: 0,
-              id: 'fiktive-werkstatt',
-              matchingPlace: { id: 'xk-pristina', label: 'Prishtina' },
-              name: 'Fiktive Werkstatt',
-              reasons: ['Unternehmensdaten geprüft', 'Leistung: Bremsen'],
-              reviewSummary: { label: 'Noch keine Bewertungen' },
-              selfReportedSpecializations: [],
-            },
-          ],
-          searchAreas: [{ label: 'Prishtina', radiusKm: 20 }],
-          serviceCategory: { label: 'Bremsen' },
-          total: 1,
-          totalPages: 1,
-        }),
-        { headers: { 'content-type': 'application/json' }, status: 200 },
-      );
+    globalThis.fetch = async (input) =>
+      String(input).startsWith('/api/me/') || String(input) === '/api/session'
+        ? new Response('{}', { status: 401 })
+        : new Response(
+            JSON.stringify({
+              page: 1,
+              pageSize: 10,
+              results: [
+                {
+                  companyDataVerified: true,
+                  distanceKm: 0,
+                  id: 'fiktive-werkstatt',
+                  matchingPlace: { id: 'xk-pristina', label: 'Prishtina' },
+                  name: 'Fiktive Werkstatt',
+                  reasons: ['Unternehmensdaten geprüft', 'Leistung: Bremsen'],
+                  reviewSummary: { label: 'Noch keine Bewertungen' },
+                  selfReportedSpecializations: [],
+                },
+              ],
+              searchAreas: [{ label: 'Prishtina', radiusKm: 20 }],
+              serviceCategory: { label: 'Bremsen' },
+              total: 1,
+              totalPages: 1,
+            }),
+            { headers: { 'content-type': 'application/json' }, status: 200 },
+          );
     try {
       await TestBed.configureTestingModule({
         imports: [SearchHandoffComponent],
@@ -136,6 +140,8 @@ it('refreshes results from changed URL filters and ignores stale responses', asy
   const calls: string[] = [];
   const pending: ((response: Response) => void)[] = [];
   vi.stubGlobal('fetch', (url: string) => {
+    if (url.startsWith('/api/me/') || url === '/api/session')
+      return Promise.resolve(new Response('{}', { status: 401 }));
     calls.push(String(url));
     return new Promise<Response>((resolve) => pending.push(resolve));
   });
@@ -184,7 +190,7 @@ it('refreshes results from changed URL filters and ignores stale responses', asy
     expect(fixture.nativeElement.textContent).not.toContain('99 passende');
     params.next(convertToParamMap({}));
     expect(calls[2]).toContain('all=true');
-    expect(fixture.componentInstance['areas']).toEqual([{ placeId: 'xk-pristina', radiusKm: 20 }]);
+    expect(fixture.componentInstance['areas']).toEqual([]);
     pending[2](response(25));
     await loads.mock.results[2].value;
     await fixture.whenStable();
@@ -195,7 +201,7 @@ it('refreshes results from changed URL filters and ignores stale responses', asy
   }
 });
 
-it('adds only distinct locations and always retains one location', async () => {
+it('adds unselected optional locations and allows clearing the last location', async () => {
   await TestBed.configureTestingModule({
     imports: [SearchHandoffComponent],
     providers: [
@@ -211,10 +217,10 @@ it('adds only distinct locations and always retains one location', async () => {
   component['addArea']();
   expect(component['areas']).toHaveLength(3);
   expect(component['expandedArea']()).toBe(2);
-  expect(new Set(component['areas'].map((area) => area.placeId)).size).toBe(3);
+  expect(component['areas'].slice(1).every((area) => area.placeId === '')).toBe(true);
   component['removeArea'](0);
   component['removeArea'](0);
   component['removeArea'](0);
-  expect(component['areas']).toHaveLength(1);
-  expect(component['expandedArea']()).toBe(0);
+  expect(component['areas']).toHaveLength(0);
+  expect(component['expandedArea']()).toBe(-1);
 });

@@ -28,11 +28,11 @@ Fahrzeugschritt in DE/SQ/EN bei 1448, 1280, 360, 390 und 430 px geprüft. Zusät
 
 - `npm ci`, `npm run dev:demo`: eigene lokale PostgreSQL-DB, Migration 017 und öffentliche Demo-Daten erfolgreich.
 - `npm run format:check`, `npm run lint`, `npm run typecheck`: erfolgreich.
-- `npm test -- --watch=false`: 38 Tests erfolgreich, einschließlich 12 Anfrage-Tests und 6 Routentests.
-- `npm run test:server` mit der eigenen lokalen `DATABASE_URL`: 57 bestanden, 2 profilspezifische Demo-Seed-Tests übersprungen (keine entsprechenden Testprofil-Flags). Persistenz mit neuen Feldern, Teilfahrzeug und Fremdzugriff tatsächlich gegen PostgreSQL geprüft.
-- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 539 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
+- `npm test -- --watch=false`: 42 Tests erfolgreich, einschließlich 12 Anfrage-Tests und 6 Routentests.
+- `npm run test:server` mit der eigenen lokalen `DATABASE_URL`: 60 bestanden, 2 profilspezifische Demo-Seed-Tests übersprungen (keine entsprechenden Testprofil-Flags). Persistenz mit neuen Feldern, Teilfahrzeug und Fremdzugriff tatsächlich gegen PostgreSQL geprüft.
+- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 548 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
 - Screenreader-Semantik (`aria-current`, Status-/Fehlermeldungen), Fokuswechsel und Eingabevalidierung automatisiert geprüft. Kein manueller Durchlauf mit einem Screenreader und keine native mobile Browserprüfung.
-- Echter OIDC-Login mit Testkonto nicht ausgeführt: dieser isolierte Worktree hat keine OIDC-Konfiguration. Private Speicherung und Berechtigungen wurden über die authentifizierte API in Tests geprüft; dies ersetzt den realen OIDC-Durchlauf nicht.
+- Echter Customer-OIDC-Login auf Port 4200 erfolgreich: Favorit per Herz gespeichert, API-Eintrag bestätigt, nach Neuladen erhalten, wieder entfernt und abgemeldet. PostgreSQL- und API-Tests prüfen zusätzlich Besitzer-Isolation, Export und Löschung.
 
 Pointer-Cursor zentral für aktive Links, Buttons, Auswahllisten, aufklappbare Elemente und Auswahl-/Upload-Bedienelemente ergänzt. Im Browser auf Header, Fahrzeugklassen, Auswahllisten und Formularaktionen über die berechneten CSS-Werte geprüft. Deaktivierte Elemente sind ausgenommen.
 
@@ -40,7 +40,7 @@ Pointer-Cursor zentral für aktive Links, Buttons, Auswahllisten, aufklappbare E
 
 Der Assistent liegt unter `/inquiry`; Profile und Aufnahme unter `/garages/:garageId` und `/garages/new`. Alle drei Sprachen verwenden dieselben englischen Pfadsegmente. Alte deutsche UI-Pfade sind ausschließlich Weiterleitungen. API-Pfade verwenden `/api/garages`, `/api/public/garages`, `/api/me/garages` und `/api/admin/garages`; Collection-Antworten heißen `garages`. Die früheren API-Pfade werden nicht weiter angeboten. Die API-Berechtigungsmatrix wurde unter den neuen Pfaden erneut geprüft. Ein öffentliches Demo-Profil wurde über die neue UI-/API-Route im Browser erfolgreich geladen.
 
-Sitemap und Robots-Regeln berücksichtigen die neuen Pfade: Suchlisten und Aufnahme bleiben ausgeschlossen, öffentliche Profilpfade werden nicht durch eine zu breite `/garages`-Regel gesperrt. Login-Rücksprünge akzeptieren nur den kanonischen Anfragepfad bzw. bekannte deutsche Vorgänger, die direkt auf `/inquiry` normalisiert werden.
+Sitemap und Robots-Regeln berücksichtigen die neuen Pfade: Suchlisten und Aufnahme bleiben ausgeschlossen, öffentliche Profilpfade werden nicht durch eine zu breite `/garages`-Regel gesperrt. Login-Rücksprünge akzeptieren den kanonischen Anfragepfad, bekannte deutsche Vorgänger (normalisiert auf `/inquiry`) und `/garages` mit validierten öffentlichen Suchfiltern.
 
 Die Anfrageseite hat eine sticky Navigation: im Mobilbrowser nach 800 px Scrollen bleibt die Kopfzeile bei 0–64 px sichtbar. [Scrollnachweis](sticky-mobile.webp). Getriebe ist eine optionale Auswahl; ältere Freitexte bleiben als bisheriger Wert erhalten.
 
@@ -77,3 +77,21 @@ Mobil ist der gesamte Filter aufklappbar. Ergebnisse bleiben während einer Aktu
 ## Unternehmensprüfung in Ergebniskarten
 
 Der zusätzliche Chip „Unternehmensdaten geprüft“ entfällt. Die Prüfung erscheint ausschließlich als blaues, sternförmiges Badge mit weißem Haken neben dem Werkstattnamen. Tooltip und Screenreader-Name benennen weiterhin präzise die Unternehmensdatenprüfung. Ohne bestätigten `companyDataVerified`-Wert wird das Icon nicht angezeigt. Diese Grenze und die Entfernung des doppelten Chips sind im UI-Test geprüft. [Ergebniskarte](verification-badge.webp).
+
+## Ergebnisfokus, optionale Orte und Favoriten
+
+Die Suche beginnt direkt mit Filter und Ergebnissen. Bild-Hero, Hero-Suchfeld, Vorteilsblöcke und sichtbare Seitenüberschrift entfallen nach der letzten Nutzerentscheidung. Die semantische H1 bleibt für Screenreader erhalten. [Desktop](search-results-1448.webp), [Mobil 390](search-results-390.webp), [Mobil 360](search-results-360.webp).
+
+Ohne gesetzten Ortsfilter bleibt die Ortsauswahl leer: „Ganz Kosovo“ und „Ort und Radius sind optional“. Marke, Leistung und Sprache gelten auch für die globale Suche. Die Reihenfolge ist Marke, Leistung, Sprache. Der Filter bleibt nach dem Scrollen bei y=80 unter der 64 px hohen Navbar, bei Bedarf mit internem Scrollbereich.
+
+Migration 019 speichert private Favoriten im Konto. Angemeldete Navbar: [Desktop](account-navbar.webp), [Mobil](account-mobile.webp). [Bestätigter Favorit und fiktive Demo-Bewertung](favorite-card.webp). Sechs veröffentlichte fiktive Workflow-Bewertungen auf drei ausdrücklich als DEMO bezeichneten Profilen zeigen echte berechnete Mittelwerte und Anzahlen. `npm run test:demo-workflow-seed` wurde separat mit eigener lokaler DB erfolgreich ausgeführt.
+
+Die finale Suche wurde in DE/SQ/EN bei 1920, 1448, 390 und 360 px ohne horizontalen Überlauf geprüft. Keine öffentliche Bereitstellung; keine echten Kundendaten in den Nachweisen.
+
+Navbar-Inhalt und Suchinhalt teilen exakt dieselben Außenkanten: bei allen vier Breiten und in allen drei Sprachen wurden links und rechts 0 px Abweichung gemessen. [Großer Desktop](search-results-1920.webp).
+
+## Kompakte Favoriten-Hinweise
+
+Toasts sind maximal 384 px breit und rechts am Inhaltsraster ausgerichtet. Status-Icon, 14-px-Text und Schließen-Button bilden eine gemeinsame Zeile; der Gast-Hinweis enthält einen Anmelden-Button. Mobile Seitenabstände und Safe Area bleiben berücksichtigt. Fehler werden als Alert angekündigt, andere Hinweise als Status.
+
+[Echter Gast-Hinweis Desktop](toast-login-1448.webp), [Mobil 360](toast-login-360.webp). Die Zustände [Gespeichert](toast-saved-fixture.webp), [Entfernt](toast-removed-fixture.webp) und [Fehler](toast-error-fixture.webp) wurden für diese reine Darstellungsprüfung mit simulierten API-Antworten aufgenommen; der echte OIDC-/Persistenznachweis ist separat oben dokumentiert. Schließen und Anmelden-Link sind bedienbar, keine horizontalen Überläufe.

@@ -2,6 +2,12 @@ import type { AppLanguage } from './i18n';
 
 export const landingCopy: Readonly<Record<AppLanguage, Readonly<Record<string, string>>>> = {
   de: {
+    'account.title': 'Mein Konto',
+    'account.notifications': 'Benachrichtigungen',
+    'account.notificationsUnavailable': 'Benachrichtigungen sind noch nicht verfügbar.',
+    'account.logout': 'Abmelden',
+    'account.logoutError': 'Abmelden ist fehlgeschlagen. Bitte erneut versuchen.',
+
     'landing.skip': 'Zum Inhalt',
     'landing.benefits': 'Deine Vorteile',
     'nav.main': 'Hauptnavigation',
@@ -64,6 +70,12 @@ export const landingCopy: Readonly<Record<AppLanguage, Readonly<Record<string, s
     'landing.footer': 'Dein Fahrzeug. Deine Entscheidung.',
   },
   sq: {
+    'account.title': 'Llogaria ime',
+    'account.notifications': 'Njoftimet',
+    'account.notificationsUnavailable': 'Njoftimet nuk janë ende të disponueshme.',
+    'account.logout': 'Dil',
+    'account.logoutError': 'Dalja dështoi. Provo përsëri.',
+
     'landing.skip': 'Te përmbajtja',
     'landing.benefits': 'Përparësitë e tua',
     'nav.main': 'Navigimi kryesor',
@@ -125,6 +137,12 @@ export const landingCopy: Readonly<Record<AppLanguage, Readonly<Record<string, s
     'landing.footer': 'Automjeti yt. Vendimi yt.',
   },
   en: {
+    'account.title': 'My account',
+    'account.notifications': 'Notifications',
+    'account.notificationsUnavailable': 'Notifications are not available yet.',
+    'account.logout': 'Sign out',
+    'account.logoutError': 'Sign out failed. Please try again.',
+
     'landing.skip': 'Skip to content',
     'landing.benefits': 'Your benefits',
     'nav.main': 'Main navigation',

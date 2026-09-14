@@ -1,3 +1,4 @@
+import { FavoritesService } from './favorites.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RadiusSliderComponent } from './ui/radius-slider.component';
 import { isPlatformBrowser } from '@angular/common';
@@ -50,6 +51,8 @@ interface Response {
   readonly total: number;
   readonly totalPages: number;
 }
+type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
+
 interface Area {
   placeId: string;
   radiusKm: number;
@@ -65,92 +68,12 @@ interface Area {
     SiteHeaderComponent,
   ],
   selector: 'app-search-handoff',
+  providers: [FavoritesService],
   template: ` <main class="min-h-screen bg-[#f4f8fe] text-ink" aria-labelledby="search-title">
     <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
       <app-site-header [compact]="true" active="search" />
     </div>
-    <section
-      class="relative isolate min-h-[276px] overflow-hidden bg-[#f4f7fc] px-4 sm:px-8 lg:px-12"
-    >
-      <div
-        class="absolute right-0 top-0 -z-20 h-full w-full bg-[url('/images/search/search-hero-workshop.webp')] bg-cover bg-center opacity-25 md:w-[55%] md:opacity-100"
-      ></div>
-      <div
-        class="absolute inset-0 -z-10 bg-gradient-to-r from-[#f4f7fc] via-[#f4f7fc]/95 to-transparent"
-      ></div>
-      <div
-        class="relative mx-auto grid max-w-[1280px] grid-cols-1 items-end gap-6 px-2 py-8 md:grid-cols-12"
-      >
-        <div class="flex h-full flex-col md:col-span-7">
-          <div class="mb-auto">
-            <h1
-              id="search-title"
-              class="text-4xl font-black tracking-tight text-[#0f172a] md:text-5xl"
-            >
-              {{ language.t('search.title') }}
-            </h1>
-            <p
-              class="mt-3 max-w-xl text-sm font-medium leading-relaxed text-[#475569] md:text-base"
-            >
-              {{ ui('search.ui.heroIntro') }}
-            </p>
-          </div>
-          <div class="mt-8 flex flex-wrap items-center gap-x-8 gap-y-4">
-            <div class="flex items-center gap-3">
-              <span
-                class="flex size-8 items-center justify-center rounded-full bg-brand text-white shadow-md shadow-blue-500/20"
-                ><app-icon name="shield" class="size-4" /></span
-              ><span class="text-xs font-bold tracking-wide text-[#1e293b] md:text-sm">{{
-                language.t('profile.verified')
-              }}</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <span
-                class="flex size-8 items-center justify-center rounded-full bg-brand text-white shadow-md shadow-blue-500/20"
-                ><app-icon name="thumb" class="size-4" /></span
-              ><span class="text-xs font-bold tracking-wide text-[#1e293b] md:text-sm">{{
-                language.t('landing.choiceBenefit')
-              }}</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <span
-                class="flex size-8 items-center justify-center rounded-full bg-brand text-white shadow-md shadow-blue-500/20"
-                ><app-icon name="pin" class="size-4" /></span
-              ><span class="text-xs font-bold tracking-wide text-[#1e293b] md:text-sm">{{
-                language.t('home.transparent.title')
-              }}</span>
-            </div>
-          </div>
-        </div>
-        <form
-          class="mt-6 w-full md:col-span-5 md:mt-0 md:self-end"
-          (ngSubmit)="applyFilters()"
-          novalidate
-        >
-          <label class="sr-only" for="hero-place">{{ ui('search.ui.place') }}</label>
-          <div
-            class="flex w-full items-center gap-2 rounded-2xl border border-slate-100 bg-white p-2 shadow-xl shadow-blue-900/5"
-          >
-            <span class="relative flex flex-1 items-center gap-2.5 pl-3 py-1.5">
-              <app-icon name="pin" class="size-5 shrink-0 text-slate-900" />
-              <select
-                id="hero-place"
-                [(ngModel)]="areas[0].placeId"
-                name="hero-place"
-                class="min-h-10 w-full bg-transparent text-sm font-semibold text-slate-950 focus:outline-none"
-              >
-                @for (place of places; track place.id) {
-                  <option [value]="place.id">{{ place.label }}</option>
-                }
-              </select>
-            </span>
-            <button type="submit" appButton class="min-h-11 rounded-xl px-7 text-sm">
-              {{ language.t('nav.search') }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </section>
+    <h1 id="search-title" class="sr-only">{{ language.t('search.title') }}</h1>
     @if (state === 'loading' && !response) {
       <p class="mx-auto max-w-6xl px-4 py-12 text-slate-700" role="status">
         {{ language.t('search.loading') }}
@@ -175,10 +98,12 @@ interface Area {
       </section>
     }
     @if (response) {
-      <section class="mx-auto max-w-[1920px] px-4 py-6 sm:px-8 lg:px-12">
+      <section
+        class="mx-auto w-[calc(100%_-_1.5rem)] max-w-[1352px] px-4 py-6 sm:px-6 lg:w-[calc(100%_-_4rem)]"
+      >
         <div class="grid gap-5 xl:grid-cols-[minmax(280px,320px)_minmax(0,1fr)]">
           <aside
-            class="self-start rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-900/5"
+            class="sticky top-20 z-10 max-h-[calc(100dvh-6rem)] self-start overflow-y-auto rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-900/5"
           >
             <div class="flex min-h-11 items-center justify-between gap-3">
               <h2 id="filter-title" class="text-base font-bold tracking-tight">
@@ -205,6 +130,17 @@ interface Area {
             >
               <div class="grid gap-5">
                 <div class="grid gap-3">
+                  @if (!areas.length) {
+                    <div class="flex items-start gap-3 py-2 text-sm">
+                      <app-icon name="pin" class="mt-0.5 size-5 text-muted" />
+                      <div>
+                        <p class="font-semibold">{{ ui('search.ui.allLocations') }}</p>
+                        <p class="mt-1 leading-5 text-muted">
+                          {{ ui('search.ui.locationOptional') }}
+                        </p>
+                      </div>
+                    </div>
+                  }
                   @for (area of areas; track $index; let index = $index) {
                     <fieldset
                       class="min-w-0 border-slate-100"
@@ -221,9 +157,13 @@ interface Area {
                       >
                         <app-icon name="pin" class="size-5 text-brand" />
                         <span class="min-w-0 grow text-sm font-semibold"
-                          >{{ placeLabel(area.placeId) }}
-                          <span class="font-normal text-muted">· {{ area.radiusKm }} km</span></span
-                        >
+                          >{{
+                            area.placeId ? placeLabel(area.placeId) : ui('search.ui.chooseLocation')
+                          }}
+                          @if (area.placeId) {
+                            <span class="font-normal text-muted">· {{ area.radiusKm }} km</span>
+                          }
+                        </span>
                         <app-icon
                           name="chevron-down"
                           class="size-4 text-muted"
@@ -248,6 +188,9 @@ interface Area {
                               [name]="'place-' + index"
                               class="min-h-11 w-full rounded-lg border border-slate-200 bg-white py-2 pr-3 pl-9 text-sm font-normal focus-visible:border-brand focus-visible:outline-2 focus-visible:outline-brand/30"
                             >
+                              <option value="" disabled>
+                                {{ ui('search.ui.chooseLocation') }}
+                              </option>
                               @for (place of places; track place.id) {
                                 <option
                                   [value]="place.id"
@@ -259,13 +202,15 @@ interface Area {
                             </select>
                           </span>
                         </label>
-                        <app-radius-slider
-                          class="mt-3"
-                          [inputId]="'search-radius-' + index"
-                          [(ngModel)]="area.radiusKm"
-                          [name]="'radius-range-' + index"
-                        />
-                        @if (areas.length > 1) {
+                        @if (area.placeId) {
+                          <app-radius-slider
+                            class="mt-3"
+                            [inputId]="'search-radius-' + index"
+                            [(ngModel)]="area.radiusKm"
+                            [name]="'radius-range-' + index"
+                          />
+                        }
+                        @if (areas.length > 0) {
                           <button
                             type="button"
                             class="mt-1 inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-sm font-medium text-muted hover:text-ink"
@@ -283,11 +228,25 @@ interface Area {
                       class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-dashed border-blue-200 px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50"
                       (click)="addArea()"
                     >
-                      <span aria-hidden="true" class="text-lg">+</span>{{ ui('search.ui.addArea') }}
+                      <span aria-hidden="true" class="text-lg">+</span
+                      >{{ ui(areas.length ? 'search.ui.addArea' : 'search.ui.addFirstArea') }}
                     </button>
                   }
                 </div>
                 <div class="grid gap-4 border-t border-slate-100 pt-5">
+                  <label class="grid gap-2 text-sm font-semibold"
+                    >{{ ui('search.ui.make') }}
+                    <select
+                      [(ngModel)]="vehicleMake"
+                      name="vehicleMake"
+                      class="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal focus-visible:border-brand focus-visible:outline-2 focus-visible:outline-brand/30"
+                    >
+                      <option value="">{{ ui('search.ui.allMakes') }}</option>
+                      @for (entry of makeIds; track entry) {
+                        <option [value]="entry">{{ makeLabels[entry] }}</option>
+                      }
+                    </select>
+                  </label>
                   <label class="grid gap-2 text-sm font-semibold"
                     >{{ language.t('home.service') }}
                     <select
@@ -298,19 +257,6 @@ interface Area {
                       <option value="">{{ ui('search.ui.allServices') }}</option>
                       @for (entry of serviceIds; track entry) {
                         <option [value]="entry">{{ language.serviceLabel(entry) }}</option>
-                      }
-                    </select>
-                  </label>
-                  <label class="grid gap-2 text-sm font-semibold"
-                    >{{ ui('search.ui.make') }}
-                    <select
-                      [(ngModel)]="vehicleMake"
-                      name="vehicleMake"
-                      class="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal focus-visible:border-brand focus-visible:outline-2 focus-visible:outline-brand/30"
-                    >
-                      <option value="">{{ language.t('profile.allMakes') }}</option>
-                      @for (entry of makeIds; track entry) {
-                        <option [value]="entry">{{ makeLabels[entry] }}</option>
                       }
                     </select>
                   </label>
@@ -365,12 +311,12 @@ interface Area {
                       : ui('search.ui.resultCount', { count: response.total })
                 }}
               </p>
-              <label class="flex items-center gap-2 text-sm font-semibold"
-                >{{ ui('search.ui.sort')
-                }}<select
+              <label class="flex w-full items-center gap-2 text-sm font-semibold sm:w-auto">
+                <span class="shrink-0">{{ ui('search.ui.sort') }}</span>
+                <select
                   [(ngModel)]="sort"
                   name="sort"
-                  class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+                  class="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 sm:flex-none"
                   (change)="applyFilters()"
                 >
                   <option value="recommended">{{ ui('search.ui.sortRecommended') }}</option>
@@ -411,8 +357,10 @@ interface Area {
                         }
                       </div>
                       <div class="relative p-3 sm:min-h-[144px] sm:pr-48">
-                        <div class="flex items-center gap-2">
-                          <h2 class="text-xl font-bold tracking-tight">{{ workshop.name }}</h2>
+                        <div class="flex items-center gap-2 pr-10 sm:pr-0">
+                          <h2 class="min-w-0 text-xl font-bold tracking-tight break-words">
+                            {{ workshop.name }}
+                          </h2>
                           @if (workshop.companyDataVerified) {
                             <span
                               class="inline-flex size-5 shrink-0 text-brand"
@@ -445,12 +393,32 @@ interface Area {
                             <li class="rounded-lg bg-slate-100  px-4 py-1.5">{{ tag }}</li>
                           }
                         </ul>
-                        <span
-                          class="absolute right-5 top-4 text-ink"
-                          [title]="'Favoriten sind noch nicht verfügbar'"
-                          aria-hidden="true"
-                          ><app-icon name="heart" class="size-6"
-                        /></span>
+                        <button
+                          type="button"
+                          class="absolute top-1 right-1 flex size-11 items-center justify-center rounded-full transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand disabled:cursor-wait disabled:opacity-50"
+                          [class.text-brand]="favorites.garageIds().has(workshop.id)"
+                          [class.text-ink]="!favorites.garageIds().has(workshop.id)"
+                          [attr.aria-label]="
+                            ui(
+                              favorites.garageIds().has(workshop.id)
+                                ? 'favorites.remove'
+                                : 'favorites.add',
+                              { garage: workshop.name }
+                            )
+                          "
+                          [attr.aria-pressed]="favorites.garageIds().has(workshop.id)"
+                          [disabled]="
+                            favorites.pending().has(workshop.id) || favorites.state() === 'loading'
+                          "
+                          (click)="favorites.toggle(workshop.id)"
+                        >
+                          <app-icon
+                            [name]="
+                              favorites.garageIds().has(workshop.id) ? 'heart-filled' : 'heart'
+                            "
+                            class="size-6"
+                          />
+                        </button>
                         <a
                           [routerLink]="language.link('garage', workshop.id)"
                           appButton="outline"
@@ -493,6 +461,52 @@ interface Area {
         </div>
       </section>
     }
+    @if (favorites.message(); as message) {
+      <div
+        class="pointer-events-none fixed right-0 bottom-[max(1rem,env(safe-area-inset-bottom))] left-0 z-50 mx-auto flex w-[calc(100%_-_1.5rem)] max-w-[1352px] justify-end px-4 sm:px-6 lg:w-[calc(100%_-_4rem)]"
+      >
+        <div
+          [attr.role]="message === 'error' ? 'alert' : 'status'"
+          class="pointer-events-auto flex w-full max-w-sm items-start gap-2 rounded-2xl border border-slate-200/80 bg-white p-3 text-sm text-ink shadow-[0_8px_32px_-8px_rgba(7,20,62,0.22)]"
+        >
+          <span
+            class="mt-1 flex size-9 shrink-0 items-center justify-center rounded-full"
+            [class]="message === 'error' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-brand'"
+          >
+            <app-icon
+              [name]="
+                message === 'error'
+                  ? 'info'
+                  : message === 'saved'
+                    ? 'heart-filled'
+                    : message === 'removed'
+                      ? 'check'
+                      : 'user'
+              "
+              class="size-[18px]"
+            />
+          </span>
+          <div class="min-w-0 grow">
+            <p class="flex min-h-11 items-center leading-5 font-medium">
+              {{ ui('favorites.' + message) }}
+            </p>
+            @if (message === 'signIn') {
+              <a [href]="favoriteLoginUrl()" appButton="primary" size="compact" class="mt-2"
+                >{{ ui('favorites.login') }}<app-icon name="arrow" class="size-4"
+              /></a>
+            }
+          </div>
+          <button
+            type="button"
+            class="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-slate-100 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            [attr.aria-label]="ui('favorites.dismiss')"
+            (click)="favorites.message.set(null)"
+          >
+            <app-icon name="close" class="size-[18px]" />
+          </button>
+        </div>
+      </div>
+    }
   </main>`,
 })
 export class SearchHandoffComponent {
@@ -500,6 +514,7 @@ export class SearchHandoffComponent {
   private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  protected readonly favorites = inject(FavoritesService);
   protected readonly analytics = inject(AnalyticsService);
   protected readonly language = inject(LanguageService);
   protected readonly limits = REPAIR_REQUEST_LIMITS;
@@ -507,7 +522,7 @@ export class SearchHandoffComponent {
   protected readonly serviceIds = Object.keys(SERVICE_CATEGORY_LABELS);
   protected readonly makeIds = Object.keys(VEHICLE_MAKE_LABELS);
   protected readonly makeLabels = VEHICLE_MAKE_LABELS;
-  protected areas: Area[] = [{ placeId: 'xk-pristina', radiusKm: 20 }];
+  protected areas: Area[] = [];
   protected service = '';
   protected readonly filtersOpen = signal(false);
   protected readonly expandedArea = signal(0);
@@ -517,10 +532,23 @@ export class SearchHandoffComponent {
   protected sort: 'recommended' | 'rating' = 'recommended';
   protected vehicleMake = '';
   protected spokenLanguage = '';
-  protected response?: Response;
-  protected state: 'error' | 'invalid' | 'loading' | 'ready' = 'loading';
+  private readonly responseState = signal<Response | undefined>(undefined);
+  private readonly requestState = signal<SearchState>('loading');
+  protected get response(): Response | undefined {
+    return this.responseState();
+  }
+  protected set response(value: Response | undefined) {
+    this.responseState.set(value);
+  }
+  protected get state(): SearchState {
+    return this.requestState();
+  }
+  protected set state(value: SearchState) {
+    this.requestState.set(value);
+  }
   constructor() {
     this.language.setPage('search.title', 'search.intro', true);
+    if (this.browser) void this.favorites.load();
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.readFilters();
       if (this.browser) void this.load();
@@ -532,19 +560,24 @@ export class SearchHandoffComponent {
   protected ui(key: string, replacements?: Record<string, string | number>): string {
     return this.language.t(key, replacements);
   }
+  protected favoriteLoginUrl(): string {
+    const query = new URLSearchParams();
+    for (const key of ['all', 'places', 'service', 'vehicleMake', 'language', 'sort', 'page']) {
+      const value = this.route.snapshot.queryParamMap.get(key);
+      if (value) query.set(key, value);
+    }
+    return `/auth/login?returnTo=${encodeURIComponent(this.language.link('search') + (query.size ? `?${query}` : ''))}`;
+  }
   protected addArea(): void {
     if (this.areas.length >= this.limits.maxAreas) return;
-    const next = this.places.find((place) => !this.areas.some((area) => area.placeId === place.id));
-    if (next) {
-      this.areas.push({ placeId: next.id, radiusKm: 20 });
-      this.expandedArea.set(this.areas.length - 1);
-    }
+    this.areas.push({ placeId: '', radiusKm: 20 });
+    this.expandedArea.set(this.areas.length - 1);
   }
   protected placeSelectedElsewhere(placeId: string, index: number): boolean {
     return this.areas.some((area, current) => current !== index && area.placeId === placeId);
   }
   protected removeArea(index: number): void {
-    if (this.areas.length <= 1) return;
+    if (!this.areas.length) return;
     this.areas.splice(index, 1);
     const expanded = this.expandedArea();
     this.expandedArea.set(
@@ -609,18 +642,21 @@ export class SearchHandoffComponent {
     this.navigate({ page: String(page) });
   }
   protected applyFilters(): void {
+    const selectedAreas = this.areas.filter((area) => area.placeId);
     const valid =
       (!this.service || this.serviceIds.includes(this.service)) &&
-      this.areas.length > 0 &&
       this.areas.length <= this.limits.maxAreas &&
-      this.areas.every(
+      selectedAreas.every(
         (area) =>
           this.places.some((place) => place.id === area.placeId) &&
           Number.isInteger(Number(area.radiusKm)) &&
           area.radiusKm >= this.limits.minRadiusKm &&
           area.radiusKm <= this.limits.maxRadiusKm,
       );
-    if (!valid || new Set(this.areas.map((area) => area.placeId)).size !== this.areas.length) {
+    if (
+      !valid ||
+      new Set(selectedAreas.map((area) => area.placeId)).size !== selectedAreas.length
+    ) {
       this.filterError.set(true);
       this.filtersOpen.set(true);
       return;
@@ -628,8 +664,10 @@ export class SearchHandoffComponent {
     this.filterError.set(false);
     this.filtersOpen.set(false);
     this.navigate({
-      all: null,
-      places: this.areas.map((area) => `${area.placeId}:${area.radiusKm}`).join(','),
+      all: selectedAreas.length ? null : 'true',
+      places: selectedAreas.length
+        ? selectedAreas.map((area) => `${area.placeId}:${area.radiusKm}`).join(',')
+        : null,
       service: this.service || null,
       sort: this.sort,
       vehicleMake: this.vehicleMake || null,
@@ -638,7 +676,8 @@ export class SearchHandoffComponent {
     });
   }
   protected resetFilters(): void {
-    this.areas = [{ placeId: 'xk-pristina', radiusKm: 20 }];
+    this.areas = [];
+    this.filterError.set(false);
     this.service = '';
     this.sort = 'recommended';
     this.vehicleMake = '';
@@ -694,7 +733,7 @@ export class SearchHandoffComponent {
         return { placeId, radiusKm: Number(radius) };
       })
       .filter((area) => area.placeId && Number.isFinite(area.radiusKm));
-    this.areas = values?.length ? values : [{ placeId: 'xk-pristina', radiusKm: 20 }];
+    this.areas = values?.length ? values : [];
     this.expandedArea.set(Math.min(this.expandedArea(), this.areas.length - 1));
     this.service = q.get('service') ?? '';
     this.filterError.set(false);

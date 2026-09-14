@@ -138,6 +138,10 @@ test(
         reviewEvidenceRetentionDays: 365,
         version: policyVersion,
       });
+      await client.query('INSERT INTO garage_favorite (owner_user_id, garage_id) VALUES ($1,$2)', [
+        authorId,
+        workshopId,
+      ]);
       const exported = await moderation.exportPersonalData(principal(authorId, ['customer']));
       const deletion = await moderation.requestPersonalDataDeletion(
         principal(authorId, ['customer']),
@@ -146,6 +150,16 @@ test(
       const completed = await moderation.processPersonalDataDeletion(
         principal(adminId, ['admin']),
         deletion.id,
+      );
+      assert.deepEqual(exported.favoriteGarageIds, [workshopId]);
+      assert.equal(
+        (
+          await client.query(
+            'SELECT count(*)::int AS count FROM garage_favorite WHERE owner_user_id=$1',
+            [authorId],
+          )
+        ).rows[0].count,
+        0,
       );
       const retained = await reviews.listPublicReviews(workshopId);
       const retainedAuthor = await client.query<{ readonly author_user_id: string }>(

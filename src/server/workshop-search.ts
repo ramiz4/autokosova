@@ -94,6 +94,15 @@ export function parsePublicWorkshopSearch(
 ): PublicWorkshopSearchInput | undefined {
   const places = optionalString(query['places']);
   const serviceCategoryId = optionalString(query['service']);
+  const vehicleMakeId = optionalString(query['vehicleMake']);
+  if (vehicleMakeId && !knownVehicleMakeIds.has(vehicleMakeId)) {
+    throw new WorkshopSearchValidationError('Please choose a known vehicle make');
+  }
+  const language = optionalString(query['language']);
+  if (language && (!isPlainTextFilter(language) || language.length > 40)) {
+    throw new WorkshopSearchValidationError('Language filter is invalid');
+  }
+
   if (!places) {
     if (!serviceCategoryId && query['all'] !== 'true') return undefined;
     if (serviceCategoryId && !knownServiceCategoryIds.has(serviceCategoryId)) {
@@ -114,6 +123,8 @@ export function parsePublicWorkshopSearch(
       ),
       sort,
       ...(serviceCategoryId ? { serviceCategoryId } : {}),
+      ...(vehicleMakeId ? { vehicleMakeId } : {}),
+      ...(language ? { language } : {}),
     };
   }
 
@@ -144,15 +155,6 @@ export function parsePublicWorkshopSearch(
   }
   if (serviceCategoryId && !knownServiceCategoryIds.has(serviceCategoryId)) {
     throw new WorkshopSearchValidationError('Please choose a known service category');
-  }
-
-  const vehicleMakeId = optionalString(query['vehicleMake']);
-  if (vehicleMakeId && !knownVehicleMakeIds.has(vehicleMakeId)) {
-    throw new WorkshopSearchValidationError('Please choose a known vehicle make');
-  }
-  const language = optionalString(query['language']);
-  if (language && (!isPlainTextFilter(language) || language.length > 40)) {
-    throw new WorkshopSearchValidationError('Language filter is invalid');
   }
 
   const sort = optionalString(query['sort']) ?? 'recommended';

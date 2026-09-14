@@ -1,3 +1,5 @@
+import { signal } from '@angular/core';
+import { AccountSessionService } from './account-session.service';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { SiteHeaderComponent } from './site-header.component';
@@ -72,4 +74,38 @@ it('dismisses the floating menu with an outside pointer action', async () => {
   await fixture.whenStable();
   expect(toggle.getAttribute('aria-expanded')).toBe('false');
   expect(page.querySelector<HTMLElement>('#mobile-navigation')!.hidden).toBe(true);
+});
+
+it('shows notification and account controls instead of login buttons for an authenticated session', async () => {
+  const account = {
+    signedIn: signal(true),
+    busy: signal(false),
+    refresh: vi.fn().mockResolvedValue(undefined),
+    logout: vi.fn().mockResolvedValue(true),
+  };
+  await TestBed.configureTestingModule({
+    imports: [SiteHeaderComponent],
+    providers: [provideRouter([]), { provide: AccountSessionService, useValue: account }],
+  }).compileComponents();
+  const fixture = TestBed.createComponent(SiteHeaderComponent);
+  await fixture.whenStable();
+  const page = fixture.nativeElement as HTMLElement;
+  expect(page.querySelectorAll('a[href^="/auth/login"]')).toHaveLength(0);
+  const notification = page.querySelector<HTMLButtonElement>(
+    'button[aria-controls="account-notifications"]',
+  )!;
+  const profile = page.querySelector<HTMLButtonElement>('button[aria-controls="account-menu"]')!;
+  expect(notification).toBeTruthy();
+  expect(profile).toBeTruthy();
+  notification.click();
+  await fixture.whenStable();
+  expect(page.textContent).toContain('Benachrichtigungen sind noch nicht verfügbar.');
+  profile.click();
+  await fixture.whenStable();
+  expect(page.querySelector('#account-notifications')).toBeNull();
+  expect(page.querySelector('#account-menu')?.textContent).toContain('Abmelden');
+  profile.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await fixture.whenStable();
+  expect(page.querySelector('#account-menu')).toBeNull();
+  expect(document.activeElement).toBe(profile);
 });

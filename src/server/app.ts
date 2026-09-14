@@ -1,3 +1,4 @@
+import type { FavoriteStore } from './favorites';
 import cookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import Fastify from 'fastify';
@@ -60,6 +61,7 @@ import {
 } from '../shared/repair-request';
 
 interface ServerOptions {
+  readonly favoriteStore?: FavoriteStore;
   readonly accessStore?: AccessStore;
   readonly analyticsEnabled?: boolean;
   readonly analyticsStore?: AnalyticsStore;
@@ -148,9 +150,23 @@ const repairRequestBodySchema = {
 };
 
 function safeReturnTo(value: unknown): string {
-  if (typeof value !== 'string') return '/';
-  const match = value.match(/^\/(?:(sq|en)\/)?(?:inquiry|anfrage)$/);
-  return match ? `${match[1] ? `/${match[1]}` : ''}/inquiry` : '/';
+  if (typeof value !== 'string' || value.length > 2000) return '/';
+  const match = value.match(/^(\/(?:(?:sq|en)\/)?(?:inquiry|anfrage|garages))(?:\?([^#]*))?$/);
+  if (!match) return '/';
+  const path = match[1].replace(/\/anfrage$/, '/inquiry');
+  if (!path.endsWith('/garages')) return match[2] ? '/' : path;
+  const input = new URLSearchParams(match[2]);
+  const query = new URLSearchParams();
+  for (const key of ['all', 'places', 'service', 'vehicleMake', 'language', 'sort', 'page']) {
+    const entry = input.get(key);
+    if (entry) query.set(key, entry);
+  }
+  try {
+    parsePublicWorkshopSearch(Object.fromEntries(query));
+  } catch {
+    return path;
+  }
+  return `${path}${query.size ? `?${query}` : ''}`;
 }
 
 const stringListSchema = {
@@ -323,6 +339,8 @@ export function createServer(options: ServerOptions = {}) {
     },
   });
   const accessStore = options.accessStore ?? new AccessStore();
+  const favoriteStore: FavoriteStore = options.favoriteStore ?? accessStore;
+  if (favoriteStore.close) app.addHook('onClose', async () => favoriteStore.close?.());
   const repairRequestStore: RepairRequestStore = options.repairRequestStore ?? accessStore;
   const reviewStore: ReviewStore = options.reviewStore ?? accessStore;
   const searchStore: WorkshopSearchStore = options.searchStore ?? accessStore;
@@ -565,6 +583,63 @@ export function createServer(options: ServerOptions = {}) {
       return reply.code(401).send({ error: 'OIDC authentication failed' });
     }
   });
+
+  app.get('/api/session', async (request, reply) => {
+    reply.header('cache-control', 'private, no-store');
+    return {
+      authenticated: Boolean(accessStore.getPrincipal(request.cookies['autokosova_session'])),
+    };
+  });
+  app.get('/api/me/favorites', async (request, reply) => {
+    reply.header('cache-control', 'private, no-store');
+    try {
+      return {
+        garageIds: await favoriteStore.listFavoriteGarageIds(requirePrincipal(request).userId),
+      };
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+  const favoriteParams = {
+    type: 'object',
+    required: ['garageId'],
+    properties: { garageId: { type: 'string', minLength: 1, maxLength: 128 } },
+    additionalProperties: false,
+  };
+  app.put(
+    '/api/me/favorites/:garageId',
+    { schema: { params: favoriteParams } },
+    async (request, reply) => {
+      reply.header('cache-control', 'private, no-store');
+      try {
+        const principal = requirePrincipal(request, true);
+        const { garageId } = request.params as { garageId: string };
+        if (!(await searchStore.getPublicWorkshop(garageId)))
+          throw new AccessError(404, 'Garage not available');
+        await favoriteStore.saveFavorite(principal.userId, garageId);
+        return reply.code(204).send();
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
+  app.delete(
+    '/api/me/favorites/:garageId',
+    { schema: { params: favoriteParams } },
+    async (request, reply) => {
+      reply.header('cache-control', 'private, no-store');
+      try {
+        const principal = requirePrincipal(request, true);
+        await favoriteStore.removeFavorite(
+          principal.userId,
+          (request.params as { garageId: string }).garageId,
+        );
+        return reply.code(204).send();
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
 
   app.get('/api/me/vehicles', async (request, reply) => {
     try {
