@@ -463,7 +463,7 @@ interface Area {
     }
     @if (favorites.message(); as message) {
       <div
-        class="pointer-events-none fixed right-0 bottom-[max(1rem,env(safe-area-inset-bottom))] left-0 z-50 mx-auto flex w-[calc(100%_-_1.5rem)] max-w-[1352px] justify-center px-4 sm:px-6 lg:w-[calc(100%_-_4rem)]"
+        class="pointer-events-none fixed right-0 bottom-[max(1rem,env(safe-area-inset-bottom))] left-0 z-50 mx-auto flex w-[calc(100%_-_2rem)] max-w-xl justify-center"
       >
         <div
           [attr.role]="message === 'error' ? 'alert' : 'status'"
@@ -486,21 +486,16 @@ interface Area {
               class="size-[18px]"
             />
           </span>
-          <div class="min-w-0 grow">
-            <p class="flex min-h-11 items-center leading-5 font-medium">
-              {{ ui('favorites.' + message) }}
-            </p>
+          <div
+            class="flex min-h-11 min-w-0 grow flex-wrap items-center gap-x-2 text-sm leading-5 font-medium"
+          >
+            <span>{{ ui('favorites.' + message) }}</span>
             @if (message === 'signIn') {
               <a
                 [href]="favoriteLoginUrl()"
-                class="group inline-flex min-h-11 items-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                class="inline-flex min-h-11 items-center rounded-sm font-semibold text-brand-dark underline decoration-brand/35 underline-offset-4 hover:decoration-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                >{{ ui('favorites.login') }}</a
               >
-                <span
-                  class="inline-flex items-center gap-1.5 rounded-md border border-brand/25 px-3 py-1.5 text-xs font-semibold text-brand-dark transition-colors group-hover:bg-blue-50"
-                >
-                  {{ ui('favorites.login') }}<app-icon name="arrow" class="size-3.5" />
-                </span>
-              </a>
             }
           </div>
           <button

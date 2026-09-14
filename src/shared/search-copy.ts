@@ -8,7 +8,7 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'favorites.remove': '{garage} aus Favoriten entfernen',
     'favorites.saved': 'Im Benutzerkonto als Favorit gespeichert.',
     'favorites.removed': 'Aus deinen Favoriten entfernt.',
-    'favorites.signIn': 'Melde dich an, um Favoriten in deinem Konto zu speichern.',
+    'favorites.signIn': 'Favorit speichern?',
     'favorites.error': 'Favoriten konnten nicht aktualisiert werden. Bitte versuche es erneut.',
 
     'search.ui.allLocations': 'Ganz Kosovo',
@@ -55,7 +55,7 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'favorites.remove': 'Hiq {garage} nga të preferuarat',
     'favorites.saved': 'U ruajt te të preferuarat në llogarinë tënde.',
     'favorites.removed': 'U hoq nga të preferuarat.',
-    'favorites.signIn': 'Hyr për të ruajtur të preferuarat në llogarinë tënde.',
+    'favorites.signIn': 'Ruaj të preferuarat?',
     'favorites.error': 'Të preferuarat nuk u përditësuan. Provo përsëri.',
 
     'search.ui.allLocations': 'Gjithë Kosova',
@@ -102,7 +102,7 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'favorites.remove': 'Remove {garage} from favorites',
     'favorites.saved': 'Saved to favorites in your account.',
     'favorites.removed': 'Removed from your favorites.',
-    'favorites.signIn': 'Sign in to save favorites in your account.',
+    'favorites.signIn': 'Save your favorites?',
     'favorites.error': 'Favorites could not be updated. Please try again.',
 
     'search.ui.allLocations': 'All of Kosovo',
