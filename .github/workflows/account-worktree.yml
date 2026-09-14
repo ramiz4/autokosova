@@ -1,0 +1,21 @@
+name: Account worktree preparation
+on:
+  push:
+    branches: [feat/69-account-profile]
+    paths: [.github/workflows/account-worktree.yml]
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - run: |
+          git archive --format=tar HEAD src test scripts db docs/architecture docs/design/FOOTER.md AGENTS.md README.md package.json package-lock.json angular.json tsconfig.json tsconfig.app.json tsconfig.spec.json eslint.config.mjs .prettierrc .postcssrc.json .github/workflows .github/PULL_REQUEST_TEMPLATE.md .nvmrc .npmrc .autokosova-bootstrap.json compose.yaml public/branding > account-worktree.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: account-worktree
+          path: account-worktree.tar
+          retention-days: 1
