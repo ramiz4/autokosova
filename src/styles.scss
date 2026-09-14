@@ -127,3 +127,31 @@ select:not([multiple])[size='1'] {
     display: none;
   }
 }
+
+/* The landing header floats over the hero, then docks without changing document flow. */
+.landing-navbar {
+  --landing-navbar-inset: 20px;
+  transform: translateY(max(0px, calc(var(--landing-navbar-inset) - var(--landing-scroll-y, 0px))));
+}
+.landing-navbar.is-docked {
+  padding-inline: 0.75rem;
+}
+.landing-navbar:not(.is-docked) app-site-header > header {
+  background: transparent;
+}
+.landing-navbar app-site-header::before {
+  border-radius: inherit;
+}
+@media (width >= 640px) {
+  .landing-navbar {
+    --landing-navbar-inset: 32px;
+  }
+}
+@media (width >= 1024px) {
+  .landing-navbar {
+    --landing-navbar-inset: 54px;
+  }
+  .landing-navbar.is-docked {
+    padding-inline: 2rem;
+  }
+}

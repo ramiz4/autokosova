@@ -28,7 +28,7 @@ Fahrzeugschritt in DE/SQ/EN bei 1448, 1280, 360, 390 und 430 px geprüft. Zusät
 
 - `npm ci`, `npm run dev:demo`: eigene lokale PostgreSQL-DB, Migration 017 und öffentliche Demo-Daten erfolgreich.
 - `npm run format:check`, `npm run lint`, `npm run typecheck`: erfolgreich.
-- `npm test -- --watch=false`: 55 Tests erfolgreich, einschließlich 17 Anfrage-Tests und 6 Routentests.
+- `npm test -- --watch=false`: 56 Tests erfolgreich, einschließlich 17 Anfrage-Tests und 6 Routentests.
 - `npm run test:server` mit der eigenen lokalen `DATABASE_URL`: 61 bestanden, 2 profilspezifische Demo-Seed-Tests übersprungen (keine entsprechenden Testprofil-Flags). Persistenz mit neuen Feldern, Teilfahrzeug und Fremdzugriff tatsächlich gegen PostgreSQL geprüft.
 - `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 560 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
 - Screenreader-Semantik (`aria-current`, Status-/Fehlermeldungen), Fokuswechsel und Eingabevalidierung automatisiert geprüft. Kein manueller Durchlauf mit einem Screenreader und keine native mobile Browserprüfung.
@@ -146,3 +146,11 @@ Die Ortsauswahl ist auf beiden Seiten optional. Ohne Auswahl steht „Ganz Kosov
 [Editor Desktop](inquiry-area-editor-desktop.webp), [Chips Mobil](inquiry-area-chips-mobile.webp), [Leerzustand](inquiry-area-empty-mobile.webp), [Ganz Kosovo in der Zusammenfassung](inquiry-all-kosovo-mobile.webp), [Editor DE](inquiry-shared-editor-de-mobile.webp), [Editor SQ](inquiry-shared-editor-sq-mobile.webp), [Editor EN](inquiry-shared-editor-en-mobile.webp).
 
 Live in DE/SQ/EN geprüft: Bearbeiten ohne Veränderung des gespeicherten Entwurfs, Übernehmen, Abbrechen, Vor/Zurück, Wiederherstellung nach Neuladen, eigener Radius pro Ort, optionaler Leerzustand und Suchübergang für Orte bzw. ganz Kosovo. Formular-, API- und PostgreSQL-Tests prüfen den leeren Fall einschließlich Besitzergrenzen. Der gemeinsame Baustein ist zusätzlich auf externe Formularwerte, Disabled-Zustand und schnelle aufeinanderfolgende Löschaktionen geprüft.
+
+## Landingpage: schwebende Navbar und ruhiger Hero
+
+Die Navbar startet abgerundet über dem Hero (Desktop 54 px, Mobil 20 px Abstand zur Oberkante). Beim Scrollen gleitet sie bis top 0 und verwendet dort den kompakten 64-px-Header mit durchgehender Glasoberfläche. Der Aufbau verändert den Seitenfluss nicht; der Dokumentabstand des Hero-Titels blieb beim Andocken unverändert. Das mobile Menü überlagert den Inhalt weiterhin ohne Verschiebung. Reduzierte Transparenz und fehlende Blur-Unterstützung verwenden die vorhandenen undurchsichtigen Fallbacks.
+
+Der albanische Dekospruch sowie der AUTOKOSOVA-Schriftzug über der Hauptüberschrift sind entfernt. Die rechte Infokarte sitzt auf großen Ansichten höher (64 statt 20 px Abstand zum unteren Rand ihres Inhaltsblocks); auf schmaleren Ansichten bleibt sie im normalen Seitenfluss.
+
+[Start Desktop](landing-clean-1448.webp), [Start Mobil](landing-clean-390.webp), [Angedockt Desktop](landing-docked-1448.webp), [Angedockt Mobil](landing-docked-390.webp), [Mobiles Menü](landing-sticky-menu.webp). DE/SQ/EN bei 360, 390, 1024, 1280 und 1448 px geprüft: Titelposition stabil, Header nach etwa 1600 px Scrollen bei y=0 mit Blur, keine horizontalen Überläufe. Angemeldete Darstellung zusätzlich mit einer Sitzungs-Fixture geprüft. Der Zustand beim Scrollen, Zurückscrollen und Ändern der Viewportbreite ist automatisiert abgedeckt.

@@ -37,6 +37,8 @@ describe('Homepage', () => {
       '/branding/autokosova-logo-header.png',
     );
     expect(page.querySelector('h1')?.textContent).toContain('Schon vor der Reise.');
+    expect(page.textContent).not.toContain('Gjithmonë një hap më afër shtëpisë.');
+    expect(page.textContent).not.toContain('AUTOKOSOVA');
     expect(
       [...page.querySelectorAll<HTMLAnchorElement>('a[href="/inquiry"]')].some((link) =>
         link.textContent?.includes('Jetzt Anfrage erstellen'),
@@ -132,6 +134,32 @@ describe('Homepage', () => {
       expect(Object.values(landingCopy[locale]).every((value) => value.trim().length > 0)).toBe(
         true,
       );
+    }
+  });
+  it('docks the floating landing header at its inset and restores it on scrolling back', async () => {
+    const scrollDescriptor = Object.getOwnPropertyDescriptor(window, 'scrollY')!;
+    const widthDescriptor = Object.getOwnPropertyDescriptor(window, 'innerWidth')!;
+    try {
+      Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 });
+      const { fixture } = await render();
+      expect(fixture.componentInstance['navbarDocked']()).toBe(false);
+      Object.defineProperty(window, 'scrollY', { configurable: true, value: 54 });
+      window.dispatchEvent(new Event('scroll'));
+      await fixture.whenStable();
+      expect(fixture.componentInstance['navbarDocked']()).toBe(true);
+      Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
+      window.dispatchEvent(new Event('scroll'));
+      await fixture.whenStable();
+      expect(fixture.componentInstance['navbarDocked']()).toBe(false);
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+      Object.defineProperty(window, 'scrollY', { configurable: true, value: 20 });
+      window.dispatchEvent(new Event('resize'));
+      await fixture.whenStable();
+      expect(fixture.componentInstance['navbarDocked']()).toBe(true);
+    } finally {
+      Object.defineProperty(window, 'scrollY', scrollDescriptor);
+      Object.defineProperty(window, 'innerWidth', widthDescriptor);
     }
   });
 });
