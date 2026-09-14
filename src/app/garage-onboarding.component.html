@@ -185,11 +185,24 @@
               [(ngModel)]="form.publicPhone"
               type="tel"
               maxlength="40"
+              (ngModelChange)="!form.publicPhone?.trim() && (form.publicWhatsapp = false)"
               [attr.aria-invalid]="!!errors['publicPhone']"
               aria-describedby="public-phone-error"
             />
             <p id="public-phone-error" class="field-error">{{ errors['publicPhone'] }}</p>
           </div>
+          <label
+            class="mt-3 flex min-h-11 items-center gap-3 rounded-lg p-3 text-sm text-slate-600"
+          >
+            <input
+              class="size-5 shrink-0"
+              [(ngModel)]="form.publicWhatsapp"
+              name="publicWhatsapp"
+              type="checkbox"
+              [disabled]="!form.publicPhone?.trim()"
+            />
+            <span>{{ copy.publicWhatsapp }}</span>
+          </label>
         </fieldset>
         <fieldset
           class="onboarding-section"
@@ -253,9 +266,9 @@
           </div>
         </fieldset>
         @if (!garageId) {
-          <label class="flex min-h-11 items-start gap-3 text-xs leading-relaxed text-slate-600"
+          <label class="flex min-h-11 items-center gap-3 text-xs leading-relaxed text-slate-600"
             ><input
-              class="mt-0.5 size-5 shrink-0 accent-brand"
+              class="size-5 shrink-0 accent-brand"
               [(ngModel)]="consentAccepted"
               name="consent"
               type="checkbox"
@@ -339,7 +352,7 @@
       </form>
     </section>
     <aside class="space-y-4" [attr.aria-label]="copy.nextTitle">
-      <section class="onboarding-info">
+      <section class="info-card">
         <h2 class="text-lg font-bold tracking-tight">{{ copy.nextTitle }}</h2>
         <p class="mt-2 text-sm leading-relaxed text-slate-500">{{ copy.nextIntro }}</p>
         <ol class="mt-6 space-y-6">
@@ -361,7 +374,7 @@
           }
         </ol>
       </section>
-      <section class="onboarding-info">
+      <section class="info-card">
         <h2 class="text-lg font-bold tracking-tight">{{ copy.why }}</h2>
         <p class="mt-2 text-sm leading-relaxed text-slate-500">{{ copy.whyIntro }}</p>
         <ul class="mt-6 space-y-6">
@@ -385,7 +398,7 @@
           }
         </ul>
       </section>
-      <section class="onboarding-info flex items-start gap-3">
+      <section class="info-card flex items-start gap-3">
         <span
           class="flex size-12 shrink-0 items-center justify-center rounded-full bg-blue-50 text-brand"
           ><app-icon name="shield" class="size-8"

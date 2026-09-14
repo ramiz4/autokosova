@@ -1,4 +1,5 @@
 import { FavoritesService } from './favorites.service';
+import { FavoriteNoticeComponent } from './favorite-notice.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SearchAreasComponent, type SearchArea } from './ui/search-areas.component';
 import { isPlatformBrowser } from '@angular/common';
@@ -15,6 +16,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CATALOG_PLACES, SERVICE_CATEGORY_LABELS, VEHICLE_MAKE_LABELS } from '../shared/catalog';
 import { REPAIR_REQUEST_LIMITS } from '../shared/repair-request';
+import { localDemoPhotoPath } from '../shared/local-demo';
 import { AnalyticsService } from './analytics.service';
 import { LanguageService } from './language.service';
 import { SiteHeaderComponent } from './site-header.component';
@@ -60,6 +62,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
     SearchAreasComponent,
     ButtonDirective,
     FormsModule,
+    FavoriteNoticeComponent,
     IconComponent,
     RouterLink,
     SiteHeaderComponent,
@@ -72,9 +75,39 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
     </div>
     <h1 id="search-title" class="sr-only">{{ language.t('search.title') }}</h1>
     @if (state === 'loading' && !response) {
-      <p class="mx-auto max-w-6xl px-4 py-12 text-slate-700" role="status">
-        {{ language.t('search.loading') }}
-      </p>
+      <section
+        data-search-skeleton
+        class="mx-auto w-[calc(100%_-_1.5rem)] max-w-[1360px] px-4 py-6 sm:px-6 lg:w-[calc(100%_-_4rem)]"
+        aria-hidden="true"
+      >
+        <div
+          class="grid animate-pulse gap-5 motion-reduce:animate-none xl:grid-cols-[minmax(280px,320px)_minmax(0,1fr)]"
+        >
+          <div class="hidden h-[420px] rounded-2xl bg-white shadow-sm xl:block"></div>
+          <div>
+            <div class="mb-5 flex items-center justify-between gap-4">
+              <span class="h-7 w-64 max-w-2/3 rounded-lg bg-slate-200"></span>
+              <span class="h-11 w-44 rounded-xl bg-white"></span>
+            </div>
+            <div class="grid gap-4">
+              @for (item of [0, 1, 2, 3]; track item) {
+                <div
+                  class="grid gap-3 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm sm:grid-cols-[205px_minmax(0,1fr)]"
+                >
+                  <span class="h-48 rounded-xl bg-slate-200 sm:h-36"></span>
+                  <span class="grid content-start gap-3 p-3">
+                    <span class="h-6 w-2/3 rounded-md bg-slate-200"></span>
+                    <span class="h-4 w-40 rounded bg-slate-100"></span>
+                    <span class="h-4 w-52 rounded bg-slate-100"></span>
+                    <span class="mt-2 h-8 w-28 rounded-lg bg-slate-100"></span>
+                  </span>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </section>
+      <p class="sr-only" role="status">{{ language.t('search.loading') }}</p>
     }
     @if (state === 'invalid') {
       <section class="mx-auto my-8 max-w-4xl rounded-2xl border border-amber-300 bg-amber-50 p-6">
@@ -227,17 +260,28 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                     <li
                       class="grid gap-3 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm transition hover:border-brand/30 hover:shadow-md sm:grid-cols-[205px_minmax(0,1fr)]"
                     >
-                      <div class="relative min-h-[144px] overflow-hidden rounded-xl bg-slate-100">
+                      <div
+                        class="relative h-48 min-h-[144px] overflow-hidden rounded-xl bg-slate-100 sm:h-36"
+                      >
                         @if (photoIds(garage).length) {
                           <img
                             [src]="photoUrl(garage)"
                             [alt]="garage.name"
+                            width="1280"
+                            height="960"
+                            decoding="async"
+                            [attr.fetchpriority]="index === 0 ? 'high' : 'auto'"
+                            [attr.loading]="index < 3 ? 'eager' : 'lazy'"
                             class="h-full w-full object-cover"
                           />
                         } @else {
                           <img
                             [src]="conceptImage(index)"
                             alt=""
+                            width="1024"
+                            height="768"
+                            decoding="async"
+                            [attr.loading]="index < 3 ? 'eager' : 'lazy'"
                             class="h-full min-h-[144px] w-full object-cover"
                           />
                           <span
@@ -344,6 +388,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                         >
                           <a
                             [routerLink]="language.link('garage', garage.id)"
+                            [queryParams]="profileQueryParams()"
                             appButton="outline-brand"
                             size="compact"
                             >{{ ui('search.ui.details') }}<app-icon name="arrow" class="size-4"
@@ -384,54 +429,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
         </div>
       </section>
     }
-    @if (favorites.message(); as message) {
-      <div
-        class="pointer-events-none fixed right-0 bottom-[max(1rem,env(safe-area-inset-bottom))] left-0 z-50 mx-auto flex w-[calc(100%_-_2rem)] max-w-xl justify-center"
-      >
-        <div
-          [attr.role]="message === 'error' ? 'alert' : 'status'"
-          class="pointer-events-auto flex w-full max-w-xl items-start gap-2 rounded-2xl border border-slate-200/80 bg-white p-3 text-sm text-ink shadow-[0_8px_32px_-8px_rgba(7,20,62,0.22)]"
-        >
-          <span
-            class="mt-1 flex size-9 shrink-0 items-center justify-center rounded-full"
-            [class]="message === 'error' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-brand'"
-          >
-            <app-icon
-              [name]="
-                message === 'error'
-                  ? 'info'
-                  : message === 'saved'
-                    ? 'heart-filled'
-                    : message === 'removed'
-                      ? 'check'
-                      : 'user'
-              "
-              class="size-[18px]"
-            />
-          </span>
-          <div
-            class="flex min-h-11 min-w-0 grow flex-wrap items-center gap-x-2 text-sm leading-5 font-medium"
-          >
-            <span>{{ ui('favorites.' + message) }}</span>
-            @if (message === 'signIn') {
-              <a
-                [href]="favoriteLoginUrl()"
-                class="inline-flex min-h-11 items-center rounded-sm font-semibold text-brand-dark underline decoration-brand/35 underline-offset-4 hover:decoration-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-                >{{ ui('favorites.login') }}</a
-              >
-            }
-          </div>
-          <button
-            type="button"
-            class="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-slate-100 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-            [attr.aria-label]="ui('favorites.dismiss')"
-            (click)="favorites.dismiss()"
-          >
-            <app-icon name="close" class="size-[18px]" />
-          </button>
-        </div>
-      </div>
-    }
+    <app-favorite-notice [loginUrl]="favoriteLoginUrl()" />
   </main>`,
 })
 export class SearchHandoffComponent {
@@ -493,6 +491,14 @@ export class SearchHandoffComponent {
     }
     return `/auth/login?returnTo=${encodeURIComponent(this.language.link('search') + (query.size ? `?${query}` : ''))}`;
   }
+  protected profileQueryParams(): Record<string, string> {
+    const query: Record<string, string> = {};
+    for (const key of ['all', 'places', 'service', 'vehicleMake', 'sort', 'page']) {
+      const value = this.route.snapshot.queryParamMap.get(key);
+      if (value) query[key] = value;
+    }
+    return query;
+  }
   protected aerialDistance(distance: number, place: string): string {
     return this.language.t('search.aerialDistance', {
       distance: `${distance.toLocaleString(this.language.language, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`,
@@ -517,7 +523,11 @@ export class SearchHandoffComponent {
   }
 
   protected photoUrl(garage: Result): string {
-    return `/api/public/garages/${encodeURIComponent(garage.id)}/photos/${encodeURIComponent(this.photoIds(garage)[0])}`;
+    const photoId = this.photoIds(garage)[0];
+    return (
+      localDemoPhotoPath(garage.id, photoId) ??
+      `/api/public/garages/${encodeURIComponent(garage.id)}/photos/${encodeURIComponent(photoId)}`
+    );
   }
   protected starFill(rating: number, index: number): number {
     return Math.max(0, Math.min(100, Math.round((rating - index) * 100)));

@@ -6,7 +6,7 @@ Stand: 13. September 2026. Diese Regeln setzen #13 um und ergänzen [SEARCH-MATC
 
 Die Landing Page erlaubt Gästen die Suche nach Leistung, Ort und Luftlinienradius. Ein Suchergebnis führt ausschließlich zum öffentlich freigegebenen Profil der ausgewählten Werkstatt. Dort wird kein Kontakt automatisch ausgelöst und es findet keine Weiterleitung an andere Betriebe statt.
 
-Das Profil erklärt den begrenzten Umfang von **„Unternehmensdaten geprüft“** und zeigt bis #14 den Leerzustand **„Noch keine Bewertungen“** statt Sterne, Nutzerzahlen oder Qualitätsversprechen. Es zeigt nur veröffentlichte Profildaten: Leistungen, Markenbezug, Sprachen, Selbstauskünfte, Standortreferenz, freigegebene Fotos und eine valide öffentliche Telefonnummer.
+Das Profil erklärt den begrenzten Umfang von **„Unternehmensdaten geprüft“** und zeigt ausschließlich veröffentlichte Bewertungen oder den ehrlichen Leerzustand **„Noch keine Bewertungen“**. Es zeigt nur veröffentlichte Profildaten: Leistungen, Markenbezug, Sprachen, Selbstauskünfte, Standort, freigegebene Fotos und valide öffentliche Kontaktangaben.
 
 ## Kontaktvorschau
 
@@ -16,6 +16,8 @@ VIN, Kennzeichen, Dokumente, private Upload-URLs sowie genaue Reisedaten haben i
 
 ## WhatsApp und Telefon
 
-Eine Telefonnummer wird vor jedem externen Link zu einem beschränkten internationalen Nummernformat normalisiert. Ungültige Werte erzeugen weder einen `tel:`- noch einen WhatsApp-Link. WhatsApp verwendet ausschließlich `https://wa.me/<digits>?text=<encodeURIComponent(preview)>`; damit bleiben Unicode-Zeichen im sichtbaren Entwurf und im Link korrekt kodiert.
+Eine Telefonnummer wird vor jedem externen Link zu einem beschränkten internationalen Nummernformat normalisiert. Ungültige Werte erzeugen weder einen `tel:`- noch einen WhatsApp-Link. Eine valide Telefonnummer allein gilt nicht als WhatsApp-Nachweis. Der WhatsApp-Link erscheint nur bei der getrennten veröffentlichten Angabe `publicWhatsapp=true`; ohne sie bleibt ausschließlich Telefon. WhatsApp verwendet `https://wa.me/<digits>?text=<encodeURIComponent(preview)>`; damit bleiben Unicode-Zeichen im sichtbaren Entwurf und im Link korrekt kodiert.
 
 Die Aktion ist ein normaler Nutzerlink, kein Popup und keine WhatsApp-Business-API. Wenn WhatsApp fehlt oder der Browser einen neuen Tab nicht öffnet, bleibt der validierte Telefonlink als Fallback sichtbar. Ein Klick bleibt Kontaktabsicht, nicht gesendete Nachricht oder bestätigter Kontakt.
+
+Die Profilaktion öffnet zuerst einen lokalen Dialog mit Kanalwahl und sichtbarer Nachrichtenvorschau. Auf kleinen Viewports bleibt die Kontaktaktion erreichbar; zusätzlicher Seitenabstand verhindert, dass sie den Footer am Seitenende verdeckt. Lokale Demo-Profile lassen die Links inspizieren, verhindern aber die Übergabe an externe Apps.

@@ -11,6 +11,7 @@ const validForm = {
   contactPerson: 'Private Testperson',
   contactPhone: '+99900000001',
   publicPhone: '',
+  publicWhatsapp: false,
   languages: ['Deutsch'],
   serviceCategoryIds: ['bremsen'],
   vehicleMakeIds: [],
@@ -151,11 +152,16 @@ it.each(['de', 'sq', 'en'] as const)(
     fixture.detectChanges();
     expect(page.querySelectorAll('app-multi-select')).toHaveLength(4);
     expect(page.querySelectorAll('fieldset.onboarding-section')).toHaveLength(3);
+    const checkbox = page.querySelector<HTMLInputElement>('input[name="publicWhatsapp"]')!;
+    const checkboxLabel = checkbox.closest('label')!;
+    expect(getComputedStyle(checkboxLabel).display).toBe('flex');
+    expect(getComputedStyle(checkboxLabel).alignItems).toBe('center');
+    expect(getComputedStyle(checkbox).width).toBe('20px');
     const title = page.querySelector<HTMLElement>('#form-title')!;
     expect(title.className).toBe('text-3xl font-bold tracking-tight sm:text-[34px]');
     expect(title.nextElementSibling?.className).toBe('mt-1 text-muted');
     expect(title.parentElement?.className).toContain('sm:py-6');
-    const infoPanels = page.querySelectorAll<HTMLElement>('aside .onboarding-info');
+    const infoPanels = page.querySelectorAll<HTMLElement>('aside .info-card');
     expect(infoPanels).toHaveLength(3);
     expect(infoPanels[0].querySelector('h2')!.className).toBe('text-lg font-bold tracking-tight');
     expect(infoPanels[1].querySelector('h2')!.className).toBe('text-lg font-bold tracking-tight');

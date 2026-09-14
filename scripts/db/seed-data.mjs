@@ -169,16 +169,17 @@ async function seedDemoData(client) {
   for (const garage of demoGarages) {
     await client.query(
       `INSERT INTO garage (
-         id, name, publication_state, place_id, description, public_phone,
+         id, name, publication_state, place_id, description, public_phone, public_whatsapp,
          contact_person, contact_phone, languages, self_reported_specializations, location_point, location_source
-       ) VALUES ($1, $2, 'published', $3, $4, $5, $6, $5, $7, $8,
-         ST_SetSRID(ST_MakePoint($10, $9), 4326)::geography, 'local_demo')
+       ) VALUES ($1, $2, 'published', $3, $4, $5, $6, $7, $5, $8, $9,
+         ST_SetSRID(ST_MakePoint($11, $10), 4326)::geography, 'local_demo')
        ON CONFLICT (id) DO UPDATE
        SET name = EXCLUDED.name,
            publication_state = EXCLUDED.publication_state,
            place_id = EXCLUDED.place_id,
            description = EXCLUDED.description,
            public_phone = EXCLUDED.public_phone,
+           public_whatsapp = EXCLUDED.public_whatsapp,
            contact_person = EXCLUDED.contact_person,
            contact_phone = EXCLUDED.contact_phone,
            languages = EXCLUDED.languages,
@@ -191,6 +192,7 @@ async function seedDemoData(client) {
         garage.placeId,
         garage.description,
         garage.publicPhone,
+        garage.publicWhatsapp,
         garage.contactPerson,
         garage.languages,
         garage.selfReportedSpecializations,

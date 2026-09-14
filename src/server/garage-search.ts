@@ -81,6 +81,10 @@ export interface GarageSearchStore {
     garageId: string,
   ): PublicGarageProfile | undefined | Promise<PublicGarageProfile | undefined>;
   listPublicGarageIds(): readonly string[] | Promise<readonly string[]>;
+  getPublicGarageMatch?(
+    garageId: string,
+    areas: readonly PublicGarageSearchArea[],
+  ): PublicGarageSearchResult | undefined | Promise<PublicGarageSearchResult | undefined>;
   searchPublicGarages(
     input: PublicGarageSearchInput,
   ): PublicGarageSearchResponse | Promise<PublicGarageSearchResponse>;
