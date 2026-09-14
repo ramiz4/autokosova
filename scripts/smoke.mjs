@@ -46,7 +46,10 @@ try {
     assert.ok([301, 302, 307, 308].includes(response.status), `Expected SSR redirect: ${alias}`);
     const location = response.headers.get('location');
     assert.ok(location, `Missing redirect target: ${alias}`);
-    assert.equal(new URL(location, origin).href, `${origin}${prefix}/monetization?source=information`);
+    assert.equal(
+      new URL(location, origin).href,
+      `${origin}${prefix}/monetization?source=information`,
+    );
   }
 
   // Only local, synthetic public pages. No session or private request is created.
