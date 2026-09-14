@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { PUBLIC_PAGE_PATHS } from '../shared/public-pages';
 import { FoundationComponent } from './app';
 import { RepairRequestComponent } from './repair-request.component';
 import { SearchHandoffComponent } from './search-handoff.component';
@@ -57,6 +58,13 @@ function localizedRoutes(prefix: string): Routes {
       pathMatch: 'full',
       redirectTo: `${childPrefix}garages`,
     },
+    ...Object.entries(PUBLIC_PAGE_PATHS).map(([publicPage, path]) => ({
+      path: `${childPrefix}${path.slice(1)}`,
+      pathMatch: 'full' as const,
+      data: { publicPage },
+      loadComponent: () =>
+        import('./public-page.component').then((module) => module.PublicPageComponent),
+    })),
     {
       component: GarageProfileComponent,
       path: `${childPrefix}garages/:garageId`,
