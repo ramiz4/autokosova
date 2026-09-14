@@ -30,7 +30,7 @@ Fahrzeugschritt in DE/SQ/EN bei 1448, 1280, 360, 390 und 430 px geprüft. Zusät
 - `npm run format:check`, `npm run lint`, `npm run typecheck`: erfolgreich.
 - `npm test -- --watch=false`: 56 Tests erfolgreich, einschließlich 17 Anfrage-Tests und 6 Routentests.
 - `npm run test:server` mit der eigenen lokalen `DATABASE_URL`: 61 bestanden, 2 profilspezifische Demo-Seed-Tests übersprungen (keine entsprechenden Testprofil-Flags). Persistenz mit neuen Feldern, Teilfahrzeug und Fremdzugriff tatsächlich gegen PostgreSQL geprüft.
-- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 560 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
+- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 561 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
 - Screenreader-Semantik (`aria-current`, Status-/Fehlermeldungen), Fokuswechsel und Eingabevalidierung automatisiert geprüft. Kein manueller Durchlauf mit einem Screenreader und keine native mobile Browserprüfung.
 - Echter Customer-OIDC-Login auf Port 4200 erfolgreich: Favorit per Herz gespeichert, API-Eintrag bestätigt, nach Neuladen erhalten, wieder entfernt und abgemeldet. PostgreSQL- und API-Tests prüfen zusätzlich Besitzer-Isolation, Export und Löschung.
 
@@ -154,3 +154,11 @@ Die Navbar startet abgerundet über dem Hero (Desktop 54 px, Mobil 20 px Abstand
 Der albanische Dekospruch sowie der AUTOKOSOVA-Schriftzug über der Hauptüberschrift sind entfernt. Die rechte Infokarte sitzt auf großen Ansichten höher (64 statt 20 px Abstand zum unteren Rand ihres Inhaltsblocks); auf schmaleren Ansichten bleibt sie im normalen Seitenfluss.
 
 [Start Desktop](landing-clean-1448.webp), [Start Mobil](landing-clean-390.webp), [Angedockt Desktop](landing-docked-1448.webp), [Angedockt Mobil](landing-docked-390.webp), [Mobiles Menü](landing-sticky-menu.webp). DE/SQ/EN bei 360, 390, 1024, 1280 und 1448 px geprüft: Titelposition stabil, Header nach etwa 1600 px Scrollen bei y=0 mit Blur, keine horizontalen Überläufe. Angemeldete Darstellung zusätzlich mit einer Sitzungs-Fixture geprüft. Der Zustand beim Scrollen, Zurückscrollen und Ändern der Viewportbreite ist automatisiert abgedeckt.
+
+## Finale breite Desktop-Ansicht und Merge-Prüfung
+
+Ab 1536 px entfällt das zusätzliche vertikale Padding im Hero-Inhaltsblock; stattdessen fluchten Text und Karte mit den Innenkanten der Navbar (bis auf deren 1-px-Rand). Die Kartenunterkante liegt näher an der Hauptaktion. Bei 1720 × 920 px enden Hauptaktion und Karte bei etwa y=801/805 px, also mit rund 115 px Abstand zum unteren Viewportrand. [1720 × 920](landing-final-1720.webp), [1920 × 1080](landing-final-1920.webp), [Mobil](landing-final-390.webp). Zusätzlich 1720 × 980, 1536 × 864 und 1448 × 900 geprüft: keine Überlagerung von Karte und Hauptaktion, kein horizontaler Überlauf.
+
+Abschließende lokale Prüfung: Format, Lint, Typecheck, 16 Entwicklungstests, 56 UI-Tests, 61 Servertests (2 profilspezifische Seedtests im allgemeinen Lauf übersprungen), Build und Smoke erfolgreich. Für den npm-Installationsschutztest wurde die auch in CI festgelegte npm-Version 11.19.0 verwendet; das lokal vorinstallierte npm 11.12.1 unterstützt diese Schutzregel noch nicht. Es wurde keine globale Toolinstallation geändert.
+
+Vor Merge wurden insbesondere die privaten Besitzergrenzen, CSRF, Export/Löschung von Favoriten, Migrationen 017–019, gemeinsame Suchparameter und englische Routen erneut geprüft. Die genaue Werkstattposition bleibt ausdrücklich Folgearbeit in [#59](https://github.com/ramiz4/autokosova/issues/59); dieser PR ändert die vorhandene ortsbasierte Geometrie nicht.
