@@ -2,7 +2,6 @@ import { Routes } from '@angular/router';
 import { FoundationComponent } from './app';
 import { RepairRequestComponent } from './repair-request.component';
 import { SearchHandoffComponent } from './search-handoff.component';
-import { WorkshopOnboardingComponent } from './workshop-onboarding.component';
 import { WorkshopProfileComponent } from './workshop-profile.component';
 
 export const routes: Routes = [
@@ -36,7 +35,10 @@ function localizedRoutes(prefix: string): Routes {
       redirectTo: `${childPrefix}garages/:garageId`,
     },
     {
-      component: WorkshopOnboardingComponent,
+      loadComponent: () =>
+        import('./workshop-onboarding.component').then(
+          (module) => module.WorkshopOnboardingComponent,
+        ),
       path: `${childPrefix}garages/new`,
     },
     {

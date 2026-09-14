@@ -1,6 +1,5 @@
 import { RadiusSliderComponent } from './ui/radius-slider.component';
-import { Component, inject, PLATFORM_ID, signal } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { CATALOG_PLACES } from '../shared/catalog';
@@ -30,7 +29,6 @@ export class App {}
     BenefitCardComponent,
   ],
   templateUrl: './app.html',
-  host: { '(window:scroll)': 'updateNavbar()', '(window:resize)': 'updateNavbar()' },
 })
 export class FoundationComponent {
   protected readonly analytics = inject(AnalyticsService);
@@ -41,21 +39,9 @@ export class FoundationComponent {
   protected placeId = 'xk-pristina';
   protected radiusKm = 20;
   protected searchError = '';
-  protected readonly navbarDocked = signal(false);
-  protected readonly scrollOffset = signal(0);
-  private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
 
   constructor() {
     this.language.setPage('landing.pageTitle', 'landing.intro');
-    this.updateNavbar();
-  }
-
-  protected updateNavbar(): void {
-    if (!this.browser) return;
-    const inset = window.innerWidth >= 1024 ? 54 : window.innerWidth >= 640 ? 32 : 20;
-    const scroll = Math.max(0, window.scrollY);
-    this.scrollOffset.set(Math.min(scroll, inset));
-    this.navbarDocked.set(scroll >= inset);
   }
 
   protected search(): void {

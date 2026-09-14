@@ -136,30 +136,12 @@ describe('Homepage', () => {
       );
     }
   });
-  it('docks the floating landing header at its inset and restores it on scrolling back', async () => {
-    const scrollDescriptor = Object.getOwnPropertyDescriptor(window, 'scrollY')!;
-    const widthDescriptor = Object.getOwnPropertyDescriptor(window, 'innerWidth')!;
-    try {
-      Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
-      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 });
-      const { fixture } = await render();
-      expect(fixture.componentInstance['navbarDocked']()).toBe(false);
-      Object.defineProperty(window, 'scrollY', { configurable: true, value: 54 });
-      window.dispatchEvent(new Event('scroll'));
-      await fixture.whenStable();
-      expect(fixture.componentInstance['navbarDocked']()).toBe(true);
-      Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
-      window.dispatchEvent(new Event('scroll'));
-      await fixture.whenStable();
-      expect(fixture.componentInstance['navbarDocked']()).toBe(false);
-      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
-      Object.defineProperty(window, 'scrollY', { configurable: true, value: 20 });
-      window.dispatchEvent(new Event('resize'));
-      await fixture.whenStable();
-      expect(fixture.componentInstance['navbarDocked']()).toBe(true);
-    } finally {
-      Object.defineProperty(window, 'scrollY', scrollDescriptor);
-      Object.defineProperty(window, 'innerWidth', widthDescriptor);
-    }
+  it('uses the same sticky top navigation as the application pages', async () => {
+    const { fixture } = await render();
+    const page = fixture.nativeElement as HTMLElement;
+    const navbar = page.querySelector<HTMLElement>('.site-navbar-surface')!;
+    expect(navbar.className).toContain('sticky');
+    expect(navbar.className).toContain('top-0');
+    expect(navbar.querySelector('app-site-header')).not.toBeNull();
   });
 });

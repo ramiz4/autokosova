@@ -14,7 +14,7 @@
     <div
       class="absolute inset-0 -z-10 bg-gradient-to-r from-slate-950/80 via-slate-950/55 to-transparent"
     ></div>
-    <div class="mx-auto max-w-[1260px]">
+    <div class="mx-auto max-w-[1360px]">
       <h1
         id="request-title"
         class="max-w-xl text-4xl leading-[1.08] font-bold whitespace-pre-line tracking-tight text-white sm:text-[44px]"
@@ -451,7 +451,7 @@
     </aside>
   </main>
   <footer class="bg-white px-6 py-5">
-    <div class="mx-auto grid max-w-6xl gap-5 text-sm sm:grid-cols-3">
+    <div class="mx-auto grid max-w-[1360px] gap-5 text-sm sm:grid-cols-3">
       @for (item of footerBenefits; track $index) {
         <p class="flex items-center gap-5 sm:justify-center">
           <app-icon [name]="item[0]" class="size-9" />{{ text(item[1]) }}

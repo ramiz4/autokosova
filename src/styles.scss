@@ -121,7 +121,7 @@ select:not([multiple])[size='1'] {
 
 @media (width < 640px) {
   .is-authenticated .site-logo {
-    width: 112px;
+    height: 1.75rem;
   }
   .is-authenticated .mobile-menu-toggle {
     display: none;

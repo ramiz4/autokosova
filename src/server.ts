@@ -1,4 +1,5 @@
 import { PostgresFavoriteStore } from './server/favorites';
+import { PostgresGarageOnboardingStore } from './server/garage-onboarding-store';
 import {
   AngularNodeAppEngine,
   createNodeRequestHandler,
@@ -26,6 +27,7 @@ if (process.env['NODE_ENV'] === 'production' && !databaseUrl) {
 const accessStore = new AccessStore();
 const app = createServer({
   accessStore,
+  ...(databaseUrl ? { garageStore: new PostgresGarageOnboardingStore(databaseUrl) } : {}),
   ...(databaseUrl ? { favoriteStore: new PostgresFavoriteStore(databaseUrl) } : {}),
   oidcConfig: readZitadelOidcConfig(process.env),
   ...(databaseUrl ? { repairRequestStore: new PostgresRepairRequestStore(databaseUrl) } : {}),

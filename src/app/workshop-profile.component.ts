@@ -18,7 +18,7 @@ import {
 import { isLocalDemoWorkshopId } from '../shared/local-demo';
 import { AnalyticsService } from './analytics.service';
 import { LanguageService } from './language.service';
-import { LanguageSwitcherComponent } from './language-switcher.component';
+import { SiteHeaderComponent } from './site-header.component';
 
 interface PublicWorkshopProfile {
   readonly contact: { readonly phone?: string };
@@ -66,11 +66,14 @@ interface PublicWorkshopReview {
 }
 
 @Component({
-  imports: [FormsModule, RouterLink, LanguageSwitcherComponent],
+  imports: [FormsModule, RouterLink, SiteHeaderComponent],
   selector: 'app-workshop-profile',
   template: `
+    <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
+      <app-site-header [compact]="true" />
+    </div>
     <main
-      class="mx-auto min-h-screen max-w-4xl px-4 py-8 pb-28 sm:px-6 sm:py-12"
+      class="mx-auto min-h-screen max-w-[1360px] px-4 py-8 pb-28 sm:px-6 sm:py-12"
       aria-labelledby="profile-title"
     >
       <header class="flex flex-wrap items-center justify-between gap-4">
@@ -79,7 +82,6 @@ interface PublicWorkshopReview {
           class="text-sm font-semibold text-sky-800 underline"
           >{{ language.t('common.backSearch') }}</a
         >
-        <app-language-switcher />
       </header>
 
       @if (state === 'loading') {

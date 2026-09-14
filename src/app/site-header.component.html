@@ -2,8 +2,8 @@
   [class.is-authenticated]="account.signedIn()"
   [class]="
     compact()
-      ? 'relative z-20 mx-auto max-w-[1352px] px-4 py-1.5 text-ink sm:px-6'
-      : 'relative z-20 mx-auto max-w-[1352px] 2xl:max-w-[1920px] rounded-2xl border border-white/80 bg-white/97 px-4 py-3 text-ink shadow-xl shadow-black/10 sm:px-6 xl:rounded-[18px] xl:py-4'
+      ? 'relative z-20 mx-auto max-w-[1360px] px-4 py-1.5 text-ink sm:px-6'
+      : 'relative z-20 mx-auto max-w-[1360px] rounded-2xl border border-white/80 bg-white/97 px-4 py-3 text-ink shadow-xl shadow-black/10 sm:px-6 xl:rounded-[18px] xl:py-4'
   "
   (keydown.escape)="closeMenu(true)"
 >
@@ -18,7 +18,7 @@
         width="640"
         height="122"
         alt="AutoKosova"
-        class="site-logo block h-auto w-44 sm:w-52 xl:w-56"
+        class="site-logo block h-7 w-auto max-w-full sm:h-8"
       />
     </a>
     <nav
