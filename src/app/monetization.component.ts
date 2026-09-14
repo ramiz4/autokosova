@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, inject, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter } from 'rxjs';
@@ -27,6 +27,7 @@ export class MonetizationComponent {
   protected readonly language = inject(LanguageService);
   private readonly router = inject(Router);
   private readonly changeDetector = inject(ChangeDetectorRef);
+  private readonly mainContent = viewChild<ElementRef<HTMLElement>>('mainContent');
   protected readonly cards: readonly AudienceCard[] = [
     { id: 'drivers', icon: 'search', route: 'search' },
     { id: 'profiles', icon: 'pencil', route: 'onboarding' },
@@ -36,9 +37,9 @@ export class MonetizationComponent {
     return monetizationCopy[this.language.language];
   }
 
-  protected get skipLink(): string {
-    // A fragment-only href would resolve against the global base URL instead of this page.
-    return `${this.router.url.split('#', 1)[0]}#monetization-main`;
+  protected focusContent(event: MouseEvent): void {
+    const modified = event.ctrlKey || event.metaKey || event.shiftKey || event.altKey;
+    if (event.button === 0 && !modified) this.mainContent()?.nativeElement.focus();
   }
 
   constructor() {
@@ -50,7 +51,6 @@ export class MonetizationComponent {
       )
       .subscribe(() => {
         this.updateMetadata();
-        // The copy getter reads the router rather than a template signal.
         this.changeDetector.markForCheck();
       });
   }

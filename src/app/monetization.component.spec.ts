@@ -120,11 +120,14 @@ describe('Costs and fairness page', () => {
       const skip = page.querySelector<HTMLAnchorElement>('a[href$="#monetization-main"]')!;
       expect(skip.getAttribute('href')).toBe(`${base}${query}#monetization-main`);
       expect(new URL(skip.href).pathname).toBe(base);
-      await router.navigateByUrl(skip.getAttribute('href')!);
+      skip.click();
+      await fixture.whenStable();
+      expect(router.url).toBe(`${base}${query}#monetization-main`);
+      expect(document.activeElement?.id).toBe('monetization-main');
       for (const target of languages) {
-        expect(language.switchUrl(target)).toBe(
-          `${routePath(target, 'monetization')}${query}#monetization-main`,
-        );
+        const targetUrl = `${routePath(target, 'monetization')}${query}#monetization-main`;
+        expect(language.switchUrl(target)).toBe(targetUrl);
+        expect(page.querySelector(`app-language-switcher a[href="${targetUrl}"]`)).toBeTruthy();
       }
     }
     expect(languageFromUrl(`${routePath(locale, 'home')}#content`)).toBe(locale);

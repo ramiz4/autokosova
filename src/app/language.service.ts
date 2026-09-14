@@ -1,5 +1,5 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
 import { filter } from 'rxjs';
@@ -21,18 +21,20 @@ export class LanguageService {
   private readonly document = inject(DOCUMENT);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly router = inject(Router);
+  private readonly currentUrl = signal(this.router.url);
   private readonly meta = inject(Meta);
   private readonly title = inject(Title);
 
   constructor() {
     this.applyDocumentLanguage();
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => {
+      this.currentUrl.set(this.router.url);
       this.applyDocumentLanguage();
     });
   }
 
   get language(): AppLanguage {
-    return languageFromUrl(this.router.url);
+    return languageFromUrl(this.currentUrl());
   }
 
   link(route: AppRoute, parameter?: string): string {
@@ -44,7 +46,7 @@ export class LanguageService {
   }
 
   switchUrl(target: AppLanguage): string {
-    const current = this.router.url || this.browserPath();
+    const current = this.currentUrl() || this.browserPath();
     const [pathAndQuery, fragment = ''] = current.split('#', 2);
     const [path, query = ''] = pathAndQuery.split('?', 2);
     const { parameter, route } = identifyRoute(path);

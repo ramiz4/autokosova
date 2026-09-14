@@ -1,12 +1,15 @@
 <a
-  [href]="skipLink"
+  [routerLink]="language.link('monetization')"
+  fragment="monetization-main"
+  queryParamsHandling="preserve"
+  (click)="focusContent($event)"
   class="fixed left-4 top-4 z-[60] -translate-y-24 rounded-xl bg-white p-4 font-bold text-ink focus:translate-y-0"
   >{{ language.t('landing.skip') }}</a
 >
 <div class="relative z-40 border-b border-blue-100 bg-white px-4 sm:px-8">
   <app-site-header class="mx-auto block max-w-7xl" [compact]="true" />
 </div>
-<main id="monetization-main" tabindex="-1" class="bg-white font-sans text-ink">
+<main #mainContent id="monetization-main" tabindex="-1" class="bg-white font-sans text-ink">
   <section
     class="relative isolate overflow-hidden bg-blue-50 px-4 py-12 sm:px-8 lg:py-16"
     aria-labelledby="monetization-title"
