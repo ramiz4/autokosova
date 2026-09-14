@@ -22,7 +22,8 @@ import { IconComponent } from './ui/icon.component';
 })
 export class SiteHeaderComponent {
   readonly compact = input(false);
-  readonly smallLogo = input(false);
+  // Keep the logo consistent across landing, inquiry, search and onboarding navigation.
+  readonly smallLogo = input(true);
   readonly loginReturnTo = input<string>();
   readonly active = input<'search' | 'request' | undefined>();
   protected readonly account = inject(AccountSessionService);
