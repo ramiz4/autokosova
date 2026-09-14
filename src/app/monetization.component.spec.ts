@@ -109,7 +109,7 @@ describe('Costs and fairness page', () => {
     }
   });
 
-  it.each(languages)('keeps the skip link and language switch on the page in %s', async (locale) => {
+  it.each(languages)('keeps anchors and language changes on this page in %s', async (locale) => {
     const { fixture, page } = await render(locale);
     const router = TestBed.inject(Router);
     const language = TestBed.inject(LanguageService);
