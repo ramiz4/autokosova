@@ -75,9 +75,7 @@
       </div>
     </div>
 
-    <div
-      class="flex flex-col gap-4 pt-4 text-[13px] sm:flex-row sm:items-center sm:justify-between"
-    >
+    <div class="flex flex-col gap-4 pt-4 text-[13px] sm:flex-row sm:items-center sm:justify-between">
       <p class="order-2 leading-6 text-slate-500 sm:order-1">
         &copy; {{ year }} AutoKosova. {{ text('rights') }}
       </p>
@@ -85,7 +83,7 @@
         @for (link of legalLinks; track link.route) {
           <a
             [routerLink]="language.link(link.route)"
-            class="inline-flex min-h-11 items-center rounded py-2 leading-5 text-slate-600 hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            class="inline-flex min-h-11 min-w-11 items-center rounded py-2 leading-5 text-slate-600 hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             >{{ text(link.label) }}</a
           >
         }
