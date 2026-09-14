@@ -23,6 +23,9 @@ describe('Header account actions', () => {
       await TestBed.inject(Router).navigateByUrl('/' + locale);
       const fixture = TestBed.createComponent(SiteHeaderComponent);
       await fixture.whenStable();
+      // Wait for the browser-only session request, rather than asserting the loading shell.
+      await vi.waitFor(() => expect(TestBed.inject(AccountSessionService).state()).toBe('guest'));
+      await fixture.whenStable();
       const page = fixture.nativeElement as HTMLElement;
       const links = Array.from(page.querySelectorAll<HTMLAnchorElement>('a[href^="/auth/login"]'));
       expect(links).toHaveLength(4);
