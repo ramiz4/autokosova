@@ -12,7 +12,10 @@ import { LanguageService, languageFromUrl, routePath } from './language.service'
 describe('Provisional public pages and shared shell', () => {
   beforeEach(async () => {
     // No live session, contact or vehicle data is accessed by these rendering tests.
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => new Response('', { status: 503 })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async () => new Response('', { status: 503 })),
+    );
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [
@@ -52,20 +55,40 @@ describe('Provisional public pages and shared shell', () => {
       }
       expect(page.querySelectorAll('footer')).toHaveLength(1);
       expect(page.querySelector('main footer')).toBeNull();
-      expect(page.querySelector('main form, main a[href^="mailto:"], main a[href^="tel:"]')).toBeNull();
+      expect(
+        page.querySelector('main form, main a[href^="mailto:"], main a[href^="tel:"]'),
+      ).toBeNull();
       expect(meta.getTag('name="robots"')?.content).toBe('noindex, follow');
       expect(title.getTitle()).toBe(`${footerCopy[locale][`${id}Title`]} | AutoKosova`);
       expect(document.documentElement.lang).toBe(locale);
+      const links = [...page.querySelectorAll('app-site-footer app-language-switcher a')];
+      expect(links.map((link) => link.getAttribute('href'))).toEqual(
+        APP_LANGUAGES.map((target) => routePath(target, id)),
+      );
       for (const target of APP_LANGUAGES) {
         expect(language.switchUrl(target)).toBe(routePath(target, id));
       }
     }
 
-    // The footer stays a single sibling of routed content; noindex must not leak to home.
+    // The default shell keeps one footer; provisional noindex must not leak to home.
     await router.navigateByUrl(base || '/');
     await fixture.whenStable();
     expect(page.querySelectorAll('footer')).toHaveLength(1);
     expect(meta.getTag('name="robots"')).toBeNull();
+  });
+
+  it.each(APP_LANGUAGES)('keeps one footer across public and profile layouts in %s', async (locale) => {
+    const fixture = TestBed.createComponent(App);
+    const router = TestBed.inject(Router);
+    const page = fixture.nativeElement as HTMLElement;
+    const base = locale === 'de' ? '' : `/${locale}`;
+    for (const path of ['/help', '/garages/footer-test-missing', '/inquiry', '/garages', '/help']) {
+      await router.navigateByUrl(base + path);
+      await fixture.whenStable();
+      expect(page.querySelectorAll('app-site-footer')).toHaveLength(1);
+      expect(page.querySelectorAll('footer')).toHaveLength(1);
+      expect(page.querySelector(`app-site-footer a[href="${base}/privacy"]`)).not.toBeNull();
+    }
   });
 
   it('preserves fragments and query parameters on all information routes', async () => {
