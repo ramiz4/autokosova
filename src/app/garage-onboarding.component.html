@@ -23,22 +23,20 @@
       class="absolute inset-0 -z-10 bg-gradient-to-r from-slate-950/80 via-slate-950/55 to-transparent"
     ></div>
     <div class="mx-auto max-w-[1360px]">
-      <div class="max-w-xl">
-        <h1
-          id="onboarding-hero-title"
-          class="text-4xl leading-[1.08] font-bold whitespace-pre-line tracking-tight text-white sm:text-[44px]"
-        >
-          {{ copy.hero }}<br />{{ copy.heroAccent }}
-        </h1>
-        <p class="mt-3 max-w-xl text-base leading-6 text-white sm:text-lg">{{ copy.heroIntro }}</p>
-      </div>
+      <h1
+        id="onboarding-hero-title"
+        class="max-w-xl text-4xl leading-[1.08] font-bold whitespace-pre-line tracking-tight text-white sm:text-[44px]"
+      >
+        {{ copy.hero }}<br />{{ copy.heroAccent }}
+      </h1>
+      <p class="mt-3 max-w-xl text-base leading-6 text-white sm:text-lg">{{ copy.heroIntro }}</p>
     </div>
   </header>
   <div
     class="relative mx-auto -mt-10 grid max-w-[1360px] gap-4 px-4 pb-16 lg:grid-cols-[minmax(0,2.15fr)_minmax(290px,1fr)] lg:px-5"
   >
     <section
-      class="min-w-0 rounded-2xl border border-white bg-white p-5 shadow-xl shadow-blue-900/5 sm:p-8"
+      class="min-w-0 rounded-2xl border border-white/85 bg-white/87 p-5 shadow-xl shadow-blue-900/5 backdrop-blur-sm sm:p-8"
       aria-labelledby="form-title"
     >
       <p class="text-xs font-bold tracking-wider text-brand uppercase">{{ copy.eyebrow }}</p>

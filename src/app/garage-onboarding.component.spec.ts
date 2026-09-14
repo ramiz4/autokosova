@@ -57,6 +57,10 @@ it('uses the same image, overlay, text container and card overlap as the inquiry
   expect(image.src).toContain('/images/home/hero-mountain-road-1672.webp');
   expect(image.className).toContain('object-[75%_54%]');
   expect(hero.querySelector('.bg-gradient-to-r')).not.toBeNull();
+  expect(hero.querySelector('h1')!.className).toContain('max-w-xl');
+  expect(hero.querySelector('p')!.className).toBe(
+    'mt-3 max-w-xl text-base leading-6 text-white sm:text-lg',
+  );
   expect(
     [...hero.querySelectorAll('div')].some((element) =>
       element.className.includes('max-w-[1360px]'),
