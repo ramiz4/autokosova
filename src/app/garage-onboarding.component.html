@@ -36,17 +36,13 @@
     class="relative mx-auto -mt-10 grid max-w-[1360px] gap-4 px-4 pb-16 lg:grid-cols-[minmax(0,2.15fr)_minmax(290px,1fr)] lg:px-5"
   >
     <section
-      class="min-w-0 rounded-2xl border border-white/85 bg-white/87 p-5 shadow-xl shadow-blue-900/5 backdrop-blur-sm sm:p-8"
+      class="min-w-0 rounded-2xl border border-white/85 bg-white/87 p-5 shadow-xl shadow-blue-900/5 backdrop-blur-sm sm:px-8 sm:py-6 lg:px-10"
       aria-labelledby="form-title"
     >
-      <p class="text-xs font-bold tracking-wider text-brand uppercase">{{ copy.eyebrow }}</p>
-      <h2
-        id="form-title"
-        class="mt-2 text-2xl leading-tight font-extrabold tracking-tight sm:text-[28px]"
-      >
+      <h2 id="form-title" class="text-3xl font-bold tracking-tight sm:text-[34px]">
         {{ copy.title }}
       </h2>
-      <p class="mt-2 text-sm leading-relaxed text-slate-600">{{ copy.intro }}</p>
+      <p class="mt-1 text-muted">{{ copy.intro }}</p>
       @if (owned.length) {
         <details class="mt-5 rounded-xl border border-blue-100 bg-blue-50/40 px-3 text-sm">
           <summary class="min-h-11 py-3 font-semibold">{{ copy.ownDrafts }}</summary>

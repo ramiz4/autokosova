@@ -146,16 +146,19 @@ it.each(['de', 'sq', 'en'] as const)(
   'renders three visually unboxed sections and all searchable selections in %s',
   async (language) => {
     const fixture = await setup();
+    const page = fixture.nativeElement as HTMLElement;
     vi.spyOn(TestBed.inject(LanguageService), 'language', 'get').mockReturnValue(language);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelectorAll('app-multi-select')).toHaveLength(4);
-    expect(fixture.nativeElement.querySelectorAll('fieldset.onboarding-section')).toHaveLength(3);
-    expect(
-      (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
-        'fieldset.onboarding-section',
-      )!.className,
-    ).not.toContain('rounded');
-    expect(fixture.nativeElement.textContent).not.toContain('durch Komma');
-    expect(fixture.nativeElement.querySelector('app-site-header img')).not.toBeNull();
+    expect(page.querySelectorAll('app-multi-select')).toHaveLength(4);
+    expect(page.querySelectorAll('fieldset.onboarding-section')).toHaveLength(3);
+    const title = page.querySelector<HTMLElement>('#form-title')!;
+    expect(title.className).toBe('text-3xl font-bold tracking-tight sm:text-[34px]');
+    expect(title.nextElementSibling?.className).toBe('mt-1 text-muted');
+    expect(title.parentElement?.className).toContain('sm:py-6');
+    expect(page.querySelector<HTMLElement>('fieldset.onboarding-section')!.className).not.toContain(
+      'rounded',
+    );
+    expect(page.textContent).not.toContain('durch Komma');
+    expect(page.querySelector('app-site-header img')).not.toBeNull();
   },
 );

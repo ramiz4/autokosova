@@ -6,7 +6,6 @@ const de = {
   heroIntro: 'Gemeinsam für eine zuverlässige und transparente Werkstattlandschaft.',
   badge: 'Vertrauen. Qualität.',
   badgeDetail: 'Eine bessere Mobilität.',
-  eyebrow: 'Werkstatt aufnehmen',
   title: 'In wenigen Schritten zum Prüfauftrag',
   intro:
     'Erstelle deinen privaten Entwurf. Erst nach Einreichung, Prüfung und Freigabe wird dein Profil öffentlich.',
@@ -112,7 +111,6 @@ const en: Copy = {
   heroIntro: 'Together for reliable and transparent garage services.',
   badge: 'Trust. Quality.',
   badgeDetail: 'Better mobility.',
-  eyebrow: 'Register a garage',
   title: 'Your garage. A clear start.',
   intro:
     'Create your private draft. Your profile becomes public only after submission, review and approval.',
@@ -215,7 +213,6 @@ const sq: Copy = {
   heroIntro: 'Së bashku për shërbime të besueshme dhe transparente.',
   badge: 'Besim. Cilësi.',
   badgeDetail: 'Mobilitet më i mirë.',
-  eyebrow: 'Regjistro servisin',
   title: 'Servisi yt. Një fillim i qartë.',
   intro:
     'Krijo draftin privat. Profili bëhet publik vetëm pas dorëzimit, kontrollit dhe miratimit.',
