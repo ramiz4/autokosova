@@ -158,7 +158,6 @@ export interface StoredRepairRequest {
   readonly id: string;
   readonly latestPickupOn: string;
   readonly serviceCategoryId: string;
-  readonly stayEndsOn: string;
   readonly symptom?: string;
   readonly vehicle?: RepairRequestInput['vehicle'];
 }
@@ -1333,7 +1332,6 @@ export class AccessStore implements ReviewStore {
       id: request.id,
       latestPickupOn: request.input.latestPickupOn,
       serviceCategoryId: request.input.serviceCategoryId,
-      stayEndsOn: request.input.stayEndsOn,
       symptom: request.input.symptom,
       vehicle: request.input.vehicle,
     };

@@ -119,7 +119,6 @@ const repairRequestBodySchema = {
     earliestDropoffOn: { pattern: '^\\d{4}-\\d{2}-\\d{2}$', type: 'string' },
     latestPickupOn: { pattern: '^\\d{4}-\\d{2}-\\d{2}$', type: 'string' },
     serviceCategoryId: { enum: REPAIR_REQUEST_SERVICE_CATEGORIES, type: 'string' },
-    stayEndsOn: { pattern: '^\\d{4}-\\d{2}-\\d{2}$', type: 'string' },
     symptom: { maxLength: REPAIR_REQUEST_LIMITS.maxSymptomLength, type: 'string' },
     vehicle: {
       additionalProperties: false,
@@ -144,7 +143,7 @@ const repairRequestBodySchema = {
       type: 'object',
     },
   },
-  required: ['areas', 'earliestDropoffOn', 'latestPickupOn', 'serviceCategoryId', 'stayEndsOn'],
+  required: ['areas', 'earliestDropoffOn', 'latestPickupOn', 'serviceCategoryId'],
   type: 'object',
 };
 

@@ -6,7 +6,6 @@ import { RepairRequestDraft } from './repair-request-draft';
 const travel = {
   earliestDropoffOn: '2026-10-02',
   latestPickupOn: '2026-10-06',
-  stayEndsOn: '2026-10-08',
   serviceCategoryId: 'bremsen',
   areas: [{ placeId: 'xk-pristina', radiusKm: 20 }],
 };
@@ -43,6 +42,8 @@ describe('Five-step private repair request', () => {
     expect(component['step']).toBe(2);
     component['form'].patchValue({ ...travel, symptom: 'Fiktiver Hinweis' });
     component['next']();
+    fixture.detectChanges();
+    expect(page.querySelectorAll('input[type="date"]')).toHaveLength(2);
     component['form'].controls.latestPickupOn.setValue('2026-10-01');
     component['next']();
     expect(component['step']).toBe(3);

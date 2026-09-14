@@ -38,7 +38,7 @@ export function validateRepairRequest(input: RepairRequestInput): string | undef
   }
 
   if (!hasConsistentTravelDates(input)) {
-    return 'Earliest drop-off, latest pickup, and stay end must be consistent local calendar dates';
+    return 'Earliest drop-off and latest pickup must be consistent local calendar dates';
   }
 
   if (input.symptom && input.symptom.trim().length > REPAIR_REQUEST_LIMITS.maxSymptomLength) {

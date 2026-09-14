@@ -320,13 +320,6 @@
                 type="date"
                 class="min-h-11 w-full min-w-0 rounded-lg border border-blue-200 bg-white px-3 py-2 text-ink focus:border-brand focus:outline-2 focus:outline-brand/30 [&.ng-invalid.ng-touched]:border-rose-600"
             /></label>
-            <label class="grid gap-1 text-sm"
-              >{{ text('stayEnd')
-              }}<input
-                formControlName="stayEndsOn"
-                type="date"
-                class="min-h-11 w-full min-w-0 rounded-lg border border-blue-200 bg-white px-3 py-2 text-ink focus:border-brand focus:outline-2 focus:outline-brand/30 [&.ng-invalid.ng-touched]:border-rose-600"
-            /></label>
           </div>
         }
         @if (step === 4) {
@@ -382,12 +375,10 @@
               }
             </div>
             <div>
-              <dt class="font-bold">
-                {{ text('dropoff') }} / {{ text('pickup') }} / {{ text('stayEnd') }}
-              </dt>
+              <dt class="font-bold">{{ text('dropoff') }} / {{ text('pickup') }}</dt>
               <dd>
                 {{ form.controls.earliestDropoffOn.value }} /
-                {{ form.controls.latestPickupOn.value }} / {{ form.controls.stayEndsOn.value }}
+                {{ form.controls.latestPickupOn.value }}
               </dd>
             </div>
             <div>

@@ -29,7 +29,6 @@ test(
         earliestDropoffOn: '2026-10-02',
         latestPickupOn: '2026-10-06',
         serviceCategoryId: 'bremsen',
-        stayEndsOn: '2026-10-08',
         symptom: 'Fiktiver privater Hinweis',
         vehicle: {
           vehicleClass: 'suv',
@@ -63,7 +62,6 @@ test(
                 earliestDropoffOn: '2026-10-02',
                 latestPickupOn: '2026-10-06',
                 serviceCategoryId: 'bremsen',
-                stayEndsOn: '2026-10-08',
               },
               url: '/api/me/repair-requests',
             });
@@ -96,7 +94,6 @@ test(
       ]);
       assert.equal(restored.earliestDropoffOn, '2026-10-02');
       assert.equal(restored.latestPickupOn, '2026-10-06');
-      assert.equal(restored.stayEndsOn, '2026-10-08');
       assert.equal(restored.symptom, 'Fiktiver privater Hinweis');
       assert.deepEqual(restored.vehicle, {
         vehicleClass: 'suv',
@@ -110,7 +107,6 @@ test(
         areas: [{ placeId: 'xk-peja', radiusKm: 10 }],
         earliestDropoffOn: '2026-10-02',
         latestPickupOn: '2026-10-06',
-        stayEndsOn: '2026-10-08',
         serviceCategoryId: 'bremsen',
         vehicle: { vehicleClass: 'motorcycle', fuel: 'electric' },
       });

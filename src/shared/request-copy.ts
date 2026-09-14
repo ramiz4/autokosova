@@ -45,7 +45,6 @@ export const requestCopy = {
     addPlace: 'Weiteren Ort hinzufügen',
     dropoff: 'Früheste Abgabe',
     pickup: 'Späteste Abholung',
-    stayEnd: 'Aufenthaltsende',
     attachments: 'Fotos oder Diagnosebericht (optional)',
     uploadHelp:
       'Ohne angebundenen Dateispeicher werden Dateien nur lokal ausgewählt und nicht hochgeladen oder mitgespeichert. Beim Neuladen geht die Dateiauswahl verloren.',
@@ -67,7 +66,7 @@ export const requestCopy = {
       'Bitte prüfe deine Fahrzeugangaben: Baujahr 1886–2100, Kilometerstand 0–2.000.000, Texte höchstens 120 Zeichen. Alle Angaben sind optional.',
     serviceError: 'Bitte wähle eine Leistung. Symptome sind optional, höchstens 2.000 Zeichen.',
     travelError:
-      'Bitte prüfe verschiedene Orte, ganze Radien von 5–100 km und die Datumsfolge: Abgabe ≤ Abholung ≤ Aufenthaltsende.',
+      'Bitte prüfe verschiedene Orte, ganze Radien von 5–100 km und die Datumsfolge: Abgabe ≤ Abholung.',
     fileError: 'Höchstens 5 PDF-, JPG- oder PNG-Dateien, jeweils 1 Byte bis 10 MB.',
     why: 'Warum AutoKosova?',
     benefit1: 'Schnell zur passenden Werkstatt',
@@ -130,7 +129,6 @@ export const requestCopy = {
     addPlace: 'Shto një vend tjetër',
     dropoff: 'Dorëzimi më i hershëm',
     pickup: 'Marrja më e vonshme',
-    stayEnd: 'Fundi i qëndrimit',
     attachments: 'Foto ose raport diagnostik (opsionale)',
     uploadHelp:
       'Pa ruajtje të lidhur të skedarëve, skedarët zgjidhen vetëm lokalisht dhe nuk ngarkohen apo ruhen. Zgjedhja humbet kur ringarkohet faqja.',
@@ -150,7 +148,7 @@ export const requestCopy = {
       'Kontrollo të dhënat: viti 1886–2100, kilometrat 0–2.000.000, tekstet deri në 120 karaktere. Të gjitha janë opsionale.',
     serviceError: 'Zgjidh një shërbim. Simptomat janë opsionale, deri në 2.000 karaktere.',
     travelError:
-      'Kontrollo vendet e ndryshme, rrezet e plota 5–100 km dhe datat: dorëzimi ≤ marrja ≤ fundi i qëndrimit.',
+      'Kontrollo vendet e ndryshme, rrezet e plota 5–100 km dhe datat: dorëzimi ≤ marrja.',
     fileError: 'Deri në 5 skedarë PDF, JPG ose PNG, secili nga 1 bajt deri në 10 MB.',
     why: 'Pse AutoKosova?',
     benefit1: 'Shpejt te servisi i duhur',
@@ -213,7 +211,6 @@ export const requestCopy = {
     addPlace: 'Add another place',
     dropoff: 'Earliest drop-off',
     pickup: 'Latest pickup',
-    stayEnd: 'End of stay',
     attachments: 'Photos or diagnostic report (optional)',
     uploadHelp:
       'Without connected file storage, files are selected locally only and are not uploaded or saved. Reloading clears the file selection.',
@@ -232,8 +229,7 @@ export const requestCopy = {
     vehicleError:
       'Check vehicle details: year 1886–2100, mileage 0–2,000,000, text up to 120 characters. All fields are optional.',
     serviceError: 'Choose a service. Symptoms are optional, up to 2,000 characters.',
-    travelError:
-      'Check distinct places, whole radii of 5–100 km and dates: drop-off ≤ pickup ≤ end of stay.',
+    travelError: 'Check distinct places, whole radii of 5–100 km and dates: drop-off ≤ pickup.',
     fileError: 'Up to 5 PDF, JPG or PNG files, each from 1 byte to 10 MB.',
     why: 'Why AutoKosova?',
     benefit1: 'Find a suitable workshop quickly',

@@ -69,7 +69,6 @@ interface RepairRequestRow {
   readonly id: string;
   readonly latest_pickup_on: Date | string;
   readonly service_category_id: StoredRepairRequest['serviceCategoryId'];
-  readonly stay_ends_on: Date | string;
   readonly symptom: string | null;
 }
 
@@ -424,7 +423,7 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
         [principal.userId],
       );
       const requests = await client.query<RepairRequestRow>(
-        `SELECT id, service_category_id, symptom, earliest_dropoff_on, stay_ends_on, latest_pickup_on,
+        `SELECT id, service_category_id, symptom, earliest_dropoff_on, latest_pickup_on,
                 created_at
          FROM repair_request WHERE owner_user_id = $1 ORDER BY created_at, id`,
         [principal.userId],
@@ -489,7 +488,6 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
           id: request.id,
           latestPickupOn: toDate(request.latest_pickup_on),
           serviceCategoryId: request.service_category_id,
-          stayEndsOn: toDate(request.stay_ends_on),
           ...(request.symptom ? { symptom: request.symptom } : {}),
         })),
         reviews: reviews.rows.map(toOwnReview),

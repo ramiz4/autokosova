@@ -25,7 +25,6 @@ interface RepairRequestRow {
   readonly id: string;
   readonly latest_pickup_on: string;
   readonly service_category_id: string;
-  readonly stay_ends_on: string;
   readonly symptom: string | null;
   readonly vehicle_id: string | null;
 }
@@ -99,8 +98,8 @@ export class PostgresRepairRequestStore implements RepairRequestStore {
       await client.query(
         `INSERT INTO repair_request (
            id, owner_user_id, vehicle_id, service_category_id, symptom,
-           earliest_dropoff_on, latest_pickup_on, stay_ends_on, state
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft')`,
+           earliest_dropoff_on, latest_pickup_on, state
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft')`,
         [
           requestId,
           ownerUserId,
@@ -109,7 +108,6 @@ export class PostgresRepairRequestStore implements RepairRequestStore {
           input.symptom ?? null,
           input.earliestDropoffOn,
           input.latestPickupOn,
-          input.stayEndsOn,
         ],
       );
 
@@ -131,7 +129,6 @@ export class PostgresRepairRequestStore implements RepairRequestStore {
         id: requestId,
         latestPickupOn: input.latestPickupOn,
         serviceCategoryId: input.serviceCategoryId,
-        stayEndsOn: input.stayEndsOn,
         symptom: input.symptom,
         vehicle: input.vehicle,
       };
@@ -153,7 +150,7 @@ export class PostgresRepairRequestStore implements RepairRequestStore {
       await this.setPrincipal(client, ownerUserId);
       const requestResult = await client.query<RepairRequestRow>(
         `SELECT id, created_at, service_category_id, symptom, earliest_dropoff_on,
-                latest_pickup_on, stay_ends_on, vehicle_id
+                latest_pickup_on, vehicle_id
          FROM repair_request
          WHERE id = $1 AND owner_user_id = $2`,
         [repairRequestId, ownerUserId],
@@ -188,7 +185,6 @@ export class PostgresRepairRequestStore implements RepairRequestStore {
         id: request.id,
         latestPickupOn: request.latest_pickup_on,
         serviceCategoryId: request.service_category_id,
-        stayEndsOn: request.stay_ends_on,
         symptom: request.symptom ?? undefined,
         vehicle,
       };

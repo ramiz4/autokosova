@@ -121,7 +121,6 @@ export class RepairRequestComponent {
     earliestDropoffOn: ['', Validators.required],
     latestPickupOn: ['', Validators.required],
     serviceCategoryId: ['', Validators.required],
-    stayEndsOn: ['', Validators.required],
     symptom: ['', Validators.maxLength(REPAIR_REQUEST_LIMITS.maxSymptomLength)],
     vehicle: this.formBuilder.group({
       vehicleClass: [''],
@@ -159,6 +158,8 @@ export class RepairRequestComponent {
       // Older drafts offered a checkbox to exclude previously entered vehicle details.
       if (restored['useVehicle'] === false) delete restored['vehicle'];
       this.form.patchValue(restored);
+      // Re-serialize only the current form contract, dropping obsolete draft fields.
+      this.draft.write(this.form.getRawValue());
     }
     this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.saved = false;
@@ -372,7 +373,6 @@ export class RepairRequestComponent {
       earliestDropoffOn: value.earliestDropoffOn,
       latestPickupOn: value.latestPickupOn,
       serviceCategoryId: value.serviceCategoryId as RepairRequestInput['serviceCategoryId'],
-      stayEndsOn: value.stayEndsOn,
       ...(value.symptom.trim() ? { symptom: value.symptom.trim() } : {}),
       ...(Object.keys(vehicle).length ? { vehicle } : {}),
     };
@@ -382,13 +382,11 @@ export class RepairRequestComponent {
     const controls = this.form.controls;
     controls.earliestDropoffOn.markAsTouched();
     controls.latestPickupOn.markAsTouched();
-    controls.stayEndsOn.markAsTouched();
     this.areas.markAllAsTouched();
     const input = this.toInput();
     if (
       controls.earliestDropoffOn.invalid ||
       controls.latestPickupOn.invalid ||
-      controls.stayEndsOn.invalid ||
       this.areas.invalid ||
       new Set(input.areas.map((area) => area.placeId)).size !== input.areas.length ||
       input.areas.some(

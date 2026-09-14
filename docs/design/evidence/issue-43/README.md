@@ -30,7 +30,7 @@ Fahrzeugschritt in DE/SQ/EN bei 1448, 1280, 360, 390 und 430 px geprüft. Zusät
 - `npm run format:check`, `npm run lint`, `npm run typecheck`: erfolgreich.
 - `npm test -- --watch=false`: 34 Tests erfolgreich, einschließlich 12 Anfrage-Tests und 6 Routentests.
 - `npm run test:server` mit der eigenen lokalen `DATABASE_URL`: 57 bestanden, 2 profilspezifische Demo-Seed-Tests übersprungen (keine entsprechenden Testprofil-Flags). Persistenz mit neuen Feldern, Teilfahrzeug und Fremdzugriff tatsächlich gegen PostgreSQL geprüft.
-- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 533 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
+- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 532 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
 - Screenreader-Semantik (`aria-current`, Status-/Fehlermeldungen), Fokuswechsel und Eingabevalidierung automatisiert geprüft. Kein manueller Durchlauf mit einem Screenreader und keine native mobile Browserprüfung.
 - Echter OIDC-Login mit Testkonto nicht ausgeführt: dieser isolierte Worktree hat keine OIDC-Konfiguration. Private Speicherung und Berechtigungen wurden über die authentifizierte API in Tests geprüft; dies ersetzt den realen OIDC-Durchlauf nicht.
 
@@ -51,3 +51,9 @@ Auf schmalen Displays zeigt die Schrittleiste fünf nummerierte Indikatoren und 
 Im ersten Schritt stehen Abbrechen und Weiter nebeneinander: bei 360 px jeweils 130,5 × 52 px. In Folgeschritten stehen Zurück und Weiter in derselben Zeile, Abbrechen darunter; die lange Suchaktion erhält im Abschluss eine volle Zeile. [Mobile Aktionen](mobile-actions.webp).
 
 Neue Anfrage und Werkstätten finden haben auf ihrer jeweiligen Seite einen blauen 3-px-Unterstrich sowie `aria-current="page"`, auch im mobilen Menü. Die Suche verwendet denselben kompakten sticky Header wie die Anfrage. Nach 800 px Scrollen bleibt er auf beiden Seiten bei 0–64 px: [Suche Desktop](garages-sticky-1448.webp), [Suche Mobil](garages-sticky-390.webp). DE/SQ/EN wurden erneut in allen fünf Vergleichsbreiten ohne horizontalen Überlauf geprüft.
+
+## Vereinfachte Reisedaten
+
+Die Anfrage erfasst nur früheste Abgabe und späteste Abholung. Aufenthaltsende wurde aus Formular, Zusammenfassung, Übersetzungen, API-Vertrag, Speicherung und privaten Datenexporten entfernt. Bestehende Browserentwürfe werden mit dem aktuellen Formularvertrag neu gespeichert, sodass das veraltete Feld entfällt. Browserprüfung: genau zwei Datumsfelder, Zusammenfassung erreichbar und kein veraltetes Feld im Browserentwurf.
+
+Migration 018 entfernt die Spalte samt bisherigen Werten und ersetzt die Datumsbedingung durch `Abgabe ≤ Abholung`. Auf der eigenen lokalen DB blieben alle neun vor der Migration vorhandenen Anfragen erhalten; die Spalte ist nicht mehr vorhanden. Die vollständigen UI-/Server-/PostgreSQL-Prüfungen wurden anschließend erfolgreich wiederholt. Historische Migration 011 bleibt als angewendete Versionshistorie unverändert.

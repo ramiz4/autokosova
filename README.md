@@ -177,7 +177,7 @@ Qualität vor Billigpreis. Kein Bietermodell. Suche, Profile und Direktkontakt o
 `/inquiry` führt in fünf Schritten durch Fahrzeug, Reparatur, Ort & Zeit, Details und Zusammenfassung.
 Alle Fahrzeugfelder sind einzeln optional; Fahrzeugklasse und Kraftstoff verwenden begrenzte Auswahllisten.
 Modell und Motorisierung bleiben Freitext; Getriebe verwendet eine optionale Auswahl. Die Anfrage enthält Leistung/Symptom sowie einen bis drei
-Orte mit 5–100 km Luftlinienradius und lokale Reisedaten. Gäste behalten den Entwurf nur im
+Orte mit 5–100 km Luftlinienradius. Als lokale Kalendertage werden nur früheste Abgabe und späteste Abholung erfasst; Abgabe darf nicht nach Abholung liegen. Gäste behalten den Entwurf nur im
 Browser und können damit zur Suche weitergehen. Nur nach OIDC-Anmeldung kann die Anfrage über die
 private API dauerhaft gespeichert werden. Die Zusammenfassung zeigt den bestätigten Speicherstatus;
 Speicherfehler behalten den Browserentwurf. Der Suchübergang enthält ausschließlich Leistung und

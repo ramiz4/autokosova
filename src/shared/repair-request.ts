@@ -79,7 +79,6 @@ export interface RepairRequestInput {
   readonly earliestDropoffOn: string;
   readonly latestPickupOn: string;
   readonly serviceCategoryId: (typeof REPAIR_REQUEST_SERVICE_CATEGORIES)[number];
-  readonly stayEndsOn: string;
   readonly symptom?: string;
   readonly vehicle?: RepairRequestVehicle;
 }
@@ -93,13 +92,11 @@ export function isLocalCalendarDate(value: string): boolean {
 }
 
 export function hasConsistentTravelDates(
-  input: Pick<RepairRequestInput, 'earliestDropoffOn' | 'latestPickupOn' | 'stayEndsOn'>,
+  input: Pick<RepairRequestInput, 'earliestDropoffOn' | 'latestPickupOn'>,
 ): boolean {
   return (
     isLocalCalendarDate(input.earliestDropoffOn) &&
     isLocalCalendarDate(input.latestPickupOn) &&
-    isLocalCalendarDate(input.stayEndsOn) &&
-    input.earliestDropoffOn <= input.latestPickupOn &&
-    input.latestPickupOn <= input.stayEndsOn
+    input.earliestDropoffOn <= input.latestPickupOn
   );
 }

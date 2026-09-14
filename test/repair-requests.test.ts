@@ -20,7 +20,6 @@ function validRequest() {
     earliestDropoffOn: '2026-10-02',
     latestPickupOn: '2026-10-06',
     serviceCategoryId: 'bremsen',
-    stayEndsOn: '2026-10-08',
     symptom: 'Fiktives Quietschen beim Bremsen.',
     vehicle: {
       engineDetails: 'Fiktiver Benzinmotor',
@@ -78,6 +77,7 @@ test('repair requests stay private and hand only service and areas to matching',
     assert.equal(created.json().matchingPath.includes('2026-10-02'), false);
     assert.equal(created.json().matchingPath.includes('Fiktives'), false);
     assert.equal(owner.statusCode, 200);
+    assert.equal(Object.hasOwn(owner.json(), 'stayEndsOn'), false);
     assert.equal(owner.json().symptom, 'Fiktives Quietschen beim Bremsen.');
     assert.equal(stranger.statusCode, 404);
   } finally {

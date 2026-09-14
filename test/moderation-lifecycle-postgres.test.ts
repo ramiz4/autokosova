@@ -79,8 +79,8 @@ test(
       );
       await client.query(
         `INSERT INTO repair_request (
-           id, owner_user_id, service_category_id, earliest_dropoff_on, stay_ends_on, latest_pickup_on
-         ) VALUES ($1, $2, 'bremsen', '2026-08-01', '2026-08-10', '2026-08-05')`,
+           id, owner_user_id, service_category_id, earliest_dropoff_on, latest_pickup_on
+         ) VALUES ($1, $2, 'bremsen', '2026-08-01', '2026-08-05')`,
         [requestId, authorId],
       );
       await client.query(
