@@ -294,6 +294,7 @@ it('renders separate edit/remove buttons and cancels the single editor with Esca
     total: 0,
     totalPages: 1,
   };
+  component['state'] = 'ready';
   fixture.detectChanges();
   const page = fixture.nativeElement as HTMLElement;
   const edit = page.querySelector<HTMLButtonElement>('#edit-area-0')!;
@@ -330,6 +331,7 @@ it('removes the intended chips even when clicks arrive before the next render', 
     total: 0,
     totalPages: 1,
   };
+  component['state'] = 'ready';
   fixture.detectChanges();
   const page = fixture.nativeElement as HTMLElement;
   page.querySelector<HTMLButtonElement>('[aria-label="Prizren entfernen"]')!.click();
@@ -338,4 +340,46 @@ it('removes the intended chips even when clicks arrive before the next render', 
   fixture.detectChanges();
   page.querySelector<HTMLButtonElement>('[aria-label="Ferizaj entfernen"]')!.click();
   expect(component['areas']).toEqual([]);
+});
+
+it('omits the removed language filter from search requests and login return paths', async () => {
+  const fixture = await areaFixture({ language: 'Deutsch', vehicleMake: 'skoda' });
+  const component = fixture.componentInstance;
+  const request = vi.fn(
+    async () =>
+      new Response(
+        JSON.stringify({
+          allResults: true,
+          page: 1,
+          pageSize: 10,
+          results: [],
+          searchAreas: [],
+          serviceCategory: { id: 'all', label: 'Alle Leistungen' },
+          sort: 'recommended',
+          total: 0,
+          totalPages: 1,
+        }),
+      ),
+  );
+  vi.stubGlobal('fetch', request);
+  try {
+    await component['load']();
+    fixture.detectChanges();
+    expect(request.mock.calls[0]).toEqual([
+      '/api/public/search?vehicleMake=skoda&all=true',
+      { credentials: 'same-origin' },
+    ]);
+    expect(fixture.nativeElement.querySelector('select[name="spokenLanguage"]')).toBeNull();
+    expect(decodeURIComponent(component['favoriteLoginUrl']())).not.toContain('language=');
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    component['applyFilters']();
+    expect(navigate).toHaveBeenCalledWith(
+      ['/garages'],
+      expect.objectContaining({
+        queryParams: expect.objectContaining({ language: null, vehicleMake: 'skoda' }),
+      }),
+    );
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

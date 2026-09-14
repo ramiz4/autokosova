@@ -28,9 +28,9 @@ Fahrzeugschritt in DE/SQ/EN bei 1448, 1280, 360, 390 und 430 px geprüft. Zusät
 
 - `npm ci`, `npm run dev:demo`: eigene lokale PostgreSQL-DB, Migration 017 und öffentliche Demo-Daten erfolgreich.
 - `npm run format:check`, `npm run lint`, `npm run typecheck`: erfolgreich.
-- `npm test -- --watch=false`: 48 Tests erfolgreich, einschließlich 12 Anfrage-Tests und 6 Routentests.
+- `npm test -- --watch=false`: 49 Tests erfolgreich, einschließlich 12 Anfrage-Tests und 6 Routentests.
 - `npm run test:server` mit der eigenen lokalen `DATABASE_URL`: 60 bestanden, 2 profilspezifische Demo-Seed-Tests übersprungen (keine entsprechenden Testprofil-Flags). Persistenz mit neuen Feldern, Teilfahrzeug und Fremdzugriff tatsächlich gegen PostgreSQL geprüft.
-- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 555 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
+- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 553 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
 - Screenreader-Semantik (`aria-current`, Status-/Fehlermeldungen), Fokuswechsel und Eingabevalidierung automatisiert geprüft. Kein manueller Durchlauf mit einem Screenreader und keine native mobile Browserprüfung.
 - Echter Customer-OIDC-Login auf Port 4200 erfolgreich: Favorit per Herz gespeichert, API-Eintrag bestätigt, nach Neuladen erhalten, wieder entfernt und abgemeldet. PostgreSQL- und API-Tests prüfen zusätzlich Besitzer-Isolation, Export und Löschung.
 
@@ -83,7 +83,7 @@ Der zusätzliche Chip „Unternehmensdaten geprüft“ entfällt. Die Prüfung e
 
 Die Suche beginnt direkt mit Filter und Ergebnissen. Bild-Hero, Hero-Suchfeld, Vorteilsblöcke und sichtbare Seitenüberschrift entfallen nach der letzten Nutzerentscheidung. Die semantische H1 bleibt für Screenreader erhalten. [Desktop](search-results-1448.webp), [Mobil 390](search-results-390.webp), [Mobil 360](search-results-360.webp).
 
-Ohne gesetzten Ortsfilter bleibt die Ortsauswahl leer: „Ganz Kosovo“. Marke, Leistung und Sprache gelten auch für die globale Suche. Die Reihenfolge ist Marke, Leistung, Sprache. Der Filter bleibt nach dem Scrollen bei y=80 unter der 64 px hohen Navbar, bei Bedarf mit internem Scrollbereich.
+Ohne gesetzten Ortsfilter bleibt die Ortsauswahl leer: „Ganz Kosovo“. Marke und Leistung gelten auch für die globale Suche. Die Reihenfolge ist Marke, Leistung. Der Filter bleibt nach dem Scrollen bei y=80 unter der 64 px hohen Navbar, bei Bedarf mit internem Scrollbereich.
 
 Migration 019 speichert private Favoriten im Konto. Angemeldete Navbar: [Desktop](account-navbar.webp), [Mobil](account-mobile.webp). [Bestätigter Favorit und fiktive Demo-Bewertung](favorite-card.webp). Sechs veröffentlichte fiktive Workflow-Bewertungen auf drei ausdrücklich als DEMO bezeichneten Profilen zeigen echte berechnete Mittelwerte und Anzahlen. `npm run test:demo-workflow-seed` wurde separat mit eigener lokaler DB erfolgreich ausgeführt.
 
@@ -114,3 +114,7 @@ Automatisiert geprüft: unabhängige Radien, Abbrechen ohne Seiteneffekt, Übern
 [Optionaler Leerzustand mobil](location-empty-mobile.webp). Auch unmittelbar aufeinanderfolgende Entfernen-Aktionen vor dem nächsten Rendern entfernen die richtigen Orte: Chips und Aktionen sind an die jeweilige Ortsidentität gebunden. Regressionstest und Browserdurchlauf erfolgreich.
 
 „Weiteren Ort hinzufügen“ ist ein Button mit Innenabstand und dezentem flächigem Hover, ohne Unterstreichung. [Hover-Nachweis](add-location-hover.webp).
+
+## Suchfilter ohne Sprache
+
+Das Feld Sprache und seine Auswahltexte entfallen aus dem Suchfilter in DE/SQ/EN. Alte `language`-Parameter werden weder an die Such-API noch beim Login-Rücksprung weitergegeben und beim Anwenden, Zurücksetzen oder Seitenwechsel entfernt. Die Oberflächensprache in der Navbar bleibt erhalten. Regressionstest und Browser-Netzwerkprüfung mit `?language=Deutsch` bestätigen die Suche ohne unsichtbare Sprachbegrenzung. [Desktop](filter-no-language-desktop.webp), [Mobil](filter-no-language-mobile.webp).

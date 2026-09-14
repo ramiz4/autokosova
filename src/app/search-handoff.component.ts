@@ -294,19 +294,6 @@ interface Area {
                       }
                     </select>
                   </label>
-                  <label class="grid gap-2 text-sm font-semibold"
-                    >{{ ui('search.ui.language') }}
-                    <select
-                      [(ngModel)]="spokenLanguage"
-                      name="spokenLanguage"
-                      class="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal focus-visible:border-brand focus-visible:outline-2 focus-visible:outline-brand/30"
-                    >
-                      <option value="">{{ ui('search.ui.allLanguages') }}</option>
-                      <option value="Deutsch">Deutsch</option>
-                      <option value="Shqip">Shqip</option>
-                      <option value="English">English</option>
-                    </select>
-                  </label>
                 </div>
                 <div class="grid gap-2 border-t border-slate-100 pt-5">
                   @if (filterError()) {
@@ -316,11 +303,10 @@ interface Area {
                   }
                   <button
                     type="submit"
-                    [disabled]="areaEditor() !== null"
+                    [disabled]="areaEditor() !== null || state === 'loading'"
                     appButton
                     size="compact"
                     class="w-full"
-                    [disabled]="state === 'loading'"
                   >
                     {{ ui('search.ui.apply') }}
                   </button>
@@ -572,7 +558,6 @@ export class SearchHandoffComponent {
   private loadVersion = 0;
   protected sort: 'recommended' | 'rating' = 'recommended';
   protected vehicleMake = '';
-  protected spokenLanguage = '';
   private readonly responseState = signal<Response | undefined>(undefined);
   private readonly requestState = signal<SearchState>('loading');
   protected get response(): Response | undefined {
@@ -603,7 +588,7 @@ export class SearchHandoffComponent {
   }
   protected favoriteLoginUrl(): string {
     const query = new URLSearchParams();
-    for (const key of ['all', 'places', 'service', 'vehicleMake', 'language', 'sort', 'page']) {
+    for (const key of ['all', 'places', 'service', 'vehicleMake', 'sort', 'page']) {
       const value = this.route.snapshot.queryParamMap.get(key);
       if (value) query.set(key, value);
     }
@@ -767,7 +752,7 @@ export class SearchHandoffComponent {
       service: this.service || null,
       sort: this.sort,
       vehicleMake: this.vehicleMake || null,
-      language: this.spokenLanguage || null,
+      language: null,
       page: null,
     });
   }
@@ -778,7 +763,6 @@ export class SearchHandoffComponent {
     this.service = '';
     this.sort = 'recommended';
     this.vehicleMake = '';
-    this.spokenLanguage = '';
     this.navigate({
       all: 'true',
       language: null,
@@ -794,7 +778,7 @@ export class SearchHandoffComponent {
     this.state = 'loading';
     const query = new URLSearchParams();
     const params = this.route.snapshot.queryParamMap;
-    for (const key of ['all', 'places', 'service', 'vehicleMake', 'language', 'sort', 'page']) {
+    for (const key of ['all', 'places', 'service', 'vehicleMake', 'sort', 'page']) {
       const value = params.get(key);
       if (value) query.set(key, value);
     }
@@ -816,7 +800,7 @@ export class SearchHandoffComponent {
   }
   private navigate(queryParams: Record<string, string | null>): void {
     void this.router.navigate([this.language.link('search')], {
-      queryParams,
+      queryParams: { ...queryParams, language: null },
       queryParamsHandling: 'merge',
     });
   }
@@ -836,6 +820,5 @@ export class SearchHandoffComponent {
     this.filterError.set(false);
     this.sort = q.get('sort') === 'rating' ? 'rating' : 'recommended';
     this.vehicleMake = q.get('vehicleMake') ?? '';
-    this.spokenLanguage = q.get('language') ?? '';
   }
 }
