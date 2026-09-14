@@ -59,7 +59,9 @@ try {
     env: { ...process.env, PORT: String(port) },
     stdio: ['ignore', 'ignore', 'pipe'],
   });
-  server.stderr.on('data', (chunk) => { diagnostics = (diagnostics + chunk).slice(-8000); });
+  server.stderr.on('data', (chunk) => {
+    diagnostics = (diagnostics + chunk).slice(-8000);
+  });
   server.on('error', (error) => (launchError = error));
   await until(async () => {
     if (launchError) throw launchError;
@@ -78,7 +80,9 @@ try {
     ],
     { stdio: ['ignore', 'ignore', 'pipe'] },
   );
-  browser.stderr.on('data', (chunk) => { diagnostics = (diagnostics + chunk).slice(-8000); });
+  browser.stderr.on('data', (chunk) => {
+    diagnostics = (diagnostics + chunk).slice(-8000);
+  });
   browser.on('error', (error) => (launchError = error));
   const target = await until(async () => {
     if (launchError) throw launchError;
@@ -124,9 +128,19 @@ try {
     return response.result.value;
   }
   async function key(name, code) {
-    for (const type of ['keyDown', 'keyUp']) {
-      await command('Input.dispatchKeyEvent', { type, key: name, windowsVirtualKeyCode: code });
-    }
+    await command('Input.dispatchKeyEvent', {
+      type: name === 'Enter' ? 'keyDown' : 'rawKeyDown',
+      key: name,
+      code: name,
+      windowsVirtualKeyCode: code,
+      ...(name === 'Enter' ? { text: '\r', unmodifiedText: '\r' } : {}),
+    });
+    await command('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: name,
+      code: name,
+      windowsVirtualKeyCode: code,
+    });
   }
   await command('Page.enable');
   await mkdir(screenshots, { recursive: true });
@@ -204,7 +218,10 @@ try {
         captureBeyondViewport: true,
         clip: geometry.clip,
       });
-      await writeFile(join(screenshots, `${locale}-${width}.png`), Buffer.from(image.data, 'base64'));
+      await writeFile(
+        join(screenshots, `${locale}-${width}.png`),
+        Buffer.from(image.data, 'base64'),
+      );
       console.log(`Footer browser checks passed: ${locale}, ${width}px`);
     }
   }
