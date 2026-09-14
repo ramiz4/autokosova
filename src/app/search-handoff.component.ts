@@ -106,9 +106,13 @@ interface Area {
       >
         <div class="grid gap-5 xl:grid-cols-[minmax(280px,320px)_minmax(0,1fr)]">
           <aside
-            class="sticky top-20 z-10 max-h-[calc(100dvh-6rem)] self-start overflow-y-auto rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-900/5"
+            class="sticky top-20 z-10 max-h-[calc(100dvh-6rem)] self-start overflow-y-auto rounded-2xl border border-slate-200/80 bg-white px-5 py-3 shadow-sm shadow-slate-900/5"
           >
-            <div class="flex min-h-11 items-center justify-between gap-3">
+            <div
+              class="flex min-h-11 items-center justify-between gap-3 border-slate-100 xl:min-h-10 xl:border-b xl:pb-2"
+              [class.border-b]="filtersOpen()"
+              [class.pb-2]="filtersOpen()"
+            >
               <h2 id="filter-title" class="text-base font-bold tracking-tight">
                 {{ ui('search.ui.filter') }}
               </h2>
