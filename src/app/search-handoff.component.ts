@@ -1,5 +1,14 @@
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RadiusSliderComponent } from './ui/radius-slider.component';
 import { isPlatformBrowser } from '@angular/common';
-import { ChangeDetectorRef, Component, inject, PLATFORM_ID } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  inject,
+  PLATFORM_ID,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CATALOG_PLACES, SERVICE_CATEGORY_LABELS, VEHICLE_MAKE_LABELS } from '../shared/catalog';
@@ -47,7 +56,14 @@ interface Area {
 }
 
 @Component({
-  imports: [ButtonDirective, FormsModule, IconComponent, RouterLink, SiteHeaderComponent],
+  imports: [
+    RadiusSliderComponent,
+    ButtonDirective,
+    FormsModule,
+    IconComponent,
+    RouterLink,
+    SiteHeaderComponent,
+  ],
   selector: 'app-search-handoff',
   template: ` <main class="min-h-screen bg-[#f4f8fe] text-ink" aria-labelledby="search-title">
     <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
@@ -135,7 +151,7 @@ interface Area {
         </form>
       </div>
     </section>
-    @if (state === 'loading') {
+    @if (state === 'loading' && !response) {
       <p class="mx-auto max-w-6xl px-4 py-12 text-slate-700" role="status">
         {{ language.t('search.loading') }}
       </p>
@@ -158,136 +174,196 @@ interface Area {
         </button>
       </section>
     }
-    @if (state === 'ready' && response) {
+    @if (response) {
       <section class="mx-auto max-w-[1920px] px-4 py-6 sm:px-8 lg:px-12">
         <div class="grid gap-5 xl:grid-cols-[minmax(280px,320px)_minmax(0,1fr)]">
-          <aside class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div class="flex items-center justify-between gap-3">
-              <h2 class="font-bold">{{ ui('search.ui.filter') }}</h2>
+          <aside
+            class="self-start rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-900/5"
+          >
+            <div class="flex min-h-11 items-center justify-between gap-3">
+              <h2 id="filter-title" class="text-base font-bold tracking-tight">
+                {{ ui('search.ui.filter') }}
+              </h2>
               <button
                 type="button"
-                class="min-h-11 text-sm font-bold text-brand-dark underline"
-                (click)="resetFilters()"
+                class="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-brand-dark xl:hidden"
+                aria-controls="search-filters"
+                [attr.aria-expanded]="filtersOpen()"
+                (click)="filtersOpen.set(!filtersOpen())"
               >
-                {{ ui('search.ui.clear') }}
+                {{ ui(filtersOpen() ? 'search.ui.closeFilters' : 'search.ui.openFilters') }}
+                <app-icon name="chevron-down" class="size-4" [class.rotate-180]="filtersOpen()" />
               </button>
             </div>
-            <div class="mt-5 grid gap-5">
-              @for (area of areas; track $index; let index = $index) {
-                <fieldset>
-                  <label class="grid gap-2 text-xs font-bold"
-                    >{{ ui('search.ui.place')
-                    }}<span class="relative"
-                      ><app-icon
-                        name="pin"
-                        class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
-                      /><select
-                        [(ngModel)]="area.placeId"
-                        [name]="'place-' + index"
-                        class="min-h-10 w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm font-medium"
+            <form
+              id="search-filters"
+              aria-labelledby="filter-title"
+              class="mt-4 xl:block"
+              [class.hidden]="!filtersOpen()"
+              (ngSubmit)="applyFilters()"
+              novalidate
+            >
+              <div class="grid gap-5">
+                <div class="grid gap-3">
+                  @for (area of areas; track $index; let index = $index) {
+                    <fieldset
+                      class="min-w-0 border-slate-100"
+                      [class.border-t]="index > 0"
+                      [class.pt-2]="index > 0"
+                    >
+                      <button
+                        type="button"
+                        [id]="'area-toggle-' + index"
+                        class="flex min-h-11 w-full items-center gap-3 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                        [attr.aria-controls]="'area-fields-' + index"
+                        [attr.aria-expanded]="expandedArea() === index"
+                        (click)="expandedArea.set(expandedArea() === index ? -1 : index)"
                       >
-                        @for (place of places; track place.id) {
-                          <option [value]="place.id">{{ place.label }}</option>
+                        <app-icon name="pin" class="size-5 text-brand" />
+                        <span class="min-w-0 grow text-sm font-semibold"
+                          >{{ placeLabel(area.placeId) }}
+                          <span class="font-normal text-muted">· {{ area.radiusKm }} km</span></span
+                        >
+                        <app-icon
+                          name="chevron-down"
+                          class="size-4 text-muted"
+                          [class.rotate-180]="expandedArea() === index"
+                        />
+                      </button>
+                      <div
+                        [id]="'area-fields-' + index"
+                        [hidden]="expandedArea() !== index"
+                        [attr.aria-labelledby]="'area-toggle-' + index"
+                        class="pt-3 pb-1"
+                      >
+                        <label class="grid gap-2 text-sm font-semibold">
+                          {{ ui('search.ui.place') }}
+                          <span class="relative">
+                            <app-icon
+                              name="pin"
+                              class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted"
+                            />
+                            <select
+                              [(ngModel)]="area.placeId"
+                              [name]="'place-' + index"
+                              class="min-h-11 w-full rounded-lg border border-slate-200 bg-white py-2 pr-3 pl-9 text-sm font-normal focus-visible:border-brand focus-visible:outline-2 focus-visible:outline-brand/30"
+                            >
+                              @for (place of places; track place.id) {
+                                <option
+                                  [value]="place.id"
+                                  [disabled]="placeSelectedElsewhere(place.id, index)"
+                                >
+                                  {{ place.label }}
+                                </option>
+                              }
+                            </select>
+                          </span>
+                        </label>
+                        <app-radius-slider
+                          class="mt-3"
+                          [inputId]="'search-radius-' + index"
+                          [(ngModel)]="area.radiusKm"
+                          [name]="'radius-range-' + index"
+                        />
+                        @if (areas.length > 1) {
+                          <button
+                            type="button"
+                            class="mt-1 inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-sm font-medium text-muted hover:text-ink"
+                            (click)="removeArea(index)"
+                          >
+                            <app-icon name="close" class="size-4" />{{ ui('search.ui.removeArea') }}
+                          </button>
                         }
-                      </select></span
-                    ></label
-                  >
-                  <p class="mt-4 text-sm font-bold">
-                    {{ ui('search.ui.radiusValue', { radius: area.radiusKm }) }}
-                  </p>
-                  <input
-                    [(ngModel)]="area.radiusKm"
-                    [name]="'radius-range-' + index"
-                    type="range"
-                    [min]="limits.minRadiusKm"
-                    [max]="limits.maxRadiusKm"
-                    class="mt-1 w-full accent-brand"
-                  />
-                  <div class="flex justify-between text-[11px] font-medium text-slate-400">
-                    <span>{{ limits.minRadiusKm }} km</span><span>{{ limits.maxRadiusKm }} km</span>
-                  </div>
-                  @if (areas.length > 1) {
+                      </div>
+                    </fieldset>
+                  }
+                  @if (areas.length < limits.maxAreas) {
                     <button
                       type="button"
-                      class="mt-2 min-h-11 text-sm font-bold text-brand-dark underline"
-                      (click)="removeArea(index)"
+                      class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-dashed border-blue-200 px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50"
+                      (click)="addArea()"
                     >
-                      {{ ui('search.ui.removeArea') }}
+                      <span aria-hidden="true" class="text-lg">+</span>{{ ui('search.ui.addArea') }}
                     </button>
                   }
-                </fieldset>
-              }
-              @if (areas.length > 1) {
-                <div class="flex flex-wrap gap-1.5">
-                  @for (area of areas; track area.placeId; let index = $index) {
-                    <span
-                      class="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-medium"
-                      >{{ placeLabel(area.placeId)
-                      }}<button
-                        type="button"
-                        class="min-h-5 min-w-5 text-slate-500"
-                        (click)="removeArea(index)"
-                        [attr.aria-label]="ui('search.ui.removeArea')"
-                      >
-                        ×
-                      </button></span
-                    >
-                  }
                 </div>
-              }
-              @if (areas.length < limits.maxAreas) {
-                <button
-                  type="button"
-                  class="min-h-11 text-left text-sm font-bold text-brand-dark underline"
-                  (click)="addArea()"
-                >
-                  {{ ui('search.ui.addArea') }}
-                </button>
-              }
-              <fieldset class="grid gap-2 text-xs font-bold">
-                <legend>{{ language.t('home.service') }}</legend>
-                @for (entry of serviceIds; track entry) {
-                  <label class="flex min-h-6 items-center gap-2 text-sm font-medium">
-                    <input
-                      type="checkbox"
-                      [checked]="service === entry"
-                      (change)="toggleService(entry)"
-                      class="size-4 accent-brand"
-                    />{{ language.serviceLabel(entry) }}
+                <div class="grid gap-4 border-t border-slate-100 pt-5">
+                  <label class="grid gap-2 text-sm font-semibold"
+                    >{{ language.t('home.service') }}
+                    <select
+                      [(ngModel)]="service"
+                      name="service"
+                      class="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal focus-visible:border-brand focus-visible:outline-2 focus-visible:outline-brand/30"
+                    >
+                      <option value="">{{ ui('search.ui.allServices') }}</option>
+                      @for (entry of serviceIds; track entry) {
+                        <option [value]="entry">{{ language.serviceLabel(entry) }}</option>
+                      }
+                    </select>
                   </label>
-                }
-              </fieldset>
-              <label class="grid gap-2 text-xs font-bold"
-                >Marke<select
-                  [(ngModel)]="vehicleMake"
-                  name="vehicleMake"
-                  class="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium"
-                >
-                  <option value="">{{ language.t('profile.allMakes') }}</option>
-                  @for (entry of makeIds; track entry) {
-                    <option [value]="entry">{{ makeLabels[entry] }}</option>
+                  <label class="grid gap-2 text-sm font-semibold"
+                    >{{ ui('search.ui.make') }}
+                    <select
+                      [(ngModel)]="vehicleMake"
+                      name="vehicleMake"
+                      class="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal focus-visible:border-brand focus-visible:outline-2 focus-visible:outline-brand/30"
+                    >
+                      <option value="">{{ language.t('profile.allMakes') }}</option>
+                      @for (entry of makeIds; track entry) {
+                        <option [value]="entry">{{ makeLabels[entry] }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label class="grid gap-2 text-sm font-semibold"
+                    >{{ ui('search.ui.language') }}
+                    <select
+                      [(ngModel)]="spokenLanguage"
+                      name="spokenLanguage"
+                      class="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-normal focus-visible:border-brand focus-visible:outline-2 focus-visible:outline-brand/30"
+                    >
+                      <option value="">{{ ui('search.ui.allLanguages') }}</option>
+                      <option value="Deutsch">Deutsch</option>
+                      <option value="Shqip">Shqip</option>
+                      <option value="English">English</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="grid gap-2 border-t border-slate-100 pt-5">
+                  @if (filterError()) {
+                    <p class="text-sm leading-5 text-rose-800" role="alert">
+                      {{ language.t('search.invalidBody') }}
+                    </p>
                   }
-                </select></label
-              ><label class="grid gap-2 text-xs font-bold"
-                >Sprache<select
-                  [(ngModel)]="spokenLanguage"
-                  name="spokenLanguage"
-                  class="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium"
-                >
-                  <option value="">{{ language.t('common.optional') }}</option>
-                  <option value="Deutsch">Deutsch</option>
-                  <option value="Shqip">Shqip</option>
-                  <option value="English">English</option>
-                </select></label
-              ><button type="button" appButton size="compact" (click)="applyFilters()">
-                {{ ui('search.ui.apply') }}
-              </button>
-            </div>
+                  <button
+                    type="submit"
+                    appButton
+                    size="compact"
+                    class="w-full"
+                    [disabled]="state === 'loading'"
+                  >
+                    {{ ui('search.ui.apply') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="min-h-11 rounded-lg text-sm font-medium text-muted hover:bg-slate-50 hover:text-ink"
+                    (click)="resetFilters()"
+                  >
+                    {{ ui('search.ui.clear') }}
+                  </button>
+                </div>
+              </div>
+            </form>
           </aside>
-          <div class="min-w-0">
+          <div class="min-w-0" [attr.aria-busy]="state === 'loading'">
             <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
               <p class="text-xl font-bold" role="status">
-                {{ ui('search.ui.resultCount', { count: response.total }) }}
+                {{
+                  state === 'loading'
+                    ? language.t('search.loading')
+                    : state === 'error'
+                      ? ui('search.ui.previousResults')
+                      : ui('search.ui.resultCount', { count: response.total })
+                }}
               </p>
               <label class="flex items-center gap-2 text-sm font-semibold"
                 >{{ ui('search.ui.sort')
@@ -359,12 +435,12 @@ interface Area {
                           <app-icon name="pin" class="size-4 text-brand-dark" />
                           {{ locationLabel(workshop) }}
                         </p>
-                        <ul class="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-brand-dark">
+                        <ul class="mt-3 flex flex-wrap gap-2 text-xs">
                           @for (reason of matchingReasons(workshop); track reason) {
                             <li class="rounded-full bg-blue-50 px-3 py-1">{{ reason }}</li>
                           }
                           @for (tag of specializations(workshop); track tag) {
-                            <li class="rounded-full bg-slate-100 px-3 py-1">{{ tag }}</li>
+                            <li class="rounded-lg bg-slate-100  px-4 py-1.5">{{ tag }}</li>
                           }
                         </ul>
                         <span
@@ -431,6 +507,11 @@ export class SearchHandoffComponent {
   protected readonly makeLabels = VEHICLE_MAKE_LABELS;
   protected areas: Area[] = [{ placeId: 'xk-pristina', radiusKm: 20 }];
   protected service = '';
+  protected readonly filtersOpen = signal(false);
+  protected readonly expandedArea = signal(0);
+  protected readonly filterError = signal(false);
+  private readonly destroyRef = inject(DestroyRef);
+  private loadVersion = 0;
   protected sort: 'recommended' | 'rating' = 'recommended';
   protected vehicleMake = '';
   protected spokenLanguage = '';
@@ -438,21 +519,35 @@ export class SearchHandoffComponent {
   protected state: 'error' | 'invalid' | 'loading' | 'ready' = 'loading';
   constructor() {
     this.language.setPage('search.title', 'search.intro', true);
-    this.readFilters();
-    if (this.browser) void this.load();
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.readFilters();
+      if (this.browser) void this.load();
+    });
+    this.destroyRef.onDestroy(() => {
+      this.loadVersion++;
+    });
   }
   protected ui(key: string, replacements?: Record<string, string | number>): string {
     return this.language.t(key, replacements);
   }
   protected addArea(): void {
-    this.areas.push({ placeId: 'xk-prizren', radiusKm: 20 });
+    if (this.areas.length >= this.limits.maxAreas) return;
+    const next = this.places.find((place) => !this.areas.some((area) => area.placeId === place.id));
+    if (next) {
+      this.areas.push({ placeId: next.id, radiusKm: 20 });
+      this.expandedArea.set(this.areas.length - 1);
+    }
   }
-
-  protected toggleService(service: string): void {
-    this.service = this.service === service ? '' : service;
+  protected placeSelectedElsewhere(placeId: string, index: number): boolean {
+    return this.areas.some((area, current) => current !== index && area.placeId === placeId);
   }
   protected removeArea(index: number): void {
+    if (this.areas.length <= 1) return;
     this.areas.splice(index, 1);
+    const expanded = this.expandedArea();
+    this.expandedArea.set(
+      expanded > index ? expanded - 1 : Math.min(expanded, this.areas.length - 1),
+    );
   }
   protected aerialDistance(distance: number, place: string): string {
     return this.language.t('search.aerialDistance', {
@@ -526,9 +621,12 @@ export class SearchHandoffComponent {
           area.radiusKm <= this.limits.maxRadiusKm,
       );
     if (!valid || new Set(this.areas.map((area) => area.placeId)).size !== this.areas.length) {
-      this.state = 'invalid';
+      this.filterError.set(true);
+      this.filtersOpen.set(true);
       return;
     }
+    this.filterError.set(false);
+    this.filtersOpen.set(false);
     this.navigate({
       all: null,
       places: this.areas.map((area) => `${area.placeId}:${area.radiusKm}`).join(','),
@@ -556,21 +654,28 @@ export class SearchHandoffComponent {
     });
   }
   protected async load(): Promise<void> {
-    if (!this.browser) return;
+    const version = ++this.loadVersion;
     this.state = 'loading';
+    const query = new URLSearchParams();
+    const params = this.route.snapshot.queryParamMap;
+    for (const key of ['all', 'places', 'service', 'vehicleMake', 'language', 'sort', 'page']) {
+      const value = params.get(key);
+      if (value) query.set(key, value);
+    }
+    if (!query.has('places') && !query.has('service')) query.set('all', 'true');
     try {
-      const result = await fetch(`/api/public/search${window.location.search || '?all=true'}`, {
-        credentials: 'same-origin',
-      });
+      const result = await fetch(`/api/public/search?${query}`, { credentials: 'same-origin' });
       if (!result.ok) throw Error();
-      this.response = (await result.json()) as Response;
-      this.sort = this.response.sort;
+      const response = (await result.json()) as Response;
+      if (version !== this.loadVersion) return;
+      this.response = response;
+      this.sort = response.sort;
       this.state = 'ready';
       this.analytics.track('search_results_displayed');
     } catch {
-      this.state = 'error';
+      if (version === this.loadVersion) this.state = 'error';
     } finally {
-      this.changeDetector.markForCheck();
+      if (version === this.loadVersion) this.changeDetector.markForCheck();
     }
   }
   private navigate(queryParams: Record<string, string | null>): void {
@@ -589,8 +694,10 @@ export class SearchHandoffComponent {
         return { placeId, radiusKm: Number(radius) };
       })
       .filter((area) => area.placeId && Number.isFinite(area.radiusKm));
-    if (values?.length) this.areas = values;
-    this.service = q.get('service') ?? this.service;
+    this.areas = values?.length ? values : [{ placeId: 'xk-pristina', radiusKm: 20 }];
+    this.expandedArea.set(Math.min(this.expandedArea(), this.areas.length - 1));
+    this.service = q.get('service') ?? '';
+    this.filterError.set(false);
     this.sort = q.get('sort') === 'rating' ? 'rating' : 'recommended';
     this.vehicleMake = q.get('vehicleMake') ?? '';
     this.spokenLanguage = q.get('language') ?? '';

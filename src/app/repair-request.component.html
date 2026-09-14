@@ -260,7 +260,7 @@
             @for (area of areas.controls; track $index; let index = $index) {
               <div
                 [formGroupName]="index"
-                class="grid gap-3 rounded-xl border border-blue-100 p-3 sm:grid-cols-[1fr_7rem_auto] sm:items-end"
+                class="grid gap-3 rounded-xl border border-blue-100 p-3 sm:grid-cols-2 sm:items-start"
               >
                 <label class="grid gap-1 text-sm"
                   >{{ text('place')
@@ -274,16 +274,10 @@
                     }
                   </select></label
                 >
-                <label class="grid gap-1 text-sm"
-                  >{{ text('radius')
-                  }}<input
-                    formControlName="radiusKm"
-                    type="number"
-                    [min]="limits.minRadiusKm"
-                    [max]="limits.maxRadiusKm"
-                    step="1"
-                    class="min-h-11 w-full min-w-0 rounded-lg border border-blue-200 bg-white px-3 py-2 text-ink focus:border-brand focus:outline-2 focus:outline-brand/30 [&.ng-invalid.ng-touched]:border-rose-600"
-                /></label>
+                <app-radius-slider
+                  [inputId]="'inquiry-radius-' + index"
+                  formControlName="radiusKm"
+                />
                 @if (areas.length > 1) {
                   <button
                     type="button"

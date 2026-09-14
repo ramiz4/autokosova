@@ -28,9 +28,9 @@ Fahrzeugschritt in DE/SQ/EN bei 1448, 1280, 360, 390 und 430 px geprüft. Zusät
 
 - `npm ci`, `npm run dev:demo`: eigene lokale PostgreSQL-DB, Migration 017 und öffentliche Demo-Daten erfolgreich.
 - `npm run format:check`, `npm run lint`, `npm run typecheck`: erfolgreich.
-- `npm test -- --watch=false`: 35 Tests erfolgreich, einschließlich 12 Anfrage-Tests und 6 Routentests.
+- `npm test -- --watch=false`: 38 Tests erfolgreich, einschließlich 12 Anfrage-Tests und 6 Routentests.
 - `npm run test:server` mit der eigenen lokalen `DATABASE_URL`: 57 bestanden, 2 profilspezifische Demo-Seed-Tests übersprungen (keine entsprechenden Testprofil-Flags). Persistenz mit neuen Feldern, Teilfahrzeug und Fremdzugriff tatsächlich gegen PostgreSQL geprüft.
-- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 533 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
+- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 539 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
 - Screenreader-Semantik (`aria-current`, Status-/Fehlermeldungen), Fokuswechsel und Eingabevalidierung automatisiert geprüft. Kein manueller Durchlauf mit einem Screenreader und keine native mobile Browserprüfung.
 - Echter OIDC-Login mit Testkonto nicht ausgeführt: dieser isolierte Worktree hat keine OIDC-Konfiguration. Private Speicherung und Berechtigungen wurden über die authentifizierte API in Tests geprüft; dies ersetzt den realen OIDC-Durchlauf nicht.
 
@@ -65,3 +65,11 @@ Das mobile Menü liegt absolut unter dem Header und verändert den Seitenfluss n
 Menü und sticky Navbar nutzen getrennte, leicht transparente Glasflächen mit Backdrop-Blur und Sättigung. Eine eigene Hintergrundebene der Navbar verhindert, dass ihre Unschärfe die Glasschicht des Menüs begrenzt. [Anfrage beim Scrollen](inquiry-glass-scroll.webp), [Suche beim Scrollen](garages-glass-scroll.webp). Bei reduzierter Transparenz oder fehlender Blur-Unterstützung bleiben die Flächen undurchsichtig.
 
 Escape, Menülinks und Tippen außerhalb schließen das Menü. Die Außenaktion ist automatisiert geprüft. Bei nur 390 px Viewporthöhe bleiben alle Menüpunkte durch internes Scrollen erreichbar: Anfrage, Suche und Startseite bei 360, 430 und 1024 px Breite geprüft; kein horizontaler Überlauf und Menüunterkante innerhalb des Viewports.
+
+## Gemeinsamer Radius-Regler und Suchfilter
+
+Startseite, Anfrage und Suche verwenden denselben formularfähigen Radius-Regler: 4-px-Spur, weißer 20-px-Griff mit 2-px-blauem Rand, 14-px-Beschriftungen und Grenzen von 5 bis 100 km. Die native Bedienfläche bleibt 44 px hoch. [Startseite](radius-home.webp), [Anfrage](radius-inquiry.webp), [Suche](radius-search.webp). Pfeiltasten, Home/End, Formwert-Synchronisierung, Touched-/Disabled-Zustand und Rücknavigation sind geprüft.
+
+Die Suchfilter haben eine flache Gestaltung ohne verschachtelte Karten. Standorte erscheinen als aufklappbare Zeilen mit Ort und Radius; ein neuer Ort öffnet sich direkt und klappt die anderen zu. Doppelte Ortsauswahlen werden verhindert, jeder Radius bleibt unabhängig. Leistung ist ein eindeutiges Auswahlfeld entsprechend der unterstützten Einzelauswahl. Alle Feldlabels sind einheitlich 14 px groß. [Desktop](filter-desktop.webp), [Mobil eingeklappt](filter-mobile-collapsed.webp), [Mobil geöffnet](filter-mobile-open.webp).
+
+Mobil ist der gesamte Filter aufklappbar. Ergebnisse bleiben während einer Aktualisierung erhalten und werden als beschäftigt markiert. Änderungen der URL-Filter laden die Treffer neu; ältere verspätete Antworten können neuere Ergebnisse nicht überschreiben. Anwenden änderte im lokalen Browsernachweis die Trefferzahl von 6 auf 25. Zurücksetzen lädt alle Ergebnisse und setzt die Eingaben zurück. DE/SQ/EN bei 360/430 px ohne horizontale Überläufe und mit einheitlicher Labelgröße geprüft.

@@ -1,3 +1,4 @@
+import { RadiusSliderComponent } from './ui/radius-slider.component';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
@@ -20,6 +21,7 @@ export class App {}
 @Component({
   imports: [
     FormsModule,
+    RadiusSliderComponent,
     RouterLink,
     SiteHeaderComponent,
     ButtonDirective,

@@ -82,8 +82,7 @@ describe('Homepage', () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const form = page.querySelector('form')!;
     const radius = page.querySelector<HTMLInputElement>('#search-radius')!;
-    radius.value = '101';
-    radius.dispatchEvent(new Event('input'));
+    fixture.componentInstance['radiusKm'] = 101;
     await fixture.whenStable();
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await fixture.whenStable();

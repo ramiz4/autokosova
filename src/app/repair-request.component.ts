@@ -1,3 +1,4 @@
+import { RadiusSliderComponent } from './ui/radius-slider.component';
 import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectorRef,
@@ -61,7 +62,13 @@ const places = [
 ] as const;
 
 @Component({
-  imports: [ReactiveFormsModule, SiteHeaderComponent, ButtonDirective, IconComponent],
+  imports: [
+    RadiusSliderComponent,
+    ReactiveFormsModule,
+    SiteHeaderComponent,
+    ButtonDirective,
+    IconComponent,
+  ],
   selector: 'app-repair-request',
   templateUrl: './repair-request.component.html',
 })

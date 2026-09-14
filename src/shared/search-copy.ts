@@ -2,6 +2,14 @@ import type { AppLanguage } from './i18n';
 
 export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, string>>>> = {
   de: {
+    'search.ui.previousResults': 'Vorherige Ergebnisse – Aktualisierung fehlgeschlagen',
+    'search.ui.openFilters': 'Anpassen',
+    'search.ui.closeFilters': 'Schließen',
+    'search.ui.make': 'Fahrzeugmarke',
+    'search.ui.language': 'Sprache',
+    'search.ui.allServices': 'Alle Leistungen',
+    'search.ui.allLanguages': 'Alle Sprachen',
+
     'search.ui.slogan': 'Mehr als eine Werkstatt. Ein gutes Gefühl.',
     'search.ui.details': 'Details ansehen',
     'search.ui.heroIntro':
@@ -28,6 +36,14 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'search.ui.viewMap': 'Karte',
   },
   sq: {
+    'search.ui.previousResults': 'Rezultatet e mëparshme – përditësimi dështoi',
+    'search.ui.openFilters': 'Përshtat',
+    'search.ui.closeFilters': 'Mbyll',
+    'search.ui.make': 'Marka e automjetit',
+    'search.ui.language': 'Gjuha',
+    'search.ui.allServices': 'Të gjitha shërbimet',
+    'search.ui.allLanguages': 'Të gjitha gjuhët',
+
     'search.ui.slogan': 'Më shumë se një servis. Një ndjenjë e mirë.',
     'search.ui.details': 'Shiko detajet',
     'search.ui.heroIntro':
@@ -54,6 +70,14 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'search.ui.viewMap': 'Hartë',
   },
   en: {
+    'search.ui.previousResults': 'Previous results – refresh failed',
+    'search.ui.openFilters': 'Adjust',
+    'search.ui.closeFilters': 'Close',
+    'search.ui.make': 'Vehicle make',
+    'search.ui.language': 'Language',
+    'search.ui.allServices': 'All services',
+    'search.ui.allLanguages': 'All languages',
+
     'search.ui.slogan': 'More than a garage. A good feeling.',
     'search.ui.details': 'View details',
     'search.ui.heroIntro':

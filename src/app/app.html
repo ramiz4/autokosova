@@ -162,18 +162,11 @@
             </select>
           </div>
           <div>
-            <label for="search-radius" class="text-sm font-bold">{{
-              language.t('home.radius')
-            }}</label>
-            <input
-              id="search-radius"
+            <app-radius-slider
+              inputId="search-radius"
               [(ngModel)]="radiusKm"
               name="radiusKm"
-              type="number"
-              [min]="limits.minRadiusKm"
-              [max]="limits.maxRadiusKm"
-              aria-describedby="radius-help"
-              class="mt-2 min-h-13 w-full rounded-xl border border-slate-300 px-3 focus-visible:outline-2 focus-visible:outline-brand"
+              describedBy="radius-help"
             />
           </div>
         </div>
