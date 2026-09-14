@@ -491,7 +491,7 @@ interface Area {
               {{ ui('favorites.' + message) }}
             </p>
             @if (message === 'signIn') {
-              <a [href]="favoriteLoginUrl()" appButton="primary" size="compact" class="mt-2"
+              <a [href]="favoriteLoginUrl()" appButton="outline" size="compact" class="mt-2"
                 >{{ ui('favorites.login') }}<app-icon name="arrow" class="size-4"
               /></a>
             }
