@@ -53,13 +53,13 @@ async function publishWorkshop(
     headers: headers(workshopOwner, true),
     method: 'POST',
     payload: { consentVersion: 'review-test-v1', profile: workshopProfile },
-    url: '/api/workshops',
+    url: '/api/garages',
   });
   const workshopId = created.json().id as string;
   await app.inject({
     headers: headers(workshopOwner, true),
     method: 'POST',
-    url: `/api/workshops/${workshopId}/submit-for-review`,
+    url: `/api/garages/${workshopId}/submit-for-review`,
   });
   const decision = await app.inject({
     headers: headers(admin, true),
@@ -73,7 +73,7 @@ async function publishWorkshop(
         phone: 'verified',
       },
     },
-    url: `/api/admin/workshops/${workshopId}/decision`,
+    url: `/api/admin/garages/${workshopId}/decision`,
   });
   assert.equal(created.statusCode, 201);
   assert.equal(decision.statusCode, 204);
@@ -210,11 +210,11 @@ test('a negative review with an invoice can be published without workshop confir
       headers: headers(workshopOwner, true),
       method: 'POST',
       payload: { text: 'Wir nehmen die fiktive Rückmeldung ernst und prüfen die Nacharbeit.' },
-      url: `/api/workshops/${workshopId}/reviews/${reviewId}/response`,
+      url: `/api/garages/${workshopId}/reviews/${reviewId}/response`,
     });
     const publicReviews = await app.inject({
       method: 'GET',
-      url: `/api/public/workshops/${workshopId}/reviews?serviceCategoryId=bremsen&vehicleMakeId=skoda`,
+      url: `/api/public/garages/${workshopId}/reviews?serviceCategoryId=bremsen&vehicleMakeId=skoda`,
     });
 
     assert.equal(submitted.statusCode, 201);
@@ -298,9 +298,9 @@ test('rejection remains private with a reason, while only published reviews chan
     );
     const filtered = await app.inject({
       method: 'GET',
-      url: `/api/public/workshops/${workshopId}/reviews?serviceCategoryId=reifen&vehicleMakeId=volkswagen`,
+      url: `/api/public/garages/${workshopId}/reviews?serviceCategoryId=reifen&vehicleMakeId=volkswagen`,
     });
-    const profile = await app.inject({ method: 'GET', url: `/api/public/workshops/${workshopId}` });
+    const profile = await app.inject({ method: 'GET', url: `/api/public/garages/${workshopId}` });
     const search = await app.inject({
       method: 'GET',
       url: '/api/public/search?places=xk-pristina%3A5&service=bremsen',
@@ -316,7 +316,7 @@ test('rejection remains private with a reason, while only published reviews chan
     });
     const publicAfterUpdate = await app.inject({
       method: 'GET',
-      url: `/api/public/workshops/${workshopId}/reviews`,
+      url: `/api/public/garages/${workshopId}/reviews`,
     });
 
     assert.equal(rejectedDecision.statusCode, 204);
@@ -377,7 +377,7 @@ test('retention deletion makes private evidence unavailable but preserves the ex
     });
     const publicReviews = await app.inject({
       method: 'GET',
-      url: `/api/public/workshops/${workshopId}/reviews`,
+      url: `/api/public/garages/${workshopId}/reviews`,
     });
 
     assert.equal(beforeDeletion.statusCode, 200);

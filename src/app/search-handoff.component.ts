@@ -372,7 +372,7 @@ interface Area {
                           ><app-icon name="heart" class="size-6"
                         /></span>
                         <a
-                          [routerLink]="language.link('workshop', workshop.id)"
+                          [routerLink]="language.link('garage', workshop.id)"
                           appButton="outline"
                           size="compact"
                           class="mt-4 sm:absolute sm:right-5 sm:bottom-3 sm:mt-0"
@@ -478,7 +478,7 @@ export class SearchHandoffComponent {
   }
 
   protected photoUrl(workshop: Result): string {
-    return `/api/public/workshops/${encodeURIComponent(workshop.id)}/photos/${encodeURIComponent(this.photoIds(workshop)[0])}`;
+    return `/api/public/garages/${encodeURIComponent(workshop.id)}/photos/${encodeURIComponent(this.photoIds(workshop)[0])}`;
   }
   protected reviewLabel(summary: Result['reviewSummary']): string {
     return summary.state === 'available' && summary.averageRating && summary.reviewCount

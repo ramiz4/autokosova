@@ -50,13 +50,13 @@ async function createPublishedReview(
     headers: headers(sessions.workshopOwner, true),
     method: 'POST',
     payload: { consentVersion: 'moderation-test-v1', profile },
-    url: '/api/workshops',
+    url: '/api/garages',
   });
   const workshopId = workshop.json().id as string;
   await app.inject({
     headers: headers(sessions.workshopOwner, true),
     method: 'POST',
-    url: `/api/workshops/${workshopId}/submit-for-review`,
+    url: `/api/garages/${workshopId}/submit-for-review`,
   });
   const workshopDecision = await app.inject({
     headers: headers(sessions.admin, true),
@@ -70,7 +70,7 @@ async function createPublishedReview(
         phone: 'verified',
       },
     },
-    url: `/api/admin/workshops/${workshopId}/decision`,
+    url: `/api/admin/garages/${workshopId}/decision`,
   });
   const upload = await app.inject({
     headers: headers(sessions.customer, true),
@@ -152,7 +152,7 @@ test('reports do not automatically remove criticism; only an assigned, auditable
     });
     const stillPublic = await app.inject({
       method: 'GET',
-      url: `/api/public/workshops/${workshopId}/reviews`,
+      url: `/api/public/garages/${workshopId}/reviews`,
     });
     const unassignedQueue = await app.inject({
       headers: headers(moderator),
@@ -178,7 +178,7 @@ test('reports do not automatically remove criticism; only an assigned, auditable
     });
     const hiddenPublic = await app.inject({
       method: 'GET',
-      url: `/api/public/workshops/${workshopId}/reviews`,
+      url: `/api/public/garages/${workshopId}/reviews`,
     });
     const restored = await app.inject({
       headers: headers(moderator, true),
@@ -188,7 +188,7 @@ test('reports do not automatically remove criticism; only an assigned, auditable
     });
     const restoredPublic = await app.inject({
       method: 'GET',
-      url: `/api/public/workshops/${workshopId}/reviews`,
+      url: `/api/public/garages/${workshopId}/reviews`,
     });
     const appeal = await app.inject({
       headers: headers(customer, true),
@@ -276,7 +276,7 @@ test('a policy-gated deletion exports and removes private data, sessions and upl
     });
     const publicReview = await app.inject({
       method: 'GET',
-      url: `/api/public/workshops/${workshopId}/reviews`,
+      url: `/api/public/garages/${workshopId}/reviews`,
     });
     const newExport = await app.inject({
       headers: headers(freshCustomer),

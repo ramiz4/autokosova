@@ -11,7 +11,7 @@ import {
   translate,
 } from '../shared/i18n';
 
-export type AppRoute = 'home' | 'onboarding' | 'request' | 'search' | 'workshop';
+export type AppRoute = 'home' | 'onboarding' | 'request' | 'search' | 'garage';
 
 @Injectable({ providedIn: 'root' })
 export class LanguageService {
@@ -91,10 +91,10 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
   const base = language === 'de' ? '' : `/${language}`;
   const segments: Readonly<Record<AppRoute, string>> = {
     home: '',
-    onboarding: '/werkstatt/aufnahme',
-    request: '/anfrage',
+    onboarding: '/garages/new',
+    request: '/inquiry',
     search: '/garages',
-    workshop: `/werkstatt/${encodeURIComponent(parameter ?? '')}`,
+    garage: `/garages/${encodeURIComponent(parameter ?? '')}`,
   };
   return `${base}${segments[route]}` || '/';
 }
@@ -102,16 +102,11 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
 function identifyRoute(path: string): { readonly parameter?: string; readonly route: AppRoute } {
   const normalized = path.replace(/^\/(?:sq|en)(?=\/|$)/, '') || '/';
   if (normalized === '/') return { route: 'home' };
-  if (normalized === '/werkstatt/aufnahme') return { route: 'onboarding' };
-  if (normalized === '/anfrage') return { route: 'request' };
-  if (
-    normalized === '/garages' ||
-    normalized === '/workshops' ||
-    normalized === '/suche' ||
-    normalized === '/werkstaetten'
-  ) {
+  if (normalized === '/garages/new') return { route: 'onboarding' };
+  if (normalized === '/inquiry') return { route: 'request' };
+  if (normalized === '/garages' || normalized === '/suche' || normalized === '/werkstaetten') {
     return { route: 'search' };
   }
-  const workshop = normalized.match(/^\/werkstatt\/([^/]+)$/);
-  return workshop ? { parameter: workshop[1], route: 'workshop' } : { route: 'home' };
+  const garage = normalized.match(/^\/garages\/([^/]+)$/);
+  return garage ? { parameter: garage[1], route: 'garage' } : { route: 'home' };
 }

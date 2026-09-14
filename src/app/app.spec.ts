@@ -37,7 +37,7 @@ describe('Homepage', () => {
     );
     expect(page.querySelector('h1')?.textContent).toContain('Schon vor der Reise.');
     expect(
-      [...page.querySelectorAll<HTMLAnchorElement>('a[href="/anfrage"]')].some((link) =>
+      [...page.querySelectorAll<HTMLAnchorElement>('a[href="/inquiry"]')].some((link) =>
         link.textContent?.includes('Jetzt Anfrage erstellen'),
       ),
     ).toBe(true);
@@ -103,7 +103,7 @@ describe('Homepage', () => {
     await TestBed.inject(Router).navigateByUrl('/sq');
     const { page } = await render();
     expect(page.querySelector('h1')?.textContent).toContain('Para se të nisesh.');
-    expect(page.querySelector('a[href="/sq/anfrage"]')).toBeTruthy();
+    expect(page.querySelector('a[href="/sq/inquiry"]')).toBeTruthy();
     expect(page.querySelector('header a[href="/sq#werkstatt-suche"]')).toBeTruthy();
     expect(page.querySelector('header a[href="/en"]')?.textContent).toContain('English');
     expect(page.querySelector('header a[aria-current="page"]')?.textContent).toContain('Shqip');

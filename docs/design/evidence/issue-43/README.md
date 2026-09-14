@@ -20,7 +20,7 @@ Fahrzeugschritt in DE/SQ/EN bei 1448, 1280, 360, 390 und 430 px geprüft. Zusät
 
 - Vorhandenes optimiertes Bergstraßenmotiv und gemeinsamer Header; vorhandene Navigation bleibt bestehen. Kompakte Headerdarstellung nur auf der Anfrageseite.
 - Keine Beispielperson, Sterne, Angebotsversprechen oder automatische Weitergabe. Freie Seitenfläche statt erfundenem Testimonial.
-- Alle Fahrzeugfelder einzeln optional, anfangs leer. Klasse lässt sich durch erneutes Anklicken abwählen. Modell, Motorisierung und Getriebe bleiben Freitext.
+- Alle Fahrzeugfelder einzeln optional, anfangs leer. Klasse lässt sich durch erneutes Anklicken abwählen. Modell und Motorisierung bleiben Freitext; Getriebe verwendet eine optionale Auswahl.
 - Mindestens 44 px hohe Eingaben und Bedienflächen. Mobil stapeln sich Felder und Karten.
 - Fünfter Schritt zeigt Zusammenfassung und tatsächlichen Speicherstatus. Dateien bleiben ohne Speicheranbindung lokal und werden ausdrücklich nicht mitgespeichert.
 
@@ -28,10 +28,18 @@ Fahrzeugschritt in DE/SQ/EN bei 1448, 1280, 360, 390 und 430 px geprüft. Zusät
 
 - `npm ci`, `npm run dev:demo`: eigene lokale PostgreSQL-DB, Migration 017 und öffentliche Demo-Daten erfolgreich.
 - `npm run format:check`, `npm run lint`, `npm run typecheck`: erfolgreich.
-- `npm test -- --watch=false`: 25 Tests erfolgreich, einschließlich 11 Anfrage-Tests.
-- `npm run test:server` mit der eigenen lokalen `DATABASE_URL`: 56 bestanden, 2 profilspezifische Demo-Seed-Tests übersprungen (keine entsprechenden Testprofil-Flags). Persistenz mit neuen Feldern, Teilfahrzeug und Fremdzugriff tatsächlich gegen PostgreSQL geprüft.
-- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle 529,68 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
+- `npm test -- --watch=false`: 32 Tests erfolgreich, einschließlich 12 Anfrage-Tests und 6 Routentests.
+- `npm run test:server` mit der eigenen lokalen `DATABASE_URL`: 57 bestanden, 2 profilspezifische Demo-Seed-Tests übersprungen (keine entsprechenden Testprofil-Flags). Persistenz mit neuen Feldern, Teilfahrzeug und Fremdzugriff tatsächlich gegen PostgreSQL geprüft.
+- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 531 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
 - Screenreader-Semantik (`aria-current`, Status-/Fehlermeldungen), Fokuswechsel und Eingabevalidierung automatisiert geprüft. Kein manueller Durchlauf mit einem Screenreader und keine native mobile Browserprüfung.
 - Echter OIDC-Login mit Testkonto nicht ausgeführt: dieser isolierte Worktree hat keine OIDC-Konfiguration. Private Speicherung und Berechtigungen wurden über die authentifizierte API in Tests geprüft; dies ersetzt den realen OIDC-Durchlauf nicht.
 
 Pointer-Cursor zentral für aktive Links, Buttons, Auswahllisten, aufklappbare Elemente und Auswahl-/Upload-Bedienelemente ergänzt. Im Browser auf Header, Fahrzeugklassen, Auswahllisten und Formularaktionen über die berechneten CSS-Werte geprüft. Deaktivierte Elemente sind ausgenommen.
+
+## Kanonische englische Routen
+
+Der Assistent liegt unter `/inquiry`; Profile und Aufnahme unter `/garages/:garageId` und `/garages/new`. Alle drei Sprachen verwenden dieselben englischen Pfadsegmente. Alte deutsche UI-Pfade sind ausschließlich Weiterleitungen. API-Pfade verwenden `/api/garages`, `/api/public/garages`, `/api/me/garages` und `/api/admin/garages`; Collection-Antworten heißen `garages`. Die früheren API-Pfade werden nicht weiter angeboten. Die API-Berechtigungsmatrix wurde unter den neuen Pfaden erneut geprüft. Ein öffentliches Demo-Profil wurde über die neue UI-/API-Route im Browser erfolgreich geladen.
+
+Sitemap und Robots-Regeln berücksichtigen die neuen Pfade: Suchlisten und Aufnahme bleiben ausgeschlossen, öffentliche Profilpfade werden nicht durch eine zu breite `/garages`-Regel gesperrt. Login-Rücksprünge akzeptieren nur den kanonischen Anfragepfad bzw. bekannte deutsche Vorgänger, die direkt auf `/inquiry` normalisiert werden.
+
+Die Anfrageseite hat eine sticky Navigation: im Mobilbrowser nach 800 px Scrollen bleibt die Kopfzeile bei 0–64 px sichtbar. [Scrollnachweis](sticky-mobile.webp). Getriebe ist eine optionale Auswahl; ältere Freitexte bleiben als bisheriger Wert erhalten.

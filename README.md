@@ -174,9 +174,9 @@ Qualität vor Billigpreis. Kein Bietermodell. Suche, Profile und Direktkontakt o
 
 ## Reparaturanfrage lokal prüfen
 
-`/anfrage` führt in fünf Schritten durch Fahrzeug, Reparatur, Ort & Zeit, Details und Zusammenfassung.
+`/inquiry` führt in fünf Schritten durch Fahrzeug, Reparatur, Ort & Zeit, Details und Zusammenfassung.
 Alle Fahrzeugfelder sind einzeln optional; Fahrzeugklasse und Kraftstoff verwenden begrenzte Auswahllisten.
-Modell, Motorisierung und Getriebe bleiben Freitext. Die Anfrage enthält Leistung/Symptom sowie einen bis drei
+Modell und Motorisierung bleiben Freitext; Getriebe verwendet eine optionale Auswahl. Die Anfrage enthält Leistung/Symptom sowie einen bis drei
 Orte mit 5–100 km Luftlinienradius und lokale Reisedaten. Gäste behalten den Entwurf nur im
 Browser und können damit zur Suche weitergehen. Nur nach OIDC-Anmeldung kann die Anfrage über die
 private API dauerhaft gespeichert werden. Die Zusammenfassung zeigt den bestätigten Speicherstatus;
@@ -195,7 +195,7 @@ die Ergebnisliste mit Entfernung zum passenden Suchort funktionsfähig.
 
 ## Direktkontakt lokal prüfen
 
-Ein veröffentlichtes Profil unter `/werkstatt/<id>` zeigt nur freigegebene Profildaten sowie den
+Ein veröffentlichtes Profil unter `/garages/<id>` zeigt nur freigegebene Profildaten sowie den
 ehrlichen Bewertungsleerzustand. WhatsApp und Telefon sind bewusst ausgewählte externe Aktionen:
 Die Nachrichtenvorschau ist vor dem Öffnen sichtbar, enthält keine gespeicherten privaten
 Anfragewerte und wird nicht durch AutoKosova gesendet. Ohne gültige öffentliche Telefonnummer gibt
@@ -225,3 +225,7 @@ Ausschliesslich GitHub Issues und Pull Requests; kein Jira und keine doppelte Ti
 ## Lizenz
 
 Noch keine Open-Source-Lizenz festgelegt. Veröffentlichung oder Lizenzierung erfordert eine Betreiberentscheidung.
+
+## URL-Konvention
+
+Kanonische Pfade bleiben in allen UI-Sprachen Englisch: `/inquiry`, `/garages`, `/garages/new` und `/garages/:garageId`, jeweils optional mit `/sq` oder `/en`. Alte deutsche UI-Pfade leiten weiter. Werkstatt-API-Pfade verwenden ebenfalls `garages`; Collection-Antworten verwenden den Schlüssel `garages`.

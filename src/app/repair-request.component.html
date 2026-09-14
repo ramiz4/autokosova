@@ -1,5 +1,7 @@
 <div class="min-h-screen bg-[#f2f7fc] text-ink">
-  <div class="bg-white px-3 lg:px-8"><app-site-header [compact]="true" /></div>
+  <div class="sticky top-0 z-50 bg-white px-3 shadow-sm lg:px-8">
+    <app-site-header [compact]="true" />
+  </div>
   <header class="relative isolate min-h-64 overflow-hidden px-5 pt-8 pb-20 sm:px-10 lg:px-16">
     <img
       src="/images/home/hero-mountain-road-1672.webp"
@@ -66,7 +68,7 @@
           </li>
         }
       </ol>
-      <h3 #stepTitle tabindex="-1" class="mb-1 text-2xl font-bold focus:outline-none">
+      <h3 #stepTitle tabindex="-1" class="mb-1 scroll-mt-24 text-2xl font-bold focus:outline-none">
         {{
           step === 1
             ? text('vehicle')
@@ -198,12 +200,24 @@
               >
               <label class="grid gap-1 text-sm"
                 >{{ text('transmission')
-                }}<input
+                }}<select
                   formControlName="transmissionDetails"
-                  maxlength="120"
                   class="min-h-11 w-full min-w-0 rounded-lg border border-blue-200 bg-white px-3 py-2 text-ink focus:border-brand focus:outline-2 focus:outline-brand/30 [&.ng-invalid.ng-touched]:border-rose-600"
-                  autocomplete="off"
-              /></label>
+                >
+                  <option value="">{{ language.t('common.choose') }}</option>
+                  @for (transmission of transmissions; track transmission) {
+                    <option [value]="transmission">{{ text(transmission) }}</option>
+                  }
+                  @if (
+                    form.controls.vehicle.controls.transmissionDetails.value &&
+                    !isKnownTransmission(form.controls.vehicle.controls.transmissionDetails.value)
+                  ) {
+                    <option [value]="form.controls.vehicle.controls.transmissionDetails.value">
+                      {{ form.controls.vehicle.controls.transmissionDetails.value }}
+                    </option>
+                  }
+                </select></label
+              >
               <label class="grid gap-1 text-sm sm:col-span-2"
                 >{{ text('mileage')
                 }}<input

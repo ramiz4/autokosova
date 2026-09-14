@@ -100,5 +100,5 @@ export function buildMatchingPath(input: RepairRequestInput): string {
     places: input.areas.map((area) => `${area.placeId}:${area.radiusKm}`).join(','),
     service: input.serviceCategoryId,
   });
-  return `/suche?${query.toString()}`;
+  return `/garages?${query.toString()}`;
 }

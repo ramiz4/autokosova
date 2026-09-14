@@ -20,22 +20,32 @@ function localizedRoutes(prefix: string): Routes {
       path: prefix,
       pathMatch: 'full',
     },
+    // Compatibility redirects only; generated links always use English route names.
+    {
+      path: `${childPrefix}anfrage`,
+      pathMatch: 'full',
+      redirectTo: `${childPrefix}inquiry`,
+    },
+    {
+      path: `${childPrefix}werkstatt/aufnahme`,
+      pathMatch: 'full',
+      redirectTo: `${childPrefix}garages/new`,
+    },
+    {
+      path: `${childPrefix}werkstatt/:garageId`,
+      redirectTo: `${childPrefix}garages/:garageId`,
+    },
     {
       component: WorkshopOnboardingComponent,
-      path: `${childPrefix}werkstatt/aufnahme`,
+      path: `${childPrefix}garages/new`,
     },
     {
       component: RepairRequestComponent,
-      path: `${childPrefix}anfrage`,
+      path: `${childPrefix}inquiry`,
     },
     {
       component: SearchHandoffComponent,
       path: `${childPrefix}garages`,
-    },
-    {
-      path: `${childPrefix}workshops`,
-      pathMatch: 'full',
-      redirectTo: `${childPrefix}garages`,
     },
     {
       path: `${childPrefix}suche`,
@@ -49,7 +59,7 @@ function localizedRoutes(prefix: string): Routes {
     },
     {
       component: WorkshopProfileComponent,
-      path: `${childPrefix}werkstatt/:workshopId`,
+      path: `${childPrefix}garages/:garageId`,
     },
   ];
 }

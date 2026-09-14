@@ -19,6 +19,8 @@ Epic und unmittelbare Kinder lesen; nach dokumentierten Abhängigkeiten jeweils 
 
 ## Architektur und Produkt
 
+URL-Routennamen sind immer Englisch, unabhängig von der Sprache der Oberfläche. Sprachpräfixe wie `/sq` und `/en` bleiben erlaubt; Pfadsegmente werden nicht übersetzt. Neue Links, Login-Rücksprünge und Sitemaps verwenden nur die englischen kanonischen Pfade. Für Werkstatt-URLs ausschließlich `garage`/`garages` verwenden, auch bei API-Pfaden und Routing-Parametern; `workshop`/`workshops` nicht als URL-Bezeichnung verwenden. Alte nichtenglische Pfade dürfen ausschließlich als Kompatibilitätsweiterleitung bestehen bleiben.
+
 Erst genehmigte ADR umsetzen, nicht mehrere Stacks parallel. Kleine wartbare Module, wenige Betriebsbausteine. Gäste dürfen suchen und selbst Kontakt auswählen. Kein Bietermodell und keine automatische Verteilung von Anfragen.
 
 Reparaturqualität, Unternehmensprüfung und belegter Werkstattbesuch sind unterschiedliche Aussagen. Bezahlstatus steuert weder organische Reihenfolge noch Moderation. Mockup-Daten sind fiktiv und dürfen nicht zu produktiven Testimonials werden. Kontaktklick ist keine gesendete Nachricht, Buchung oder Reparatur.

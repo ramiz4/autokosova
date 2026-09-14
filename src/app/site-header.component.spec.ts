@@ -16,7 +16,7 @@ describe('Header account actions', () => {
       const page = fixture.nativeElement as HTMLElement;
       const links = Array.from(page.querySelectorAll<HTMLAnchorElement>('a[href^="/auth/login"]'));
       expect(links).toHaveLength(4);
-      const returnTo = locale ? '/' + locale + '/anfrage' : '/anfrage';
+      const returnTo = locale ? '/' + locale + '/inquiry' : '/inquiry';
       for (const [index, link] of links.entries()) {
         const url = new URL(link.href);
         expect(url.pathname).toBe('/auth/login');

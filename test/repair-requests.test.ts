@@ -73,7 +73,7 @@ test('repair requests stay private and hand only service and areas to matching',
     assert.equal(created.statusCode, 201);
     assert.equal(
       created.json().matchingPath,
-      '/suche?places=xk-pristina%3A5%2Cxk-prizren%3A100&service=bremsen',
+      '/garages?places=xk-pristina%3A5%2Cxk-prizren%3A100&service=bremsen',
     );
     assert.equal(created.json().matchingPath.includes('2026-10-02'), false);
     assert.equal(created.json().matchingPath.includes('Fiktives'), false);

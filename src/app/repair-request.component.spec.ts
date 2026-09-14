@@ -20,7 +20,7 @@ async function setup(stored?: Record<string, unknown>, locale = '') {
       { provide: RepairRequestDraft, useValue: draft },
     ],
   }).compileComponents();
-  await TestBed.inject(Router).navigateByUrl(`/${locale ? locale + '/' : ''}anfrage`);
+  await TestBed.inject(Router).navigateByUrl(`/${locale ? locale + '/' : ''}inquiry`);
   const fixture = TestBed.createComponent(RepairRequestComponent);
   await fixture.whenStable();
   return {
@@ -86,6 +86,26 @@ describe('Five-step private repair request', () => {
     component['next']();
     expect(component['step']).toBe(2);
     expect(component['form'].getRawValue().areas).toEqual(areas);
+  });
+
+  it('offers transmission choices and preserves both selected and older draft values', async () => {
+    const { component, page, fixture } = await setup({
+      vehicle: { transmissionDetails: 'Legacy manual gearbox' },
+    });
+    const select = page.querySelector<HTMLSelectElement>(
+      'select[formControlName="transmissionDetails"]',
+    )!;
+    expect(select.value).toBe('Legacy manual gearbox');
+    select.value = 'automatic';
+    select.dispatchEvent(new Event('change'));
+    component['next']();
+    component['previous']();
+    await fixture.whenStable();
+    expect(component['form'].getRawValue().vehicle.transmissionDetails).toBe('automatic');
+    expect(component['vehicleSummary']()).toContain('Automatik');
+    expect(
+      page.querySelector<HTMLSelectElement>('select[formControlName="transmissionDetails"]')?.value,
+    ).toBe('automatic');
   });
 
   it('rejects duplicate places, fractional radii, invalid calendar dates and invalid files', async () => {
@@ -190,7 +210,7 @@ describe('Five-step private repair request', () => {
       await fixture.whenStable();
       expect(component['step']).toBe(5);
       expect(page.textContent).not.toContain('Entwurf privat speichern');
-      expect(component['loginUrl']()).toContain(encodeURIComponent(`/${locale}/anfrage`));
+      expect(component['loginUrl']()).toContain(encodeURIComponent(`/${locale}/inquiry`));
     },
   );
 });

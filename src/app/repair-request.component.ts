@@ -78,6 +78,10 @@ export class RepairRequestComponent {
     ['shield', 'footer3'],
   ] as const;
   protected readonly vehicleClasses = REPAIR_REQUEST_VEHICLE_CLASSES;
+  protected readonly transmissions = ['manual', 'automatic', 'semiAutomatic', 'other'] as const;
+  protected isKnownTransmission(value: string): boolean {
+    return (this.transmissions as readonly string[]).includes(value);
+  }
   protected readonly fuels = REPAIR_REQUEST_FUELS;
   protected saving = false;
   protected saved = false;
@@ -228,7 +232,9 @@ export class RepairRequestComponent {
         vehicle.year,
         vehicle.engineDetails,
         vehicle.fuel ? this.text(vehicle.fuel as RequestCopyKey) : '',
-        vehicle.transmissionDetails,
+        this.isKnownTransmission(vehicle.transmissionDetails)
+          ? this.text(vehicle.transmissionDetails as RequestCopyKey)
+          : vehicle.transmissionDetails,
         vehicle.mileageKm ? `${vehicle.mileageKm} km` : '',
       ]
         .filter(Boolean)
