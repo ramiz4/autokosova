@@ -80,8 +80,9 @@ it('uses the same compact brand mark in every navigation context', async () => {
   fixture.detectChanges();
   const page = fixture.nativeElement as HTMLElement;
   const logo = page.querySelector<HTMLImageElement>('img[alt="AutoKosova"]')!;
-  expect(logo.className).toContain('w-32');
-  expect(logo.className).toContain('sm:w-36');
+  expect(logo.className).toContain('h-7');
+  expect(logo.className).toContain('sm:h-8');
+  expect(logo.className).toContain('w-auto');
 });
 
 it('dismisses the floating menu with an outside pointer action', async () => {

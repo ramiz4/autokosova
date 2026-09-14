@@ -96,7 +96,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
     }
     @if (response) {
       <section
-        class="mx-auto w-[calc(100%_-_1.5rem)] max-w-[1352px] px-4 py-6 sm:px-6 lg:w-[calc(100%_-_4rem)]"
+        class="mx-auto w-[calc(100%_-_1.5rem)] max-w-[1360px] px-4 py-6 sm:px-6 lg:w-[calc(100%_-_4rem)]"
       >
         <div class="grid gap-5 xl:grid-cols-[minmax(280px,320px)_minmax(0,1fr)]">
           <aside

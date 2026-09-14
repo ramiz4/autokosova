@@ -4,20 +4,11 @@
   >{{ language.t('landing.skip') }}</a
 >
 <main id="hauptinhalt" tabindex="-1" class="bg-white font-sans text-ink">
-  <div
-    class="landing-navbar fixed inset-x-0 top-0 z-50 px-4 sm:px-8 lg:px-12"
-    [class.is-docked]="navbarDocked()"
-    [class.site-navbar-surface]="navbarDocked()"
-    [style.--landing-scroll-y]="scrollOffset() + 'px'"
-  >
-    <app-site-header
-      class="relative isolate mx-auto block max-w-[1352px] rounded-2xl xl:rounded-[18px] 2xl:max-w-[1920px]"
-      [class.site-navbar-surface]="!navbarDocked()"
-      [compact]="navbarDocked()"
-    />
+  <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
+    <app-site-header [compact]="true" />
   </div>
   <section
-    class="relative isolate min-h-dvh bg-[#082544] px-4 pb-12 pt-[136px] sm:px-8 sm:pb-16 sm:pt-[160px] lg:px-12 lg:pb-20 lg:pt-[188px] 2xl:flex 2xl:flex-col"
+    class="relative isolate min-h-dvh bg-[#082544] px-4 py-12 sm:px-8 sm:py-16 lg:px-12 lg:py-20 2xl:flex 2xl:flex-col"
     aria-labelledby="landing-title"
   >
     <picture class="pointer-events-none absolute inset-0 -z-20">
@@ -34,7 +25,7 @@
     <div
       class="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(1,24,47,0.87)_0%,rgba(1,24,47,0.64)_39%,rgba(1,24,47,0.16)_75%),linear-gradient(0deg,rgba(1,21,41,0.65),transparent_60%)]"
     ></div>
-    <div class="relative mx-auto w-full max-w-[1276px] 2xl:my-auto 2xl:max-w-[1920px] 2xl:px-6">
+    <div class="relative mx-auto w-full max-w-[1360px] 2xl:my-auto">
       <div class="max-w-[790px] 2xl:max-w-[62%]">
         <h1
           id="landing-title"
@@ -95,7 +86,7 @@
     class="relative z-10 -mt-1 rounded-t-[36px] bg-white px-6 py-8 lg:-mt-5 lg:rounded-t-[48px] lg:px-12 lg:py-9"
     [attr.aria-label]="language.t('landing.benefits')"
   >
-    <div class="mx-auto grid max-w-[1292px] 2xl:max-w-[1920px] gap-7 lg:grid-cols-3 lg:gap-8">
+    <div class="mx-auto grid max-w-[1360px] gap-7 lg:grid-cols-3 lg:gap-8">
       <app-benefit-card
         icon="clock"
         [title]="language.t('landing.timeTitle')"
@@ -117,9 +108,7 @@
   </section>
 
   <section class="bg-[#f3f7fd] px-6 py-16 sm:px-10 lg:py-24" aria-labelledby="search-heading">
-    <div
-      class="mx-auto grid max-w-6xl 2xl:max-w-[1920px] items-center gap-10 lg:grid-cols-2 lg:gap-20"
-    >
+    <div class="mx-auto grid max-w-[1360px] items-center gap-10 lg:grid-cols-2 lg:gap-20">
       <div>
         <p class="text-xs font-bold tracking-[0.18em] text-brand-dark">
           {{ language.t('landing.searchEyebrow') }}
@@ -182,7 +171,7 @@
 
   <section
     id="so-funktionierts"
-    class="mx-auto max-w-6xl 2xl:max-w-[1920px] px-6 py-16 lg:py-24"
+    class="mx-auto max-w-[1360px] px-6 py-16 lg:py-24"
     aria-labelledby="how-heading"
   >
     <h2 id="how-heading" class="text-3xl font-bold tracking-tight sm:text-4xl">
@@ -204,7 +193,7 @@
     </div>
   </section>
   <section id="ueber-uns" class="bg-[#f3f7fd] px-6 py-16" aria-labelledby="about-heading">
-    <div class="mx-auto grid max-w-6xl 2xl:max-w-[1920px] gap-8 lg:grid-cols-2 lg:gap-20">
+    <div class="mx-auto grid max-w-[1360px] gap-8 lg:grid-cols-2 lg:gap-20">
       <div>
         <h2 id="about-heading" class="text-3xl font-bold tracking-tight">
           {{ language.t('landing.aboutTitle') }}
@@ -218,7 +207,7 @@
     </div>
   </section>
   <footer
-    class="mx-auto flex max-w-6xl 2xl:max-w-[1920px] flex-wrap items-start justify-between gap-8 px-6 py-10"
+    class="mx-auto flex max-w-[1360px] flex-wrap items-start justify-between gap-8 px-6 py-10"
   >
     <div>
       <a [routerLink]="language.link('home')" [attr.aria-label]="language.t('common.backHome')"
