@@ -2,6 +2,7 @@ import type { AppLanguage } from './i18n';
 
 export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, string>>>> = {
   de: {
+    'search.ui.finishArea': 'Übernimm den Ort oder brich die Bearbeitung ab, bevor du fortfährst.',
     'search.ui.outOfFive': 'von 5',
     'search.ui.reviewCountOne': '{count} Bewertung',
     'search.ui.reviewCount': '{count} Bewertungen',
@@ -59,6 +60,7 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'search.ui.viewMap': 'Karte',
   },
   sq: {
+    'search.ui.finishArea': 'Zbato vendin ose anulo ndryshimet para se të vazhdosh.',
     'search.ui.outOfFive': 'nga 5',
     'search.ui.reviewCountOne': '{count} vlerësim',
     'search.ui.reviewCount': '{count} vlerësime',
@@ -115,6 +117,7 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'search.ui.viewMap': 'Hartë',
   },
   en: {
+    'search.ui.finishArea': 'Apply the location or cancel editing before continuing.',
     'search.ui.outOfFive': 'out of 5',
     'search.ui.reviewCountOne': '{count} review',
     'search.ui.reviewCount': '{count} reviews',

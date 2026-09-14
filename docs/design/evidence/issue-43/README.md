@@ -28,9 +28,9 @@ Fahrzeugschritt in DE/SQ/EN bei 1448, 1280, 360, 390 und 430 px geprüft. Zusät
 
 - `npm ci`, `npm run dev:demo`: eigene lokale PostgreSQL-DB, Migration 017 und öffentliche Demo-Daten erfolgreich.
 - `npm run format:check`, `npm run lint`, `npm run typecheck`: erfolgreich.
-- `npm test -- --watch=false`: 49 Tests erfolgreich, einschließlich 12 Anfrage-Tests und 6 Routentests.
-- `npm run test:server` mit der eigenen lokalen `DATABASE_URL`: 60 bestanden, 2 profilspezifische Demo-Seed-Tests übersprungen (keine entsprechenden Testprofil-Flags). Persistenz mit neuen Feldern, Teilfahrzeug und Fremdzugriff tatsächlich gegen PostgreSQL geprüft.
-- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 556 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
+- `npm test -- --watch=false`: 55 Tests erfolgreich, einschließlich 17 Anfrage-Tests und 6 Routentests.
+- `npm run test:server` mit der eigenen lokalen `DATABASE_URL`: 61 bestanden, 2 profilspezifische Demo-Seed-Tests übersprungen (keine entsprechenden Testprofil-Flags). Persistenz mit neuen Feldern, Teilfahrzeug und Fremdzugriff tatsächlich gegen PostgreSQL geprüft.
+- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 560 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
 - Screenreader-Semantik (`aria-current`, Status-/Fehlermeldungen), Fokuswechsel und Eingabevalidierung automatisiert geprüft. Kein manueller Durchlauf mit einem Screenreader und keine native mobile Browserprüfung.
 - Echter Customer-OIDC-Login auf Port 4200 erfolgreich: Favorit per Herz gespeichert, API-Eintrag bestätigt, nach Neuladen erhalten, wieder entfernt und abgemeldet. PostgreSQL- und API-Tests prüfen zusätzlich Besitzer-Isolation, Export und Löschung.
 
@@ -136,3 +136,13 @@ Der Suchfilter-Kopf hat oben und unten 12 statt 20 px Kartenabstand; der Desktop
 Eine gemeinsame Vorlage liefert dieselben fünf Links für Desktop, mobiles Menü und öffentliche Links im kleinen Konto-Menü: Neue Anfrage, Werkstätten finden, So funktioniert’s, Für Werkstätten und Über uns. Desktop-Navigation beginnt bei 1280 px; mobiles Menü und Toggle verwenden denselben Umschaltpunkt. Werkstätten finden führt überall zum sprachabhängigen `/garages`-Pfad.
 
 72 Browserkombinationen aus Startseite/Suche, DE/SQ/EN, Gast/simulierter Kontositzung und 360/390/1024/1279/1280/1448 px geprüft: identische Ziele, kein gleichzeitiges Desktop-/Mobilmenü, keine Überlappung oder horizontalen Überläufe. [Desktop Gast](nav-guest-1280.webp), [Mobiles Menü Gast](nav-guest-1024.webp), [Desktop Konto-Fixture](nav-account-fixture-1280.webp), [Mobiles Menü Konto-Fixture](nav-account-fixture-1024.webp).
+
+## Gemeinsame Ortsauswahl in Anfrage und Suche
+
+`SearchAreasComponent` ist ein gemeinsamer Angular-Formularbaustein (ControlValueAccessor) für die templatebasierte Suche und das reaktive Anfrageformular. Chips, Bestätigen/Abbrechen, Eindeutigkeit, bis zu drei Orte und die einzelnen Radien sind einmal implementiert. Steuerelement-IDs sind je Einbindung eindeutig. Änderungen werden erst nach Übernehmen an das Elternformular und damit den Browserentwurf übergeben.
+
+Die Ortsauswahl ist auf beiden Seiten optional. Ohne Auswahl steht „Ganz Kosovo“, auch in der Zusammenfassung. Bestehende leere Ortsplatzhalter werden beim Wiederherstellen zu einer leeren Liste. API und PostgreSQL speichern `areas: []`; keine Schemaänderung nötig, da die bestehende Relation bereits null zugehörige Ortszeilen erlaubt. Die Suche erhält dann ausschließlich `all=true&service=…`. Gewählte Orte verwenden weiterhin `places=…&service=…`. Frontend und Server teilen dieselbe Erzeugung der Suchparameter. Abgabe-/Abholdaten bleiben privat und werden separat von optionalen Ortsangaben validiert.
+
+[Editor Desktop](inquiry-area-editor-desktop.webp), [Chips Mobil](inquiry-area-chips-mobile.webp), [Leerzustand](inquiry-area-empty-mobile.webp), [Ganz Kosovo in der Zusammenfassung](inquiry-all-kosovo-mobile.webp), [Editor DE](inquiry-shared-editor-de-mobile.webp), [Editor SQ](inquiry-shared-editor-sq-mobile.webp), [Editor EN](inquiry-shared-editor-en-mobile.webp).
+
+Live in DE/SQ/EN geprüft: Bearbeiten ohne Veränderung des gespeicherten Entwurfs, Übernehmen, Abbrechen, Vor/Zurück, Wiederherstellung nach Neuladen, eigener Radius pro Ort, optionaler Leerzustand und Suchübergang für Orte bzw. ganz Kosovo. Formular-, API- und PostgreSQL-Tests prüfen den leeren Fall einschließlich Besitzergrenzen. Der gemeinsame Baustein ist zusätzlich auf externe Formularwerte, Disabled-Zustand und schnelle aufeinanderfolgende Löschaktionen geprüft.

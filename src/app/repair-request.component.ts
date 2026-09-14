@@ -1,4 +1,4 @@
-import { RadiusSliderComponent } from './ui/radius-slider.component';
+import { SearchAreasComponent, type SearchArea } from './ui/search-areas.component';
 import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectorRef,
@@ -8,12 +8,14 @@ import {
   PLATFORM_ID,
   inject,
   viewChild,
+  signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormArray, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
   hasConsistentTravelDates,
+  buildRepairRequestSearchParams,
   REPAIR_REQUEST_LIMITS,
   REPAIR_REQUEST_FUELS,
   REPAIR_REQUEST_VEHICLE_CLASSES,
@@ -63,7 +65,7 @@ const places = [
 
 @Component({
   imports: [
-    RadiusSliderComponent,
+    SearchAreasComponent,
     ReactiveFormsModule,
     SiteHeaderComponent,
     ButtonDirective,
@@ -108,7 +110,6 @@ export class RepairRequestComponent {
     return requestCopy[this.language.language][key];
   }
   protected readonly limits = REPAIR_REQUEST_LIMITS;
-  protected readonly places = places;
   protected readonly serviceCategories = serviceCategories;
   protected readonly vehicleMakes = vehicleMakes;
   protected step = 1;
@@ -124,7 +125,7 @@ export class RepairRequestComponent {
   private readonly draft = inject(RepairRequestDraft);
 
   protected readonly form = this.formBuilder.group({
-    areas: this.formBuilder.array([this.createArea()]),
+    areas: this.formBuilder.control<SearchArea[]>([]),
     earliestDropoffOn: ['', Validators.required],
     latestPickupOn: ['', Validators.required],
     serviceCategoryId: ['', Validators.required],
@@ -156,12 +157,22 @@ export class RepairRequestComponent {
     if (!this.browser) return;
     const stored = this.draft.read();
     if (stored) {
-      const areas = stored['areas'];
-      if (Array.isArray(areas)) {
-        for (let index = 1; index < Math.min(areas.length, this.limits.maxAreas); index++)
-          this.addArea();
-      }
-      const restored = { ...stored };
+      const storedAreas = stored['areas'];
+      const restored: Record<string, unknown> & { areas: SearchArea[] } = {
+        ...stored,
+        areas: Array.isArray(storedAreas)
+          ? storedAreas
+              .filter(
+                (area) =>
+                  area &&
+                  typeof area.placeId === 'string' &&
+                  area.placeId !== '' &&
+                  typeof area.radiusKm === 'number',
+              )
+              .slice(0, this.limits.maxAreas)
+              .map((area) => ({ placeId: area.placeId, radiusKm: area.radiusKm }))
+          : [],
+      };
       // Older drafts offered a checkbox to exclude previously entered vehicle details.
       if (restored['useVehicle'] === false) delete restored['vehicle'];
       this.form.patchValue(restored);
@@ -175,17 +186,11 @@ export class RepairRequestComponent {
     });
   }
 
-  protected get areas(): FormArray {
+  protected get areas() {
     return this.form.controls.areas;
   }
-
-  protected addArea(): void {
-    if (this.areas.length < REPAIR_REQUEST_LIMITS.maxAreas) this.areas.push(this.createArea());
-  }
-
-  protected removeArea(index: number): void {
-    if (this.areas.length > 1) this.areas.removeAt(index);
-  }
+  protected readonly areasEditing = signal(false);
+  private readonly areasEditor = viewChild(SearchAreasComponent);
 
   protected next(): void {
     this.formError = '';
@@ -197,6 +202,8 @@ export class RepairRequestComponent {
   }
 
   protected previous(): void {
+    this.areasEditor()?.cancelArea(false);
+    this.areasEditing.set(false);
     if (this.step > 1) this.step -= 1;
     this.formError = '';
     this.focusStep();
@@ -314,19 +321,6 @@ export class RepairRequestComponent {
     }
   }
 
-  private createArea() {
-    return this.formBuilder.group({
-      placeId: ['', Validators.required],
-      radiusKm: [
-        20,
-        [
-          Validators.min(REPAIR_REQUEST_LIMITS.minRadiusKm),
-          Validators.max(REPAIR_REQUEST_LIMITS.maxRadiusKm),
-        ],
-      ],
-    });
-  }
-
   private csrfToken(): string {
     return (
       document.cookie
@@ -337,11 +331,7 @@ export class RepairRequestComponent {
   }
 
   private matchingPath(input: RepairRequestInput): string {
-    const query = new URLSearchParams({
-      places: input.areas.map((area) => `${area.placeId}:${area.radiusKm}`).join(','),
-      service: input.serviceCategoryId,
-    });
-    return `${this.language.link('search')}?${query.toString()}`;
+    return `${this.language.link('search')}?${buildRepairRequestSearchParams(input)}`;
   }
 
   private serviceStepIsValid(): boolean {
@@ -386,19 +376,34 @@ export class RepairRequestComponent {
   }
 
   private travelStepIsValid(): boolean {
+    if (this.areasEditing()) {
+      this.formError = this.language.t('search.ui.finishArea');
+      this.areasEditor()?.focusEditor();
+      return false;
+    }
     const controls = this.form.controls;
     controls.earliestDropoffOn.markAsTouched();
     controls.latestPickupOn.markAsTouched();
     this.areas.markAllAsTouched();
     const input = this.toInput();
     if (
-      controls.earliestDropoffOn.invalid ||
-      controls.latestPickupOn.invalid ||
       this.areas.invalid ||
+      input.areas.length > this.limits.maxAreas ||
       new Set(input.areas.map((area) => area.placeId)).size !== input.areas.length ||
       input.areas.some(
-        (area) => !REPAIR_REQUEST_PLACES.includes(area.placeId) || !Number.isInteger(area.radiusKm),
-      ) ||
+        (area) =>
+          !REPAIR_REQUEST_PLACES.includes(area.placeId) ||
+          !Number.isInteger(area.radiusKm) ||
+          area.radiusKm < this.limits.minRadiusKm ||
+          area.radiusKm > this.limits.maxRadiusKm,
+      )
+    ) {
+      this.formError = this.text('areasError');
+      return false;
+    }
+    if (
+      controls.earliestDropoffOn.invalid ||
+      controls.latestPickupOn.invalid ||
       !hasConsistentTravelDates(input)
     ) {
       this.formError = this.text('travelError');

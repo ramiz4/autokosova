@@ -1,5 +1,6 @@
 import {
   hasConsistentTravelDates,
+  buildRepairRequestSearchParams,
   REPAIR_REQUEST_LIMITS,
   REPAIR_REQUEST_PLACES,
   REPAIR_REQUEST_SERVICE_CATEGORIES,
@@ -18,8 +19,8 @@ export function validateRepairRequest(input: RepairRequestInput): string | undef
     return 'Please choose a known service category';
   }
 
-  if (input.areas.length < 1 || input.areas.length > REPAIR_REQUEST_LIMITS.maxAreas) {
-    return 'Choose between one and three search areas';
+  if (input.areas.length > REPAIR_REQUEST_LIMITS.maxAreas) {
+    return 'Choose at most three search areas';
   }
 
   if (new Set(input.areas.map((area) => area.placeId)).size !== input.areas.length) {
@@ -96,9 +97,5 @@ export function validateRepairRequest(input: RepairRequestInput): string | undef
 }
 
 export function buildMatchingPath(input: RepairRequestInput): string {
-  const query = new URLSearchParams({
-    places: input.areas.map((area) => `${area.placeId}:${area.radiusKm}`).join(','),
-    service: input.serviceCategoryId,
-  });
-  return `/garages?${query.toString()}`;
+  return `/garages?${buildRepairRequestSearchParams(input)}`;
 }

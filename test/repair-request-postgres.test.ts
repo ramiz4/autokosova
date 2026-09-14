@@ -86,6 +86,20 @@ test(
           }
         },
       );
+      const allKosovo = await store.createRepairRequest('postgres-customer-a', {
+        areas: [],
+        earliestDropoffOn: '2026-10-02',
+        latestPickupOn: '2026-10-06',
+        serviceCategoryId: 'bremsen',
+      });
+      assert.deepEqual(
+        (await store.getRepairRequest('postgres-customer-a', allKosovo.id)).areas,
+        [],
+      );
+      await assert.rejects(
+        store.getRepairRequest('postgres-customer-b', allKosovo.id),
+        (error: unknown) => error instanceof AccessError && error.statusCode === 404,
+      );
       const restored = await store.getRepairRequest('postgres-customer-a', created.id);
 
       assert.deepEqual(restored.areas, [

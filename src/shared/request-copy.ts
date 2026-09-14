@@ -38,7 +38,7 @@ export const requestCopy = {
     symptom: 'Symptome oder Hinweis (optional)',
     placeTime: 'Ort & Zeit',
     travelHelp:
-      'Ein bis drei verschiedene Orte, jeweils 5–100 km Luftlinie. Reisedaten bleiben privat.',
+      'Ganz Kosovo oder bis zu drei Orte mit jeweils 5–100 km Radius. Reisedaten bleiben privat.',
     place: 'Ort',
     radius: 'Radius in km',
     remove: 'Entfernen',
@@ -65,8 +65,10 @@ export const requestCopy = {
     vehicleError:
       'Bitte prüfe deine Fahrzeugangaben: Baujahr 1886–2100, Kilometerstand 0–2.000.000, Texte höchstens 120 Zeichen. Alle Angaben sind optional.',
     serviceError: 'Bitte wähle eine Leistung. Symptome sind optional, höchstens 2.000 Zeichen.',
+    areasError:
+      'Bitte wähle höchstens drei verschiedene Orte. Der Radius muss jeweils eine ganze Zahl zwischen 5 und 100 km sein.',
     travelError:
-      'Bitte prüfe verschiedene Orte, ganze Radien von 5–100 km und die Datumsfolge: Abgabe ≤ Abholung.',
+      'Bitte gib gültige Daten für Abgabe und Abholung an. Die Abholung darf nicht vor der Abgabe liegen.',
     fileError: 'Höchstens 5 PDF-, JPG- oder PNG-Dateien, jeweils 1 Byte bis 10 MB.',
     why: 'Warum AutoKosova?',
     benefit1: 'Schnell zur passenden Werkstatt',
@@ -122,7 +124,7 @@ export const requestCopy = {
     symptom: 'Simptoma ose shënime (opsionale)',
     placeTime: 'Vendi & koha',
     travelHelp:
-      'Një deri në tre vende të ndryshme, secili me rreze ajrore 5–100 km. Datat e udhëtimit mbeten private.',
+      'Gjithë Kosova ose deri në tri vende, secili me rreze 5–100 km. Datat e udhëtimit mbeten private.',
     place: 'Vendi',
     radius: 'Rrezja në km',
     remove: 'Hiq',
@@ -147,8 +149,10 @@ export const requestCopy = {
     vehicleError:
       'Kontrollo të dhënat: viti 1886–2100, kilometrat 0–2.000.000, tekstet deri në 120 karaktere. Të gjitha janë opsionale.',
     serviceError: 'Zgjidh një shërbim. Simptomat janë opsionale, deri në 2.000 karaktere.',
+    areasError:
+      'Zgjidh deri në tri vende të ndryshme. Çdo rreze duhet të jetë numër i plotë nga 5 deri në 100 km.',
     travelError:
-      'Kontrollo vendet e ndryshme, rrezet e plota 5–100 km dhe datat: dorëzimi ≤ marrja.',
+      'Vendos data të vlefshme për dorëzim dhe marrje. Marrja nuk mund të jetë para dorëzimit.',
     fileError: 'Deri në 5 skedarë PDF, JPG ose PNG, secili nga 1 bajt deri në 10 MB.',
     why: 'Pse AutoKosova?',
     benefit1: 'Shpejt te servisi i duhur',
@@ -204,7 +208,7 @@ export const requestCopy = {
     symptom: 'Symptoms or notes (optional)',
     placeTime: 'Place & time',
     travelHelp:
-      'One to three different places, each with a 5–100 km straight-line radius. Travel dates stay private.',
+      'All of Kosovo or up to three locations with a radius of 5–100 km each. Travel dates stay private.',
     place: 'Place',
     radius: 'Radius in km',
     remove: 'Remove',
@@ -229,7 +233,9 @@ export const requestCopy = {
     vehicleError:
       'Check vehicle details: year 1886–2100, mileage 0–2,000,000, text up to 120 characters. All fields are optional.',
     serviceError: 'Choose a service. Symptoms are optional, up to 2,000 characters.',
-    travelError: 'Check distinct places, whole radii of 5–100 km and dates: drop-off ≤ pickup.',
+    areasError:
+      'Choose up to three different locations. Each radius must be a whole number from 5 to 100 km.',
+    travelError: 'Enter valid drop-off and pickup dates. Pickup cannot be before drop-off.',
     fileError: 'Up to 5 PDF, JPG or PNG files, each from 1 byte to 10 MB.',
     why: 'Why AutoKosova?',
     benefit1: 'Find a suitable workshop quickly',

@@ -83,6 +83,18 @@ export interface RepairRequestInput {
   readonly vehicle?: RepairRequestVehicle;
 }
 
+/** An empty list explicitly means all of Kosovo, while keeping private request data out of the URL. */
+export function buildRepairRequestSearchParams(
+  input: Pick<RepairRequestInput, 'areas' | 'serviceCategoryId'>,
+): URLSearchParams {
+  const query = new URLSearchParams();
+  if (input.areas.length)
+    query.set('places', input.areas.map((area) => `${area.placeId}:${area.radiusKm}`).join(','));
+  else query.set('all', 'true');
+  query.set('service', input.serviceCategoryId);
+  return query;
+}
+
 const localDatePattern = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 
 export function isLocalCalendarDate(value: string): boolean {

@@ -48,3 +48,5 @@ breitere Basis gestellt. Der Query-Parameter `sort` akzeptiert nur `recommended`
 ## Fehler- und Leerzustände
 
 Ungültige oder unvollständige Filter erhalten einen Fehler statt einer stillen Ausweitung. Bei null Treffern schlägt die Oberfläche vor, Leistung, Ort oder den bewusst gewählten Radius anzupassen. Ein Kartenfehler unterbricht weder Ergebnisliste noch Pagination und wird als Kartenfehler angezeigt, nicht als fehlende Werkstätten.
+
+Anfrage und Suche verwenden denselben Ort-/Radius-Formularbaustein. Eine leere Ortsliste (`areas: []`) bedeutet ausdrücklich ganz Kosovo und wird privat ohne Ortszeilen gespeichert. Der gemeinsame Suchübergang erzeugt dann `all=true` plus die gewählte Leistung; Orts- und Datumsfehler sind getrennt. Vorhandene nichtleere Listen behalten ihre individuellen Radien.

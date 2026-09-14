@@ -1,3 +1,5 @@
+import { By } from '@angular/platform-browser';
+import { SearchAreasComponent } from './ui/search-areas.component';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RepairRequestComponent } from './repair-request.component';
@@ -76,7 +78,7 @@ describe('Five-step private repair request', () => {
       areas,
       vehicle: { vehicleClass: 'suv', fuel: 'diesel' },
     });
-    expect(component['areas'].length).toBe(3);
+    expect(component['areas'].value.length).toBe(3);
     component['next']();
     expect(component['step']).toBe(2);
     component['previous']();
@@ -113,15 +115,13 @@ describe('Five-step private repair request', () => {
     const { component } = await setup(travel);
     component['next']();
     component['next']();
-    component['addArea']();
-    component['areas'].at(1).patchValue({ placeId: 'xk-pristina', radiusKm: 20 });
+    component['areas'].setValue([...travel.areas, ...travel.areas]);
     component['next']();
     expect(component['step']).toBe(3);
-    component['removeArea'](1);
-    component['areas'].at(0).patchValue({ radiusKm: 5.5 });
+    component['areas'].setValue([{ placeId: 'xk-pristina', radiusKm: 5.5 }]);
     component['next']();
     expect(component['step']).toBe(3);
-    component['areas'].at(0).patchValue({ radiusKm: 20 });
+    component['areas'].setValue(travel.areas);
     component['form'].controls.latestPickupOn.setValue('2026-02-30');
     component['next']();
     expect(component['step']).toBe(3);
@@ -214,4 +214,100 @@ describe('Five-step private repair request', () => {
       expect(component['loginUrl']()).toContain(encodeURIComponent(`/${locale}/inquiry`));
     },
   );
+});
+
+it('binds the shared location editor to the private draft only after confirmation and permits all of Kosovo without a location', async () => {
+  const { component, fixture, page, draft } = await setup(travel);
+  component['next']();
+  component['next']();
+  await fixture.whenStable();
+  let editor = fixture.debugElement.query(By.directive(SearchAreasComponent))
+    .componentInstance as SearchAreasComponent;
+  draft.write.mockClear();
+  editor['editArea'](0);
+  await fixture.whenStable();
+  const select = page.querySelector<HTMLSelectElement>('#inquiry-area-place')!;
+  select.value = 'xk-prizren';
+  select.dispatchEvent(new Event('change'));
+  await fixture.whenStable();
+  expect(component['form'].getRawValue().areas).toEqual(travel.areas);
+  expect(draft.write).not.toHaveBeenCalled();
+  component['next']();
+  expect(component['step']).toBe(3);
+  editor.cancelArea();
+  expect(component['areasEditing']()).toBe(false);
+  editor['editArea'](0);
+  editor['areaEditor']()!.area = { placeId: 'xk-prizren', radiusKm: 35 };
+  editor['saveArea']();
+  await fixture.whenStable();
+  expect(component['form'].getRawValue().areas).toEqual([{ placeId: 'xk-prizren', radiusKm: 35 }]);
+  expect(draft.write).toHaveBeenLastCalledWith(
+    expect.objectContaining({ areas: [{ placeId: 'xk-prizren', radiusKm: 35 }] }),
+  );
+  component['next']();
+  component['previous']();
+  await fixture.whenStable();
+  editor = fixture.debugElement.query(By.directive(SearchAreasComponent))
+    .componentInstance as SearchAreasComponent;
+  expect(editor['areas']).toEqual([{ placeId: 'xk-prizren', radiusKm: 35 }]);
+  editor['removeArea'](0);
+  await fixture.whenStable();
+  expect(page.textContent).toContain('Ganz Kosovo');
+  component['next']();
+  expect(component['step']).toBe(4);
+  expect(component['formError']).toBe('');
+  component['previous']();
+  await fixture.whenStable();
+  editor = fixture.debugElement.query(By.directive(SearchAreasComponent))
+    .componentInstance as SearchAreasComponent;
+  editor['addArea']();
+  editor['areaEditor']()!.area.placeId = 'xk-peja';
+  component['previous']();
+  expect(component['step']).toBe(2);
+  expect(component['areasEditing']()).toBe(false);
+  expect(component['form'].getRawValue().areas).toEqual([]);
+});
+
+it.each([
+  ['', 'Ganz Kosovo'],
+  ['sq', 'Gjithë Kosova'],
+  ['en', 'All of Kosovo'],
+])(
+  'allows a legacy empty location draft and hands all of Kosovo to search in %s',
+  async (locale, label) => {
+    const { component, fixture, page } = await setup(
+      { ...travel, areas: [{ placeId: '', radiusKm: 20 }] },
+      locale,
+    );
+    expect(component['areas'].value).toEqual([]);
+    for (let i = 0; i < 4; i++) component['next']();
+    await fixture.whenStable();
+    expect(component['step']).toBe(5);
+    expect(page.textContent).toContain(label);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    component['search']();
+    const url = new URL(navigate.mock.calls[0][0] as string, 'http://localhost');
+    expect(url.pathname).toBe(`${locale ? '/' + locale : ''}/garages`);
+    expect([...url.searchParams.keys()]).toEqual(['all', 'service']);
+    expect(url.searchParams.get('all')).toBe('true');
+    expect(url.searchParams.get('service')).toBe('bremsen');
+  },
+);
+
+it('explains date errors separately from optional location errors', async () => {
+  const { component } = await setup({ ...travel, areas: [], latestPickupOn: '2026-10-01' });
+  component['next']();
+  component['next']();
+  component['next']();
+  expect(component['step']).toBe(3);
+  expect(component['formError']).toContain('Abholung darf nicht vor der Abgabe');
+  expect(component['formError']).not.toContain('Orte');
+  component['form'].controls.latestPickupOn.setValue(travel.latestPickupOn);
+  component['areas'].setValue([{ placeId: 'xk-pristina', radiusKm: 4 }]);
+  component['next']();
+  expect(component['formError']).toContain('zwischen 5 und 100 km');
+  expect(component['formError']).not.toContain('Abholung');
+  component['areas'].setValue([]);
+  component['next']();
+  expect(component['step']).toBe(4);
 });

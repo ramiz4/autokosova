@@ -198,3 +198,38 @@ test('request API validates optional vehicle enums and numeric limits', async ()
     await app.close();
   }
 });
+
+test('an empty optional area list stays private and matches all of Kosovo with the selected service', async () => {
+  const { app, customerA, customerB } = setup();
+  try {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/me/repair-requests',
+      headers: headers(customerA, true),
+      payload: { ...validRequest(), areas: [] },
+    });
+    assert.equal(created.statusCode, 201);
+    assert.equal(created.json().matchingPath, '/garages?all=true&service=bremsen');
+    const owner = await app.inject({
+      method: 'GET',
+      url: `/api/me/repair-requests/${created.json().id}`,
+      headers: headers(customerA),
+    });
+    assert.deepEqual(owner.json().areas, []);
+    const other = await app.inject({
+      method: 'GET',
+      url: `/api/me/repair-requests/${created.json().id}`,
+      headers: headers(customerB),
+    });
+    assert.equal(other.statusCode, 404);
+    const search = await app.inject({
+      method: 'GET',
+      url: created.json().matchingPath.replace('/garages?', '/api/public/search?'),
+    });
+    assert.equal(search.statusCode, 200);
+    assert.equal(search.json().allResults, true);
+    assert.equal(search.json().serviceCategory.id, 'bremsen');
+  } finally {
+    await app.close();
+  }
+});

@@ -256,49 +256,12 @@
         }
         @if (step === 3) {
           <p class="text-sm leading-6 text-muted">{{ text('travelHelp') }}</p>
-          <div formArrayName="areas" class="mt-5 grid gap-4">
-            @for (area of areas.controls; track $index; let index = $index) {
-              <div
-                [formGroupName]="index"
-                class="grid gap-3 rounded-xl border border-blue-100 p-3 sm:grid-cols-2 sm:items-start"
-              >
-                <label class="grid gap-1 text-sm"
-                  >{{ text('place')
-                  }}<select
-                    formControlName="placeId"
-                    class="min-h-11 w-full min-w-0 rounded-lg border border-blue-200 bg-white px-3 py-2 text-ink focus:border-brand focus:outline-2 focus:outline-brand/30 [&.ng-invalid.ng-touched]:border-rose-600"
-                  >
-                    <option value="">{{ language.t('common.choose') }}</option>
-                    @for (place of places; track place[0]) {
-                      <option [value]="place[0]">{{ place[1] }}</option>
-                    }
-                  </select></label
-                >
-                <app-radius-slider
-                  [inputId]="'inquiry-radius-' + index"
-                  formControlName="radiusKm"
-                />
-                @if (areas.length > 1) {
-                  <button
-                    type="button"
-                    class="min-h-11 text-sm font-semibold text-brand underline"
-                    (click)="removeArea(index)"
-                  >
-                    {{ text('remove') }}
-                  </button>
-                }
-              </div>
-            }
-          </div>
-          @if (areas.length < limits.maxAreas) {
-            <button
-              type="button"
-              class="mt-2 min-h-11 font-semibold text-brand underline"
-              (click)="addArea()"
-            >
-              {{ text('addPlace') }}
-            </button>
-          }
+          <app-search-areas
+            class="mt-5"
+            idPrefix="inquiry"
+            formControlName="areas"
+            (editingChange)="areasEditing.set($event)"
+          />
           <div class="mt-5 grid gap-4 sm:grid-cols-2">
             <label class="grid gap-1 text-sm"
               >{{ text('dropoff')
@@ -364,8 +327,10 @@
             }
             <div>
               <dt class="font-bold">{{ text('placeTime') }}</dt>
-              @for (area of areas.controls; track $index) {
-                <dd>{{ placeName(area.value.placeId) }} · {{ area.value.radiusKm }} km</dd>
+              @for (area of areas.value; track area.placeId) {
+                <dd>{{ placeName(area.placeId) }} · {{ area.radiusKm }} km</dd>
+              } @empty {
+                <dd>{{ language.t('search.ui.allLocations') }}</dd>
               }
             </div>
             <div>
@@ -424,6 +389,7 @@
               appButton
               type="button"
               class="order-2 min-w-0 max-sm:gap-2 max-sm:px-3 max-sm:text-sm sm:order-3 sm:ml-auto sm:min-w-40"
+              [disabled]="step === 3 && areasEditing()"
               (click)="next()"
             >
               {{ language.t('request.next') }}<app-icon name="arrow" class="size-5" />

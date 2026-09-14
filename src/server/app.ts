@@ -109,7 +109,7 @@ const repairRequestBodySchema = {
         type: 'object',
       },
       maxItems: REPAIR_REQUEST_LIMITS.maxAreas,
-      minItems: 1,
+      minItems: 0,
       type: 'array',
     },
     attachmentIds: {
