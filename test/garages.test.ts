@@ -3,12 +3,14 @@ import test from 'node:test';
 import sharp from 'sharp';
 import { AccessStore, type GarageProfileInput } from '../src/server/access';
 import { createServer } from '../src/server/app';
+import { LOCAL_DEMO_PHOTOS } from '../src/shared/local-demo';
 
 const profile: GarageProfileInput = {
   contactPerson: 'Fiktive Ansprechperson',
   contactPhone: '+383 44 000 000',
   description: 'Fiktive Werkstatt für lokale Entwicklungstests.',
   languages: ['Deutsch', 'Shqip'],
+  locationPoint: { latitude: 42.67272, longitude: 21.16688 },
   name: 'Fiktive Werkstatt Prishtina',
   placeId: 'xk-pristina',
   publicPhone: '+383 44 000 001',
@@ -87,6 +89,14 @@ test('a garage is private until an admin releases it, while qualification stays 
       method: 'GET',
       url: `/api/public/garages/${garageId}`,
     });
+    const profileFromSearch = await app.inject({
+      method: 'GET',
+      url: `/api/public/garages/${garageId}?places=xk-pristina:5`,
+    });
+    const invalidSearchContext = await app.inject({
+      method: 'GET',
+      url: `/api/public/garages/${garageId}?places=xk-pristina:101`,
+    });
 
     assert.equal(hidden.statusCode, 404);
     assert.equal(foreignPrivate.statusCode, 403);
@@ -94,6 +104,14 @@ test('a garage is private until an admin releases it, while qualification stays 
     assert.equal(submitted.statusCode, 204);
     assert.equal(published.statusCode, 204);
     assert.equal(publicProfile.statusCode, 200);
+    assert.equal(profileFromSearch.statusCode, 200);
+    assert.deepEqual(profileFromSearch.json().searchContext, {
+      distanceKm: 0,
+      matchingPlace: { id: 'xk-pristina', label: 'Prishtina' },
+    });
+    assert.equal(JSON.stringify(profileFromSearch.json()).includes('latitude'), false);
+    assert.equal(JSON.stringify(profileFromSearch.json()).includes('longitude'), false);
+    assert.equal(invalidSearchContext.statusCode, 400);
     assert.deepEqual(publicProfile.json(), {
       contact: { phone: '+383 44 000 001' },
       description: 'Fiktive Werkstatt für lokale Entwicklungstests.',
@@ -114,6 +132,54 @@ test('a garage is private until an admin releases it, while qualification stays 
       verificationLabel: 'Unternehmensdaten geprüft',
     });
     assert.equal(JSON.stringify(publicProfile.json()).includes('Ansprechperson'), false);
+  } finally {
+    await app.close();
+  }
+});
+
+test('WhatsApp availability is explicit and requires a public phone number', async () => {
+  const { admin, app, owner } = setup();
+  try {
+    const missingPhone = await app.inject({
+      headers: headers(owner, true),
+      method: 'POST',
+      payload: {
+        consentVersion: 'garage-onboarding-v1',
+        profile: { ...profile, publicPhone: undefined, publicWhatsapp: true },
+      },
+      url: '/api/garages',
+    });
+    const explicit = await app.inject({
+      headers: headers(owner, true),
+      method: 'POST',
+      payload: {
+        consentVersion: 'garage-onboarding-v1',
+        profile: { ...profile, name: 'Fiktive WhatsApp-Werkstatt', publicWhatsapp: true },
+      },
+      url: '/api/garages',
+    });
+    assert.equal(missingPhone.statusCode, 422);
+    assert.equal(explicit.statusCode, 201);
+    const garageId = explicit.json().id as string;
+    await app.inject({
+      headers: headers(owner, true),
+      method: 'POST',
+      url: `/api/garages/${garageId}/submit-for-review`,
+    });
+    await app.inject({
+      headers: headers(admin, true),
+      method: 'POST',
+      payload: { decision: 'published', verification: fullyVerified },
+      url: `/api/admin/garages/${garageId}/decision`,
+    });
+    const published = await app.inject({
+      method: 'GET',
+      url: `/api/public/garages/${garageId}`,
+    });
+    assert.deepEqual(published.json().contact, {
+      phone: '+383 44 000 001',
+      whatsapp: true,
+    });
   } finally {
     await app.close();
   }
@@ -286,6 +352,38 @@ test('public API uses the garages route and collection name', async () => {
     assert.deepEqual(Object.keys(response.json()), ['garages']);
     const singular = await app.inject({ method: 'GET', url: '/api/public/garage' });
     assert.equal(singular.statusCode, 404);
+  } finally {
+    await app.close();
+  }
+});
+
+test('demo gallery assets require a published demo profile and a known photo id', async () => {
+  const searchStore = {
+    getPublicGarage: (garageId: string) =>
+      garageId === 'demo-published' ? ({ id: garageId } as never) : undefined,
+    listPublicGarageIds: () => [],
+    searchPublicGarages: () => {
+      throw new Error('Not used');
+    },
+  };
+  const app = createServer({ searchStore });
+  try {
+    const photo = await app.inject({
+      method: 'GET',
+      url: `/api/public/garages/demo-published/photos/${LOCAL_DEMO_PHOTOS[0].id}`,
+    });
+    const missingProfile = await app.inject({
+      method: 'GET',
+      url: `/api/public/garages/demo-missing/photos/${LOCAL_DEMO_PHOTOS[0].id}`,
+    });
+    const unknownPhoto = await app.inject({
+      method: 'GET',
+      url: '/api/public/garages/demo-published/photos/not-known',
+    });
+    assert.equal(photo.statusCode, 302);
+    assert.equal(photo.headers.location, `/images/demo/garages/${LOCAL_DEMO_PHOTOS[0].file}`);
+    assert.equal(missingProfile.statusCode, 404);
+    assert.equal(unknownPhoto.statusCode, 404);
   } finally {
     await app.close();
   }

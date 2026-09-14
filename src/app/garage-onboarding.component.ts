@@ -49,6 +49,7 @@ function blankForm(): Form {
     contactPerson: '',
     contactPhone: '',
     publicPhone: '',
+    publicWhatsapp: false,
     languages: [],
     selfReportedSpecializations: [],
     serviceCategoryIds: [],
@@ -170,12 +171,14 @@ export class GarageOnboardingComponent {
     return true;
   }
   private profile(): Form {
+    if (!this.form.publicPhone?.trim()) this.form.publicWhatsapp = false;
     return {
       ...this.form,
       name: this.form.name.trim(),
       contactPerson: this.form.contactPerson.trim(),
       contactPhone: this.form.contactPhone.trim(),
       publicPhone: this.form.publicPhone?.trim() || undefined,
+      publicWhatsapp: this.form.publicWhatsapp,
       address: this.form.address.trim(),
     };
   }

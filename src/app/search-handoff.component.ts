@@ -1,4 +1,5 @@
 import { FavoritesService } from './favorites.service';
+import { FavoriteNoticeComponent } from './favorite-notice.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SearchAreasComponent, type SearchArea } from './ui/search-areas.component';
 import { isPlatformBrowser } from '@angular/common';
@@ -60,6 +61,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
     SearchAreasComponent,
     ButtonDirective,
     FormsModule,
+    FavoriteNoticeComponent,
     IconComponent,
     RouterLink,
     SiteHeaderComponent,
@@ -344,6 +346,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                         >
                           <a
                             [routerLink]="language.link('garage', garage.id)"
+                            [queryParams]="profileQueryParams()"
                             appButton="outline-brand"
                             size="compact"
                             >{{ ui('search.ui.details') }}<app-icon name="arrow" class="size-4"
@@ -384,54 +387,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
         </div>
       </section>
     }
-    @if (favorites.message(); as message) {
-      <div
-        class="pointer-events-none fixed right-0 bottom-[max(1rem,env(safe-area-inset-bottom))] left-0 z-50 mx-auto flex w-[calc(100%_-_2rem)] max-w-xl justify-center"
-      >
-        <div
-          [attr.role]="message === 'error' ? 'alert' : 'status'"
-          class="pointer-events-auto flex w-full max-w-xl items-start gap-2 rounded-2xl border border-slate-200/80 bg-white p-3 text-sm text-ink shadow-[0_8px_32px_-8px_rgba(7,20,62,0.22)]"
-        >
-          <span
-            class="mt-1 flex size-9 shrink-0 items-center justify-center rounded-full"
-            [class]="message === 'error' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-brand'"
-          >
-            <app-icon
-              [name]="
-                message === 'error'
-                  ? 'info'
-                  : message === 'saved'
-                    ? 'heart-filled'
-                    : message === 'removed'
-                      ? 'check'
-                      : 'user'
-              "
-              class="size-[18px]"
-            />
-          </span>
-          <div
-            class="flex min-h-11 min-w-0 grow flex-wrap items-center gap-x-2 text-sm leading-5 font-medium"
-          >
-            <span>{{ ui('favorites.' + message) }}</span>
-            @if (message === 'signIn') {
-              <a
-                [href]="favoriteLoginUrl()"
-                class="inline-flex min-h-11 items-center rounded-sm font-semibold text-brand-dark underline decoration-brand/35 underline-offset-4 hover:decoration-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-                >{{ ui('favorites.login') }}</a
-              >
-            }
-          </div>
-          <button
-            type="button"
-            class="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-slate-100 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-            [attr.aria-label]="ui('favorites.dismiss')"
-            (click)="favorites.dismiss()"
-          >
-            <app-icon name="close" class="size-[18px]" />
-          </button>
-        </div>
-      </div>
-    }
+    <app-favorite-notice [loginUrl]="favoriteLoginUrl()" />
   </main>`,
 })
 export class SearchHandoffComponent {
@@ -492,6 +448,14 @@ export class SearchHandoffComponent {
       if (value) query.set(key, value);
     }
     return `/auth/login?returnTo=${encodeURIComponent(this.language.link('search') + (query.size ? `?${query}` : ''))}`;
+  }
+  protected profileQueryParams(): Record<string, string> {
+    const query: Record<string, string> = {};
+    for (const key of ['all', 'places', 'service', 'vehicleMake', 'sort', 'page']) {
+      const value = this.route.snapshot.queryParamMap.get(key);
+      if (value) query[key] = value;
+    }
+    return query;
   }
   protected aerialDistance(distance: number, place: string): string {
     return this.language.t('search.aerialDistance', {

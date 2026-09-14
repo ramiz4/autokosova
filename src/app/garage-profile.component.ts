@@ -1,15 +1,22 @@
 import { isPlatformBrowser } from '@angular/common';
 import {
+  afterNextRender,
   ChangeDetectorRef,
   Component,
+  DestroyRef,
+  ElementRef,
   inject,
+  Injector,
   PendingTasks,
   PLATFORM_ID,
   REQUEST,
+  signal,
+  viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { getCatalogPlace, SERVICE_CATEGORY_LABELS, VEHICLE_MAKE_LABELS } from '../shared/catalog';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { getCatalogPlace, VEHICLE_MAKE_LABELS } from '../shared/catalog';
 import {
   buildContactPreview,
   buildTelephoneHref,
@@ -17,34 +24,42 @@ import {
 } from '../shared/contact-preview';
 import { isLocalDemoGarageId } from '../shared/local-demo';
 import { AnalyticsService } from './analytics.service';
+import { FavoriteNoticeComponent } from './favorite-notice.component';
+import { FavoritesService } from './favorites.service';
 import { LanguageService } from './language.service';
+import { SiteFooterComponent } from './site-footer.component';
 import { SiteHeaderComponent } from './site-header.component';
+import { ButtonDirective } from './ui/button.directive';
+import { IconComponent } from './ui/icon.component';
+import { RatingStarsComponent } from './ui/rating-stars.component';
 
 interface PublicGarageProfile {
-  readonly contact: { readonly phone?: string };
+  readonly contact: { readonly phone?: string; readonly whatsapp?: boolean };
   readonly description?: string;
   readonly id: string;
   readonly languages: readonly string[];
   readonly name: string;
   readonly photoIds: readonly string[];
   readonly placeId: string;
-  readonly reviewSummary?: PublicReviewSummary;
+  readonly reviewSummary?: {
+    readonly averageRating?: number;
+    readonly label: string;
+    readonly reviewCount: number;
+    readonly state: 'available' | 'unavailable';
+    readonly verifiedVisitCount: number;
+  };
+  readonly searchContext?: {
+    readonly distanceKm: number;
+    readonly matchingPlace: { readonly id: string; readonly label: string };
+  };
   readonly selfReportedSpecializations: readonly string[];
   readonly serviceCategoryIds: readonly string[];
   readonly vehicleMakeIds: readonly string[];
   readonly verificationLabel?: 'Unternehmensdaten geprüft';
 }
 
-interface PublicReviewSummary {
-  readonly averageRating?: number;
-  readonly label: string;
-  readonly reviewCount: number;
-  readonly state: 'available' | 'unavailable';
-  readonly verifiedVisitCount: number;
-}
-
 interface PublicGarageReview {
-  readonly evidence: { readonly label: string };
+  readonly evidence: { readonly label: string; readonly state: 'verified' };
   readonly id: string;
   readonly ratings: {
     readonly communication: number;
@@ -57,7 +72,7 @@ interface PublicGarageReview {
   readonly text: string;
   readonly updates: readonly {
     readonly createdAt: string;
-    readonly kind: string;
+    readonly kind: 'complaint' | 'rework';
     readonly text: string;
   }[];
   readonly vehicleMakeId?: string;
@@ -65,401 +80,43 @@ interface PublicGarageReview {
   readonly garageResponse?: { readonly createdAt: string; readonly text: string };
 }
 
+const PROFILE_SECTIONS = new Set(['about', 'reviews', 'services', 'makes', 'location', 'photos']);
+
 @Component({
-  imports: [FormsModule, RouterLink, SiteHeaderComponent],
   selector: 'app-garage-profile',
-  template: `
-    <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
-      <app-site-header [compact]="true" />
-    </div>
-    <main
-      class="mx-auto min-h-screen max-w-[1360px] px-4 py-8 pb-28 sm:px-6 sm:py-12"
-      aria-labelledby="profile-title"
-    >
-      <header class="flex flex-wrap items-center justify-between gap-4">
-        <a
-          [routerLink]="language.link('search')"
-          class="text-sm font-semibold text-sky-800 underline"
-          >{{ language.t('common.backSearch') }}</a
-        >
-      </header>
-
-      @if (state === 'loading') {
-        <p
-          class="mt-8 rounded-xl border border-slate-200 bg-white p-5 text-slate-700"
-          role="status"
-        >
-          {{ language.t('profile.loading') }}
-        </p>
-      }
-
-      @if (state === 'error') {
-        <section
-          class="mt-8 rounded-xl border border-rose-300 bg-rose-50 p-5"
-          aria-labelledby="profile-error-title"
-        >
-          <h1 id="profile-error-title" class="text-xl font-bold">
-            {{ language.t('profile.notAvailable') }}
-          </h1>
-          <p class="mt-2 leading-7 text-slate-700">
-            {{ language.t('profile.notAvailableBody') }}
-          </p>
-          <button
-            type="button"
-            class="mt-4 min-h-11 rounded-lg border border-sky-800 px-4 font-semibold text-sky-900"
-            (click)="load()"
-          >
-            {{ language.t('common.retry') }}
-          </button>
-        </section>
-      }
-
-      @if (state === 'ready' && profile) {
-        <header class="mt-6">
-          <p class="text-sm font-bold tracking-widest text-sky-700 uppercase">
-            {{ language.t('profile.profile') }}
-          </p>
-          <div class="mt-2 flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h1 id="profile-title" class="text-3xl font-bold tracking-tight sm:text-4xl">
-                {{ profile.name }}
-              </h1>
-              <p class="mt-2 text-slate-700">{{ placeLabel(profile.placeId) }}</p>
-              @if (isLocalDemoProfile()) {
-                <p class="mt-2 text-sm font-semibold text-amber-900">
-                  {{ language.t('profile.localDemo') }}
-                </p>
-              }
-            </div>
-            @if (profile.verificationLabel) {
-              <span
-                class="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-900"
-              >
-                {{ language.t('profile.verified') }}
-              </span>
-            }
-          </div>
-        </header>
-
-        <section
-          class="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"
-          aria-labelledby="trust-title"
-        >
-          <h2 id="trust-title" class="text-xl font-bold">{{ language.t('profile.trust') }}</h2>
-          @if (profile.verificationLabel) {
-            <p class="mt-3 leading-7 text-slate-700">
-              {{ language.t('profile.trustAvailable') }}
-            </p>
-          } @else {
-            <p class="mt-3 leading-7 text-slate-700">
-              {{ language.t('profile.trustUnavailable') }}
-            </p>
-          }
-          @if (profile.reviewSummary?.state === 'available') {
-            <p class="mt-4 font-semibold text-slate-900">{{ profile.reviewSummary?.label }}</p>
-            <p class="mt-1 text-sm leading-6 text-slate-700">
-              {{ language.t('profile.ratingDescription') }}
-            </p>
-          } @else {
-            <p class="mt-4 font-semibold text-slate-900">{{ language.t('profile.noReviews') }}</p>
-            <p class="mt-1 text-sm leading-6 text-slate-700">
-              {{ language.t('profile.noReviewsBody') }}
-            </p>
-          }
-        </section>
-
-        <section
-          class="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"
-          aria-labelledby="reviews-title"
-        >
-          <div class="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h2 id="reviews-title" class="text-xl font-bold">
-                {{ language.t('profile.reviews') }}
-              </h2>
-              <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-700">
-                {{ language.t('profile.visitProof') }}
-              </p>
-              <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-700">
-                {{ language.t('profile.reviewsOriginal') }}
-              </p>
-            </div>
-            <button
-              type="button"
-              class="min-h-11 rounded-lg border border-sky-800 px-4 font-semibold text-sky-900"
-              (click)="loadReviews()"
-            >
-              {{ language.t('profile.filterReviews') }}
-            </button>
-          </div>
-          <div class="mt-4 grid gap-4 sm:grid-cols-2">
-            <label class="grid gap-1 font-semibold"
-              >{{ language.t('profile.filterService') }}
-              <select
-                [(ngModel)]="reviewServiceCategoryId"
-                class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal"
-              >
-                <option value="">{{ language.t('profile.allServices') }}</option>
-                @for (service of profile.serviceCategoryIds; track service) {
-                  <option [value]="service">{{ serviceLabels([service]) }}</option>
-                }
-              </select>
-            </label>
-            <label class="grid gap-1 font-semibold"
-              >{{ language.t('profile.filterMake') }}
-              <select
-                [(ngModel)]="reviewVehicleMakeId"
-                class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal"
-              >
-                <option value="">{{ language.t('profile.allMakes') }}</option>
-                @for (make of vehicleMakeOptions; track make[0]) {
-                  <option [value]="make[0]">{{ make[1] }}</option>
-                }
-              </select>
-            </label>
-          </div>
-          @if (reviewState === 'error') {
-            <p
-              class="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-slate-800"
-            >
-              {{ language.t('profile.reviewsUnavailable') }}
-            </p>
-          } @else if (reviewState === 'loading') {
-            <p class="mt-4 text-sm text-slate-700" role="status">
-              {{ language.t('profile.reviewsLoading') }}
-            </p>
-          } @else if (!reviews.length) {
-            <p class="mt-4 text-sm leading-6 text-slate-700">
-              {{ language.t('profile.reviewsEmpty') }}
-            </p>
-          } @else {
-            <ol class="mt-5 grid gap-4" aria-label="Veröffentlichte Bewertungen">
-              @for (review of reviews; track review.id) {
-                <li class="rounded-xl border border-slate-200 p-4">
-                  <div class="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p class="font-semibold">
-                        {{ review.ratings.overall.toFixed(1) }} von 5 ·
-                        {{ serviceLabels([review.serviceCategoryId]) }}
-                      </p>
-                      <p class="mt-1 text-sm text-slate-700">
-                        Besuch: {{ review.visitMonth }}
-                        @if (review.vehicleMakeId) {
-                          · {{ vehicleMakeLabels([review.vehicleMakeId]) }}
-                        }
-                      </p>
-                    </div>
-                    <span
-                      class="rounded-full bg-sky-50 px-3 py-1 text-sm font-semibold text-sky-950"
-                    >
-                      {{ review.evidence.label }}
-                    </span>
-                  </div>
-                  <p class="mt-4 leading-7 text-slate-800">{{ review.text }}</p>
-                  <p class="mt-3 text-sm text-slate-700">
-                    Arbeitsqualität {{ review.ratings.workQuality }}/5 · Kommunikation
-                    {{ review.ratings.communication }}/5 · Preistransparenz
-                    {{ review.ratings.priceTransparency }}/5 · Termintreue
-                    {{ review.ratings.punctuality }}/5
-                  </p>
-                  @if (review.garageResponse) {
-                    <div class="mt-4 border-l-4 border-sky-200 pl-4">
-                      <p class="font-semibold">Öffentliche Antwort der Werkstatt</p>
-                      <p class="mt-1 leading-7 text-slate-700">
-                        {{ review.garageResponse.text }}
-                      </p>
-                    </div>
-                  }
-                  @if (review.updates.length) {
-                    <div class="mt-4 border-l-4 border-slate-200 pl-4">
-                      <p class="font-semibold">Nachvollziehbare Updates</p>
-                      @for (update of review.updates; track update.createdAt) {
-                        <p class="mt-1 text-sm leading-6 text-slate-700">
-                          {{ update.kind === 'rework' ? 'Nacharbeit' : 'Reklamation' }}:
-                          {{ update.text }}
-                        </p>
-                      }
-                    </div>
-                  }
-                </li>
-              }
-            </ol>
-          }
-        </section>
-
-        <section
-          class="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"
-          aria-labelledby="details-title"
-        >
-          <h2 id="details-title" class="text-xl font-bold">{{ language.t('profile.details') }}</h2>
-          @if (profile.description) {
-            <p class="mt-3 leading-7 text-slate-700">{{ profile.description }}</p>
-            <p class="mt-1 text-sm text-slate-600">{{ language.t('profile.originalText') }}</p>
-          }
-          <dl class="mt-5 grid gap-5 sm:grid-cols-2">
-            <div>
-              <dt class="font-semibold">Leistungen</dt>
-              <dd class="mt-1 text-slate-700">{{ serviceLabels(profile.serviceCategoryIds) }}</dd>
-            </div>
-            <div>
-              <dt class="font-semibold">Fahrzeugbezug</dt>
-              <dd class="mt-1 text-slate-700">{{ vehicleMakeLabels(profile.vehicleMakeIds) }}</dd>
-            </div>
-            <div>
-              <dt class="font-semibold">{{ language.t('profile.language') }}</dt>
-              <dd class="mt-1 text-slate-700">{{ profile.languages.join(', ') }}</dd>
-            </div>
-            <div>
-              <dt class="font-semibold">Spezialisierungen</dt>
-              <dd class="mt-1 text-slate-700">
-                {{
-                  profile.selfReportedSpecializations.length
-                    ? profile.selfReportedSpecializations.join(', ')
-                    : 'Keine Selbstauskunft veröffentlicht'
-                }}
-              </dd>
-            </div>
-          </dl>
-        </section>
-
-        <section
-          class="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"
-          aria-labelledby="photos-title"
-        >
-          <h2 id="photos-title" class="text-xl font-bold">{{ language.t('profile.photos') }}</h2>
-          @if (profile.photoIds.length) {
-            <div class="mt-4 grid gap-4 sm:grid-cols-2">
-              @for (photoId of profile.photoIds; track photoId) {
-                <img
-                  [src]="'/api/public/garages/' + profile.id + '/photos/' + photoId"
-                  [alt]="'Veröffentlichtes Foto von ' + profile.name"
-                  class="aspect-[4/3] w-full rounded-xl object-cover"
-                />
-              }
-            </div>
-          } @else {
-            <p class="mt-3 text-slate-700">{{ language.t('profile.noPhotos') }}</p>
-          }
-        </section>
-
-        <section
-          id="kontakt"
-          class="mt-5 rounded-2xl border border-sky-200 bg-sky-50 p-5 shadow-sm sm:p-7"
-          aria-labelledby="contact-title"
-        >
-          <h2 id="contact-title" class="text-xl font-bold">{{ language.t('contact.title') }}</h2>
-          <p class="mt-2 max-w-2xl leading-7 text-slate-700">
-            {{ language.t('contact.description') }}
-          </p>
-
-          <fieldset class="mt-6 rounded-xl border border-sky-200 bg-white p-4">
-            <legend class="px-1 font-semibold">{{ language.t('profile.contactConsent') }}</legend>
-            <label class="mt-2 flex min-h-11 items-start gap-3 text-slate-800">
-              <input class="mt-1 size-5" [(ngModel)]="includeDetails" type="checkbox" />
-              <span>
-                {{ language.t('profile.contactConsentBody') }}
-              </span>
-            </label>
-            <p class="mt-3 text-sm leading-6 text-slate-700">
-              {{ language.t('contact.userTextNote') }}
-            </p>
-            @if (includeDetails) {
-              <div class="mt-4 grid gap-4">
-                <label class="grid gap-1 font-semibold"
-                  >Fahrzeug <span class="font-normal text-slate-600">optional</span>
-                  <input
-                    [(ngModel)]="vehicleSummary"
-                    maxlength="120"
-                    autocomplete="off"
-                    class="min-h-11 rounded-lg border border-slate-300 px-3"
-                    placeholder="Zum Beispiel: Škoda Octavia, 2018"
-                  />
-                </label>
-                <label class="grid gap-1 font-semibold"
-                  >Anliegen <span class="font-normal text-slate-600">optional</span>
-                  <textarea
-                    [(ngModel)]="repairSummary"
-                    maxlength="500"
-                    rows="4"
-                    class="rounded-lg border border-slate-300 p-3"
-                    placeholder="Zum Beispiel: Bremsen prüfen lassen"
-                  ></textarea>
-                </label>
-              </div>
-            }
-          </fieldset>
-
-          <label class="mt-6 grid gap-1 font-semibold"
-            >{{ language.t('profile.messageDraft') }}
-            <textarea
-              class="rounded-lg border border-slate-300 bg-slate-50 p-3 font-normal leading-6 text-slate-800"
-              [value]="contactPreview()"
-              readonly
-              rows="7"
-            ></textarea>
-          </label>
-
-          @if (telephoneHref()) {
-            <div class="mt-5 flex flex-wrap gap-3">
-              @if (whatsAppHref()) {
-                <a
-                  [href]="whatsAppHref()"
-                  (click)="blockLocalDemoContact($event)"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="inline-flex min-h-11 items-center rounded-lg bg-emerald-700 px-5 font-semibold text-white"
-                  (click)="contactOpened()"
-                  >{{ language.t('contact.openWhatsapp') }}</a
-                >
-              }
-              <a
-                [href]="telephoneHref()"
-                (click)="blockLocalDemoContact($event)"
-                class="inline-flex min-h-11 items-center rounded-lg border border-sky-800 px-5 font-semibold text-sky-950"
-                (click)="contactOpened()"
-                >{{ language.t('contact.call') }}</a
-              >
-            </div>
-            @if (isLocalDemoProfile()) {
-              <p class="mt-3 text-sm leading-6 text-amber-900" role="status">
-                {{ language.t('profile.localDemoContact') }}
-              </p>
-            } @else {
-              <p class="mt-3 text-sm leading-6 text-slate-700">
-                Falls WhatsApp nicht verfügbar ist oder ein neuer Tab blockiert wird, kannst du
-                direkt anrufen. Es erscheint keine fingierte Versandbestätigung.
-              </p>
-            }
-          } @else {
-            <p
-              class="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4 leading-6 text-slate-800"
-            >
-              {{ language.t('contact.unavailable') }}
-            </p>
-          }
-        </section>
-
-        @if (telephoneHref()) {
-          <div class="sticky bottom-0 mt-6 border-t border-slate-200 bg-slate-50 py-3 sm:hidden">
-            <a
-              href="#kontakt"
-              class="flex min-h-11 items-center justify-center rounded-lg bg-sky-800 px-5 font-semibold text-white"
-              >{{ language.t('contact.choose') }}</a
-            >
-          </div>
-        }
-      }
-    </main>
-  `,
+  imports: [
+    ButtonDirective,
+    FavoriteNoticeComponent,
+    FormsModule,
+    IconComponent,
+    RatingStarsComponent,
+    RouterLink,
+    SiteFooterComponent,
+    SiteHeaderComponent,
+  ],
+  providers: [FavoritesService],
+  templateUrl: './garage-profile.component.html',
 })
 export class GarageProfileComponent {
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly analytics = inject(AnalyticsService);
   private readonly changeDetector = inject(ChangeDetectorRef);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
+  protected readonly favorites = inject(FavoritesService);
   protected readonly language = inject(LanguageService);
   private readonly pendingTasks = inject(PendingTasks);
   private readonly request = inject(REQUEST);
   private readonly route = inject(ActivatedRoute);
+  private readonly galleryClose = viewChild<ElementRef<HTMLButtonElement>>('galleryClose');
+  private readonly contactClose = viewChild<ElementRef<HTMLButtonElement>>('contactClose');
+  private readonly shareUrlInput = viewChild<ElementRef<HTMLInputElement>>('shareUrlInput');
+  private galleryTrigger?: HTMLElement;
+  private contactTrigger?: HTMLElement;
+
+  protected readonly contactOpen = signal(false);
+  protected readonly galleryIndex = signal(0);
+  protected readonly galleryOpen = signal(false);
   protected includeDetails = false;
   protected profile?: PublicGarageProfile;
   protected repairSummary = '';
@@ -467,14 +124,46 @@ export class GarageProfileComponent {
   protected reviewServiceCategoryId = '';
   protected reviewState: 'error' | 'loading' | 'ready' = 'loading';
   protected reviewVehicleMakeId = '';
+  protected readonly shareOpen = signal(false);
+  protected readonly shareState = signal<'copied' | 'error' | null>(null);
   protected state: 'error' | 'loading' | 'ready' = 'loading';
   protected vehicleSummary = '';
   protected readonly vehicleMakeOptions = Object.entries(VEHICLE_MAKE_LABELS);
-
   constructor() {
     this.language.setPage('profile.profile', 'profile.trust');
-    if (this.browser) void this.load();
-    else if (this.request) this.pendingTasks.run(() => this.loadForServer(this.request!));
+    if (this.browser) {
+      this.route.fragment.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((fragment) => {
+        this.scrollToSection(fragment);
+      });
+      void this.favorites.load();
+      void this.load();
+    } else if (this.request) {
+      this.pendingTasks.run(() => this.loadForServer(this.request!));
+    }
+    this.destroyRef.onDestroy(() => {
+      this.galleryTrigger = undefined;
+      this.contactTrigger = undefined;
+    });
+  }
+
+  protected ui(key: string, replacements?: Record<string, string | number>): string {
+    return this.language.t(key, replacements);
+  }
+
+  private scrollToSection(section: string | null): void {
+    if (!this.browser || !section || !PROFILE_SECTIONS.has(section)) return;
+    afterNextRender(() => document.getElementById(section)?.scrollIntoView?.({ block: 'start' }), {
+      injector: this.injector,
+    });
+  }
+
+  protected backQueryParams(): Record<string, string> {
+    const query: Record<string, string> = {};
+    for (const key of ['all', 'places', 'service', 'vehicleMake', 'sort', 'page']) {
+      const value = this.route.snapshot.queryParamMap.get(key);
+      if (value) query[key] = value;
+    }
+    return query;
   }
 
   protected contactPreview(): string {
@@ -490,22 +179,118 @@ export class GarageProfileComponent {
     return getCatalogPlace(placeId)?.label ?? 'Kosovo';
   }
 
-  protected serviceLabels(serviceCategoryIds: readonly string[]): string {
-    return serviceCategoryIds.map((id) => SERVICE_CATEGORY_LABELS[id] ?? id).join(', ');
+  protected serviceLabel(serviceCategoryId: string): string {
+    return this.language.serviceLabel(serviceCategoryId);
+  }
+
+  protected makeLabel(vehicleMakeId: string): string {
+    return VEHICLE_MAKE_LABELS[vehicleMakeId] ?? vehicleMakeId;
+  }
+
+  protected initials(): string {
+    return (
+      this.profile?.name
+        .replace(/^DEMO\s*·\s*/u, '')
+        .split(/\s+/u)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase())
+        .join('') || 'AK'
+    );
+  }
+
+  protected hasReviews(): boolean {
+    const summary = this.profile?.reviewSummary;
+    return Boolean(
+      summary?.state === 'available' &&
+      summary.reviewCount > 0 &&
+      summary.averageRating &&
+      summary.averageRating >= 1 &&
+      summary.averageRating <= 5,
+    );
+  }
+
+  protected ratingLabel(rating: number): string {
+    return `${rating.toFixed(1)} ${this.ui('profile.ui.outOfFive')}`;
+  }
+
+  protected reviewCountLabel(count: number): string {
+    return this.ui(count === 1 ? 'profile.ui.ratingCountOne' : 'profile.ui.ratingCount', { count });
+  }
+
+  protected monthLabel(value: string): string {
+    const match = /^(\d{4})-(\d{2})$/u.exec(value);
+    if (!match) return value;
+    return new Intl.DateTimeFormat(this.language.language, {
+      month: 'long',
+      year: 'numeric',
+    }).format(new Date(Number(match[1]), Number(match[2]) - 1, 1));
+  }
+
+  protected locationLabel(): string {
+    const context = this.profile?.searchContext;
+    if (context) {
+      return this.ui('profile.ui.distance', {
+        distance: context.distanceKm.toLocaleString(this.language.language, {
+          maximumFractionDigits: 1,
+          minimumFractionDigits: 1,
+        }),
+        place: context.matchingPlace.label,
+      });
+    }
+    return this.ui('profile.ui.locationIn', {
+      place: this.placeLabel(this.profile?.placeId ?? ''),
+    });
+  }
+
+  protected photoUrl(photoId: string): string {
+    return `/api/public/garages/${encodeURIComponent(this.profile?.id ?? '')}/photos/${encodeURIComponent(photoId)}`;
+  }
+
+  protected profileImageUrl(): string | undefined {
+    if (!this.isLocalDemoProfile() || !this.profile?.photoIds.length) return undefined;
+    const index = [...this.profile.id].reduce((sum, character) => sum + character.charCodeAt(0), 0);
+    return this.photoUrl(this.profile.photoIds[index % this.profile.photoIds.length]);
+  }
+
+  protected openGallery(index: number, event: Event): void {
+    if (!this.profile?.photoIds[index]) return;
+    this.galleryTrigger = event.currentTarget as HTMLElement;
+    this.galleryIndex.set(index);
+    this.galleryOpen.set(true);
+    afterNextRender(() => this.galleryClose()?.nativeElement.focus(), { injector: this.injector });
+  }
+
+  protected moveGallery(direction: -1 | 1): void {
+    const count = this.profile?.photoIds.length ?? 0;
+    if (!count) return;
+    this.galleryIndex.set((this.galleryIndex() + direction + count) % count);
+  }
+
+  protected closeGallery(): void {
+    this.galleryOpen.set(false);
+    this.galleryTrigger?.focus();
+  }
+
+  protected openContact(event: Event): void {
+    this.contactTrigger = event.currentTarget as HTMLElement;
+    this.contactOpen.set(true);
+    afterNextRender(() => this.contactClose()?.nativeElement.focus(), { injector: this.injector });
+  }
+
+  protected closeContact(): void {
+    this.contactOpen.set(false);
+    this.contactTrigger?.focus();
   }
 
   protected telephoneHref(): string | undefined {
     return buildTelephoneHref(this.profile?.contact.phone);
   }
 
-  protected vehicleMakeLabels(vehicleMakeIds: readonly string[]): string {
-    return vehicleMakeIds.length
-      ? vehicleMakeIds.map((id) => VEHICLE_MAKE_LABELS[id] ?? id).join(', ')
-      : 'Markenoffen';
-  }
-
   protected whatsAppHref(): string | undefined {
-    return buildWhatsAppHref(this.profile?.contact.phone, this.contactPreview());
+    return this.profile?.contact.whatsapp
+      ? buildWhatsAppHref(this.profile.contact.phone, this.contactPreview())
+      : undefined;
   }
 
   protected blockLocalDemoContact(event: Event): void {
@@ -514,6 +299,45 @@ export class GarageProfileComponent {
 
   protected isLocalDemoProfile(): boolean {
     return isLocalDemoGarageId(this.profile?.id);
+  }
+
+  protected async shareProfile(): Promise<void> {
+    const data = { title: this.profile?.name ?? 'AutoKosova', url: this.shareUrl() };
+    if (this.browser && typeof navigator.share === 'function') {
+      try {
+        await navigator.share(data);
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+      }
+    }
+    this.shareState.set(null);
+    this.shareOpen.set(true);
+    afterNextRender(() => this.shareUrlInput()?.nativeElement.select(), {
+      injector: this.injector,
+    });
+  }
+
+  protected async copyShareUrl(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.shareUrl());
+      this.shareState.set('copied');
+    } catch {
+      this.shareState.set('error');
+      this.shareUrlInput()?.nativeElement.select();
+    }
+  }
+
+  protected shareUrl(): string {
+    const path = this.language.link('garage', this.profile?.id ?? '');
+    return this.browser ? new URL(path, window.location.origin).toString() : path;
+  }
+
+  protected favoriteLoginUrl(): string {
+    const path = this.language.link('garage', this.profile?.id ?? '');
+    const query = new URLSearchParams(this.backQueryParams());
+    const returnTo = `${path}${query.size ? `?${query}` : ''}`;
+    return `/auth/login?returnTo=${encodeURIComponent(returnTo)}`;
   }
 
   protected async load(): Promise<void> {
@@ -537,21 +361,27 @@ export class GarageProfileComponent {
   private async loadProfile(garageId: string, requestUrl?: string): Promise<void> {
     this.state = 'loading';
     try {
+      const places = this.route.snapshot.queryParamMap.get('places');
+      const suffix = places ? `?places=${encodeURIComponent(places)}` : '';
       const response = await fetch(
-        this.publicApiUrl(`/api/public/garages/${encodeURIComponent(garageId)}`, requestUrl),
-        {
-          credentials: 'same-origin',
-        },
+        this.publicApiUrl(
+          `/api/public/garages/${encodeURIComponent(garageId)}${suffix}`,
+          requestUrl,
+        ),
+        { credentials: 'same-origin' },
       );
       if (!response.ok) throw new Error('Garage profile request failed');
       this.profile = (await response.json()) as PublicGarageProfile;
       this.state = 'ready';
+      if (this.browser) this.changeDetector.detectChanges();
+      const fragment = this.route.snapshot.fragment;
+      this.scrollToSection(fragment);
       this.language.setProfilePage(this.profile.name, this.profile.description);
       if (this.browser) this.analytics.track('garage_profile_opened');
       await this.loadReviews(garageId, requestUrl);
-      this.changeDetector.markForCheck();
     } catch {
       this.state = 'error';
+    } finally {
       this.changeDetector.markForCheck();
     }
   }
@@ -568,7 +398,7 @@ export class GarageProfileComponent {
       if (this.reviewServiceCategoryId)
         query.set('serviceCategoryId', this.reviewServiceCategoryId);
       if (this.reviewVehicleMakeId) query.set('vehicleMakeId', this.reviewVehicleMakeId);
-      const suffix = query.size ? `?${query.toString()}` : '';
+      const suffix = query.size ? `?${query}` : '';
       const response = await fetch(
         this.publicApiUrl(
           `/api/public/garages/${encodeURIComponent(garageId)}/reviews${suffix}`,
@@ -580,9 +410,9 @@ export class GarageProfileComponent {
       const payload = (await response.json()) as { reviews?: readonly PublicGarageReview[] };
       this.reviews = payload.reviews ?? [];
       this.reviewState = 'ready';
-      this.changeDetector.markForCheck();
     } catch {
       this.reviewState = 'error';
+    } finally {
       this.changeDetector.markForCheck();
     }
   }
