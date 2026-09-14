@@ -15,7 +15,12 @@ import { BenefitCardComponent } from './ui/benefit-card.component';
 @Component({
   imports: [RouterOutlet, SiteFooterComponent],
   selector: 'app-root',
-  template: '<router-outlet /><app-site-footer />',
+  template: `
+    <router-outlet #page="outlet" />
+    @if (!page.isActivated || !page.activatedRouteData['ownsFooter']) {
+      <app-site-footer />
+    }
+  `,
 })
 export class App {}
 
