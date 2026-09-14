@@ -26,6 +26,8 @@ describe('Header account actions', () => {
         expect(url.searchParams.get('prompt')).toBe(index % 2 ? 'create' : null);
       }
       expect(page.querySelector('[aria-live]')).toBeNull();
+      expect(page.querySelector('nav [aria-disabled="true"]')).toBeNull();
+      expect(page.querySelector('#account-menu')).toBeNull();
     },
   );
 });
@@ -91,6 +93,8 @@ it('shows notification and account controls instead of login buttons for an auth
   await fixture.whenStable();
   const page = fixture.nativeElement as HTMLElement;
   expect(page.querySelectorAll('a[href^="/auth/login"]')).toHaveLength(0);
+  expect(page.textContent).not.toContain('Meine Anfragen');
+  expect(page.textContent).not.toContain('Favoriten');
   const notification = page.querySelector<HTMLButtonElement>(
     'button[aria-controls="account-notifications"]',
   )!;
@@ -103,9 +107,24 @@ it('shows notification and account controls instead of login buttons for an auth
   profile.click();
   await fixture.whenStable();
   expect(page.querySelector('#account-notifications')).toBeNull();
-  expect(page.querySelector('#account-menu')?.textContent).toContain('Abmelden');
+  const menu = page.querySelector('#account-menu')!;
+  expect(menu.textContent).toContain('Abmelden');
+  expect(menu.textContent).toContain('Meine Anfragen');
+  expect(menu.textContent).toContain('Favoriten');
+  expect(menu.querySelectorAll('button:disabled')).toHaveLength(2);
+  for (const nav of page.querySelectorAll('nav')) {
+    expect(nav.textContent).not.toContain('Meine Anfragen');
+    expect(nav.textContent).not.toContain('Favoriten');
+  }
   profile.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   await fixture.whenStable();
   expect(page.querySelector('#account-menu')).toBeNull();
   expect(document.activeElement).toBe(profile);
+  profile.click();
+  await fixture.whenStable();
+  account.signedIn.set(false);
+  await fixture.whenStable();
+  expect(page.querySelector('#account-menu')).toBeNull();
+  expect(page.textContent).not.toContain('Meine Anfragen');
+  expect(page.textContent).not.toContain('Favoriten');
 });

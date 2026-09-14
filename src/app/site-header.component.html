@@ -39,18 +39,6 @@
         [href]="language.link('search')"
         >{{ language.t('nav.search') }}</a
       >
-      <span
-        class="nav-link cursor-not-allowed px-1 text-slate-400"
-        [attr.aria-disabled]="true"
-        [title]="language.t('nav.privateUnavailable')"
-        >{{ language.t('nav.myRequests') }}</span
-      >
-      <span
-        class="nav-link cursor-not-allowed px-1 text-slate-400"
-        [attr.aria-disabled]="true"
-        [title]="language.t('nav.privateUnavailable')"
-        >{{ language.t('nav.favorites') }}</span
-      >
     </nav>
     <div class="flex items-center gap-2 sm:gap-3">
       <app-language-switcher [compact]="true" class="flex items-center" />
@@ -164,6 +152,24 @@
       [attr.aria-label]="language.t('account.title')"
     >
       <h2 class="px-2 py-2 font-semibold">{{ language.t('account.title') }}</h2>
+      <div class="mb-2 grid gap-1 border-b border-slate-200/70 pb-2">
+        <button
+          type="button"
+          disabled
+          class="flex min-h-11 w-full cursor-not-allowed items-center rounded-lg px-2 text-left text-sm text-slate-400"
+          [title]="language.t('nav.privateUnavailable')"
+        >
+          {{ language.t('nav.myRequests') }}
+        </button>
+        <button
+          type="button"
+          disabled
+          class="flex min-h-11 w-full cursor-not-allowed items-center rounded-lg px-2 text-left text-sm text-slate-400"
+          [title]="language.t('nav.privateUnavailable')"
+        >
+          {{ language.t('nav.favorites') }}
+        </button>
+      </div>
       <div class="grid gap-1 sm:hidden">
         <a class="nav-link px-2" [routerLink]="language.link('request')" (click)="closeMenu()">{{
           language.t('nav.newRequest')

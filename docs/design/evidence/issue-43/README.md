@@ -126,3 +126,7 @@ Die Karte zeigt fünf Sterne mit goldener anteiliger Füllung entsprechend dem t
 Details ansehen verwendet eine blaue Outline-Variante mit blauem Text/Pfeil. Die rechte Buttonkante und die rechte Kante des Herz-Icons stimmen bei 1448, 390 und 360 px exakt überein (gemessen: 0 px Abweichung). [Desktop](rating-card-1448.webp), [Mobil 390](rating-card-390.webp), [Mobil 360](rating-card-360.webp). DE/SQ/EN ohne horizontalen Überlauf geprüft. UI-Test prüft Anzahl und Füllung der Sterne, numerischen Wert, Bewertungsanzahl sowie fehlende Sterne bei nicht verfügbaren Bewertungen.
 
 Der Suchfilter-Kopf hat oben und unten 12 statt 20 px Kartenabstand; der Desktop-Titel beginnt bei etwa 16 px Abstand zur oberen Kante. Eine dezente Trennlinie grenzt den offenen Inhalt ab. Mobil bleiben die Bedienflächen 44 px hoch; eingeklappt entfällt die Linie. [Desktop](filter-header-desktop.webp), [Mobil](filter-header-mobile.webp).
+
+## Private Navigation im Konto-Menü
+
+„Meine Anfragen“ und „Favoriten“ sind aus der Top-Navbar entfernt und erscheinen ausschließlich im geöffneten Konto-Menü einer angemeldeten Sitzung. Die bisher nicht angebundenen Übersichtsseiten bleiben deaktiviert und mit einem Verfügbarkeitshinweis versehen. Gastzustand, Zustandswechsel, Menüschließen und Platzierung sind automatisiert geprüft. Desktop und Mobil in DE/SQ/EN ohne Überlauf geprüft; diese Darstellungsnachweise verwenden eine simulierte angemeldete Sitzung: [Desktop](account-menu-fixture-1448.webp), [Mobil](account-menu-fixture-390.webp).
