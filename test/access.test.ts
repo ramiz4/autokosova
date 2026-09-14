@@ -6,14 +6,14 @@ import { createServer } from '../src/server/app';
 function setup() {
   const store = new AccessStore();
   store.addRole('admin', 'admin');
-  store.addMembership('workshop-a', 'garage-a', 'owner');
-  store.addMembership('workshop-b', 'garage-b', 'owner');
+  store.addMembership('garage-a', 'garage-a', 'owner');
+  store.addMembership('garage-b', 'garage-b', 'owner');
   const customerVehicle = store.createVehicle('customer-a', 'Fiktives Fahrzeug A');
   const admin = store.createSession('admin');
   const customerA = store.createSession('customer-a');
   const customerB = store.createSession('customer-b');
-  const workshopA = store.createSession('workshop-a');
-  const workshopB = store.createSession('workshop-b');
+  const garageA = store.createSession('garage-a');
+  const garageB = store.createSession('garage-b');
   const expired = store.createSession('expired', new Date(Date.now() - 1));
   const app = createServer({ accessStore: store });
   return {
@@ -24,8 +24,8 @@ function setup() {
     customerVehicle,
     expired,
     store,
-    workshopA,
-    workshopB,
+    garageA,
+    garageB,
   };
 }
 
@@ -178,23 +178,23 @@ test('write requests require the session-bound CSRF token', async () => {
   }
 });
 
-test('workshop A cannot change workshop B', async () => {
-  const { app, workshopA, workshopB } = setup();
+test('garage A cannot change garage B', async () => {
+  const { app, garageA, garageB } = setup();
   try {
     const own = await app.inject({
-      headers: headers(workshopA, true),
+      headers: headers(garageA, true),
       method: 'POST',
       payload: { description: 'Fiktives Profil' },
       url: '/api/garages/garage-a/profile',
     });
     const foreign = await app.inject({
-      headers: headers(workshopA, true),
+      headers: headers(garageA, true),
       method: 'POST',
       payload: { description: 'Fiktives Profil' },
       url: '/api/garages/garage-b/profile',
     });
     const other = await app.inject({
-      headers: headers(workshopB, true),
+      headers: headers(garageB, true),
       method: 'POST',
       payload: { description: 'Fiktives Profil' },
       url: '/api/garages/garage-a/profile',
@@ -207,19 +207,19 @@ test('workshop A cannot change workshop B', async () => {
   }
 });
 
-test('only an existing admin session can grant a workshop membership and produces an audit event', async () => {
+test('only an existing admin session can grant a garage membership and produces an audit event', async () => {
   const { admin, app, customerA, store } = setup();
   try {
     const denied = await app.inject({
       headers: headers(customerA, true),
       method: 'POST',
-      payload: { role: 'owner', userId: 'new-member', workshopId: 'garage-a' },
+      payload: { role: 'owner', userId: 'new-member', garageId: 'garage-a' },
       url: '/api/admin/memberships',
     });
     const granted = await app.inject({
       headers: headers(admin, true),
       method: 'POST',
-      payload: { role: 'editor', userId: 'new-member', workshopId: 'garage-a' },
+      payload: { role: 'editor', userId: 'new-member', garageId: 'garage-a' },
       url: '/api/admin/memberships',
     });
     assert.equal(denied.statusCode, 403);

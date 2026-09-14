@@ -5,7 +5,7 @@ import {
   assertSeedEnvironment,
   demoWorkflowRequests,
   demoWorkflowReviews,
-  demoWorkshops,
+  demoGarages,
   parseSeedProfile,
 } from '../scripts/db/seed-data.mjs';
 
@@ -76,18 +76,18 @@ test('seed safety only permits the documented local database target', () => {
 });
 
 test('demo fixtures are fiktiv, stable and limited to public profile scenarios', () => {
-  assert.equal(demoWorkshops.length, 25);
-  assert.equal(new Set(demoWorkshops.map((workshop) => workshop.id)).size, demoWorkshops.length);
-  assert.ok(demoWorkshops.every((workshop) => workshop.id.startsWith('demo-')));
-  assert.ok(demoWorkshops.every((workshop) => workshop.name.startsWith('DEMO ·')));
-  assert.ok(demoWorkshops.every((workshop) => workshop.description.includes('fiktive')));
-  assert.ok(demoWorkshops.every((workshop) => workshop.publicPhone.startsWith('+999')));
-  assert.ok(demoWorkshops.some((workshop) => workshop.vehicleMakeIds.length === 0));
-  assert.ok(demoWorkshops.some((workshop) => workshop.verification === 'not_checked'));
-  assert.ok(demoWorkshops.some((workshop) => workshop.languages.includes('Deutsch')));
-  assert.ok(demoWorkshops.some((workshop) => workshop.languages.includes('Shqip')));
-  assert.ok(demoWorkshops.some((workshop) => workshop.serviceCategoryIds.includes('bremsen')));
-  assert.ok(demoWorkshops.some((workshop) => workshop.serviceCategoryIds.includes('klima')));
+  assert.equal(demoGarages.length, 25);
+  assert.equal(new Set(demoGarages.map((garage) => garage.id)).size, demoGarages.length);
+  assert.ok(demoGarages.every((garage) => garage.id.startsWith('demo-')));
+  assert.ok(demoGarages.every((garage) => garage.name.startsWith('DEMO ·')));
+  assert.ok(demoGarages.every((garage) => garage.description.includes('fiktive')));
+  assert.ok(demoGarages.every((garage) => garage.publicPhone.startsWith('+999')));
+  assert.ok(demoGarages.some((garage) => garage.vehicleMakeIds.length === 0));
+  assert.ok(demoGarages.some((garage) => garage.verification === 'not_checked'));
+  assert.ok(demoGarages.some((garage) => garage.languages.includes('Deutsch')));
+  assert.ok(demoGarages.some((garage) => garage.languages.includes('Shqip')));
+  assert.ok(demoGarages.some((garage) => garage.serviceCategoryIds.includes('bremsen')));
+  assert.ok(demoGarages.some((garage) => garage.serviceCategoryIds.includes('klima')));
 });
 
 test('workflow fixtures are explicitly fictional and separate from public demo profiles', () => {
@@ -104,7 +104,7 @@ test('workflow fixtures are explicitly fictional and separate from public demo p
   );
   assert.ok(
     demoWorkflowReviews.every((review) =>
-      demoWorkshops.some((workshop) => workshop.id === review.workshopId),
+      demoGarages.some((garage) => garage.id === review.garageId),
     ),
   );
   assert.ok(

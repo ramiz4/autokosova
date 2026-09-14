@@ -1,8 +1,8 @@
 import { CATALOG_PLACES, SERVICE_CATEGORY_LABELS, VEHICLE_MAKE_LABELS } from './catalog';
 
-export type WorkshopPublicationState =
+export type GaragePublicationState =
   'draft' | 'pending_review' | 'published' | 'rejected' | 'suspended';
-export interface WorkshopLocationPoint {
+export interface GarageLocationPoint {
   readonly latitude: number;
   readonly longitude: number;
 }
@@ -12,14 +12,14 @@ export interface VerificationChecklist {
   readonly location: 'not_checked' | 'verified' | 'failed';
   readonly phone: 'not_checked' | 'verified' | 'failed';
 }
-export interface WorkshopProfileInput {
+export interface GarageProfileInput {
   readonly address?: string;
   readonly contactEmail?: string;
   readonly contactPerson: string;
   readonly contactPhone: string;
   readonly description?: string;
   readonly languages: readonly string[];
-  readonly locationPoint?: WorkshopLocationPoint;
+  readonly locationPoint?: GarageLocationPoint;
   readonly name: string;
   readonly placeId: string;
   readonly publicPhone?: string;
@@ -91,8 +91,8 @@ export function knownGarageCatalogs(profile: {
 }
 
 export function validGarageProfile(
-  profile: WorkshopProfileInput,
-  existing?: WorkshopProfileInput,
+  profile: GarageProfileInput,
+  existing?: GarageProfileInput,
 ): boolean {
   const required = [profile.name, profile.placeId, profile.contactPerson, profile.contactPhone];
   if (

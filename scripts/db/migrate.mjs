@@ -13,6 +13,9 @@ if (!databaseUrl) {
 
 const migrationsDirectory = join(import.meta.dirname, '../../db/migrations');
 const client = new pg.Client({ connectionString: databaseUrl });
+// These three migration files were renamed with the garage terminology. A released database may
+// still record their former filename; the numeric migration sequence is unique for each alias.
+const renamedMigrationPrefixes = new Set(['004', '012', '020']);
 
 await client.connect();
 
@@ -29,6 +32,19 @@ try {
     .sort();
 
   for (const migration of migrations) {
+    const prefix = migration.slice(0, 3);
+    if (renamedMigrationPrefixes.has(prefix)) {
+      const legacy = await client.query(
+        "SELECT id FROM schema_migrations WHERE split_part(id, '_', 1) = $1",
+        [prefix],
+      );
+      if (legacy.rows[0] && legacy.rows[0].id !== migration) {
+        await client.query('UPDATE schema_migrations SET id = $1 WHERE id = $2', [
+          migration,
+          legacy.rows[0].id,
+        ]);
+      }
+    }
     const alreadyApplied = await client.query('SELECT 1 FROM schema_migrations WHERE id = $1', [
       migration,
     ]);

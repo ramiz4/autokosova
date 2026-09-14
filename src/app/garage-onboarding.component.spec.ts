@@ -1,7 +1,7 @@
 import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { WorkshopOnboardingComponent } from './workshop-onboarding.component';
+import { GarageOnboardingComponent } from './garage-onboarding.component';
 import { LanguageService } from './language.service';
 
 const validForm = {
@@ -18,10 +18,10 @@ const validForm = {
 };
 async function setup() {
   await TestBed.configureTestingModule({
-    imports: [WorkshopOnboardingComponent],
+    imports: [GarageOnboardingComponent],
     providers: [provideRouter([]), { provide: PLATFORM_ID, useValue: 'server' }],
   }).compileComponents();
-  const fixture = TestBed.createComponent(WorkshopOnboardingComponent);
+  const fixture = TestBed.createComponent(GarageOnboardingComponent);
   fixture.detectChanges();
   return fixture;
 }
@@ -43,6 +43,30 @@ it('has no fabricated selections and validates an address conflict with focus on
   expect(fixture.nativeElement.querySelector('#garage-street').getAttribute('aria-invalid')).toBe(
     'true',
   );
+});
+
+it('uses the same image, overlay, text container and card overlap as the inquiry hero', async () => {
+  const fixture = await setup();
+  const page = fixture.nativeElement as HTMLElement;
+  const hero = page.querySelector<HTMLElement>('header[aria-labelledby="onboarding-hero-title"]')!;
+  const image = hero.querySelector<HTMLImageElement>('img')!;
+  expect(hero.className).toContain('min-h-[272px]');
+  expect(hero.className).toContain('lg:h-[272px]');
+  expect(hero.className).toContain('pt-8');
+  expect(hero.className).toContain('pb-20');
+  expect(image.src).toContain('/images/home/hero-mountain-road-1672.webp');
+  expect(image.className).toContain('object-[75%_54%]');
+  expect(hero.querySelector('.bg-gradient-to-r')).not.toBeNull();
+  expect(hero.querySelector('h1')!.className).toContain('max-w-xl');
+  expect(hero.querySelector('p')!.className).toBe(
+    'mt-3 max-w-xl text-base leading-6 text-white sm:text-lg',
+  );
+  expect(
+    [...hero.querySelectorAll('div')].some((element) =>
+      element.className.includes('max-w-[1360px]'),
+    ),
+  ).toBe(true);
+  expect(page.querySelector<HTMLElement>('header + div')!.className).toContain('-mt-10');
 });
 
 it('sends the address, preserves input on a failed save and prevents a second concurrent request', async () => {
@@ -119,14 +143,36 @@ it('keeps entered values on session loss and offers the localized safe return wi
 });
 
 it.each(['de', 'sq', 'en'] as const)(
-  'renders the three sections and all searchable selections in %s',
+  'renders three visually unboxed sections and all searchable selections in %s',
   async (language) => {
     const fixture = await setup();
+    const page = fixture.nativeElement as HTMLElement;
     vi.spyOn(TestBed.inject(LanguageService), 'language', 'get').mockReturnValue(language);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelectorAll('app-multi-select')).toHaveLength(4);
-    expect(fixture.nativeElement.querySelectorAll('fieldset.onboarding-section')).toHaveLength(3);
-    expect(fixture.nativeElement.textContent).not.toContain('durch Komma');
-    expect(fixture.nativeElement.querySelector('app-site-header img')).not.toBeNull();
+    expect(page.querySelectorAll('app-multi-select')).toHaveLength(4);
+    expect(page.querySelectorAll('fieldset.onboarding-section')).toHaveLength(3);
+    const title = page.querySelector<HTMLElement>('#form-title')!;
+    expect(title.className).toBe('text-3xl font-bold tracking-tight sm:text-[34px]');
+    expect(title.nextElementSibling?.className).toBe('mt-1 text-muted');
+    expect(title.parentElement?.className).toContain('sm:py-6');
+    const infoPanels = page.querySelectorAll<HTMLElement>('aside .onboarding-info');
+    expect(infoPanels).toHaveLength(3);
+    expect(infoPanels[0].querySelector('h2')!.className).toBe('text-lg font-bold tracking-tight');
+    expect(infoPanels[1].querySelector('h2')!.className).toBe('text-lg font-bold tracking-tight');
+    expect(infoPanels[0].querySelector('h2 + p')!.className).toBe(
+      'mt-2 text-sm leading-relaxed text-slate-500',
+    );
+    expect(infoPanels[1].querySelector('h2 + p')!.className).toBe(
+      'mt-2 text-sm leading-relaxed text-slate-500',
+    );
+    expect(infoPanels[0].querySelector('ol')!.className).toBe('mt-6 space-y-6');
+    expect(infoPanels[1].querySelector('ul')!.className).toBe('mt-6 space-y-6');
+    expect(infoPanels[0].querySelector('li')!.className).toBe('flex gap-4');
+    expect(infoPanels[1].querySelector('li')!.className).toBe('flex gap-4');
+    expect(page.querySelector<HTMLElement>('fieldset.onboarding-section')!.className).not.toContain(
+      'rounded',
+    );
+    expect(page.textContent).not.toContain('durch Komma');
+    expect(page.querySelector('app-site-header img')).not.toBeNull();
   },
 );

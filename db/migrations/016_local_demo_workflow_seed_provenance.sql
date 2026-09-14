@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS local_demo_seed_entity (
   entity_type text NOT NULL CHECK (
     entity_type IN (
       'app_user', 'file_object', 'repair_request', 'request_search_area',
-      'visit_evidence', 'workshop_review'
+      'visit_evidence', 'garage_review'
     )
   ),
   entity_id text NOT NULL,

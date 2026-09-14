@@ -2,7 +2,7 @@ export interface ContactPreviewInput {
   readonly includeDetails: boolean;
   readonly repairSummary?: string;
   readonly vehicleSummary?: string;
-  readonly workshopName: string;
+  readonly garageName: string;
 }
 
 const phonePattern = /^\+?[1-9]\d{6,14}$/;
@@ -14,7 +14,7 @@ const phonePattern = /^\+?[1-9]\d{6,14}$/;
  */
 export function buildContactPreview(input: ContactPreviewInput): string {
   const lines = [
-    `Hallo ${cleanLine(input.workshopName)},`,
+    `Hallo ${cleanLine(input.garageName)},`,
     '',
     'ich möchte eine Reparatur direkt mit Ihnen abstimmen.',
   ];

@@ -33,7 +33,7 @@ export class PostgresFavoriteStore implements FavoriteStore {
         [ownerUserId],
       );
       const available = await client.query(
-        `SELECT garage.id FROM workshop AS garage JOIN app_user AS owner ON owner.id = $1 AND owner.status = 'active' WHERE garage.id = $2 AND garage.publication_state = 'published' FOR SHARE OF garage, owner`,
+        `SELECT garage.id FROM garage AS garage JOIN app_user AS owner ON owner.id = $1 AND owner.status = 'active' WHERE garage.id = $2 AND garage.publication_state = 'published' FOR SHARE OF garage, owner`,
         [ownerUserId, garageId],
       );
       if (!available.rowCount) throw new AccessError(404, 'Garage not available');

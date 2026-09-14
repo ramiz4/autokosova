@@ -51,7 +51,7 @@ interface ReviewRow {
   readonly rejection_reason_code: OwnReview['rejectionReason'] | null;
   readonly service_category_id: string;
   readonly visit_month: string;
-  readonly workshop_id: string;
+  readonly garage_id: string;
   readonly work_quality: number;
 }
 
@@ -250,15 +250,15 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
         readonly publication_state: 'submitted' | 'under_review';
       }>(
         `SELECT review.id, assignment.moderator_user_id, review.publication_state
-         FROM workshop_review AS review
+         FROM garage_review AS review
          LEFT JOIN review_moderator_assignment AS assignment ON assignment.review_id = review.id
          WHERE review.publication_state IN ('submitted', 'under_review')
            AND ($1::boolean OR assignment.moderator_user_id = $2)`,
         [isAdmin, principal.userId],
       );
-      const workshops = isAdmin
+      const garages = isAdmin
         ? await client.query<{ readonly id: string }>(
-            "SELECT id FROM workshop WHERE publication_state = 'pending_review'",
+            "SELECT id FROM garage WHERE publication_state = 'pending_review'",
           )
         : { rows: [] as { readonly id: string }[] };
       return sortQueue([
@@ -276,12 +276,12 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
           subjectId: review.id,
           subjectType: 'review' as const,
         })),
-        ...workshops.rows.map((workshop) => ({
-          id: `workshop:${workshop.id}`,
+        ...garages.rows.map((garage) => ({
+          id: `garage:${garage.id}`,
           priority: 'normal' as const,
           status: 'submitted' as const,
-          subjectId: workshop.id,
-          subjectType: 'workshop_profile' as const,
+          subjectId: garage.id,
+          subjectType: 'garage_profile' as const,
         })),
       ]);
     });
@@ -293,17 +293,17 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
         `SELECT DISTINCT moderation_case.*
          FROM moderation_case
          LEFT JOIN content_report ON content_report.case_id = moderation_case.id
-         LEFT JOIN workshop_review ON (
-           moderation_case.subject_type = 'review' AND workshop_review.id = moderation_case.subject_id
+         LEFT JOIN garage_review ON (
+           moderation_case.subject_type = 'review' AND garage_review.id = moderation_case.subject_id
          )
          LEFT JOIN membership ON (
-           moderation_case.subject_type = 'workshop_profile'
-           AND membership.workshop_id = moderation_case.subject_id
+           moderation_case.subject_type = 'garage_profile'
+           AND membership.garage_id = moderation_case.subject_id
            AND membership.user_id = $1
            AND membership.state = 'active'
          )
          WHERE content_report.reporter_user_id = $1
-           OR workshop_review.author_user_id = $1
+           OR garage_review.author_user_id = $1
            OR membership.user_id = $1`,
         [principal.userId],
       );
@@ -433,12 +433,12 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
         [principal.userId],
       );
       const reviews = await client.query<ReviewRow>(
-        `SELECT review.id, review.workshop_id, review.service_category_id,
+        `SELECT review.id, review.garage_id, review.service_category_id,
                 to_char(review.visit_month, 'YYYY-MM') AS visit_month, review.work_quality,
                 review.communication, review.price_transparency, review.punctuality,
                 review.publication_state, review.rejection_reason_code,
                 evidence.verification_state AS evidence_status
-         FROM workshop_review AS review
+         FROM garage_review AS review
          JOIN visit_evidence AS evidence ON evidence.review_id = review.id
          WHERE review.author_user_id = $1 ORDER BY review.submitted_at DESC`,
         [principal.userId],
@@ -515,13 +515,13 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
       const policy = await client.query<{ readonly version: string }>(
         'SELECT version FROM lifecycle_policy ORDER BY configured_at DESC LIMIT 1',
       );
-      const ownedWorkshop = await client.query(
+      const ownedGarage = await client.query(
         `SELECT 1 FROM membership
          WHERE user_id = $1 AND role = 'owner' AND state = 'active' LIMIT 1`,
         [principal.userId],
       );
       const id = randomUUID();
-      const status: DataDeletionRequest['status'] = ownedWorkshop.rowCount
+      const status: DataDeletionRequest['status'] = ownedGarage.rowCount
         ? 'manual_content_decision_required'
         : policy.rowCount
           ? 'submitted'
@@ -613,7 +613,7 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
       const reviews = await client.query<{
         readonly id: string;
         readonly publication_state: string;
-      }>('SELECT id, publication_state FROM workshop_review WHERE author_user_id = $1', [userId]);
+      }>('SELECT id, publication_state FROM garage_review WHERE author_user_id = $1', [userId]);
       const retained = reviews.rows.filter(
         (review) =>
           review.publication_state === 'published' &&
@@ -626,7 +626,7 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
           [anonymousUserId, `anonymized-${randomUUID()}`],
         );
         await client.query(
-          `UPDATE workshop_review SET author_user_id = $2
+          `UPDATE garage_review SET author_user_id = $2
            WHERE id = ANY($1::text[])`,
           [retained.map((review) => review.id), anonymousUserId],
         );
@@ -643,10 +643,9 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
         await client.query('DELETE FROM review_update WHERE review_id = ANY($1::text[])', [
           removableReviewIds,
         ]);
-        await client.query(
-          'DELETE FROM review_workshop_response WHERE review_id = ANY($1::text[])',
-          [removableReviewIds],
-        );
+        await client.query('DELETE FROM review_garage_response WHERE review_id = ANY($1::text[])', [
+          removableReviewIds,
+        ]);
         await client.query(
           'DELETE FROM review_moderator_assignment WHERE review_id = ANY($1::text[])',
           [removableReviewIds],
@@ -654,7 +653,7 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
         await client.query('DELETE FROM visit_evidence WHERE review_id = ANY($1::text[])', [
           removableReviewIds,
         ]);
-        await client.query('DELETE FROM workshop_review WHERE id = ANY($1::text[])', [
+        await client.query('DELETE FROM garage_review WHERE id = ANY($1::text[])', [
           removableReviewIds,
         ]);
       }
@@ -711,15 +710,15 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
     if (record.requester_user_id === principal.userId) return true;
     if (record.subject_type === 'review') {
       const review = await client.query(
-        'SELECT 1 FROM workshop_review WHERE id = $1 AND author_user_id = $2',
+        'SELECT 1 FROM garage_review WHERE id = $1 AND author_user_id = $2',
         [record.subject_id, principal.userId],
       );
       return Boolean(review.rowCount);
     }
-    if (record.subject_type === 'workshop_profile') {
+    if (record.subject_type === 'garage_profile') {
       const member = await client.query(
         `SELECT 1 FROM membership
-         WHERE workshop_id = $1 AND user_id = $2 AND state = 'active'`,
+         WHERE garage_id = $1 AND user_id = $2 AND state = 'active'`,
         [record.subject_id, principal.userId],
       );
       return Boolean(member.rowCount);
@@ -736,7 +735,7 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
       const expected = action === 'temporarily_hide' ? 'published' : 'temporarily_hidden';
       const target = action === 'temporarily_hide' ? 'temporarily_hidden' : 'published';
       const updated = await client.query(
-        'UPDATE workshop_review SET publication_state = $2 WHERE id = $1 AND publication_state = $3',
+        'UPDATE garage_review SET publication_state = $2 WHERE id = $1 AND publication_state = $3',
         [record.subject_id, target, expected],
       );
       if (!updated.rowCount)
@@ -746,11 +745,11 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
     const expected = action === 'temporarily_hide' ? 'published' : 'suspended';
     const target = action === 'temporarily_hide' ? 'suspended' : 'published';
     const updated = await client.query(
-      'UPDATE workshop SET publication_state = $2 WHERE id = $1 AND publication_state = $3',
+      'UPDATE garage SET publication_state = $2 WHERE id = $1 AND publication_state = $3',
       [record.subject_id, target, expected],
     );
     if (!updated.rowCount)
-      throw new AccessError(409, 'This workshop cannot take the requested visibility action');
+      throw new AccessError(409, 'This garage cannot take the requested visibility action');
   }
 
   private async getCase(client: pg.PoolClient, caseId: string): Promise<CaseRow> {
@@ -780,8 +779,8 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
   ): Promise<void> {
     const result =
       subjectType === 'review'
-        ? await client.query('SELECT 1 FROM public_workshop_review WHERE id = $1', [subjectId])
-        : await client.query('SELECT 1 FROM public_workshop_profile WHERE id = $1', [subjectId]);
+        ? await client.query('SELECT 1 FROM public_garage_review WHERE id = $1', [subjectId])
+        : await client.query('SELECT 1 FROM public_garage_profile WHERE id = $1', [subjectId]);
     if (!result.rowCount) throw new AccessError(404, 'Published content not found');
   }
 
@@ -871,7 +870,7 @@ function toOwnReview(row: ReviewRow): OwnReview {
     ratings: { ...ratings, overall: calculateOverallRating(ratings) },
     serviceCategoryId: row.service_category_id,
     visitMonth: row.visit_month,
-    workshopId: row.workshop_id,
+    garageId: row.garage_id,
   };
 }
 

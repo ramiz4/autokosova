@@ -4,7 +4,7 @@ import test from 'node:test';
 import pg from 'pg';
 import type { Principal } from '../src/server/access';
 import { PostgresReviewStore } from '../src/server/review-store';
-import { PostgresWorkshopSearchStore } from '../src/server/workshop-search-store';
+import { PostgresGarageSearchStore } from '../src/server/garage-search-store';
 
 const databaseUrl = process.env['DATABASE_URL'];
 
@@ -26,13 +26,13 @@ test(
   async () => {
     const client = new pg.Client({ connectionString: databaseUrl });
     const reviews = new PostgresReviewStore(databaseUrl!);
-    const search = new PostgresWorkshopSearchStore(databaseUrl!);
+    const search = new PostgresGarageSearchStore(databaseUrl!);
     const suffix = randomUUID();
     const adminId = `review-admin-${suffix}`;
     const authorId = `review-author-${suffix}`;
     const moderatorId = `review-moderator-${suffix}`;
     const ownerId = `review-owner-${suffix}`;
-    const workshopId = `review-workshop-${suffix}`;
+    const garageId = `review-garage-${suffix}`;
     const evidenceFileId = `review-evidence-${suffix}`;
 
     await client.connect();
@@ -45,7 +45,7 @@ test(
         );
       }
       await client.query(
-        `INSERT INTO workshop (
+        `INSERT INTO garage (
            id, name, publication_state, created_by_user_id, place_id, public_phone,
            contact_person, contact_phone, languages, self_reported_specializations,
            location_point, location_source
@@ -54,23 +54,23 @@ test(
            'Private fiktive Person', '+383 44 000 121', ARRAY['Deutsch'], ARRAY[]::text[],
            ST_SetSRID(ST_MakePoint(21.16688, 42.67272), 4326)::geography, 'self_reported'
          )`,
-        [workshopId, ownerId],
+        [garageId, ownerId],
       );
       await client.query(
-        `INSERT INTO workshop_verification (
-           workshop_id, phone_state, contact_person_state, company_document_state, location_state
+        `INSERT INTO garage_verification (
+           garage_id, phone_state, contact_person_state, company_document_state, location_state
          ) VALUES ($1, 'verified', 'verified', 'verified', 'verified')`,
-        [workshopId],
+        [garageId],
       );
       await client.query(
-        `INSERT INTO workshop_service_category (workshop_id, service_category_id)
+        `INSERT INTO garage_service_category (garage_id, service_category_id)
          VALUES ($1, 'bremsen')`,
-        [workshopId],
+        [garageId],
       );
       await client.query(
-        `INSERT INTO membership (user_id, workshop_id, role, state, granted_by)
+        `INSERT INTO membership (user_id, garage_id, role, state, granted_by)
          VALUES ($1, $2, 'owner', 'active', $1)`,
-        [ownerId, workshopId],
+        [ownerId, garageId],
       );
       await client.query(
         `INSERT INTO file_object (
@@ -91,24 +91,24 @@ test(
         vehicleMakeId: 'skoda',
         visitMonth: '2026-08',
         workQuality: 1,
-        workshopId,
+        garageId,
       });
       await reviews.assignModerator(principal(adminId, ['admin']), submitted.id, moderatorId);
       await reviews.decideReview(principal(moderatorId, ['moderator']), submitted.id, {
-        checklist: { serviceMatches: true, visitMonthMatches: true, workshopMatches: true },
+        checklist: { serviceMatches: true, visitMonthMatches: true, garageMatches: true },
         decision: 'published',
       });
-      await reviews.postWorkshopResponse(
+      await reviews.postGarageResponse(
         principal(ownerId, ['customer']),
-        workshopId,
+        garageId,
         submitted.id,
         'Wir nehmen die fiktive Kritik entgegen und können die Bewertung nicht verändern.',
       );
-      const publicReviews = await reviews.listPublicReviews(workshopId, {
+      const publicReviews = await reviews.listPublicReviews(garageId, {
         serviceCategoryId: 'bremsen',
         vehicleMakeId: 'skoda',
       });
-      const results = await search.searchPublicWorkshops({
+      const results = await search.searchPublicGarages({
         areas: [{ placeId: 'xk-pristina', radiusKm: 5 }],
         page: 1,
         pageSize: 10,
@@ -127,9 +127,9 @@ test(
       assert.equal(submitted.publicationState, 'submitted');
       assert.equal(publicReviews.length, 1);
       assert.equal(publicReviews[0].ratings.overall, 1);
-      assert.equal(publicReviews[0].workshopResponse?.text.includes('nicht verändern'), true);
+      assert.equal(publicReviews[0].garageResponse?.text.includes('nicht verändern'), true);
       assert.equal(
-        results.results.find((result) => result.id === workshopId)?.reviewSummary.reviewCount,
+        results.results.find((result) => result.id === garageId)?.reviewSummary.reviewCount,
         1,
       );
       assert.equal(deletedFileId, evidenceFileId);
@@ -138,31 +138,29 @@ test(
     } finally {
       await client.query('ROLLBACK');
       await client.query(
-        'DELETE FROM review_update WHERE review_id IN (SELECT id FROM workshop_review WHERE workshop_id = $1)',
-        [workshopId],
+        'DELETE FROM review_update WHERE review_id IN (SELECT id FROM garage_review WHERE garage_id = $1)',
+        [garageId],
       );
       await client.query(
-        'DELETE FROM review_workshop_response WHERE review_id IN (SELECT id FROM workshop_review WHERE workshop_id = $1)',
-        [workshopId],
+        'DELETE FROM review_garage_response WHERE review_id IN (SELECT id FROM garage_review WHERE garage_id = $1)',
+        [garageId],
       );
       await client.query(
-        'DELETE FROM review_moderator_assignment WHERE review_id IN (SELECT id FROM workshop_review WHERE workshop_id = $1)',
-        [workshopId],
+        'DELETE FROM review_moderator_assignment WHERE review_id IN (SELECT id FROM garage_review WHERE garage_id = $1)',
+        [garageId],
       );
       await client.query(
-        'DELETE FROM visit_evidence WHERE review_id IN (SELECT id FROM workshop_review WHERE workshop_id = $1)',
-        [workshopId],
+        'DELETE FROM visit_evidence WHERE review_id IN (SELECT id FROM garage_review WHERE garage_id = $1)',
+        [garageId],
       );
-      await client.query('DELETE FROM workshop_review WHERE workshop_id = $1', [workshopId]);
+      await client.query('DELETE FROM garage_review WHERE garage_id = $1', [garageId]);
       await client.query('DELETE FROM moderation_event WHERE actor_user_id = ANY($1::text[])', [
         [adminId, authorId, moderatorId, ownerId],
       ]);
-      await client.query('DELETE FROM membership WHERE workshop_id = $1', [workshopId]);
-      await client.query('DELETE FROM workshop_service_category WHERE workshop_id = $1', [
-        workshopId,
-      ]);
-      await client.query('DELETE FROM workshop_verification WHERE workshop_id = $1', [workshopId]);
-      await client.query('DELETE FROM workshop WHERE id = $1', [workshopId]);
+      await client.query('DELETE FROM membership WHERE garage_id = $1', [garageId]);
+      await client.query('DELETE FROM garage_service_category WHERE garage_id = $1', [garageId]);
+      await client.query('DELETE FROM garage_verification WHERE garage_id = $1', [garageId]);
+      await client.query('DELETE FROM garage WHERE id = $1', [garageId]);
       await client.query('DELETE FROM file_object WHERE id = $1', [evidenceFileId]);
       await client.query('DELETE FROM app_user WHERE id = ANY($1::text[])', [
         [adminId, authorId, moderatorId, ownerId],

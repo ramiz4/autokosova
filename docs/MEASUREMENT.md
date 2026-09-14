@@ -10,7 +10,7 @@ Der Endpunkt akzeptiert ausschließlich einen der folgenden Namen und speichert 
 | --- | --- | --- |
 | `search_started` | Eine Person startet eine Suche mit gültiger Leistung und Radius. | Kein Suchbegriff, kein Ort, kein Fahrzeug. |
 | `search_results_displayed` | Eine Ergebnisantwort wurde in der Oberfläche angezeigt. | Kein Ranking, keine Treffer-ID. |
-| `workshop_profile_opened` | Ein veröffentlichtes Profil wurde angezeigt. | Keine Profil-ID oder Kontaktperson. |
+| `garage_profile_opened` | Ein veröffentlichtes Profil wurde angezeigt. | Keine Profil-ID oder Kontaktperson. |
 | `contact_channel_opened` | Die Person öffnet bewusst WhatsApp oder Telefon. | Keine gesendete Nachricht, Buchung, Reparatur oder Zusage. |
 
 Die Tabelle hat absichtlich keine Besucher-, Sitzungs-, Cookie-, IP-, User-Agent-, URL-, Such-, Werkstatt-, Fahrzeug-, Reise-, Datei- oder Freitextspalte. Bekannte Bot-/Crawler-/Headless-User-Agents werden verworfen; Tests laufen mit dem Schalter aus. Diese Filter sind nur eine grobe Schutzschicht, keine Verlässlichkeitsgarantie.

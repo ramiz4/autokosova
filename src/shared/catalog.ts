@@ -7,7 +7,7 @@ export interface CatalogPlace {
 }
 
 // These are the same source-checked GeoNames reference points seeded by db/catalog.mjs.
-// They identify municipalities, not a workshop entrance or a route calculation.
+// They identify municipalities, not a garage entrance or a route calculation.
 export const CATALOG_PLACES: readonly CatalogPlace[] = [
   {
     aliases: ['Pristina', 'Prishtinë', 'Prishtine'],

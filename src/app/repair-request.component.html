@@ -2,7 +2,9 @@
   <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
     <app-site-header [compact]="true" active="request" />
   </div>
-  <header class="relative isolate min-h-64 overflow-hidden px-5 pt-8 pb-20 sm:px-10 lg:px-16">
+  <header
+    class="relative isolate min-h-[272px] overflow-hidden px-5 pt-8 pb-20 sm:px-10 lg:h-[272px] lg:px-16"
+  >
     <img
       src="/images/home/hero-mountain-road-1672.webp"
       alt=""
@@ -31,7 +33,7 @@
     <form
       [formGroup]="form"
       [attr.aria-describedby]="formError ? 'request-error' : null"
-      class="min-w-0 rounded-2xl bg-white p-5 shadow-xl shadow-blue-100/40 sm:px-8 sm:py-6 lg:px-10"
+      class="min-w-0 rounded-2xl border border-white/85 bg-white/87 p-5 shadow-xl shadow-blue-100/40 backdrop-blur-sm sm:px-8 sm:py-6 lg:px-10"
       novalidate
       (submit)="$event.preventDefault()"
     >
@@ -423,8 +425,10 @@
         }
       </fieldset>
     </form>
-    <aside class="self-start rounded-2xl bg-white p-4 shadow-xl shadow-blue-100/40">
-      <section class="rounded-xl bg-[#f4f9fe] p-5">
+    <aside class="self-start space-y-4">
+      <section
+        class="rounded-2xl border border-white/85 bg-white/87 p-5 shadow-xl shadow-blue-100/40 backdrop-blur-sm"
+      >
         <h2 class="text-xl font-bold">{{ text('why') }}</h2>
         <div class="mt-5 grid gap-6">
           @for (benefit of benefits; track $index) {
@@ -441,7 +445,9 @@
           }
         </div>
       </section>
-      <section class="mt-3 flex gap-4 rounded-xl border border-blue-100 bg-blue-50 p-5">
+      <section
+        class="flex gap-4 rounded-2xl border border-white/85 bg-white/87 p-5 shadow-xl shadow-blue-100/40 backdrop-blur-sm"
+      >
         <app-icon name="shield" class="size-9 text-brand" />
         <div>
           <h2 class="font-semibold text-brand">{{ text('privacy') }}</h2>

@@ -6,7 +6,6 @@ const de = {
   heroIntro: 'Gemeinsam für eine zuverlässige und transparente Werkstattlandschaft.',
   badge: 'Vertrauen. Qualität.',
   badgeDetail: 'Eine bessere Mobilität.',
-  eyebrow: 'Werkstatt aufnehmen',
   title: 'In wenigen Schritten zum Prüfauftrag',
   intro:
     'Erstelle deinen privaten Entwurf. Erst nach Einreichung, Prüfung und Freigabe wird dein Profil öffentlich.',
@@ -59,6 +58,7 @@ const de = {
   step3: 'Freigabe',
   step3Help: 'Erst nach erfolgreicher Prüfung erscheint dein Profil in der Suche.',
   why: 'Warum AutoKosova?',
+  whyIntro: 'So erreicht dein Profil passende Kunden.',
   why1: 'Passend gefunden werden',
   why1Help: 'Zeige Kunden in Kosovo, welche Leistungen du anbietest.',
   why2: 'Vertrauen schaffen',
@@ -112,7 +112,6 @@ const en: Copy = {
   heroIntro: 'Together for reliable and transparent garage services.',
   badge: 'Trust. Quality.',
   badgeDetail: 'Better mobility.',
-  eyebrow: 'Register a garage',
   title: 'Your garage. A clear start.',
   intro:
     'Create your private draft. Your profile becomes public only after submission, review and approval.',
@@ -164,6 +163,7 @@ const en: Copy = {
   step3: 'Approval',
   step3Help: 'Your profile appears in search only after successful review.',
   why: 'Why AutoKosova?',
+  whyIntro: 'Your profile reaches the right customers.',
   why1: 'Help customers find you',
   why1Help: 'Show customers in Kosovo which services you provide.',
   why2: 'Build trust',
@@ -215,7 +215,6 @@ const sq: Copy = {
   heroIntro: 'Së bashku për shërbime të besueshme dhe transparente.',
   badge: 'Besim. Cilësi.',
   badgeDetail: 'Mobilitet më i mirë.',
-  eyebrow: 'Regjistro servisin',
   title: 'Servisi yt. Një fillim i qartë.',
   intro:
     'Krijo draftin privat. Profili bëhet publik vetëm pas dorëzimit, kontrollit dhe miratimit.',
@@ -267,6 +266,7 @@ const sq: Copy = {
   step3: 'Miratimi',
   step3Help: 'Profili shfaqet në kërkim vetëm pas kontrollit të suksesshëm.',
   why: 'Pse AutoKosova?',
+  whyIntro: 'Profili yt arrin klientët e duhur.',
   why1: 'Klientët të gjejnë më lehtë',
   why1Help: 'Trego shërbimet që ofron për klientët në Kosovë.',
   why2: 'Krijo besim',

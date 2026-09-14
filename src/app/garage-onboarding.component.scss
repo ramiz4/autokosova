@@ -1,33 +1,22 @@
 :host {
   display: block;
 }
-.onboarding-page {
-  background: linear-gradient(145deg, #f4faff 30%, #eaf4ff 60%, #f8fbff);
-}
-.onboarding-hero {
-  background-image:
-    linear-gradient(90deg, #edf7ff 0%, #f2f8ff 52%, rgb(244 249 255 / 40%) 70%, transparent),
-    url('/images/home/hero-mountain-road-1672.webp');
-  background-size:
-    cover,
-    auto 460px;
-  background-repeat: no-repeat;
-  background-position:
-    center,
-    right 57%;
-}
 .onboarding-section {
   min-width: 0;
-  padding: 20px;
-  border: 1px solid #e5edf7;
-  border-radius: 12px;
-  background: linear-gradient(120deg, #f8fbff, #f4f8fd);
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.onboarding-section + .onboarding-section {
+  padding-top: 28px;
+  border-top: 1px solid #e5edf7;
 }
 .onboarding-info {
   padding: 24px;
   border: 1px solid white;
   border-radius: 14px;
   background: rgb(255 255 255 / 87%);
+  backdrop-filter: blur(4px);
   box-shadow: 0 6px 24px rgb(44 105 194 / 5%);
 }
 .step-number {
@@ -82,15 +71,7 @@
   display: none;
 }
 @media (max-width: 639px) {
-  .onboarding-section {
-    padding: 16px;
-  }
-  .onboarding-hero {
-    background-position:
-      center,
-      75% center;
-    background-image:
-      linear-gradient(90deg, #edf7ff 0%, rgb(242 248 255 / 96%) 55%, rgb(242 248 255 / 84%)),
-      url('/images/home/hero-mountain-road-1672.webp');
+  .onboarding-section + .onboarding-section {
+    padding-top: 24px;
   }
 }

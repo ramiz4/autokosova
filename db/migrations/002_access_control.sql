@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS app_user (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS workshop (
+CREATE TABLE IF NOT EXISTS garage (
   id text PRIMARY KEY,
   publication_state text NOT NULL CHECK (publication_state IN ('draft', 'published', 'suspended')),
   name text NOT NULL
@@ -13,12 +13,12 @@ CREATE TABLE IF NOT EXISTS workshop (
 
 CREATE TABLE IF NOT EXISTS membership (
   user_id text NOT NULL REFERENCES app_user(id),
-  workshop_id text NOT NULL REFERENCES workshop(id),
+  garage_id text NOT NULL REFERENCES garage(id),
   role text NOT NULL CHECK (role IN ('editor', 'owner')),
   state text NOT NULL CHECK (state IN ('active', 'revoked')),
   granted_by text NOT NULL REFERENCES app_user(id),
   granted_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (user_id, workshop_id)
+  PRIMARY KEY (user_id, garage_id)
 );
 
 CREATE TABLE IF NOT EXISTS vehicle (

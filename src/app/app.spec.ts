@@ -48,14 +48,10 @@ describe('Homepage', () => {
     expect(page.textContent).toContain('ohne Konto');
     expect(page.textContent).not.toMatch(/10[’']000|500\+|Reparaturgarantie|Arben/);
     expect(page.querySelector('picture img')?.getAttribute('fetchpriority')).toBe('high');
-    for (const id of ['werkstatt-suche', 'so-funktionierts', 'ueber-uns']) {
-      expect(page.querySelector('#' + id)).toBeTruthy();
-      expect(
-        page.querySelector(
-          'header a[href="' + (id === 'werkstatt-suche' ? '/garages' : '/#' + id) + '"]',
-        ),
-      ).toBeTruthy();
-    }
+    expect(page.querySelector('#werkstatt-suche')).toBeTruthy();
+    expect(page.querySelector('header a[href="/garages"]')).toBeTruthy();
+    expect(page.querySelector('#so-funktionierts')).toBeNull();
+    expect(page.querySelector('#ueber-uns')).toBeNull();
   });
 
   it('keeps menu state accessible, closes on Escape and restores focus', async () => {

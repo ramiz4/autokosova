@@ -95,7 +95,7 @@
       .status-controls button { min-height: 36px; padding: 6px 10px; border: 1px solid #a7bbd2; border-radius: 8px; color: #1f4a78; background: #fff; font-size: .86rem; }
       .results-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
       .result-list { display: grid; gap: 12px; }
-      .workshop-card { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 16px; }
+      .garage-card { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 16px; }
       .placeholder-logo { display: grid; width: 88px; height: 72px; place-items: center; border-radius: 12px; color: #315778; background: linear-gradient(145deg, #d7e8f9, #f0f6fc); font-weight: 800; text-align: center; }
       .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
       .tag { padding: 4px 8px; border: 1px solid #b7d0e8; border-radius: 999px; color: #285680; background: #f3f8fd; font-size: .78rem; font-weight: 700; }
@@ -149,8 +149,8 @@
         .aside, .concept-map, .profile-aside { position: static; }
         .form-grid, .info-grid { grid-template-columns: 1fr; }
         .place-row { grid-template-columns: 1fr; }
-        .workshop-card { grid-template-columns: 68px minmax(0, 1fr); }
-        .workshop-card .button { grid-column: 1 / -1; width: 100%; }
+        .garage-card { grid-template-columns: 68px minmax(0, 1fr); }
+        .garage-card .button { grid-column: 1 / -1; width: 100%; }
         .placeholder-logo { width: 68px; height: 68px; font-size: .8rem; }
         .header-actions .button { display: none; }
         .steps { gap: 4px; }
@@ -245,8 +245,8 @@
           <p class="notice" id="result-announcement" aria-live="polite">2 Konzeptbetriebe. Verfügbarkeit ist nicht bestätigt.</p>
           <div class="results-layout" id="loaded-results">
             <div class="result-list" id="result-list">
-              <article class="card workshop-card"><div class="placeholder-logo" aria-label="Konzeptbild">Konzept<br/>betrieb A</div><div><h2 style="font-size:1.22rem">Werkstattprofil A</h2><p class="muted">Beispielprofil · Pristina · Entfernung nur Konzept</p><div class="tag-row"><span class="tag">Wartung</span><span class="tag">Benzin</span></div><span class="availability" data-de="Verfügbarkeit nicht bestätigt" data-sq="Disponueshmëria nuk është konfirmuar">Verfügbarkeit nicht bestätigt</span></div><button class="button button-secondary" type="button" data-view-target="profile" data-de="Profil ansehen" data-sq="Shiko profilin">Profil ansehen</button></article>
-              <article class="card workshop-card"><div class="placeholder-logo" aria-label="Konzeptbild">Konzept<br/>betrieb B</div><div><h2 style="font-size:1.22rem">Werkstattprofil B</h2><p class="muted">Beispielprofil · Pristina · Entfernung nur Konzept</p><div class="tag-row"><span class="tag">Diagnose</span><span class="tag">Diesel</span></div><span class="availability" data-de="Verfügbarkeit nicht bestätigt" data-sq="Disponueshmëria nuk është konfirmuar">Verfügbarkeit nicht bestätigt</span></div><button class="button button-secondary" type="button" data-view-target="profile" data-de="Profil ansehen" data-sq="Shiko profilin">Profil ansehen</button></article>
+              <article class="card garage-card"><div class="placeholder-logo" aria-label="Konzeptbild">Konzept<br/>betrieb A</div><div><h2 style="font-size:1.22rem">Werkstattprofil A</h2><p class="muted">Beispielprofil · Pristina · Entfernung nur Konzept</p><div class="tag-row"><span class="tag">Wartung</span><span class="tag">Benzin</span></div><span class="availability" data-de="Verfügbarkeit nicht bestätigt" data-sq="Disponueshmëria nuk është konfirmuar">Verfügbarkeit nicht bestätigt</span></div><button class="button button-secondary" type="button" data-view-target="profile" data-de="Profil ansehen" data-sq="Shiko profilin">Profil ansehen</button></article>
+              <article class="card garage-card"><div class="placeholder-logo" aria-label="Konzeptbild">Konzept<br/>betrieb B</div><div><h2 style="font-size:1.22rem">Werkstattprofil B</h2><p class="muted">Beispielprofil · Pristina · Entfernung nur Konzept</p><div class="tag-row"><span class="tag">Diagnose</span><span class="tag">Diesel</span></div><span class="availability" data-de="Verfügbarkeit nicht bestätigt" data-sq="Disponueshmëria nuk është konfirmuar">Verfügbarkeit nicht bestätigt</span></div><button class="button button-secondary" type="button" data-view-target="profile" data-de="Profil ansehen" data-sq="Shiko profilin">Profil ansehen</button></article>
             </div>
             <aside class="concept-map" id="concept-map" hidden><p class="map-label"><strong data-de="Kartenkonzept" data-sq="Koncept harte">Kartenkonzept</strong><br/><span data-de="Keine Kartendaten verbunden. Orte und Distanzen sind Beispiele." data-sq="Asnjë e dhënë harte nuk është lidhur. Vendet dhe distancat janë shembuj.">Keine Kartendaten verbunden. Orte und Distanzen sind Beispiele.</span></p><div class="map-marker one" aria-label="Konzeptbetrieb A"><span>A</span></div><div class="map-marker two" aria-label="Konzeptbetrieb B"><span>B</span></div></aside>
           </div>

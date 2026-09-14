@@ -23,7 +23,7 @@ function deterministicDemoPosition(id, placeId) {
   };
 }
 
-function workshop(input) {
+function garage(input) {
   return {
     contactPerson: `Lokale Demo-Person ${input.id}`,
     description: `${baseDescription} ${input.scenario}`,
@@ -32,8 +32,8 @@ function workshop(input) {
   };
 }
 
-export const demoWorkshops = [
-  workshop({
+export const demoGarages = [
+  garage({
     id: 'demo-prishtina-bremsen',
     languages: ['Deutsch', 'Shqip'],
     name: 'DEMO · Bremsen Prishtina',
@@ -45,7 +45,7 @@ export const demoWorkshops = [
     vehicleMakeIds: ['skoda'],
     verification: 'verified',
   }),
-  workshop({
+  garage({
     id: 'demo-prishtina-reifen',
     languages: ['Shqip'],
     name: 'DEMO · Reifen Prishtina',
@@ -57,7 +57,7 @@ export const demoWorkshops = [
     vehicleMakeIds: [],
     verification: 'not_checked',
   }),
-  workshop({
+  garage({
     id: 'demo-ferizaj-bremsen-offen',
     languages: ['Deutsch'],
     name: 'DEMO · Bremsen Ferizaj',
@@ -69,7 +69,7 @@ export const demoWorkshops = [
     vehicleMakeIds: [],
     verification: 'verified',
   }),
-  workshop({
+  garage({
     id: 'demo-prizren-bremsen-vw',
     languages: ['Deutsch', 'Shqip'],
     name: 'DEMO · Bremsen Prizren',
@@ -81,7 +81,7 @@ export const demoWorkshops = [
     vehicleMakeIds: ['volkswagen'],
     verification: 'verified',
   }),
-  workshop({
+  garage({
     id: 'demo-peja-klima',
     languages: ['Shqip'],
     name: 'DEMO · Klima Pejë',
@@ -93,7 +93,7 @@ export const demoWorkshops = [
     vehicleMakeIds: ['toyota'],
     verification: 'verified',
   }),
-  workshop({
+  garage({
     id: 'demo-gjakova-motor-audi',
     languages: ['Deutsch'],
     name: 'DEMO · Motor Gjakovë',
@@ -105,7 +105,7 @@ export const demoWorkshops = [
     vehicleMakeIds: ['audi'],
     verification: 'verified',
   }),
-  workshop({
+  garage({
     id: 'demo-gjakova-karosserie',
     languages: ['Shqip'],
     name: 'DEMO · Karosserie Gjakovë',
@@ -117,7 +117,7 @@ export const demoWorkshops = [
     vehicleMakeIds: [],
     verification: 'not_checked',
   }),
-  workshop({
+  garage({
     id: 'demo-gjilan-elektronik-bmw',
     languages: ['Deutsch', 'Shqip'],
     name: 'DEMO · Elektronik Gjilan',
@@ -129,7 +129,7 @@ export const demoWorkshops = [
     vehicleMakeIds: ['bmw'],
     verification: 'verified',
   }),
-  workshop({
+  garage({
     id: 'demo-gjilan-service-offen',
     languages: ['Shqip'],
     name: 'DEMO · Service Gjilan',
@@ -141,7 +141,7 @@ export const demoWorkshops = [
     vehicleMakeIds: [],
     verification: 'verified',
   }),
-  workshop({
+  garage({
     id: 'demo-mitrovica-getriebe-mercedes',
     languages: ['Deutsch'],
     name: 'DEMO · Getriebe Mitrovicë',
@@ -153,7 +153,7 @@ export const demoWorkshops = [
     vehicleMakeIds: ['mercedes-benz'],
     verification: 'verified',
   }),
-  workshop({
+  garage({
     id: 'demo-mitrovica-reifen',
     languages: ['Shqip'],
     name: 'DEMO · Reifen Mitrovicë',
@@ -165,7 +165,7 @@ export const demoWorkshops = [
     vehicleMakeIds: ['opel'],
     verification: 'not_checked',
   }),
-  workshop({
+  garage({
     id: 'demo-peja-bremsen-opel',
     languages: ['Deutsch'],
     name: 'DEMO · Bremsen Pejë',
@@ -177,7 +177,7 @@ export const demoWorkshops = [
     vehicleMakeIds: ['opel'],
     verification: 'verified',
   }),
-  workshop({
+  garage({
     id: 'demo-peja-motor-offen',
     languages: ['Shqip'],
     name: 'DEMO · Motor Pejë',
@@ -189,7 +189,7 @@ export const demoWorkshops = [
     vehicleMakeIds: [],
     verification: 'verified',
   }),
-  workshop({
+  garage({
     id: 'demo-prishtina-service-renault',
     languages: ['Deutsch', 'Shqip'],
     name: 'DEMO · Service Prishtina',
@@ -201,7 +201,7 @@ export const demoWorkshops = [
     vehicleMakeIds: ['renault'],
     verification: 'verified',
   }),
-  workshop({
+  garage({
     id: 'demo-prishtina-elektronik-vw',
     languages: ['Deutsch'],
     name: 'DEMO · Elektronik Prishtina',
@@ -213,7 +213,7 @@ export const demoWorkshops = [
     vehicleMakeIds: ['volkswagen'],
     verification: 'not_checked',
   }),
-  workshop({
+  garage({
     id: 'demo-prishtina-karosserie',
     languages: ['Shqip'],
     name: 'DEMO · Karosserie Prishtina',
@@ -225,7 +225,7 @@ export const demoWorkshops = [
     vehicleMakeIds: [],
     verification: 'verified',
   }),
-  workshop({
+  garage({
     id: 'demo-prizren-klima-toyota',
     languages: ['Deutsch', 'Shqip'],
     name: 'DEMO · Klima Prizren',
@@ -237,7 +237,7 @@ export const demoWorkshops = [
     vehicleMakeIds: ['toyota'],
     verification: 'verified',
   }),
-  workshop({
+  garage({
     id: 'demo-prizren-getriebe-offen',
     languages: ['Shqip'],
     name: 'DEMO · Getriebe Prizren',
@@ -249,7 +249,7 @@ export const demoWorkshops = [
     vehicleMakeIds: [],
     verification: 'not_checked',
   }),
-  workshop({
+  garage({
     id: 'demo-ferizaj-reifen',
     languages: ['Deutsch'],
     name: 'DEMO · Reifen Ferizaj',
@@ -261,7 +261,7 @@ export const demoWorkshops = [
     vehicleMakeIds: ['skoda'],
     verification: 'verified',
   }),
-  workshop({
+  garage({
     id: 'demo-ferizaj-elektronik-skoda',
     languages: ['Shqip'],
     name: 'DEMO · Elektronik Ferizaj',
@@ -273,7 +273,7 @@ export const demoWorkshops = [
     vehicleMakeIds: ['skoda'],
     verification: 'verified',
   }),
-  workshop({
+  garage({
     id: 'demo-gjakova-service',
     languages: ['Deutsch'],
     name: 'DEMO · Service Gjakovë',
@@ -285,7 +285,7 @@ export const demoWorkshops = [
     vehicleMakeIds: ['audi'],
     verification: 'not_checked',
   }),
-  workshop({
+  garage({
     id: 'demo-gjilan-klima',
     languages: ['Deutsch', 'Shqip'],
     name: 'DEMO · Klima Gjilan',
@@ -297,7 +297,7 @@ export const demoWorkshops = [
     vehicleMakeIds: [],
     verification: 'verified',
   }),
-  workshop({
+  garage({
     id: 'demo-mitrovica-motor-bmw',
     languages: ['Shqip'],
     name: 'DEMO · Motor Mitrovicë',
@@ -309,7 +309,7 @@ export const demoWorkshops = [
     vehicleMakeIds: ['bmw'],
     verification: 'verified',
   }),
-  workshop({
+  garage({
     id: 'demo-peja-karosserie',
     languages: ['Deutsch'],
     name: 'DEMO · Karosserie Pejë',
@@ -321,7 +321,7 @@ export const demoWorkshops = [
     vehicleMakeIds: [],
     verification: 'not_checked',
   }),
-  workshop({
+  garage({
     id: 'demo-prishtina-bremsen-offen',
     languages: ['Deutsch'],
     name: 'DEMO · Bremsen Nord Prishtina',
@@ -358,7 +358,7 @@ export const demoWorkflowReviews = [
     vehicleMakeId: 'skoda',
     visitMonth: '2026-04-01',
     workQuality: 4,
-    workshopId: 'demo-prishtina-bremsen',
+    garageId: 'demo-prishtina-bremsen',
   },
   {
     authorUserId: 'demo-workflow-reviewer-b',
@@ -372,7 +372,7 @@ export const demoWorkflowReviews = [
     vehicleMakeId: 'skoda',
     visitMonth: '2026-05-01',
     workQuality: 4,
-    workshopId: 'demo-prishtina-bremsen',
+    garageId: 'demo-prishtina-bremsen',
   },
   {
     authorUserId: 'demo-workflow-reviewer-c',
@@ -386,7 +386,7 @@ export const demoWorkflowReviews = [
     vehicleMakeId: undefined,
     visitMonth: '2026-03-01',
     workQuality: 2,
-    workshopId: 'demo-ferizaj-bremsen-offen',
+    garageId: 'demo-ferizaj-bremsen-offen',
   },
   {
     authorUserId: 'demo-workflow-reviewer-a',
@@ -400,7 +400,7 @@ export const demoWorkflowReviews = [
     vehicleMakeId: undefined,
     visitMonth: '2026-06-01',
     workQuality: 3,
-    workshopId: 'demo-ferizaj-bremsen-offen',
+    garageId: 'demo-ferizaj-bremsen-offen',
   },
   {
     authorUserId: 'demo-workflow-reviewer-b',
@@ -414,7 +414,7 @@ export const demoWorkflowReviews = [
     vehicleMakeId: 'toyota',
     visitMonth: '2026-05-01',
     workQuality: 5,
-    workshopId: 'demo-prishtina-reifen',
+    garageId: 'demo-prishtina-reifen',
   },
   {
     authorUserId: 'demo-workflow-reviewer-c',
@@ -428,7 +428,7 @@ export const demoWorkflowReviews = [
     vehicleMakeId: 'toyota',
     visitMonth: '2026-06-01',
     workQuality: 4,
-    workshopId: 'demo-prishtina-reifen',
+    garageId: 'demo-prishtina-reifen',
   },
 ];
 

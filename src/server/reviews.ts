@@ -11,7 +11,7 @@ export const REVIEW_EVIDENCE_KINDS = [
   'invoice',
   'work_order',
   'payment_confirmation',
-  'workshop_confirmation',
+  'garage_confirmation',
   'other_service_proof',
 ] as const;
 
@@ -45,13 +45,13 @@ export interface ReviewSubmissionInput extends ReviewRatings {
   readonly vehicleMakeId?: string;
   /** Calendar month in which the work was performed; deliberately no travel dates. */
   readonly visitMonth: string;
-  readonly workshopId: string;
+  readonly garageId: string;
 }
 
 export interface EvidenceVerificationChecklist {
   readonly serviceMatches: boolean;
   readonly visitMonthMatches: boolean;
-  readonly workshopMatches: boolean;
+  readonly garageMatches: boolean;
 }
 
 export interface ReviewDecisionInput {
@@ -69,7 +69,7 @@ export interface PublicReviewSummary {
   readonly verifiedVisitCount: number;
 }
 
-export interface PublicWorkshopReview {
+export interface PublicGarageReview {
   readonly evidence: {
     readonly label: 'Besuch belegt';
     readonly state: 'verified';
@@ -85,7 +85,7 @@ export interface PublicWorkshopReview {
   }[];
   readonly vehicleMakeId?: string;
   readonly visitMonth: string;
-  readonly workshopResponse?: {
+  readonly garageResponse?: {
     readonly createdAt: string;
     readonly text: string;
   };
@@ -99,7 +99,7 @@ export interface OwnReview {
   readonly ratings: ReviewRatings & { readonly overall: number };
   readonly serviceCategoryId: string;
   readonly visitMonth: string;
-  readonly workshopId: string;
+  readonly garageId: string;
 }
 
 export interface ReviewStore {
@@ -125,12 +125,12 @@ export interface ReviewStore {
   ): Promise<FileGrant> | FileGrant;
   listOwnReviews(principal: Principal): Promise<readonly OwnReview[]> | readonly OwnReview[];
   listPublicReviews(
-    workshopId: string,
+    garageId: string,
     filter?: ReviewPublicFilter,
-  ): Promise<readonly PublicWorkshopReview[]> | readonly PublicWorkshopReview[];
-  postWorkshopResponse(
+  ): Promise<readonly PublicGarageReview[]> | readonly PublicGarageReview[];
+  postGarageResponse(
     principal: Principal,
-    workshopId: string,
+    garageId: string,
     reviewId: string,
     text: string,
   ): Promise<void> | void;
@@ -183,7 +183,7 @@ export function reviewSummaryLabel(reviewCount: number, averageRating: number): 
 /**
  * Reviews can make a published experience discoverable, but never dominate the proven search
  * criteria. One lone five-star review has no ranking effect; a broader verified basis earns only
- * a small, capped tie-breaker. Payment, workshop confirmation and response text are absent.
+ * a small, capped tie-breaker. Payment, garage confirmation and response text are absent.
  */
 export function reviewRelevanceScore(summary: PublicReviewSummary): number {
   if (summary.state !== 'available' || !summary.averageRating || summary.reviewCount < 2) return 0;

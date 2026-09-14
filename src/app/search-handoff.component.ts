@@ -223,15 +223,15 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                 </div>
               } @else {
                 <ol class="grid gap-4">
-                  @for (workshop of response.results; track workshop.id; let index = $index) {
+                  @for (garage of response.results; track garage.id; let index = $index) {
                     <li
                       class="grid gap-3 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm transition hover:border-brand/30 hover:shadow-md sm:grid-cols-[205px_minmax(0,1fr)]"
                     >
                       <div class="relative min-h-[144px] overflow-hidden rounded-xl bg-slate-100">
-                        @if (photoIds(workshop).length) {
+                        @if (photoIds(garage).length) {
                           <img
-                            [src]="photoUrl(workshop)"
-                            [alt]="workshop.name"
+                            [src]="photoUrl(garage)"
+                            [alt]="garage.name"
                             class="h-full w-full object-cover"
                           />
                         } @else {
@@ -250,9 +250,9 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                       <div class="relative p-3 sm:min-h-[144px] sm:pr-48">
                         <div class="flex items-center gap-2 pr-10 sm:pr-0">
                           <h2 class="min-w-0 text-xl font-bold tracking-tight break-words">
-                            {{ workshop.name }}
+                            {{ garage.name }}
                           </h2>
-                          @if (workshop.companyDataVerified) {
+                          @if (garage.companyDataVerified) {
                             <span
                               class="inline-flex size-5 shrink-0 text-brand"
                               role="img"
@@ -263,7 +263,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                             </span>
                           }
                         </div>
-                        @if (hasReviews(workshop)) {
+                        @if (hasReviews(garage)) {
                           <div class="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm">
                             <span class="rating-stars inline-flex gap-0.5" aria-hidden="true">
                               @for (star of [0, 1, 2, 3, 4]; track star) {
@@ -272,7 +272,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                                   <span
                                     class="absolute inset-y-0 left-0 overflow-hidden"
                                     [style.width.%]="
-                                      starFill(workshop.reviewSummary.averageRating!, star)
+                                      starFill(garage.reviewSummary.averageRating!, star)
                                     "
                                   >
                                     <app-icon
@@ -284,16 +284,16 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                               }
                             </span>
                             <span class="font-bold text-slate-950"
-                              >{{ workshop.reviewSummary.averageRating!.toFixed(1)
+                              >{{ garage.reviewSummary.averageRating!.toFixed(1)
                               }}<span class="sr-only"> {{ ui('search.ui.outOfFive') }}</span></span
                             >
                             <span class="text-xs text-slate-500"
                               >({{
                                 ui(
-                                  workshop.reviewSummary.reviewCount === 1
+                                  garage.reviewSummary.reviewCount === 1
                                     ? 'search.ui.reviewCountOne'
                                     : 'search.ui.reviewCount',
-                                  { count: workshop.reviewSummary.reviewCount! }
+                                  { count: garage.reviewSummary.reviewCount! }
                                 )
                               }})</span
                             >
@@ -305,39 +305,37 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                         }
                         <p class="mt-2 flex items-center gap-1 text-sm text-slate-600">
                           <app-icon name="pin" class="size-4 text-brand-dark" />
-                          {{ locationLabel(workshop) }}
+                          {{ locationLabel(garage) }}
                         </p>
                         <ul class="mt-3 flex flex-wrap gap-2 text-xs">
-                          @for (reason of matchingReasons(workshop); track reason) {
+                          @for (reason of matchingReasons(garage); track reason) {
                             <li class="rounded-lg bg-blue-50 px-4 py-1.5">{{ reason }}</li>
                           }
-                          @for (tag of specializations(workshop); track tag) {
+                          @for (tag of specializations(garage); track tag) {
                             <li class="rounded-lg bg-slate-100  px-4 py-1.5">{{ tag }}</li>
                           }
                         </ul>
                         <button
                           type="button"
                           class="absolute top-1 right-1 flex size-11 items-center justify-center rounded-full transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand disabled:cursor-wait disabled:opacity-50"
-                          [class.text-brand]="favorites.garageIds().has(workshop.id)"
-                          [class.text-ink]="!favorites.garageIds().has(workshop.id)"
+                          [class.text-brand]="favorites.garageIds().has(garage.id)"
+                          [class.text-ink]="!favorites.garageIds().has(garage.id)"
                           [attr.aria-label]="
                             ui(
-                              favorites.garageIds().has(workshop.id)
+                              favorites.garageIds().has(garage.id)
                                 ? 'favorites.remove'
                                 : 'favorites.add',
-                              { garage: workshop.name }
+                              { garage: garage.name }
                             )
                           "
-                          [attr.aria-pressed]="favorites.garageIds().has(workshop.id)"
+                          [attr.aria-pressed]="favorites.garageIds().has(garage.id)"
                           [disabled]="
-                            favorites.pending().has(workshop.id) || favorites.state() === 'loading'
+                            favorites.pending().has(garage.id) || favorites.state() === 'loading'
                           "
-                          (click)="favorites.toggle(workshop.id)"
+                          (click)="favorites.toggle(garage.id)"
                         >
                           <app-icon
-                            [name]="
-                              favorites.garageIds().has(workshop.id) ? 'heart-filled' : 'heart'
-                            "
+                            [name]="favorites.garageIds().has(garage.id) ? 'heart-filled' : 'heart'"
                             class="size-6"
                           />
                         </button>
@@ -345,7 +343,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                           class="mt-4 flex justify-end pr-0.5 sm:absolute sm:right-3.5 sm:bottom-3 sm:mt-0 sm:pr-0"
                         >
                           <a
-                            [routerLink]="language.link('garage', workshop.id)"
+                            [routerLink]="language.link('garage', garage.id)"
                             appButton="outline-brand"
                             size="compact"
                             >{{ ui('search.ui.details') }}<app-icon name="arrow" class="size-4"
@@ -501,32 +499,32 @@ export class SearchHandoffComponent {
       place,
     });
   }
-  protected matchingReasons(workshop: Result): readonly string[] {
-    return workshop.reasons.filter(
+  protected matchingReasons(garage: Result): readonly string[] {
+    return garage.reasons.filter(
       (reason) => !reason.includes('Luftlinie') && reason !== 'Unternehmensdaten geprüft',
     );
   }
-  protected photoIds(workshop: Result): readonly string[] {
-    return workshop.photoIds ?? [];
+  protected photoIds(garage: Result): readonly string[] {
+    return garage.photoIds ?? [];
   }
 
   protected conceptImage(index: number): string {
     return `/images/search/cards/concept-${(index % 4) + 1}.webp`;
   }
 
-  protected specializations(workshop: Result): readonly string[] {
-    return workshop.selfReportedSpecializations ?? [];
+  protected specializations(garage: Result): readonly string[] {
+    return garage.selfReportedSpecializations ?? [];
   }
 
-  protected photoUrl(workshop: Result): string {
-    return `/api/public/garages/${encodeURIComponent(workshop.id)}/photos/${encodeURIComponent(this.photoIds(workshop)[0])}`;
+  protected photoUrl(garage: Result): string {
+    return `/api/public/garages/${encodeURIComponent(garage.id)}/photos/${encodeURIComponent(this.photoIds(garage)[0])}`;
   }
   protected starFill(rating: number, index: number): number {
     return Math.max(0, Math.min(100, Math.round((rating - index) * 100)));
   }
 
-  protected hasReviews(workshop: Result): boolean {
-    const summary = workshop.reviewSummary;
+  protected hasReviews(garage: Result): boolean {
+    const summary = garage.reviewSummary;
     return (
       summary.state === 'available' &&
       Number.isFinite(summary.averageRating) &&
@@ -536,19 +534,19 @@ export class SearchHandoffComponent {
     );
   }
 
-  protected locationLabel(workshop: Result): string {
-    return workshop.distanceKm === undefined
-      ? workshop.locationAvailable
-        ? workshop.matchingPlace.label
-        : `${workshop.matchingPlace.label} · ${this.locationUnavailableLabel()}`
-      : this.aerialDistance(workshop.distanceKm, workshop.matchingPlace.label);
+  protected locationLabel(garage: Result): string {
+    return garage.distanceKm === undefined
+      ? garage.locationAvailable
+        ? garage.matchingPlace.label
+        : `${garage.matchingPlace.label} · ${this.locationUnavailableLabel()}`
+      : this.aerialDistance(garage.distanceKm, garage.matchingPlace.label);
   }
 
   protected locationUnavailableLabel(): string {
     return this.language.language === 'sq'
       ? 'Pozicioni i punëtorisë nuk është konfirmuar'
       : this.language.language === 'en'
-        ? 'Workshop position not confirmed'
+        ? 'Garage position not confirmed'
         : 'Werkstattposition nicht bestätigt';
   }
 

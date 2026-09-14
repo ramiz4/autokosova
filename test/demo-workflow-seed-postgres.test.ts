@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import pg from 'pg';
-import { demoWorkflowRequests, demoWorkflowReviews, demoWorkshops } from '../db/demo-data.mjs';
+import { demoWorkflowRequests, demoWorkflowReviews, demoGarages } from '../db/demo-data.mjs';
 import { PostgresRepairRequestStore } from '../src/server/repair-request-store';
 import { PostgresReviewStore } from '../src/server/review-store';
-import { PostgresWorkshopSearchStore } from '../src/server/workshop-search-store';
+import { PostgresGarageSearchStore } from '../src/server/garage-search-store';
 
 const databaseUrl = process.env['DATABASE_URL'];
 const demoWorkflowDataExpected = process.env['AUTOKOSOVA_EXPECT_DEMO_WORKFLOW_DATA'] === '1';
@@ -16,15 +16,15 @@ test(
     const client = new pg.Client({ connectionString: databaseUrl });
     const repairRequests = new PostgresRepairRequestStore(databaseUrl!);
     const reviews = new PostgresReviewStore(databaseUrl!);
-    const search = new PostgresWorkshopSearchStore(databaseUrl!);
+    const search = new PostgresGarageSearchStore(databaseUrl!);
     await client.connect();
     try {
-      const workshopRows = await client.query<{ count: string }>(
-        "SELECT count(*)::text AS count FROM public_workshop_profile WHERE id LIKE 'demo-%'",
+      const garageRows = await client.query<{ count: string }>(
+        "SELECT count(*)::text AS count FROM public_garage_profile WHERE id LIKE 'demo-%'",
       );
       const reviewRows = await client.query<{ count: string }>(
         `SELECT count(*)::text AS count
-         FROM workshop_review
+         FROM garage_review
          WHERE id = ANY($1::text[])`,
         [demoWorkflowReviews.map((review) => review.id)],
       );
@@ -35,7 +35,7 @@ test(
         [demoWorkflowRequests.map((request) => request.id)],
       );
       const publicReviews = await reviews.listPublicReviews('demo-prishtina-bremsen', {});
-      const publicSearch = await search.searchPublicWorkshops({
+      const publicSearch = await search.searchPublicGarages({
         areas: [{ placeId: 'xk-pristina', radiusKm: 5 }],
         page: 1,
         pageSize: 24,
@@ -46,7 +46,7 @@ test(
         'demo-request-prishtina-bremsen',
       );
 
-      assert.equal(workshopRows.rows[0].count, String(demoWorkshops.length));
+      assert.equal(garageRows.rows[0].count, String(demoGarages.length));
       assert.equal(reviewRows.rows[0].count, String(demoWorkflowReviews.length));
       assert.equal(requestRows.rows[0].count, String(demoWorkflowRequests.length));
       assert.equal(publicReviews.length, 2);

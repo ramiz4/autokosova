@@ -13,9 +13,9 @@ import {
 import {
   AccessError,
   AccessStore,
-  DuplicateWorkshopError,
+  DuplicateGarageError,
   type VerificationChecklist,
-  type WorkshopProfileInput,
+  type GarageProfileInput,
 } from './access';
 import {
   createAuthorizationUrl,
@@ -26,7 +26,7 @@ import {
 } from './oidc';
 import { buildMatchingPath, validateRepairRequest } from './repair-requests';
 import type { RepairRequestStore } from './repair-request-store';
-import { normalizeWorkshopPhoto, WorkshopPhotoError } from './workshop-photo';
+import { normalizeGaragePhoto, GaragePhotoError } from './garage-photo';
 import {
   REVIEW_EVIDENCE_KINDS,
   REVIEW_LIMITS,
@@ -47,10 +47,10 @@ import {
   type RetentionPolicyInput,
 } from './moderation';
 import {
-  parsePublicWorkshopSearch,
-  type WorkshopSearchStore,
-  WorkshopSearchValidationError,
-} from './workshop-search';
+  parsePublicGarageSearch,
+  type GarageSearchStore,
+  GarageSearchValidationError,
+} from './garage-search';
 import {
   REPAIR_REQUEST_LIMITS,
   REPAIR_REQUEST_PLACES,
@@ -71,7 +71,7 @@ interface ServerOptions {
   readonly moderationStore?: ModerationLifecycleStore;
   readonly repairRequestStore?: RepairRequestStore;
   readonly reviewStore?: ReviewStore;
-  readonly searchStore?: WorkshopSearchStore;
+  readonly searchStore?: GarageSearchStore;
   readonly publicSiteUrl?: string;
   readonly staticRoot?: string;
 }
@@ -83,7 +83,7 @@ const analyticsEventSchema = {
       enum: [
         'search_started',
         'search_results_displayed',
-        'workshop_profile_opened',
+        'garage_profile_opened',
         'contact_channel_opened',
       ],
       type: 'string',
@@ -166,7 +166,7 @@ function safeReturnTo(value: unknown): string {
     if (entry) query.set(key, entry);
   }
   try {
-    parsePublicWorkshopSearch(Object.fromEntries(query));
+    parsePublicGarageSearch(Object.fromEntries(query));
   } catch {
     return path;
   }
@@ -180,7 +180,7 @@ const stringListSchema = {
   uniqueItems: true,
 };
 
-const workshopProfileSchema = {
+const garageProfileSchema = {
   additionalProperties: false,
   properties: {
     address: { type: 'string', minLength: 8, maxLength: 500 },
@@ -247,10 +247,10 @@ const reviewSubmissionSchema = {
     vehicleMakeId: { enum: REPAIR_REQUEST_VEHICLE_MAKES, type: 'string' },
     visitMonth: { pattern: '^\\d{4}-(0[1-9]|1[0-2])$', type: 'string' },
     workQuality: { maximum: 5, minimum: 1, type: 'integer' },
-    workshopId: { maxLength: 120, minLength: 1, type: 'string' },
+    garageId: { maxLength: 120, minLength: 1, type: 'string' },
   },
   required: [
-    'workshopId',
+    'garageId',
     'serviceCategoryId',
     'visitMonth',
     'workQuality',
@@ -272,9 +272,9 @@ const reviewDecisionSchema = {
       properties: {
         serviceMatches: { type: 'boolean' },
         visitMonthMatches: { type: 'boolean' },
-        workshopMatches: { type: 'boolean' },
+        garageMatches: { type: 'boolean' },
       },
-      required: ['serviceMatches', 'visitMonthMatches', 'workshopMatches'],
+      required: ['serviceMatches', 'visitMonthMatches', 'garageMatches'],
       type: 'object',
     },
     decision: { enum: ['published', 'rejected'], type: 'string' },
@@ -290,7 +290,7 @@ const contentReportSchema = {
     category: { enum: MODERATION_REPORT_CATEGORIES, type: 'string' },
     details: { maxLength: 1200, minLength: 20, type: 'string' },
     subjectId: { maxLength: 120, minLength: 1, type: 'string' },
-    subjectType: { enum: ['review', 'workshop_profile'], type: 'string' },
+    subjectType: { enum: ['review', 'garage_profile'], type: 'string' },
   },
   required: ['category', 'subjectId', 'subjectType'],
   type: 'object',
@@ -359,7 +359,7 @@ export function createServer(options: ServerOptions = {}) {
   if (favoriteStore.close) app.addHook('onClose', async () => favoriteStore.close?.());
   const repairRequestStore: RepairRequestStore = options.repairRequestStore ?? accessStore;
   const reviewStore: ReviewStore = options.reviewStore ?? accessStore;
-  const searchStore: WorkshopSearchStore = options.searchStore ?? accessStore;
+  const searchStore: GarageSearchStore = options.searchStore ?? accessStore;
   const moderationStore: ModerationLifecycleStore = options.moderationStore ?? accessStore;
 
   app.addHook('onRequest', async (request, reply) => {
@@ -423,7 +423,7 @@ export function createServer(options: ServerOptions = {}) {
   }
 
   function errorResponse(error: unknown, reply: FastifyReply) {
-    if (error instanceof DuplicateWorkshopError) {
+    if (error instanceof DuplicateGarageError) {
       return reply.code(error.statusCode).send({
         candidates: error.publicMatches,
         error: error.message,
@@ -432,7 +432,7 @@ export function createServer(options: ServerOptions = {}) {
     if (error instanceof AccessError) {
       return reply.code(error.statusCode).send({ error: error.message });
     }
-    if (error instanceof WorkshopSearchValidationError) {
+    if (error instanceof GarageSearchValidationError) {
       return reply.code(400).send({ error: error.message });
     }
     throw error;
@@ -453,12 +453,12 @@ export function createServer(options: ServerOptions = {}) {
         .code(503)
         .send({ error: 'PUBLIC_SITE_URL is required before publishing a sitemap' });
     }
-    const workshopIds = await searchStore.listPublicWorkshopIds();
+    const garageIds = await searchStore.listPublicGarageIds();
     const locations = [
       '/',
       '/sq',
       '/en',
-      ...workshopIds.flatMap((id) => [
+      ...garageIds.flatMap((id) => [
         `/garages/${encodeURIComponent(id)}`,
         `/sq/garages/${encodeURIComponent(id)}`,
         `/en/garages/${encodeURIComponent(id)}`,
@@ -488,19 +488,19 @@ export function createServer(options: ServerOptions = {}) {
   );
   app.get('/api/public/search', async (request, reply) => {
     try {
-      const input = parsePublicWorkshopSearch(request.query as Record<string, unknown>);
+      const input = parsePublicGarageSearch(request.query as Record<string, unknown>);
       // Kept as a non-sensitive readiness response for the existing health/smoke contract.
       if (!input) return { status: 'public-search-ready' };
-      return await searchStore.searchPublicWorkshops(input);
+      return await searchStore.searchPublicGarages(input);
     } catch (error) {
       return errorResponse(error, reply);
     }
   });
-  app.get('/api/public/garages', async () => ({ garages: accessStore.listPublicWorkshops() }));
+  app.get('/api/public/garages', async () => ({ garages: accessStore.listPublicGarages() }));
   app.get('/api/public/garages/:garageId', async (request, reply) => {
     const params = request.params as { garageId: string };
-    const workshop = await searchStore.getPublicWorkshop(params.garageId);
-    return workshop ? workshop : reply.code(404).send({ error: 'Published workshop not found' });
+    const garage = await searchStore.getPublicGarage(params.garageId);
+    return garage ? garage : reply.code(404).send({ error: 'Published garage not found' });
   });
   app.get('/api/public/garages/:garageId/reviews', async (request, reply) => {
     try {
@@ -530,8 +530,8 @@ export function createServer(options: ServerOptions = {}) {
   });
   app.get('/api/public/garages/:garageId/photos/:photoId', async (request, reply) => {
     const params = request.params as { photoId: string; garageId: string };
-    const photo = accessStore.getWorkshopPhoto(params.garageId, params.photoId);
-    if (!photo) return reply.code(404).send({ error: 'Published workshop photo not found' });
+    const photo = accessStore.getGaragePhoto(params.garageId, params.photoId);
+    if (!photo) return reply.code(404).send({ error: 'Published garage photo not found' });
     return reply
       .header('cache-control', 'public, max-age=3600')
       .type(photo.contentType)
@@ -630,7 +630,7 @@ export function createServer(options: ServerOptions = {}) {
       try {
         const principal = requirePrincipal(request, true);
         const { garageId } = request.params as { garageId: string };
-        if (!(await searchStore.getPublicWorkshop(garageId)))
+        if (!(await searchStore.getPublicGarage(garageId)))
           throw new AccessError(404, 'Garage not available');
         await favoriteStore.saveFavorite(principal.userId, garageId);
         return reply.code(204).send();
@@ -726,7 +726,7 @@ export function createServer(options: ServerOptions = {}) {
     reply.header('cache-control', 'private, no-store');
     try {
       const principal = requirePrincipal(request);
-      return { garages: await garageStore.listOwnedWorkshops(principal) };
+      return { garages: await garageStore.listOwnedGarages(principal) };
     } catch (error) {
       return errorResponse(error, reply);
     }
@@ -900,7 +900,7 @@ export function createServer(options: ServerOptions = {}) {
           additionalProperties: false,
           properties: {
             consentVersion: { maxLength: 80, minLength: 1, type: 'string' },
-            profile: workshopProfileSchema,
+            profile: garageProfileSchema,
           },
           required: ['consentVersion', 'profile'],
           type: 'object',
@@ -910,15 +910,13 @@ export function createServer(options: ServerOptions = {}) {
     async (request, reply) => {
       try {
         const principal = requirePrincipal(request, true);
-        const body = request.body as { consentVersion: string; profile: WorkshopProfileInput };
-        const workshop = await garageStore.createWorkshopRegistration(
+        const body = request.body as { consentVersion: string; profile: GarageProfileInput };
+        const garage = await garageStore.createGarageRegistration(
           principal,
           body.profile,
           body.consentVersion,
         );
-        return reply
-          .code(201)
-          .send({ id: workshop.id, publicationState: workshop.publicationState });
+        return reply.code(201).send({ id: garage.id, publicationState: garage.publicationState });
       } catch (error) {
         return errorResponse(error, reply);
       }
@@ -930,7 +928,7 @@ export function createServer(options: ServerOptions = {}) {
       const principal = requirePrincipal(request);
       const params = request.params as { garageId: string };
       reply.header('cache-control', 'private, no-store');
-      return await garageStore.getPrivateWorkshop(principal, params.garageId);
+      return await garageStore.getPrivateGarage(principal, params.garageId);
     } catch (error) {
       return errorResponse(error, reply);
     }
@@ -938,15 +936,15 @@ export function createServer(options: ServerOptions = {}) {
 
   app.put(
     '/api/garages/:garageId',
-    { schema: { body: workshopProfileSchema } },
+    { schema: { body: garageProfileSchema } },
     async (request, reply) => {
       try {
         const principal = requirePrincipal(request, true);
         const params = request.params as { garageId: string };
-        await garageStore.updateWorkshopProfile(
+        await garageStore.updateGarageProfile(
           principal,
           params.garageId,
-          request.body as WorkshopProfileInput,
+          request.body as GarageProfileInput,
         );
         return reply.code(204).send();
       } catch (error) {
@@ -959,7 +957,7 @@ export function createServer(options: ServerOptions = {}) {
     try {
       const principal = requirePrincipal(request, true);
       const params = request.params as { garageId: string };
-      await garageStore.submitWorkshopForReview(principal, params.garageId);
+      await garageStore.submitGarageForReview(principal, params.garageId);
       return reply.code(204).send();
     } catch (error) {
       return errorResponse(error, reply);
@@ -972,7 +970,7 @@ export function createServer(options: ServerOptions = {}) {
       const params = request.params as { garageId: string };
       return reply
         .code(201)
-        .send(accessStore.createWorkshopDocumentGrant(principal, params.garageId));
+        .send(accessStore.createGarageDocumentGrant(principal, params.garageId));
     } catch (error) {
       return errorResponse(error, reply);
     }
@@ -983,9 +981,9 @@ export function createServer(options: ServerOptions = {}) {
       const principal = requirePrincipal(request, true);
       const params = request.params as { garageId: string };
       const body = request.body;
-      if (!Buffer.isBuffer(body)) throw new AccessError(415, 'A binary workshop photo is required');
-      const normalized = await normalizeWorkshopPhoto(body, request.headers['content-type']);
-      const photo = accessStore.registerWorkshopPhoto(principal, params.garageId, normalized);
+      if (!Buffer.isBuffer(body)) throw new AccessError(415, 'A binary garage photo is required');
+      const normalized = await normalizeGaragePhoto(body, request.headers['content-type']);
+      const photo = accessStore.registerGaragePhoto(principal, params.garageId, normalized);
       return reply.code(201).send({
         contentType: photo.contentType,
         height: photo.height,
@@ -993,7 +991,7 @@ export function createServer(options: ServerOptions = {}) {
         width: photo.width,
       });
     } catch (error) {
-      if (error instanceof WorkshopPhotoError) {
+      if (error instanceof GaragePhotoError) {
         return reply.code(415).send({ error: error.message });
       }
       return errorResponse(error, reply);
@@ -1004,8 +1002,8 @@ export function createServer(options: ServerOptions = {}) {
     try {
       const principal = requirePrincipal(request);
       const params = request.params as { photoId: string; garageId: string };
-      const photo = accessStore.getWorkshopPhoto(params.garageId, params.photoId, principal);
-      if (!photo) throw new AccessError(404, 'Workshop photo not found');
+      const photo = accessStore.getGaragePhoto(params.garageId, params.photoId, principal);
+      if (!photo) throw new AccessError(404, 'Garage photo not found');
       return reply.type(photo.contentType).send(photo.content);
     } catch (error) {
       return errorResponse(error, reply);
@@ -1028,7 +1026,7 @@ export function createServer(options: ServerOptions = {}) {
       try {
         const principal = requirePrincipal(request, true);
         const params = request.params as { garageId: string };
-        accessStore.requireWorkshopMembership(principal, params.garageId);
+        accessStore.requireGarageMembership(principal, params.garageId);
         return reply.code(204).send();
       } catch (error) {
         return errorResponse(error, reply);
@@ -1058,7 +1056,7 @@ export function createServer(options: ServerOptions = {}) {
       try {
         const params = request.params as { reviewId: string; garageId: string };
         const body = request.body as { text: string };
-        await reviewStore.postWorkshopResponse(
+        await reviewStore.postGarageResponse(
           requirePrincipal(request, true),
           params.garageId,
           params.reviewId,
@@ -1080,9 +1078,9 @@ export function createServer(options: ServerOptions = {}) {
           properties: {
             role: { enum: ['editor', 'owner'], type: 'string' },
             userId: { minLength: 1, type: 'string' },
-            workshopId: { minLength: 1, type: 'string' },
+            garageId: { minLength: 1, type: 'string' },
           },
-          required: ['userId', 'workshopId', 'role'],
+          required: ['userId', 'garageId', 'role'],
           type: 'object',
         },
       },
@@ -1094,9 +1092,9 @@ export function createServer(options: ServerOptions = {}) {
         const body = request.body as {
           role: 'editor' | 'owner';
           userId: string;
-          workshopId: string;
+          garageId: string;
         };
-        accessStore.addMembership(body.userId, body.workshopId, body.role);
+        accessStore.addMembership(body.userId, body.garageId, body.role);
         accessStore.auditEvents.push({ actorUserId: principal.userId, type: 'membership-granted' });
         return reply.code(201).send({ status: 'created' });
       } catch (error) {
@@ -1289,7 +1287,7 @@ export function createServer(options: ServerOptions = {}) {
             applicantUserId: { maxLength: 120, minLength: 1, type: 'string' },
             consentSource: { const: 'documented_support_request', type: 'string' },
             consentVersion: { maxLength: 80, minLength: 1, type: 'string' },
-            profile: workshopProfileSchema,
+            profile: garageProfileSchema,
           },
           required: ['applicantUserId', 'consentSource', 'consentVersion', 'profile'],
           type: 'object',
@@ -1303,9 +1301,9 @@ export function createServer(options: ServerOptions = {}) {
           applicantUserId: string;
           consentSource: 'documented_support_request';
           consentVersion: string;
-          profile: WorkshopProfileInput;
+          profile: GarageProfileInput;
         };
-        const workshop = await garageStore.createAssistedWorkshop(
+        const garage = await garageStore.createAssistedGarage(
           principal,
           body.applicantUserId,
           body.profile,
@@ -1314,9 +1312,7 @@ export function createServer(options: ServerOptions = {}) {
             version: body.consentVersion,
           },
         );
-        return reply
-          .code(201)
-          .send({ id: workshop.id, publicationState: workshop.publicationState });
+        return reply.code(201).send({ id: garage.id, publicationState: garage.publicationState });
       } catch (error) {
         return errorResponse(error, reply);
       }
@@ -1346,7 +1342,7 @@ export function createServer(options: ServerOptions = {}) {
           decision: 'published' | 'rejected' | 'suspended';
           verification: VerificationChecklist;
         };
-        await garageStore.reviewWorkshop(
+        await garageStore.reviewGarage(
           principal,
           params.garageId,
           body.decision,
@@ -1376,7 +1372,7 @@ export function createServer(options: ServerOptions = {}) {
         const principal = requirePrincipal(request, true);
         const params = request.params as { photoId: string; garageId: string };
         const body = request.body as { approved: boolean };
-        accessStore.publishWorkshopPhoto(principal, params.garageId, params.photoId, body.approved);
+        accessStore.publishGaragePhoto(principal, params.garageId, params.photoId, body.approved);
         return reply.code(204).send();
       } catch (error) {
         return errorResponse(error, reply);

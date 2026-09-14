@@ -1,6 +1,6 @@
 CREATE TABLE garage_favorite (
   owner_user_id text NOT NULL REFERENCES app_user(id),
-  garage_id text NOT NULL REFERENCES workshop(id) ON DELETE CASCADE,
+  garage_id text NOT NULL REFERENCES garage(id) ON DELETE CASCADE,
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (owner_user_id, garage_id)
 );

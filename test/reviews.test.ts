@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { AccessStore, type WorkshopProfileInput } from '../src/server/access';
+import { AccessStore, type GarageProfileInput } from '../src/server/access';
 import { createServer } from '../src/server/app';
 
-const workshopProfile: WorkshopProfileInput = {
+const garageProfile: GarageProfileInput = {
   contactPerson: 'Fiktive Ansprechperson',
   contactPhone: '+383 44 000 110',
   languages: ['Deutsch', 'Shqip'],
@@ -19,7 +19,7 @@ const workshopProfile: WorkshopProfileInput = {
 const fullyCheckedEvidence = {
   serviceMatches: true,
   visitMonthMatches: true,
-  workshopMatches: true,
+  garageMatches: true,
 };
 
 function headers(session: { csrfToken: string; sessionId: string }, write = false) {
@@ -41,26 +41,26 @@ function setup() {
     foreignCustomer: store.createSession('foreign-customer'),
     moderator: store.createSession('moderator'),
     store,
-    workshopOwner: store.createSession('workshop-owner'),
+    garageOwner: store.createSession('garage-owner'),
   };
 }
 
-async function publishWorkshop(
+async function publishGarage(
   app: ReturnType<typeof createServer>,
   admin: { csrfToken: string; sessionId: string },
-  workshopOwner: { csrfToken: string; sessionId: string },
+  garageOwner: { csrfToken: string; sessionId: string },
 ) {
   const created = await app.inject({
-    headers: headers(workshopOwner, true),
+    headers: headers(garageOwner, true),
     method: 'POST',
-    payload: { consentVersion: 'review-test-v1', profile: workshopProfile },
+    payload: { consentVersion: 'review-test-v1', profile: garageProfile },
     url: '/api/garages',
   });
-  const workshopId = created.json().id as string;
+  const garageId = created.json().id as string;
   await app.inject({
-    headers: headers(workshopOwner, true),
+    headers: headers(garageOwner, true),
     method: 'POST',
-    url: `/api/garages/${workshopId}/submit-for-review`,
+    url: `/api/garages/${garageId}/submit-for-review`,
   });
   const decision = await app.inject({
     headers: headers(admin, true),
@@ -74,11 +74,11 @@ async function publishWorkshop(
         phone: 'verified',
       },
     },
-    url: `/api/admin/garages/${workshopId}/decision`,
+    url: `/api/admin/garages/${garageId}/decision`,
   });
   assert.equal(created.statusCode, 201);
   assert.equal(decision.statusCode, 204);
-  return workshopId;
+  return garageId;
 }
 
 async function uploadEvidence(
@@ -96,7 +96,7 @@ async function uploadEvidence(
 }
 
 function reviewPayload(
-  workshopId: string,
+  garageId: string,
   evidenceFileId: string,
   overrides: Record<string, unknown> = {},
 ) {
@@ -111,7 +111,7 @@ function reviewPayload(
     vehicleMakeId: 'skoda',
     visitMonth: '2026-08',
     workQuality: 1,
-    workshopId,
+    garageId,
     ...overrides,
   };
 }
@@ -123,14 +123,14 @@ async function submitAndPublish(
     customer: { csrfToken: string; sessionId: string };
     moderator: { csrfToken: string; sessionId: string };
   },
-  workshopId: string,
+  garageId: string,
   evidenceFileId: string,
   overrides: Record<string, unknown> = {},
 ) {
   const submitted = await app.inject({
     headers: headers(sessions.customer, true),
     method: 'POST',
-    payload: reviewPayload(workshopId, evidenceFileId, overrides),
+    payload: reviewPayload(garageId, evidenceFileId, overrides),
     url: '/api/me/reviews',
   });
   const reviewId = submitted.json().id as string;
@@ -152,22 +152,22 @@ async function submitAndPublish(
   return reviewId;
 }
 
-test('a negative review with an invoice can be published without workshop confirmation or a workshop veto', async () => {
-  const { admin, app, customer, foreignCustomer, moderator, workshopOwner } = setup();
+test('a negative review with an invoice can be published without garage confirmation or a garage veto', async () => {
+  const { admin, app, customer, foreignCustomer, moderator, garageOwner } = setup();
   try {
-    const workshopId = await publishWorkshop(app, admin, workshopOwner);
+    const garageId = await publishGarage(app, admin, garageOwner);
     const evidenceFileId = await uploadEvidence(app, customer);
     const submitted = await app.inject({
       headers: headers(customer, true),
       method: 'POST',
-      payload: reviewPayload(workshopId, evidenceFileId),
+      payload: reviewPayload(garageId, evidenceFileId),
       url: '/api/me/reviews',
     });
     const reviewId = submitted.json().id as string;
     const duplicate = await app.inject({
       headers: headers(customer, true),
       method: 'POST',
-      payload: reviewPayload(workshopId, evidenceFileId, { visitMonth: '2026-07' }),
+      payload: reviewPayload(garageId, evidenceFileId, { visitMonth: '2026-07' }),
       url: '/api/me/reviews',
     });
     const foreignEvidence = await app.inject({
@@ -175,8 +175,8 @@ test('a negative review with an invoice can be published without workshop confir
       method: 'GET',
       url: `/api/reviews/${reviewId}/evidence/download-grant`,
     });
-    const workshopEvidence = await app.inject({
-      headers: headers(workshopOwner),
+    const garageEvidence = await app.inject({
+      headers: headers(garageOwner),
       method: 'GET',
       url: `/api/reviews/${reviewId}/evidence/download-grant`,
     });
@@ -197,8 +197,8 @@ test('a negative review with an invoice can be published without workshop confir
       payload: { checklist: fullyCheckedEvidence, decision: 'published' },
       url: `/api/admin/reviews/${reviewId}/decision`,
     });
-    const workshopVeto = await app.inject({
-      headers: headers(workshopOwner, true),
+    const garageVeto = await app.inject({
+      headers: headers(garageOwner, true),
       method: 'POST',
       payload: {
         checklist: fullyCheckedEvidence,
@@ -207,37 +207,34 @@ test('a negative review with an invoice can be published without workshop confir
       },
       url: `/api/admin/reviews/${reviewId}/decision`,
     });
-    const workshopResponse = await app.inject({
-      headers: headers(workshopOwner, true),
+    const garageResponse = await app.inject({
+      headers: headers(garageOwner, true),
       method: 'POST',
       payload: { text: 'Wir nehmen die fiktive Rückmeldung ernst und prüfen die Nacharbeit.' },
-      url: `/api/garages/${workshopId}/reviews/${reviewId}/response`,
+      url: `/api/garages/${garageId}/reviews/${reviewId}/response`,
     });
     const publicReviews = await app.inject({
       method: 'GET',
-      url: `/api/public/garages/${workshopId}/reviews?serviceCategoryId=bremsen&vehicleMakeId=skoda`,
+      url: `/api/public/garages/${garageId}/reviews?serviceCategoryId=bremsen&vehicleMakeId=skoda`,
     });
 
     assert.equal(submitted.statusCode, 201);
     assert.equal(submitted.json().publicationState, 'submitted');
     assert.equal(duplicate.statusCode, 409);
     assert.equal(foreignEvidence.statusCode, 404);
-    assert.equal(workshopEvidence.statusCode, 404);
+    assert.equal(garageEvidence.statusCode, 404);
     assert.equal(assigned.statusCode, 204);
     assert.equal(moderatorEvidence.statusCode, 200);
     assert.equal(published.statusCode, 204);
-    assert.equal(workshopVeto.statusCode, 403);
-    assert.equal(workshopResponse.statusCode, 204);
+    assert.equal(garageVeto.statusCode, 403);
+    assert.equal(garageResponse.statusCode, 204);
     assert.equal(publicReviews.statusCode, 200);
     assert.deepEqual(publicReviews.json().reviews[0].evidence, {
       label: 'Besuch belegt',
       state: 'verified',
     });
     assert.equal(publicReviews.json().reviews[0].ratings.overall, 1);
-    assert.equal(
-      publicReviews.json().reviews[0].workshopResponse.text.includes('Nacharbeit'),
-      true,
-    );
+    assert.equal(publicReviews.json().reviews[0].garageResponse.text.includes('Nacharbeit'), true);
     assert.equal(JSON.stringify(publicReviews.json()).includes(evidenceFileId), false);
     assert.equal(JSON.stringify(publicReviews.json()).includes('customer'), false);
   } finally {
@@ -246,14 +243,14 @@ test('a negative review with an invoice can be published without workshop confir
 });
 
 test('rejection remains private with a reason, while only published reviews change aggregates and search', async () => {
-  const { admin, app, customer, moderator, workshopOwner } = setup();
+  const { admin, app, customer, moderator, garageOwner } = setup();
   try {
-    const workshopId = await publishWorkshop(app, admin, workshopOwner);
+    const garageId = await publishGarage(app, admin, garageOwner);
     const rejectedEvidence = await uploadEvidence(app, customer);
     const rejected = await app.inject({
       headers: headers(customer, true),
       method: 'POST',
-      payload: reviewPayload(workshopId, rejectedEvidence),
+      payload: reviewPayload(garageId, rejectedEvidence),
       url: '/api/me/reviews',
     });
     const rejectedId = rejected.json().id as string;
@@ -267,7 +264,7 @@ test('rejection remains private with a reason, while only published reviews chan
       headers: headers(moderator, true),
       method: 'POST',
       payload: {
-        checklist: { serviceMatches: false, visitMonthMatches: true, workshopMatches: true },
+        checklist: { serviceMatches: false, visitMonthMatches: true, garageMatches: true },
         decision: 'rejected',
         rejectionReason: 'evidence_not_sufficient',
       },
@@ -281,14 +278,14 @@ test('rejection remains private with a reason, while only published reviews chan
     const publishedId = await submitAndPublish(
       app,
       { admin, customer, moderator },
-      workshopId,
+      garageId,
       await uploadEvidence(app, customer),
       { visitMonth: '2026-06' },
     );
     const secondPublishedId = await submitAndPublish(
       app,
       { admin, customer, moderator },
-      workshopId,
+      garageId,
       await uploadEvidence(app, customer),
       {
         serviceCategoryId: 'reifen',
@@ -299,9 +296,9 @@ test('rejection remains private with a reason, while only published reviews chan
     );
     const filtered = await app.inject({
       method: 'GET',
-      url: `/api/public/garages/${workshopId}/reviews?serviceCategoryId=reifen&vehicleMakeId=volkswagen`,
+      url: `/api/public/garages/${garageId}/reviews?serviceCategoryId=reifen&vehicleMakeId=volkswagen`,
     });
-    const profile = await app.inject({ method: 'GET', url: `/api/public/garages/${workshopId}` });
+    const profile = await app.inject({ method: 'GET', url: `/api/public/garages/${garageId}` });
     const search = await app.inject({
       method: 'GET',
       url: '/api/public/search?places=xk-pristina%3A5&service=bremsen',
@@ -317,7 +314,7 @@ test('rejection remains private with a reason, while only published reviews chan
     });
     const publicAfterUpdate = await app.inject({
       method: 'GET',
-      url: `/api/public/garages/${workshopId}/reviews`,
+      url: `/api/public/garages/${garageId}/reviews`,
     });
 
     assert.equal(rejectedDecision.statusCode, 204);
@@ -346,14 +343,14 @@ test('rejection remains private with a reason, while only published reviews chan
 });
 
 test('retention deletion makes private evidence unavailable but preserves the explained historic visit marker', async () => {
-  const { admin, app, customer, moderator, workshopOwner } = setup();
+  const { admin, app, customer, moderator, garageOwner } = setup();
   try {
-    const workshopId = await publishWorkshop(app, admin, workshopOwner);
+    const garageId = await publishGarage(app, admin, garageOwner);
     const evidenceFileId = await uploadEvidence(app, customer);
     const reviewId = await submitAndPublish(
       app,
       { admin, customer, moderator },
-      workshopId,
+      garageId,
       evidenceFileId,
     );
     const beforeDeletion = await app.inject({
@@ -378,7 +375,7 @@ test('retention deletion makes private evidence unavailable but preserves the ex
     });
     const publicReviews = await app.inject({
       method: 'GET',
-      url: `/api/public/garages/${workshopId}/reviews`,
+      url: `/api/public/garages/${garageId}/reviews`,
     });
 
     assert.equal(beforeDeletion.statusCode, 200);

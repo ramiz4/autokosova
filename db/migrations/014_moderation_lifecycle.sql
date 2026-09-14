@@ -1,23 +1,23 @@
 -- #15: moderation reports remain separate from the reported content. A report never changes a
--- public review or workshop by itself; only an explicit, audited action can hide or restore it.
-ALTER TABLE workshop_review DROP CONSTRAINT IF EXISTS workshop_review_publication_state_check;
-ALTER TABLE workshop_review
-  ADD CONSTRAINT workshop_review_publication_state_check
+-- public review or garage by itself; only an explicit, audited action can hide or restore it.
+ALTER TABLE garage_review DROP CONSTRAINT IF EXISTS garage_review_publication_state_check;
+ALTER TABLE garage_review
+  ADD CONSTRAINT garage_review_publication_state_check
   CHECK (
     publication_state IN (
       'submitted', 'under_review', 'published', 'temporarily_hidden', 'rejected', 'withdrawn'
     )
   );
-ALTER TABLE workshop_review DROP CONSTRAINT IF EXISTS workshop_review_check1;
-ALTER TABLE workshop_review
-  ADD CONSTRAINT workshop_review_public_visibility_timestamp_check
+ALTER TABLE garage_review DROP CONSTRAINT IF EXISTS garage_review_check1;
+ALTER TABLE garage_review
+  ADD CONSTRAINT garage_review_public_visibility_timestamp_check
   CHECK (
     (publication_state IN ('published', 'temporarily_hidden')) = (published_at IS NOT NULL)
   );
 
 CREATE TABLE IF NOT EXISTS moderation_case (
   id text PRIMARY KEY,
-  subject_type text NOT NULL CHECK (subject_type IN ('review', 'workshop_profile', 'data_deletion')),
+  subject_type text NOT NULL CHECK (subject_type IN ('review', 'garage_profile', 'data_deletion')),
   subject_id text NOT NULL,
   requester_user_id text REFERENCES app_user(id),
   priority text NOT NULL CHECK (priority IN ('normal', 'high')),
@@ -113,15 +113,15 @@ CREATE POLICY moderation_case_read ON moderation_case
       AND assigned_moderator_user_id = current_setting('app.user_id', true)
     )
     OR EXISTS (
-      SELECT 1 FROM workshop_review
+      SELECT 1 FROM garage_review
       WHERE moderation_case.subject_type = 'review'
-        AND workshop_review.id = moderation_case.subject_id
-        AND workshop_review.author_user_id = current_setting('app.user_id', true)
+        AND garage_review.id = moderation_case.subject_id
+        AND garage_review.author_user_id = current_setting('app.user_id', true)
     )
     OR EXISTS (
       SELECT 1 FROM membership
-      WHERE moderation_case.subject_type = 'workshop_profile'
-        AND membership.workshop_id = moderation_case.subject_id
+      WHERE moderation_case.subject_type = 'garage_profile'
+        AND membership.garage_id = moderation_case.subject_id
         AND membership.user_id = current_setting('app.user_id', true)
         AND membership.state = 'active'
     )

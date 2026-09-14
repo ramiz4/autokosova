@@ -2,7 +2,7 @@ import { Routes } from '@angular/router';
 import { FoundationComponent } from './app';
 import { RepairRequestComponent } from './repair-request.component';
 import { SearchHandoffComponent } from './search-handoff.component';
-import { WorkshopProfileComponent } from './workshop-profile.component';
+import { GarageProfileComponent } from './garage-profile.component';
 
 export const routes: Routes = [
   ...localizedRoutes(''),
@@ -36,9 +36,7 @@ function localizedRoutes(prefix: string): Routes {
     },
     {
       loadComponent: () =>
-        import('./workshop-onboarding.component').then(
-          (module) => module.WorkshopOnboardingComponent,
-        ),
+        import('./garage-onboarding.component').then((module) => module.GarageOnboardingComponent),
       path: `${childPrefix}garages/new`,
     },
     {
@@ -60,7 +58,7 @@ function localizedRoutes(prefix: string): Routes {
       redirectTo: `${childPrefix}garages`,
     },
     {
-      component: WorkshopProfileComponent,
+      component: GarageProfileComponent,
       path: `${childPrefix}garages/:garageId`,
     },
   ];

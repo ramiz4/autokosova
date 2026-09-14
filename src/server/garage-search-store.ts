@@ -1,13 +1,13 @@
 import pg from 'pg';
-import type { PublicWorkshopProfile } from './access';
+import type { PublicGarageProfile } from './access';
 import { emptyReviewSummary } from './reviews';
 import {
   toSearchResponse,
-  type PublicWorkshopSearchInput,
-  type PublicWorkshopSearchResponse,
+  type PublicGarageSearchInput,
+  type PublicGarageSearchResponse,
   type SearchMatchCandidate,
-  type WorkshopSearchStore,
-} from './workshop-search';
+  type GarageSearchStore,
+} from './garage-search';
 
 interface SearchRow {
   readonly average_rating: number | string | null;
@@ -34,7 +34,7 @@ interface SearchRow {
  * Uses the public view and PostGIS only. It never joins a repair request, vehicle, travel date,
  * document, contact person, or a private membership table.
  */
-export class PostgresWorkshopSearchStore implements WorkshopSearchStore {
+export class PostgresGarageSearchStore implements GarageSearchStore {
   private readonly pool: pg.Pool;
 
   constructor(databaseUrl: string) {
@@ -45,7 +45,7 @@ export class PostgresWorkshopSearchStore implements WorkshopSearchStore {
     await this.pool.end();
   }
 
-  async getPublicWorkshop(workshopId: string): Promise<PublicWorkshopProfile | undefined> {
+  async getPublicGarage(garageId: string): Promise<PublicGarageProfile | undefined> {
     const result = await this.pool.query<SearchRow>(
       `SELECT
          profile.id,
@@ -63,27 +63,25 @@ export class PostgresWorkshopSearchStore implements WorkshopSearchStore {
          summary.latest_visit_month,
          summary.verified_visit_count,
          ARRAY[]::text[] AS photo_ids,
-         profile.place_id AS matching_place_id, profile.workshop_point IS NOT NULL AS location_available,
+         profile.place_id AS matching_place_id, profile.garage_point IS NOT NULL AS location_available,
          NULL::double precision AS distance_m
-       FROM public_workshop_profile AS profile
-       LEFT JOIN public_workshop_review_summary AS summary ON summary.workshop_id = profile.id
+       FROM public_garage_profile AS profile
+       LEFT JOIN public_garage_review_summary AS summary ON summary.garage_id = profile.id
        WHERE profile.id = $1`,
-      [workshopId],
+      [garageId],
     );
     const row = result.rows[0];
     return row ? toPublicProfile(row) : undefined;
   }
 
-  async listPublicWorkshopIds(): Promise<readonly string[]> {
+  async listPublicGarageIds(): Promise<readonly string[]> {
     const result = await this.pool.query<{ readonly id: string }>(
-      'SELECT id FROM public_workshop_profile ORDER BY id',
+      'SELECT id FROM public_garage_profile ORDER BY id',
     );
     return result.rows.map((row) => row.id);
   }
 
-  async searchPublicWorkshops(
-    input: PublicWorkshopSearchInput,
-  ): Promise<PublicWorkshopSearchResponse> {
+  async searchPublicGarages(input: PublicGarageSearchInput): Promise<PublicGarageSearchResponse> {
     if (input.allResults) {
       const result = await this.pool.query<SearchRow>(
         `SELECT
@@ -92,10 +90,10 @@ export class PostgresWorkshopSearchStore implements WorkshopSearchStore {
            profile.vehicle_make_ids, profile.company_data_verified, summary.review_count,
            summary.average_rating, summary.latest_visit_month, summary.verified_visit_count,
            ARRAY[]::text[] AS photo_ids, profile.place_id AS matching_place_id,
-           profile.workshop_point IS NOT NULL AS location_available,
+           profile.garage_point IS NOT NULL AS location_available,
            NULL::double precision AS distance_m
-         FROM public_workshop_profile AS profile
-         LEFT JOIN public_workshop_review_summary AS summary ON summary.workshop_id = profile.id
+         FROM public_garage_profile AS profile
+         LEFT JOIN public_garage_review_summary AS summary ON summary.garage_id = profile.id
          WHERE ($1::text IS NULL OR $1 = ANY(COALESCE(profile.service_category_ids, ARRAY[]::text[])))
            AND ($2::text IS NULL OR cardinality(COALESCE(profile.vehicle_make_ids, ARRAY[]::text[])) = 0 OR $2 = ANY(profile.vehicle_make_ids))
            AND ($3::text IS NULL OR EXISTS (SELECT 1 FROM unnest(COALESCE(profile.languages, ARRAY[]::text[])) AS language(value) WHERE lower(language.value) = lower($3)))`,
@@ -129,12 +127,12 @@ export class PostgresWorkshopSearchStore implements WorkshopSearchStore {
            ARRAY[]::text[] AS photo_ids,
            search_areas.id AS matching_place_id,
            true AS location_available,
-           ST_Distance(profile.workshop_point, search_areas.point) AS distance_m
-         FROM public_workshop_profile AS profile
-         LEFT JOIN public_workshop_review_summary AS summary ON summary.workshop_id = profile.id
+           ST_Distance(profile.garage_point, search_areas.point) AS distance_m
+         FROM public_garage_profile AS profile
+         LEFT JOIN public_garage_review_summary AS summary ON summary.garage_id = profile.id
          JOIN search_areas
-          ON profile.workshop_point IS NOT NULL
-          AND ST_DWithin(profile.workshop_point, search_areas.point, search_areas.radius_m)
+          ON profile.garage_point IS NOT NULL
+          AND ST_DWithin(profile.garage_point, search_areas.point, search_areas.radius_m)
          WHERE (
              $3::text IS NULL
              OR $3::text = ANY(COALESCE(profile.service_category_ids, ARRAY[]::text[]))
@@ -152,7 +150,7 @@ export class PostgresWorkshopSearchStore implements WorkshopSearchStore {
                WHERE lower(language.value) = lower($5::text)
              )
            )
-         ORDER BY profile.id, ST_Distance(profile.workshop_point, search_areas.point), search_areas.id
+         ORDER BY profile.id, ST_Distance(profile.garage_point, search_areas.point), search_areas.id
        )
        SELECT * FROM matched`,
       [
@@ -178,7 +176,7 @@ function toCandidate(row: SearchRow): SearchMatchCandidate {
   };
 }
 
-function toPublicProfile(row: SearchRow): PublicWorkshopProfile {
+function toPublicProfile(row: SearchRow): PublicGarageProfile {
   const reviewCount = row.review_count ?? 0;
   const averageRating = row.average_rating === null ? undefined : Number(row.average_rating);
   return {
