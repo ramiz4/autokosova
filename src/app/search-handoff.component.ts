@@ -437,7 +437,7 @@ interface Area {
                         </p>
                         <ul class="mt-3 flex flex-wrap gap-2 text-xs">
                           @for (reason of matchingReasons(workshop); track reason) {
-                            <li class="rounded-full bg-blue-50 px-3 py-1">{{ reason }}</li>
+                            <li class="rounded-lg bg-blue-50 px-4 py-1.5">{{ reason }}</li>
                           }
                           @for (tag of specializations(workshop); track tag) {
                             <li class="rounded-lg bg-slate-100  px-4 py-1.5">{{ tag }}</li>
