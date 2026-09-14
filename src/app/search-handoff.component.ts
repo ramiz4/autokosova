@@ -463,11 +463,11 @@ interface Area {
     }
     @if (favorites.message(); as message) {
       <div
-        class="pointer-events-none fixed right-0 bottom-[max(1rem,env(safe-area-inset-bottom))] left-0 z-50 mx-auto flex w-[calc(100%_-_1.5rem)] max-w-[1352px] justify-end px-4 sm:px-6 lg:w-[calc(100%_-_4rem)]"
+        class="pointer-events-none fixed right-0 bottom-[max(1rem,env(safe-area-inset-bottom))] left-0 z-50 mx-auto flex w-[calc(100%_-_1.5rem)] max-w-[1352px] justify-center px-4 sm:px-6 lg:w-[calc(100%_-_4rem)]"
       >
         <div
           [attr.role]="message === 'error' ? 'alert' : 'status'"
-          class="pointer-events-auto flex w-full max-w-sm items-start gap-2 rounded-2xl border border-slate-200/80 bg-white p-3 text-sm text-ink shadow-[0_8px_32px_-8px_rgba(7,20,62,0.22)]"
+          class="pointer-events-auto flex w-full max-w-xl items-start gap-2 rounded-2xl border border-slate-200/80 bg-white p-3 text-sm text-ink shadow-[0_8px_32px_-8px_rgba(7,20,62,0.22)]"
         >
           <span
             class="mt-1 flex size-9 shrink-0 items-center justify-center rounded-full"

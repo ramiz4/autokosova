@@ -92,6 +92,6 @@ Navbar-Inhalt und Suchinhalt teilen exakt dieselben Außenkanten: bei allen vier
 
 ## Kompakte Favoriten-Hinweise
 
-Toasts sind maximal 384 px breit und rechts am Inhaltsraster ausgerichtet. Status-Icon, 14-px-Text und Schließen-Button bilden eine gemeinsame Zeile; der Gast-Hinweis enthält einen Anmelden-Button. Mobile Seitenabstände und Safe Area bleiben berücksichtigt. Fehler werden als Alert angekündigt, andere Hinweise als Status.
+Toasts sind maximal 576 px breit und unten mittig positioniert. Status-Icon, 14-px-Text und Schließen-Button bilden eine gemeinsame Zeile; der Gast-Hinweis enthält einen Anmelden-Button. Mobile Seitenabstände und Safe Area bleiben berücksichtigt. Fehler werden als Alert angekündigt, andere Hinweise als Status.
 
 [Echter Gast-Hinweis Desktop](toast-login-1448.webp), [Mobil 360](toast-login-360.webp). Die Zustände [Gespeichert](toast-saved-fixture.webp), [Entfernt](toast-removed-fixture.webp) und [Fehler](toast-error-fixture.webp) wurden für diese reine Darstellungsprüfung mit simulierten API-Antworten aufgenommen; der echte OIDC-/Persistenznachweis ist separat oben dokumentiert. Schließen und Anmelden-Link sind bedienbar, keine horizontalen Überläufe.
