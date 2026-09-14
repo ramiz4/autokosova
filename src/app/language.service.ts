@@ -1,8 +1,10 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
 import { filter } from 'rxjs';
+import { PUBLIC_PAGE_PATHS, isPublicPageId, type PublicPageId } from '../shared/public-pages';
 import {
   APP_LANGUAGES,
   type AppLanguage,
@@ -11,7 +13,7 @@ import {
   translate,
 } from '../shared/i18n';
 
-export type AppRoute = 'home' | 'onboarding' | 'request' | 'search' | 'garage';
+export type AppRoute = 'home' | 'onboarding' | 'request' | 'search' | 'garage' | PublicPageId;
 
 @Injectable({ providedIn: 'root' })
 export class LanguageService {
@@ -21,6 +23,9 @@ export class LanguageService {
   private readonly document = inject(DOCUMENT);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly router = inject(Router);
+  private readonly navigationEnd = toSignal(
+    this.router.events.pipe(filter((event) => event instanceof NavigationEnd)),
+  );
   private readonly meta = inject(Meta);
   private readonly title = inject(Title);
 
@@ -32,6 +37,8 @@ export class LanguageService {
   }
 
   get language(): AppLanguage {
+    // Persistent shell components also need to update with zoneless change detection.
+    this.navigationEnd();
     return languageFromUrl(this.router.url);
   }
 
@@ -44,10 +51,13 @@ export class LanguageService {
   }
 
   switchUrl(target: AppLanguage): string {
+    this.navigationEnd();
     const current = this.router.url || this.browserPath();
-    const [path, query = ''] = current.split('?', 2);
+    const suffixAt = current.search(/[?#]/);
+    const path = suffixAt < 0 ? current : current.slice(0, suffixAt);
+    const suffix = suffixAt < 0 ? '' : current.slice(suffixAt);
     const { parameter, route } = identifyRoute(path);
-    return `${routePath(target, route, parameter)}${query ? `?${query}` : ''}`;
+    return `${routePath(target, route, parameter)}${suffix}`;
   }
 
   t(key: string, replacements?: Readonly<Record<string, string | number>>): string {
@@ -76,12 +86,12 @@ export class LanguageService {
 
   private browserPath(): string {
     if (!isPlatformBrowser(this.platformId)) return '/';
-    return `${window.location.pathname}${window.location.search}`;
+    return `${window.location.pathname}${window.location.search}${window.location.hash}`;
   }
 }
 
 export function languageFromUrl(url: string): AppLanguage {
-  const path = url.split('?', 1)[0];
+  const path = url.split(/[?#]/, 1)[0];
   if (path === '/sq' || path.startsWith('/sq/')) return 'sq';
   if (path === '/en' || path.startsWith('/en/')) return 'en';
   return 'de';
@@ -90,6 +100,7 @@ export function languageFromUrl(url: string): AppLanguage {
 export function routePath(language: AppLanguage, route: AppRoute, parameter?: string): string {
   const base = language === 'de' ? '' : `/${language}`;
   const segments: Readonly<Record<AppRoute, string>> = {
+    ...PUBLIC_PAGE_PATHS,
     home: '',
     onboarding: '/garages/new',
     request: '/inquiry',
@@ -106,6 +117,9 @@ function identifyRoute(path: string): { readonly parameter?: string; readonly ro
   if (normalized === '/inquiry') return { route: 'request' };
   if (normalized === '/garages' || normalized === '/suche' || normalized === '/werkstaetten') {
     return { route: 'search' };
+  }
+  for (const [page, pagePath] of Object.entries(PUBLIC_PAGE_PATHS)) {
+    if (normalized === pagePath && isPublicPageId(page)) return { route: page };
   }
   const garage = normalized.match(/^\/garages\/([^/]+)$/);
   return garage ? { parameter: garage[1], route: 'garage' } : { route: 'home' };

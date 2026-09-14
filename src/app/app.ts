@@ -13,9 +13,14 @@ import { IconComponent } from './ui/icon.component';
 import { BenefitCardComponent } from './ui/benefit-card.component';
 
 @Component({
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, SiteFooterComponent],
   selector: 'app-root',
-  template: '<router-outlet />',
+  template: `
+    <router-outlet #page="outlet" />
+    @if (!page.isActivated || !page.activatedRouteData['ownsFooter']) {
+      <app-site-footer />
+    }
+  `,
 })
 export class App {}
 
@@ -25,7 +30,6 @@ export class App {}
     RadiusSliderComponent,
     RouterLink,
     SiteHeaderComponent,
-    SiteFooterComponent,
     ButtonDirective,
     IconComponent,
     BenefitCardComponent,

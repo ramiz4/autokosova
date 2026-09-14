@@ -1,54 +1,73 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { footerCopy, type FooterCopyKey } from '../shared/footer-copy';
 import { AnalyticsService } from './analytics.service';
-import { LanguageService } from './language.service';
+import { LanguageService, type AppRoute } from './language.service';
+import { LanguageSwitcherComponent } from './language-switcher.component';
+
+interface FooterLink {
+  readonly route: AppRoute;
+  readonly label: FooterCopyKey;
+}
+
+interface OfficialSocialLink {
+  readonly label: string;
+  readonly url: string;
+}
+
+// Add a URL only after the owner has confirmed it as an official public profile.
+// No sample URLs, inferred handles, tracking parameters or private contact data.
+export const OFFICIAL_SOCIAL_LINKS: readonly OfficialSocialLink[] = [];
 
 @Component({
   selector: 'app-site-footer',
-  imports: [RouterLink],
-  template: `
-    <footer
-      class="mx-auto flex max-w-[1352px] flex-wrap items-start justify-between gap-8 px-6 py-10"
-    >
-      <div>
-        <a
-          [routerLink]="language.link('home')"
-          [attr.aria-label]="language.t('common.backHome')"
-          class="inline-flex min-h-11 items-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-        >
-          <img
-            src="/branding/autokosova-logo-header.png"
-            width="640"
-            height="122"
-            alt="AutoKosova"
-            class="h-auto w-44"
-            loading="lazy"
-          />
-        </a>
-        <p class="mt-2 text-sm text-muted">{{ language.t('landing.footer') }}</p>
-      </div>
-      <details class="max-w-lg text-sm text-muted">
-        <summary
-          class="min-h-11 rounded-lg py-3 font-semibold text-ink focus-visible:outline-2 focus-visible:outline-brand"
-        >
-          {{ language.t('analytics.title') }}
-        </summary>
-        <p class="mt-2 leading-relaxed">{{ language.t('analytics.description') }}</p>
-        <button
-          type="button"
-          class="mt-3 min-h-11 rounded-lg font-bold text-brand-dark underline focus-visible:outline-2 focus-visible:outline-brand"
-          [attr.aria-pressed]="analytics.consented"
-          (click)="toggleAnalyticsConsent()"
-        >
-          {{ language.t(analytics.consented ? 'analytics.disable' : 'analytics.enable') }}
-        </button>
-      </details>
-    </footer>
-  `,
+  host: { class: 'block' },
+  imports: [RouterLink, LanguageSwitcherComponent],
+  templateUrl: './site-footer.component.html',
 })
 export class SiteFooterComponent {
-  protected readonly analytics = inject(AnalyticsService);
   protected readonly language = inject(LanguageService);
+  protected readonly analytics = inject(AnalyticsService);
+  protected readonly year = new Date().getFullYear();
+  protected readonly socialLinks = OFFICIAL_SOCIAL_LINKS;
+  protected readonly columns: readonly {
+    readonly title: FooterCopyKey;
+    readonly links: readonly FooterLink[];
+  }[] = [
+    {
+      title: 'customers',
+      links: [
+        { route: 'search', label: 'find' },
+        { route: 'request', label: 'inquiry' },
+        { route: 'help', label: 'helpTitle' },
+      ],
+    },
+    {
+      title: 'garages',
+      links: [
+        { route: 'onboarding', label: 'register' },
+        { route: 'partners', label: 'partnersTitle' },
+        { route: 'benefits', label: 'benefitsTitle' },
+      ],
+    },
+    {
+      title: 'about',
+      links: [
+        { route: 'mission', label: 'missionTitle' },
+        { route: 'careers', label: 'careersTitle' },
+        { route: 'blog', label: 'blogTitle' },
+      ],
+    },
+  ];
+  protected readonly legalLinks: readonly FooterLink[] = [
+    { route: 'privacy', label: 'privacyTitle' },
+    { route: 'terms', label: 'termsTitle' },
+    { route: 'imprint', label: 'imprintTitle' },
+  ];
+
+  protected text(key: FooterCopyKey): string {
+    return footerCopy[this.language.language][key];
+  }
 
   protected toggleAnalyticsConsent(): void {
     this.analytics.setConsent(!this.analytics.consented);

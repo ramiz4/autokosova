@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 
 const port = 4100;
+const origin = `http://127.0.0.1:${port}`;
 const server = spawn(process.execPath, ['dist/autokosova/server/server.mjs'], {
   env: { ...process.env, PORT: String(port) },
   stdio: ['ignore', 'pipe', 'pipe'],
@@ -21,7 +22,7 @@ async function waitFor(url) {
 
   while (Date.now() < end) {
     try {
-      return await fetch(url);
+      return await fetch(url, { signal: AbortSignal.timeout(2000) });
     } catch (error) {
       lastError = error;
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -32,13 +33,47 @@ async function waitFor(url) {
 }
 
 try {
-  const health = await waitFor(`http://127.0.0.1:${port}/health`);
+  const health = await waitFor(`${origin}/health`);
   assert.equal(health.status, 200);
   assert.deepEqual(await health.json(), { status: 'ok' });
 
-  const page = await fetch(`http://127.0.0.1:${port}/`);
-  assert.equal(page.status, 200);
-  assert.match(await page.text(), /AutoKosova/);
+  // Only local, synthetic public pages. No session or private request is created.
+  const pending = new Set([
+    '/',
+    '/sq',
+    '/en',
+    '/garages/footer-smoke-missing',
+    '/sq/garages/footer-smoke-missing',
+    '/en/garages/footer-smoke-missing',
+  ]);
+  const visited = new Set();
+  for (const path of pending) {
+    if (visited.has(path)) continue;
+    assert.ok(visited.size < 60, 'Unexpected footer route expansion');
+    const response = await fetch(origin + path, { signal: AbortSignal.timeout(20_000) });
+    assert.equal(response.status, 200, path);
+    const html = await response.text();
+    const footer = html.match(/<app-site-footer\b[^>]*>[\s\S]*?<\/app-site-footer>/)?.[0];
+    assert.ok(footer, `Missing shared footer: ${path}`);
+    assert.equal((html.match(/<footer(?:\s|>)/g) ?? []).length, 1, path);
+    assert.match(footer, /\/branding\/autokosova-logo-header\.png/);
+    assert.match(footer, new RegExp(`${new Date().getFullYear()} AutoKosova`));
+    assert.doesNotMatch(footer, /href="#"|href="(?:mailto:|tel:)/);
+    const locale =
+      path === '/sq' || path.startsWith('/sq/') ? 'sq' : path.startsWith('/en') ? 'en' : 'de';
+    const prefix = locale === 'de' ? '' : `/${locale}`;
+    assert.match(html, new RegExp(`<html[^>]*lang="${locale}"`));
+    assert.ok(footer.includes(`href="${prefix}/inquiry"`), path);
+    assert.ok(footer.includes(`href="${prefix}/garages/new"`), path);
+    for (const [, href] of footer.matchAll(/\bhref="([^"]+)"/g)) {
+      if (href.startsWith('https://')) continue;
+      assert.ok(href.startsWith('/') && !href.startsWith('//'), `Invalid footer link: ${href}`);
+      assert.doesNotMatch(href, /\/(?:anfrage|werkstatt|werkstaetten|suche)(?:\/|$)/);
+      pending.add(href);
+    }
+    visited.add(path);
+  }
+  console.log(`Verified the shared footer and links on ${visited.size} localized SSR pages.`);
 } finally {
   server.kill('SIGTERM');
 }

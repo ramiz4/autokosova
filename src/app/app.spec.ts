@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { FoundationComponent } from './app';
+import { App, FoundationComponent } from './app';
 import { AnalyticsService } from './analytics.service';
 import { landingCopy } from '../shared/landing-copy';
 
@@ -13,7 +13,7 @@ describe('Homepage', () => {
   beforeEach(async () => {
     analytics = { consented: false, track: vi.fn(), setConsent: vi.fn() };
     await TestBed.configureTestingModule({
-      imports: [FoundationComponent],
+      imports: [App, FoundationComponent],
       providers: [
         provideRouter([
           { path: 'sq', component: FoundationComponent },
@@ -111,9 +111,11 @@ describe('Homepage', () => {
     expect(page.querySelector('header a[aria-current="page"]')?.textContent).toContain('Shqip');
   });
 
-  it('keeps optional analytics a deliberate, reversible choice', async () => {
-    const { fixture, page } = await render();
-    const button = page.querySelector<HTMLButtonElement>('footer button')!;
+  it('keeps optional analytics a deliberate, reversible choice in the shared footer', async () => {
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    const page = fixture.nativeElement as HTMLElement;
+    const button = page.querySelector<HTMLButtonElement>('app-site-footer button')!;
     expect(analytics.setConsent).not.toHaveBeenCalled();
     button.click();
     await fixture.whenStable();
