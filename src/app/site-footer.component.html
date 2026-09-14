@@ -1,0 +1,112 @@
+<footer
+  class="w-full border-t border-slate-100 bg-white px-6 py-10 font-sans text-slate-600 sm:px-10 lg:py-12"
+>
+  <div class="mx-auto max-w-[1320px]">
+    <div
+      class="grid items-start gap-8 border-b border-slate-100 pb-8 lg:grid-cols-[minmax(180px,1fr)_minmax(0,2.6fr)_minmax(144px,0.85fr)] lg:gap-6 lg:pb-10"
+    >
+      <div class="min-w-0">
+        <a
+          [routerLink]="language.link('home')"
+          [attr.aria-label]="language.t('common.backHome')"
+          class="inline-flex min-h-11 max-w-full items-center rounded focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand"
+        >
+          <img
+            src="/branding/autokosova-logo-header.png"
+            width="640"
+            height="122"
+            alt="AutoKosova"
+            loading="lazy"
+            class="h-auto w-44 max-w-full"
+          />
+        </a>
+        <p class="mt-2 text-[13px] leading-6 text-slate-500">
+          {{ language.t('landing.footer') }}
+        </p>
+      </div>
+
+      <nav
+        class="grid min-w-0 grid-cols-2 gap-x-5 gap-y-6 sm:grid-cols-3 lg:gap-x-6"
+        [attr.aria-label]="text('navigation')"
+      >
+        @for (column of columns; track column.title) {
+          <div class="min-w-0">
+            <h2 class="mb-2 text-[13px] font-bold leading-6 text-ink">{{ text(column.title) }}</h2>
+            <ul>
+              @for (link of column.links; track link.route) {
+                <li>
+                  <a
+                    [routerLink]="language.link(link.route)"
+                    class="flex min-h-11 items-center rounded py-2 text-[13px] leading-5 break-words text-slate-600 transition-colors hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                    >{{ text(link.label) }}</a
+                  >
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </nav>
+
+      <div
+        class="flex min-w-0 flex-wrap items-start justify-between gap-4 border-t border-slate-100 pt-6 lg:flex-col lg:items-end lg:border-0 lg:pt-0"
+      >
+        <div class="min-w-0 max-w-56 lg:text-right">
+          <h2 class="text-[13px] font-bold leading-6 text-ink">{{ text('follow') }}</h2>
+          @if (socialLinks.length) {
+            <ul class="mt-2 flex flex-wrap gap-3 lg:justify-end">
+              @for (profile of socialLinks; track profile.url) {
+                <li>
+                  <a
+                    [href]="profile.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    [attr.aria-label]="profile.label + ' – ' + text('newTab')"
+                    class="inline-flex min-h-11 min-w-11 items-center rounded text-[13px] hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                    >{{ profile.label }}</a
+                  >
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="mt-2 text-[13px] leading-6 text-slate-500">{{ text('noProfiles') }}</p>
+          }
+        </div>
+        <app-language-switcher [compact]="true" placement="above" />
+      </div>
+    </div>
+
+    <div
+      class="flex flex-col gap-4 pt-4 text-[13px] sm:flex-row sm:items-center sm:justify-between"
+    >
+      <p class="order-2 leading-6 text-slate-500 sm:order-1">
+        &copy; {{ year }} AutoKosova. {{ text('rights') }}
+      </p>
+      <nav class="order-1 flex flex-wrap gap-x-6 sm:order-2" [attr.aria-label]="text('legal')">
+        @for (link of legalLinks; track link.route) {
+          <a
+            [routerLink]="language.link(link.route)"
+            class="inline-flex min-h-11 items-center rounded py-2 leading-5 text-slate-600 hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            >{{ text(link.label) }}</a
+          >
+        }
+      </nav>
+    </div>
+
+    <details class="mt-4 max-w-xl text-[13px] text-slate-600">
+      <summary
+        class="min-h-11 cursor-pointer rounded py-3 font-semibold text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+      >
+        {{ language.t('analytics.title') }}
+      </summary>
+      <p class="mt-2 leading-6">{{ language.t('analytics.description') }}</p>
+      <button
+        type="button"
+        class="mt-2 min-h-11 rounded py-2 font-bold text-brand-dark underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        [attr.aria-pressed]="analytics.consented"
+        (click)="toggleAnalyticsConsent()"
+      >
+        {{ language.t(analytics.consented ? 'analytics.disable' : 'analytics.enable') }}
+      </button>
+    </details>
+  </div>
+</footer>

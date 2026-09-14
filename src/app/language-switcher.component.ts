@@ -21,7 +21,10 @@ import { IconComponent } from './ui/icon.component';
           <app-icon name="chevron-down" class="size-4" />
         </summary>
         <nav
-          class="absolute right-0 z-30 mt-2 min-w-32 rounded-xl border border-blue-100 bg-white p-2 shadow-xl"
+          class="absolute right-0 z-30 min-w-32 rounded-xl border border-blue-100 bg-white p-2 shadow-xl"
+          [class.bottom-full]="placement() === 'above'"
+          [class.mb-2]="placement() === 'above'"
+          [class.mt-2]="placement() === 'below'"
           [attr.aria-label]="language.t('a11y.language')"
         >
           @for (item of language.languages; track item) {
@@ -53,5 +56,6 @@ import { IconComponent } from './ui/icon.component';
 })
 export class LanguageSwitcherComponent {
   readonly compact = input(false);
+  readonly placement = input<'above' | 'below'>('below');
   protected readonly language = inject(LanguageService);
 }
