@@ -16,6 +16,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CATALOG_PLACES, SERVICE_CATEGORY_LABELS, VEHICLE_MAKE_LABELS } from '../shared/catalog';
 import { REPAIR_REQUEST_LIMITS } from '../shared/repair-request';
+import { localDemoPhotoPath } from '../shared/local-demo';
 import { AnalyticsService } from './analytics.service';
 import { LanguageService } from './language.service';
 import { SiteHeaderComponent } from './site-header.component';
@@ -74,9 +75,39 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
     </div>
     <h1 id="search-title" class="sr-only">{{ language.t('search.title') }}</h1>
     @if (state === 'loading' && !response) {
-      <p class="mx-auto max-w-6xl px-4 py-12 text-slate-700" role="status">
-        {{ language.t('search.loading') }}
-      </p>
+      <section
+        data-search-skeleton
+        class="mx-auto w-[calc(100%_-_1.5rem)] max-w-[1360px] px-4 py-6 sm:px-6 lg:w-[calc(100%_-_4rem)]"
+        aria-hidden="true"
+      >
+        <div
+          class="grid animate-pulse gap-5 motion-reduce:animate-none xl:grid-cols-[minmax(280px,320px)_minmax(0,1fr)]"
+        >
+          <div class="hidden h-[420px] rounded-2xl bg-white shadow-sm xl:block"></div>
+          <div>
+            <div class="mb-5 flex items-center justify-between gap-4">
+              <span class="h-7 w-64 max-w-2/3 rounded-lg bg-slate-200"></span>
+              <span class="h-11 w-44 rounded-xl bg-white"></span>
+            </div>
+            <div class="grid gap-4">
+              @for (item of [0, 1, 2, 3]; track item) {
+                <div
+                  class="grid gap-3 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm sm:grid-cols-[205px_minmax(0,1fr)]"
+                >
+                  <span class="h-48 rounded-xl bg-slate-200 sm:h-36"></span>
+                  <span class="grid content-start gap-3 p-3">
+                    <span class="h-6 w-2/3 rounded-md bg-slate-200"></span>
+                    <span class="h-4 w-40 rounded bg-slate-100"></span>
+                    <span class="h-4 w-52 rounded bg-slate-100"></span>
+                    <span class="mt-2 h-8 w-28 rounded-lg bg-slate-100"></span>
+                  </span>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </section>
+      <p class="sr-only" role="status">{{ language.t('search.loading') }}</p>
     }
     @if (state === 'invalid') {
       <section class="mx-auto my-8 max-w-4xl rounded-2xl border border-amber-300 bg-amber-50 p-6">
@@ -229,17 +260,28 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                     <li
                       class="grid gap-3 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm transition hover:border-brand/30 hover:shadow-md sm:grid-cols-[205px_minmax(0,1fr)]"
                     >
-                      <div class="relative min-h-[144px] overflow-hidden rounded-xl bg-slate-100">
+                      <div
+                        class="relative h-48 min-h-[144px] overflow-hidden rounded-xl bg-slate-100 sm:h-36"
+                      >
                         @if (photoIds(garage).length) {
                           <img
                             [src]="photoUrl(garage)"
                             [alt]="garage.name"
+                            width="1280"
+                            height="960"
+                            decoding="async"
+                            [attr.fetchpriority]="index === 0 ? 'high' : 'auto'"
+                            [attr.loading]="index < 3 ? 'eager' : 'lazy'"
                             class="h-full w-full object-cover"
                           />
                         } @else {
                           <img
                             [src]="conceptImage(index)"
                             alt=""
+                            width="1024"
+                            height="768"
+                            decoding="async"
+                            [attr.loading]="index < 3 ? 'eager' : 'lazy'"
                             class="h-full min-h-[144px] w-full object-cover"
                           />
                           <span
@@ -481,7 +523,11 @@ export class SearchHandoffComponent {
   }
 
   protected photoUrl(garage: Result): string {
-    return `/api/public/garages/${encodeURIComponent(garage.id)}/photos/${encodeURIComponent(this.photoIds(garage)[0])}`;
+    const photoId = this.photoIds(garage)[0];
+    return (
+      localDemoPhotoPath(garage.id, photoId) ??
+      `/api/public/garages/${encodeURIComponent(garage.id)}/photos/${encodeURIComponent(photoId)}`
+    );
   }
   protected starFill(rating: number, index: number): number {
     return Math.max(0, Math.min(100, Math.round((rating - index) * 100)));
