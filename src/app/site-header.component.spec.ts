@@ -27,3 +27,26 @@ describe('Header account actions', () => {
     },
   );
 });
+
+describe('Active navigation', () => {
+  it.each([
+    ['request', '/inquiry'],
+    ['search', '/garages'],
+  ])('marks %s consistently on desktop and mobile', async (active, href) => {
+    await TestBed.configureTestingModule({
+      imports: [SiteHeaderComponent],
+      providers: [provideRouter([])],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(SiteHeaderComponent);
+    fixture.componentRef.setInput('compact', true);
+    fixture.componentRef.setInput('active', active);
+    await fixture.whenStable();
+    const links = [
+      ...(fixture.nativeElement as HTMLElement).querySelectorAll<HTMLAnchorElement>(
+        'nav a.nav-link[aria-current="page"]',
+      ),
+    ];
+    expect(links).toHaveLength(2);
+    expect(links.every((link) => link.getAttribute('href') === href)).toBe(true);
+  });
+});

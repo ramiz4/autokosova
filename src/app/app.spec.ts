@@ -17,6 +17,7 @@ describe('Homepage', () => {
       providers: [
         provideRouter([
           { path: 'sq', component: FoundationComponent },
+          { path: 'inquiry', component: FoundationComponent },
           { path: 'en', component: FoundationComponent },
         ]),
         { provide: AnalyticsService, useValue: analytics },

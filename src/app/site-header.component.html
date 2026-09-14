@@ -24,12 +24,17 @@
       class="hidden h-full items-center gap-8 text-[13px] font-semibold text-[#475569] md:flex"
       [attr.aria-label]="language.t('nav.main')"
     >
-      <a class="nav-link px-1" [routerLink]="language.link('request')">{{
-        language.t('nav.newRequest')
-      }}</a>
+      <a
+        class="nav-link px-1"
+        [class.nav-link-active]="active() === 'request'"
+        [attr.aria-current]="active() === 'request' ? 'page' : null"
+        [routerLink]="language.link('request')"
+        >{{ language.t('nav.newRequest') }}</a
+      >
       <a
         class="nav-link px-1 py-1"
         [class.nav-link-active]="active() === 'search'"
+        [attr.aria-current]="active() === 'search' ? 'page' : null"
         [href]="language.link('search')"
         >{{ language.t('nav.search') }}</a
       >
@@ -74,7 +79,17 @@
     <div class="grid gap-1">
       <a
         class="nav-link"
-        [href]="language.link('home') + '#werkstatt-suche'"
+        [class.nav-link-active]="active() === 'request'"
+        [attr.aria-current]="active() === 'request' ? 'page' : null"
+        [routerLink]="language.link('request')"
+        (click)="closeMenu()"
+        >{{ language.t('nav.newRequest') }}</a
+      >
+      <a
+        class="nav-link"
+        [class.nav-link-active]="active() === 'search'"
+        [attr.aria-current]="active() === 'search' ? 'page' : null"
+        [href]="compact() ? language.link('search') : language.link('home') + '#werkstatt-suche'"
         (click)="closeMenu()"
         >{{ language.t('nav.search') }}</a
       >

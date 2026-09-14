@@ -50,8 +50,11 @@ interface Area {
   imports: [ButtonDirective, FormsModule, IconComponent, RouterLink, SiteHeaderComponent],
   selector: 'app-search-handoff',
   template: ` <main class="min-h-screen bg-[#f4f8fe] text-ink" aria-labelledby="search-title">
+    <div class="sticky top-0 z-50 bg-white px-3 shadow-sm lg:px-8">
+      <app-site-header [compact]="true" active="search" />
+    </div>
     <section
-      class="relative isolate min-h-[340px] overflow-hidden bg-[#f4f7fc] px-4 pt-4 sm:px-8 lg:px-12 lg:pt-6"
+      class="relative isolate min-h-[276px] overflow-hidden bg-[#f4f7fc] px-4 sm:px-8 lg:px-12"
     >
       <div
         class="absolute right-0 top-0 -z-20 h-full w-full bg-[url('/images/search/search-hero-workshop.webp')] bg-cover bg-center opacity-25 md:w-[55%] md:opacity-100"
@@ -59,7 +62,6 @@ interface Area {
       <div
         class="absolute inset-0 -z-10 bg-gradient-to-r from-[#f4f7fc] via-[#f4f7fc]/95 to-transparent"
       ></div>
-      <app-site-header [active]="'search'" class="relative mx-auto block max-w-[1920px]" />
       <div
         class="relative mx-auto grid max-w-[1280px] grid-cols-1 items-end gap-6 px-2 py-8 md:grid-cols-12"
       >

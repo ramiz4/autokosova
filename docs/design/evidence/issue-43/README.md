@@ -28,9 +28,9 @@ Fahrzeugschritt in DE/SQ/EN bei 1448, 1280, 360, 390 und 430 px geprüft. Zusät
 
 - `npm ci`, `npm run dev:demo`: eigene lokale PostgreSQL-DB, Migration 017 und öffentliche Demo-Daten erfolgreich.
 - `npm run format:check`, `npm run lint`, `npm run typecheck`: erfolgreich.
-- `npm test -- --watch=false`: 32 Tests erfolgreich, einschließlich 12 Anfrage-Tests und 6 Routentests.
+- `npm test -- --watch=false`: 34 Tests erfolgreich, einschließlich 12 Anfrage-Tests und 6 Routentests.
 - `npm run test:server` mit der eigenen lokalen `DATABASE_URL`: 57 bestanden, 2 profilspezifische Demo-Seed-Tests übersprungen (keine entsprechenden Testprofil-Flags). Persistenz mit neuen Feldern, Teilfahrzeug und Fremdzugriff tatsächlich gegen PostgreSQL geprüft.
-- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 531 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
+- `npm run build`, `npm run test:smoke`: erfolgreich. Buildwarnung: initiales Bundle rund 533 kB gegenüber 500 kB Warnschwelle; Fehlerschwelle unverändert.
 - Screenreader-Semantik (`aria-current`, Status-/Fehlermeldungen), Fokuswechsel und Eingabevalidierung automatisiert geprüft. Kein manueller Durchlauf mit einem Screenreader und keine native mobile Browserprüfung.
 - Echter OIDC-Login mit Testkonto nicht ausgeführt: dieser isolierte Worktree hat keine OIDC-Konfiguration. Private Speicherung und Berechtigungen wurden über die authentifizierte API in Tests geprüft; dies ersetzt den realen OIDC-Durchlauf nicht.
 
@@ -43,3 +43,11 @@ Der Assistent liegt unter `/inquiry`; Profile und Aufnahme unter `/garages/:gara
 Sitemap und Robots-Regeln berücksichtigen die neuen Pfade: Suchlisten und Aufnahme bleiben ausgeschlossen, öffentliche Profilpfade werden nicht durch eine zu breite `/garages`-Regel gesperrt. Login-Rücksprünge akzeptieren nur den kanonischen Anfragepfad bzw. bekannte deutsche Vorgänger, die direkt auf `/inquiry` normalisiert werden.
 
 Die Anfrageseite hat eine sticky Navigation: im Mobilbrowser nach 800 px Scrollen bleibt die Kopfzeile bei 0–64 px sichtbar. [Scrollnachweis](sticky-mobile.webp). Getriebe ist eine optionale Auswahl; ältere Freitexte bleiben als bisheriger Wert erhalten.
+
+## Mobile Schrittanzeige und gemeinsame Navigation
+
+Auf schmalen Displays zeigt die Schrittleiste fünf nummerierte Indikatoren und die vollständige Bezeichnung des aktuellen Schritts in einer eigenen Zeile. Alle fünf Beschriftungen bleiben für Screenreader verfügbar. [Mobile Schrittanzeige](mobile-steps.webp).
+
+Im ersten Schritt stehen Abbrechen und Weiter nebeneinander: bei 360 px jeweils 130,5 × 52 px. In Folgeschritten stehen Zurück und Weiter in derselben Zeile, Abbrechen darunter; die lange Suchaktion erhält im Abschluss eine volle Zeile. [Mobile Aktionen](mobile-actions.webp).
+
+Neue Anfrage und Werkstätten finden haben auf ihrer jeweiligen Seite einen blauen 3-px-Unterstrich sowie `aria-current="page"`, auch im mobilen Menü. Die Suche verwendet denselben kompakten sticky Header wie die Anfrage. Nach 800 px Scrollen bleibt er auf beiden Seiten bei 0–64 px: [Suche Desktop](garages-sticky-1448.webp), [Suche Mobil](garages-sticky-390.webp). DE/SQ/EN wurden erneut in allen fünf Vergleichsbreiten ohne horizontalen Überlauf geprüft.

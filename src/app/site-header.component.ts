@@ -12,7 +12,7 @@ import { IconComponent } from './ui/icon.component';
 })
 export class SiteHeaderComponent {
   readonly compact = input(false);
-  readonly active = input<'search' | undefined>();
+  readonly active = input<'search' | 'request' | undefined>();
   protected readonly language = inject(LanguageService);
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
   protected readonly menuOpen = signal(false);

@@ -77,6 +77,15 @@ export class RepairRequestComponent {
     ['thumb', 'footer2'],
     ['shield', 'footer3'],
   ] as const;
+  protected get stepLabels(): readonly string[] {
+    return [
+      this.language.t('request.stepVehicle'),
+      this.text('repair'),
+      this.text('placeTime'),
+      this.text('details'),
+      this.text('done'),
+    ];
+  }
   protected readonly vehicleClasses = REPAIR_REQUEST_VEHICLE_CLASSES;
   protected readonly transmissions = ['manual', 'automatic', 'semiAutomatic', 'other'] as const;
   protected isKnownTransmission(value: string): boolean {
