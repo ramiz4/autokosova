@@ -83,7 +83,7 @@ Der zusätzliche Chip „Unternehmensdaten geprüft“ entfällt. Die Prüfung e
 
 Die Suche beginnt direkt mit Filter und Ergebnissen. Bild-Hero, Hero-Suchfeld, Vorteilsblöcke und sichtbare Seitenüberschrift entfallen nach der letzten Nutzerentscheidung. Die semantische H1 bleibt für Screenreader erhalten. [Desktop](search-results-1448.webp), [Mobil 390](search-results-390.webp), [Mobil 360](search-results-360.webp).
 
-Ohne gesetzten Ortsfilter bleibt die Ortsauswahl leer: „Ganz Kosovo“ und „Ort und Radius sind optional“. Marke, Leistung und Sprache gelten auch für die globale Suche. Die Reihenfolge ist Marke, Leistung, Sprache. Der Filter bleibt nach dem Scrollen bei y=80 unter der 64 px hohen Navbar, bei Bedarf mit internem Scrollbereich.
+Ohne gesetzten Ortsfilter bleibt die Ortsauswahl leer: „Ganz Kosovo“. Marke, Leistung und Sprache gelten auch für die globale Suche. Die Reihenfolge ist Marke, Leistung, Sprache. Der Filter bleibt nach dem Scrollen bei y=80 unter der 64 px hohen Navbar, bei Bedarf mit internem Scrollbereich.
 
 Migration 019 speichert private Favoriten im Konto. Angemeldete Navbar: [Desktop](account-navbar.webp), [Mobil](account-mobile.webp). [Bestätigter Favorit und fiktive Demo-Bewertung](favorite-card.webp). Sechs veröffentlichte fiktive Workflow-Bewertungen auf drei ausdrücklich als DEMO bezeichneten Profilen zeigen echte berechnete Mittelwerte und Anzahlen. `npm run test:demo-workflow-seed` wurde separat mit eigener lokaler DB erfolgreich ausgeführt.
 

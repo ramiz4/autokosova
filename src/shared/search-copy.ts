@@ -21,7 +21,6 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'favorites.error': 'Favoriten konnten nicht aktualisiert werden. Bitte versuche es erneut.',
 
     'search.ui.allLocations': 'Ganz Kosovo',
-    'search.ui.locationOptional': 'Ort und Radius sind optional.',
     'search.ui.chooseLocation': 'Ort auswählen',
     'search.ui.addFirstArea': 'Ort hinzufügen',
     'search.ui.allMakes': 'Alle Marken',
@@ -76,7 +75,6 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'favorites.error': 'Të preferuarat nuk u përditësuan. Provo përsëri.',
 
     'search.ui.allLocations': 'Gjithë Kosova',
-    'search.ui.locationOptional': 'Vendi dhe rrezja janë opsionale.',
     'search.ui.chooseLocation': 'Zgjidh vendin',
     'search.ui.addFirstArea': 'Shto vend',
     'search.ui.allMakes': 'Të gjitha markat',
@@ -131,7 +129,6 @@ export const searchCopy: Readonly<Record<AppLanguage, Readonly<Record<string, st
     'favorites.error': 'Favorites could not be updated. Please try again.',
 
     'search.ui.allLocations': 'All of Kosovo',
-    'search.ui.locationOptional': 'Location and radius are optional.',
     'search.ui.chooseLocation': 'Choose a location',
     'search.ui.addFirstArea': 'Add location',
     'search.ui.allMakes': 'All makes',

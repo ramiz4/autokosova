@@ -139,9 +139,6 @@ interface Area {
                       <app-icon name="pin" class="mt-0.5 size-4 text-muted" />
                       <div>
                         <p class="font-medium">{{ ui('search.ui.allLocations') }}</p>
-                        <p class="mt-1 leading-5 text-muted">
-                          {{ ui('search.ui.locationOptional') }}
-                        </p>
                       </div>
                     </div>
                   }
