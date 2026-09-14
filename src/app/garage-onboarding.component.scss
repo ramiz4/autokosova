@@ -3,10 +3,13 @@
 }
 .onboarding-section {
   min-width: 0;
-  padding: 20px;
-  border: 1px solid #e5edf7;
-  border-radius: 12px;
-  background: linear-gradient(120deg, #f8fbff, #f4f8fd);
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.onboarding-section + .onboarding-section {
+  padding-top: 28px;
+  border-top: 1px solid #e5edf7;
 }
 .onboarding-info {
   padding: 24px;
@@ -67,7 +70,7 @@
   display: none;
 }
 @media (max-width: 639px) {
-  .onboarding-section {
-    padding: 16px;
+  .onboarding-section + .onboarding-section {
+    padding-top: 24px;
   }
 }

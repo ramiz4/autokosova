@@ -50,7 +50,8 @@ it('uses the same image, overlay, text container and card overlap as the inquiry
   const page = fixture.nativeElement as HTMLElement;
   const hero = page.querySelector<HTMLElement>('header[aria-labelledby="onboarding-hero-title"]')!;
   const image = hero.querySelector<HTMLImageElement>('img')!;
-  expect(hero.className).toContain('min-h-64');
+  expect(hero.className).toContain('min-h-[272px]');
+  expect(hero.className).toContain('lg:h-[272px]');
   expect(hero.className).toContain('pt-8');
   expect(hero.className).toContain('pb-20');
   expect(image.src).toContain('/images/home/hero-mountain-road-1672.webp');
@@ -138,13 +139,18 @@ it('keeps entered values on session loss and offers the localized safe return wi
 });
 
 it.each(['de', 'sq', 'en'] as const)(
-  'renders the three sections and all searchable selections in %s',
+  'renders three visually unboxed sections and all searchable selections in %s',
   async (language) => {
     const fixture = await setup();
     vi.spyOn(TestBed.inject(LanguageService), 'language', 'get').mockReturnValue(language);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('app-multi-select')).toHaveLength(4);
     expect(fixture.nativeElement.querySelectorAll('fieldset.onboarding-section')).toHaveLength(3);
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+        'fieldset.onboarding-section',
+      )!.className,
+    ).not.toContain('rounded');
     expect(fixture.nativeElement.textContent).not.toContain('durch Komma');
     expect(fixture.nativeElement.querySelector('app-site-header img')).not.toBeNull();
   },
