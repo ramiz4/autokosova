@@ -15,20 +15,20 @@ jobs:
         run: |
           cat .github/account-69/{0,1,2,3}.b64 | tr -d '\n' | sed 's/Atneyn4p5TQ/Atneyn4w5TQ/g' | base64 --decode | gzip --decompress > "$RUNNER_TEMP/account69.patch"
           echo "67dcf831b60ebbd2b7ff012eeb94d4c5b63c967870965e90aa6e66b42ebfe76a  $RUNNER_TEMP/account69.patch" | sha256sum --check
-          git apply --check "$RUNNER_TEMP/account69.patch"
-          git apply "$RUNNER_TEMP/account69.patch"
+          git apply --exclude=.github/workflows/account.yml --check "$RUNNER_TEMP/account69.patch"
+          git apply --exclude=.github/workflows/account.yml "$RUNNER_TEMP/account69.patch"
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm install --global npm@11.19.0
       - run: npm ci
-      - name: Format implementation and remove temporary transport
+      - name: Format and publish implementation code only
         run: |
-          npx prettier --write src scripts test .github/workflows/account.yml
+          npx prettier --write src scripts test
           git diff --check
-          git rm -r .github/account-69 .github/workflows/account-worktree.yml
-          git add src scripts test README.md docs/architecture/ACCOUNT-PROFILE.md .github/workflows/account.yml
+          git rm -r .github/account-69
+          git add src scripts test README.md docs/architecture/ACCOUNT-PROFILE.md
           git config user.name 'AutoKosova implementation'
           git config user.email 'noreply@users.noreply.github.com'
           git commit -m 'feat(account): show own identity, roles and profile settings (#69)'
