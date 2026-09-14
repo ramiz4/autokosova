@@ -4,24 +4,24 @@ import test from 'node:test';
 import pg from 'pg';
 import {
   AccessStore,
-  type PublicWorkshopProfile,
-  type WorkshopProfileInput,
+  type PublicGarageProfile,
+  type GarageProfileInput,
 } from '../src/server/access';
 import { createServer } from '../src/server/app';
 import {
-  findPublicWorkshops,
+  findPublicGarages,
   isWithinSearchRadius,
-  parsePublicWorkshopSearch,
-} from '../src/server/workshop-search';
-import { PostgresWorkshopSearchStore } from '../src/server/workshop-search-store';
+  parsePublicGarageSearch,
+} from '../src/server/garage-search';
+import { PostgresGarageSearchStore } from '../src/server/garage-search-store';
 import { getCatalogPlace } from '../src/shared/catalog';
 
 const databaseUrl = process.env['DATABASE_URL'];
 
-function profile(overrides: Partial<PublicWorkshopProfile> = {}): PublicWorkshopProfile {
+function profile(overrides: Partial<PublicGarageProfile> = {}): PublicGarageProfile {
   const result = {
     contact: { phone: '+383 44 000 001' },
-    id: 'workshop-pristina',
+    id: 'garage-pristina',
     languages: ['Deutsch', 'Shqip'],
     name: 'Fiktive Bremsenwerkstatt Prishtina',
     photoIds: [],
@@ -38,7 +38,7 @@ function profile(overrides: Partial<PublicWorkshopProfile> = {}): PublicWorkshop
 }
 
 function query(overrides: Record<string, string> = {}) {
-  return parsePublicWorkshopSearch({
+  return parsePublicGarageSearch({
     places: 'xk-pristina:100,xk-ferizaj:100',
     service: 'bremsen',
     vehicleMake: 'skoda',
@@ -51,11 +51,11 @@ test('a radius includes its centre and its boundary, but never silently expands 
   assert.equal(isWithinSearchRadius(5_000, 5_000), true);
   assert.equal(isWithinSearchRadius(5_000.01, 5_000), false);
 
-  const result = findPublicWorkshops(
+  const result = findPublicGarages(
     [
       profile(),
       profile({
-        id: 'workshop-prizren',
+        id: 'garage-prizren',
         name: 'Fiktive Bremsenwerkstatt Prizren',
         placeId: 'xk-prizren',
       }),
@@ -64,19 +64,19 @@ test('a radius includes its centre and its boundary, but never silently expands 
   );
 
   assert.deepEqual(
-    result.results.map((workshop) => workshop.id),
-    ['workshop-pristina'],
+    result.results.map((garage) => garage.id),
+    ['garage-pristina'],
   );
   assert.equal(result.results[0].distanceKm, 0);
   assert.equal(result.results[0].matchingPlace.label, 'Prishtina');
 });
 
-test('a workshop without a confirmed point stays discoverable without a radius but never gains a zero-distance placeholder', () => {
+test('a garage without a confirmed point stays discoverable without a radius but never gains a zero-distance placeholder', () => {
   const withoutPoint = profile({ id: 'without-point', locationPoint: undefined });
-  const radiusResult = findPublicWorkshops([withoutPoint], query({ places: 'xk-pristina:5' }));
-  const allResult = findPublicWorkshops(
+  const radiusResult = findPublicGarages([withoutPoint], query({ places: 'xk-pristina:5' }));
+  const allResult = findPublicGarages(
     [withoutPoint],
-    parsePublicWorkshopSearch({ all: 'true', service: 'bremsen' })!,
+    parsePublicGarageSearch({ all: 'true', service: 'bremsen' })!,
   );
 
   assert.equal(radiusResult.total, 0);
@@ -89,11 +89,11 @@ test('a workshop without a confirmed point stays discoverable without a radius b
 });
 
 test('multiple places are unioned, overlap is deduplicated, and the closest matching place is shown', () => {
-  const result = findPublicWorkshops(
+  const result = findPublicGarages(
     [
       profile(),
       profile({
-        id: 'workshop-ferizaj',
+        id: 'garage-ferizaj',
         name: 'Fiktive Bremsenwerkstatt Ferizaj',
         placeId: 'xk-ferizaj',
         vehicleMakeIds: [],
@@ -104,18 +104,18 @@ test('multiple places are unioned, overlap is deduplicated, and the closest matc
 
   assert.equal(result.total, 2);
   assert.deepEqual(
-    result.results.map((workshop) => workshop.id),
-    ['workshop-pristina', 'workshop-ferizaj'],
+    result.results.map((garage) => garage.id),
+    ['garage-pristina', 'garage-ferizaj'],
   );
   assert.equal(result.results[0].matchingPlace.label, 'Prishtina');
   assert.equal(result.results[1].matchingPlace.label, 'Ferizaj');
   assert.ok(
-    result.results.every((workshop) => workshop.reasons.some((reason) => /Luftlinie/.test(reason))),
+    result.results.every((garage) => garage.reasons.some((reason) => /Luftlinie/.test(reason))),
   );
 });
 
-test('the service is a hard filter, while markenoffene workshops stay visible for a selected brand', () => {
-  const result = findPublicWorkshops(
+test('the service is a hard filter, while markenoffene garages stay visible for a selected brand', () => {
+  const result = findPublicGarages(
     [
       profile(),
       profile({
@@ -138,39 +138,37 @@ test('the service is a hard filter, while markenoffene workshops stay visible fo
   );
 
   assert.deepEqual(
-    result.results.map((workshop) => workshop.id),
-    ['workshop-pristina', 'open-to-all'],
+    result.results.map((garage) => garage.id),
+    ['garage-pristina', 'open-to-all'],
   );
   assert.ok(
-    result.results
-      .find((workshop) => workshop.id === 'open-to-all')
-      ?.reasons.includes('Markenoffen'),
+    result.results.find((garage) => garage.id === 'open-to-all')?.reasons.includes('Markenoffen'),
   );
   assert.equal(
-    result.results.some((workshop) => workshop.id === 'volkswagen-only'),
+    result.results.some((garage) => garage.id === 'volkswagen-only'),
     false,
   );
   assert.equal(
-    result.results.some((workshop) => workshop.id === 'other-service'),
+    result.results.some((garage) => garage.id === 'other-service'),
     false,
   );
 });
 
 test('ranking is deterministic and presents an honest pre-review state', () => {
-  const result = findPublicWorkshops(
+  const result = findPublicGarages(
     [
-      profile({ id: 'new-workshop', name: 'Neue fiktive Werkstatt', vehicleMakeIds: [] }),
+      profile({ id: 'new-garage', name: 'Neue fiktive Werkstatt', vehicleMakeIds: [] }),
       profile({ id: 'specialist', name: 'Spezialisierte fiktive Werkstatt' }),
     ],
     query({ places: 'xk-pristina:5', language: 'Deutsch' }),
   );
 
   assert.deepEqual(
-    result.results.map((workshop) => workshop.id),
-    ['specialist', 'new-workshop'],
+    result.results.map((garage) => garage.id),
+    ['specialist', 'new-garage'],
   );
   assert.deepEqual(
-    result.results.map((workshop) => workshop.reviewSummary),
+    result.results.map((garage) => garage.reviewSummary),
     [
       {
         label: 'Noch keine Bewertungen',
@@ -196,11 +194,11 @@ test('sort accepts only the documented server-side orders', () => {
 });
 
 test('the explicit all-results mode returns every demo item on one default page', () => {
-  const all = parsePublicWorkshopSearch({ all: 'true' })!;
-  const workshops = Array.from({ length: 25 }, (_, index) =>
+  const all = parsePublicGarageSearch({ all: 'true' })!;
+  const garages = Array.from({ length: 25 }, (_, index) =>
     profile({ id: `demo-${index}`, name: `Demo ${index}` }),
   );
-  const result = findPublicWorkshops(workshops, all);
+  const result = findPublicGarages(garages, all);
   assert.equal(all.allResults, true);
   assert.equal(result.total, 25);
   assert.equal(result.results.length, 25);
@@ -208,22 +206,22 @@ test('the explicit all-results mode returns every demo item on one default page'
 });
 
 test('result pagination is stable and malformed filters are rejected instead of widened', () => {
-  const workshops = Array.from({ length: 12 }, (_, index) =>
+  const garages = Array.from({ length: 12 }, (_, index) =>
     profile({
-      id: `workshop-${String(index).padStart(2, '0')}`,
+      id: `garage-${String(index).padStart(2, '0')}`,
       name: `Fiktive Werkstatt ${index}`,
     }),
   );
-  const firstPage = findPublicWorkshops(
-    workshops,
+  const firstPage = findPublicGarages(
+    garages,
     query({ page: '1', pageSize: '10', places: 'xk-pristina:5' }),
   );
-  const secondPage = findPublicWorkshops(
-    workshops,
+  const secondPage = findPublicGarages(
+    garages,
     query({ page: '2', pageSize: '10', places: 'xk-pristina:5' }),
   );
-  const unpaginated = findPublicWorkshops(
-    workshops,
+  const unpaginated = findPublicGarages(
+    garages,
     query({ page: '1', pageSize: '24', places: 'xk-pristina:5' }),
   );
 
@@ -231,28 +229,27 @@ test('result pagination is stable and malformed filters are rejected instead of 
   assert.equal(firstPage.totalPages, 2);
   assert.equal(firstPage.results.length, 10);
   assert.deepEqual(
-    secondPage.results.map((workshop) => workshop.id),
-    unpaginated.results.slice(10).map((workshop) => workshop.id),
+    secondPage.results.map((garage) => garage.id),
+    unpaginated.results.slice(10).map((garage) => garage.id),
   );
   assert.throws(
-    () => parsePublicWorkshopSearch({ places: 'xk-pristina:101', service: 'bremsen' }),
+    () => parsePublicGarageSearch({ places: 'xk-pristina:101', service: 'bremsen' }),
     /radius from 5 to 100 km/,
   );
   assert.throws(
-    () =>
-      parsePublicWorkshopSearch({ places: 'xk-pristina:10,xk-pristina:20', service: 'bremsen' }),
+    () => parsePublicGarageSearch({ places: 'xk-pristina:10,xk-pristina:20', service: 'bremsen' }),
     /different place/,
   );
 });
 
-test('the public endpoint only returns released workshops and does not accept private request data', async () => {
+test('the public endpoint only returns released garages and does not accept private request data', async () => {
   const store = new AccessStore();
   store.addRole('admin', 'admin');
   const adminSession = store.createSession('admin');
   const ownerSession = store.createSession('owner');
   const admin = store.getPrincipal(adminSession.sessionId)!;
   const owner = store.getPrincipal(ownerSession.sessionId)!;
-  const workshopProfile: WorkshopProfileInput = {
+  const garageProfile: GarageProfileInput = {
     contactPerson: 'Private fiktive Person',
     contactPhone: '+383 44 000 002',
     languages: ['Deutsch'],
@@ -264,17 +261,17 @@ test('the public endpoint only returns released workshops and does not accept pr
     serviceCategoryIds: ['bremsen'],
     vehicleMakeIds: [],
   };
-  const released = store.createWorkshopRegistration(owner, workshopProfile, 'test-v1');
-  store.submitWorkshopForReview(owner, released.id);
-  store.reviewWorkshop(admin, released.id, 'published', {
+  const released = store.createGarageRegistration(owner, garageProfile, 'test-v1');
+  store.submitGarageForReview(owner, released.id);
+  store.reviewGarage(admin, released.id, 'published', {
     companyDocument: 'verified',
     contactPerson: 'verified',
     location: 'verified',
     phone: 'verified',
   });
-  store.createWorkshopRegistration(
+  store.createGarageRegistration(
     owner,
-    { ...workshopProfile, name: 'Private fiktive Suche', publicPhone: undefined },
+    { ...garageProfile, name: 'Private fiktive Suche', publicPhone: undefined },
     'test-v1',
   );
   const app = createServer({ accessStore: store });
@@ -300,12 +297,12 @@ test('the public endpoint only returns released workshops and does not accept pr
   }
 });
 
-test('changing a workshop point withdraws its separate location confirmation', () => {
+test('changing a garage point withdraws its separate location confirmation', () => {
   const store = new AccessStore();
   store.addRole('admin', 'admin');
   const owner = store.getPrincipal(store.createSession('owner').sessionId)!;
   const admin = store.getPrincipal(store.createSession('admin').sessionId)!;
-  const registered = store.createWorkshopRegistration(
+  const registered = store.createGarageRegistration(
     owner,
     {
       contactPerson: 'Fiktive Person',
@@ -320,20 +317,20 @@ test('changing a workshop point withdraws its separate location confirmation', (
     },
     'test-v1',
   );
-  store.submitWorkshopForReview(owner, registered.id);
-  store.reviewWorkshop(admin, registered.id, 'published', {
+  store.submitGarageForReview(owner, registered.id);
+  store.reviewGarage(admin, registered.id, 'published', {
     companyDocument: 'verified',
     contactPerson: 'verified',
     location: 'verified',
     phone: 'verified',
   });
-  const privateWorkshop = store.getPrivateWorkshop(owner, registered.id);
-  store.updateWorkshopProfile(owner, registered.id, {
-    ...privateWorkshop.profile,
+  const privateGarage = store.getPrivateGarage(owner, registered.id);
+  store.updateGarageProfile(owner, registered.id, {
+    ...privateGarage.profile,
     locationPoint: { latitude: 42.68, longitude: 21.17 },
   });
 
-  assert.equal(store.getPrivateWorkshop(owner, registered.id).verification.location, 'not_checked');
+  assert.equal(store.getPrivateGarage(owner, registered.id).verification.location, 'not_checked');
 });
 
 test(
@@ -342,8 +339,8 @@ test(
   async () => {
     const client = new pg.Client({ connectionString: databaseUrl });
     const ownerId = `search-owner-${randomUUID()}`;
-    const workshopId = `search-workshop-${randomUUID()}`;
-    const store = new PostgresWorkshopSearchStore(databaseUrl!);
+    const garageId = `search-garage-${randomUUID()}`;
+    const store = new PostgresGarageSearchStore(databaseUrl!);
     await client.connect();
     try {
       await client.query('BEGIN');
@@ -352,7 +349,7 @@ test(
         [ownerId],
       );
       await client.query(
-        `INSERT INTO workshop (
+        `INSERT INTO garage (
            id, name, publication_state, created_by_user_id, place_id, public_phone,
            contact_person, contact_phone, languages, self_reported_specializations,
            location_point, location_source
@@ -361,32 +358,32 @@ test(
            'Private fiktive Person', '+383 44 000 011', ARRAY['Deutsch'], ARRAY['Bremsen'],
            ST_SetSRID(ST_MakePoint(21.16688, 42.67272), 4326)::geography, 'self_reported'
          )`,
-        [workshopId, ownerId],
+        [garageId, ownerId],
       );
       await client.query(
-        `INSERT INTO workshop_verification (
-           workshop_id, phone_state, contact_person_state, company_document_state, location_state
+        `INSERT INTO garage_verification (
+           garage_id, phone_state, contact_person_state, company_document_state, location_state
          ) VALUES ($1, 'verified', 'verified', 'verified', 'verified')`,
-        [workshopId],
+        [garageId],
       );
       await client.query(
-        `INSERT INTO workshop_service_category (workshop_id, service_category_id)
+        `INSERT INTO garage_service_category (garage_id, service_category_id)
          VALUES ($1, 'bremsen')`,
-        [workshopId],
+        [garageId],
       );
       await client.query('COMMIT');
 
-      const result = await store.searchPublicWorkshops(query({ places: 'xk-pristina:5' }));
-      const profile = await store.getPublicWorkshop(workshopId);
+      const result = await store.searchPublicGarages(query({ places: 'xk-pristina:5' }));
+      const profile = await store.getPublicGarage(garageId);
 
-      const matchingWorkshop = result.results.find((workshop) => workshop.id === workshopId);
-      assert.ok(matchingWorkshop);
-      assert.equal(matchingWorkshop.distanceKm, 0);
-      assert.equal(matchingWorkshop.companyDataVerified, true);
+      const matchingGarage = result.results.find((garage) => garage.id === garageId);
+      assert.ok(matchingGarage);
+      assert.equal(matchingGarage.distanceKm, 0);
+      assert.equal(matchingGarage.companyDataVerified, true);
       assert.equal(JSON.stringify(result).includes('Private fiktive Person'), false);
       assert.deepEqual(profile, {
         contact: { phone: '+383 44 000 010' },
-        id: workshopId,
+        id: garageId,
         languages: ['Deutsch'],
         name: 'Fiktive PostgreSQL-Suche',
         photoIds: [],
@@ -404,11 +401,9 @@ test(
       });
     } finally {
       await client.query('ROLLBACK');
-      await client.query('DELETE FROM workshop_service_category WHERE workshop_id = $1', [
-        workshopId,
-      ]);
-      await client.query('DELETE FROM workshop_verification WHERE workshop_id = $1', [workshopId]);
-      await client.query('DELETE FROM workshop WHERE id = $1', [workshopId]);
+      await client.query('DELETE FROM garage_service_category WHERE garage_id = $1', [garageId]);
+      await client.query('DELETE FROM garage_verification WHERE garage_id = $1', [garageId]);
+      await client.query('DELETE FROM garage WHERE id = $1', [garageId]);
       await client.query('DELETE FROM app_user WHERE id = $1', [ownerId]);
       await client.end();
       await store.close();
@@ -417,7 +412,7 @@ test(
 );
 
 test('location-free search preserves and validates make and language filters', () => {
-  const input = parsePublicWorkshopSearch({
+  const input = parsePublicGarageSearch({
     all: 'true',
     vehicleMake: 'skoda',
     language: 'Deutsch',
@@ -425,6 +420,6 @@ test('location-free search preserves and validates make and language filters', (
   assert.deepEqual(input.areas, []);
   assert.equal(input.vehicleMakeId, 'skoda');
   assert.equal(input.language, 'Deutsch');
-  assert.throws(() => parsePublicWorkshopSearch({ all: 'true', vehicleMake: 'unknown' }));
-  assert.throws(() => parsePublicWorkshopSearch({ all: 'true', language: 'x'.repeat(41) }));
+  assert.throws(() => parsePublicGarageSearch({ all: 'true', vehicleMake: 'unknown' }));
+  assert.throws(() => parsePublicGarageSearch({ all: 'true', language: 'x'.repeat(41) }));
 });

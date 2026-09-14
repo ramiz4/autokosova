@@ -17,9 +17,9 @@ import {
 } from '../shared/garage-onboarding';
 import { garageOptionLabels, onboardingCopy } from '../shared/onboarding-copy';
 import type {
-  WorkshopProfileInput,
+  GarageProfileInput,
   VerificationChecklist,
-  WorkshopPublicationState,
+  GaragePublicationState,
 } from '../shared/garage-onboarding';
 import { LanguageService } from './language.service';
 import { AccountSessionService } from './account-session.service';
@@ -27,19 +27,19 @@ import { SiteHeaderComponent } from './site-header.component';
 import { IconComponent } from './ui/icon.component';
 import { MultiSelectComponent, type SelectionOption } from './ui/multi-select.component';
 
-type Form = { -readonly [Key in keyof WorkshopProfileInput]: WorkshopProfileInput[Key] } & {
+type Form = { -readonly [Key in keyof GarageProfileInput]: GarageProfileInput[Key] } & {
   address: string;
 };
 interface OwnedGarage {
   id: string;
   name: string;
-  publicationState: WorkshopPublicationState;
+  publicationState: GaragePublicationState;
 }
 interface PrivateGarage {
   id: string;
-  profile: WorkshopProfileInput;
+  profile: GarageProfileInput;
   consentVersion: string;
-  publicationState: WorkshopPublicationState;
+  publicationState: GaragePublicationState;
   verification: VerificationChecklist;
 }
 function blankForm(): Form {
@@ -58,12 +58,12 @@ function blankForm(): Form {
 }
 
 @Component({
-  selector: 'app-workshop-onboarding',
+  selector: 'app-garage-onboarding',
   imports: [FormsModule, SiteHeaderComponent, IconComponent, MultiSelectComponent],
-  templateUrl: './workshop-onboarding.component.html',
-  styleUrl: './workshop-onboarding.component.scss',
+  templateUrl: './garage-onboarding.component.html',
+  styleUrl: './garage-onboarding.component.scss',
 })
-export class WorkshopOnboardingComponent {
+export class GarageOnboardingComponent {
   protected readonly language = inject(LanguageService);
   protected readonly account = inject(AccountSessionService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -76,7 +76,7 @@ export class WorkshopOnboardingComponent {
   protected needsLogin = false;
   protected errors: Record<string, string> = {};
   protected garageId?: string;
-  protected publicationState: WorkshopPublicationState = 'draft';
+  protected publicationState: GaragePublicationState = 'draft';
   protected locationVerified = false;
   protected savedSnapshot = '';
   protected owned: OwnedGarage[] = [];
@@ -118,7 +118,7 @@ export class WorkshopOnboardingComponent {
     return labels[this.publicationState];
   }
   constructor() {
-    this.language.setPage('home.workshopOnboarding', 'home.intro', true);
+    this.language.setPage('home.garageOnboarding', 'home.intro', true);
     if (isPlatformBrowser(inject(PLATFORM_ID))) void this.refreshSession();
   }
   protected async refreshSession(): Promise<void> {
@@ -201,7 +201,7 @@ export class WorkshopOnboardingComponent {
           credentials: 'same-origin',
           headers: { 'content-type': 'application/json', 'x-csrf-token': csrf },
           body: JSON.stringify(
-            this.garageId ? profile : { consentVersion: 'workshop-onboarding-v1', profile },
+            this.garageId ? profile : { consentVersion: 'garage-onboarding-v1', profile },
           ),
         },
       );

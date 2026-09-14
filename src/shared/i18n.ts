@@ -63,7 +63,7 @@ const messages: Readonly<Record<AppLanguage, MessageCatalog>> = {
     'home.transparent.title': 'Transparent',
     'home.trust':
       'Unternehmensdatenprüfung ist keine Reparaturqualitätsgarantie. Kontakt, Preis und Fertigstellung vereinbarst du direkt mit der gewählten Werkstatt.',
-    'home.workshopOnboarding': 'Werkstatt aufnehmen',
+    'home.garageOnboarding': 'Werkstatt aufnehmen',
     'profile.details': 'Leistungen und Angaben',
     'profile.language': 'Sprachen',
     'profile.localDemo': 'Lokale Demo · ausschliesslich fiktive Entwicklungsdaten',
@@ -199,7 +199,7 @@ const messages: Readonly<Record<AppLanguage, MessageCatalog>> = {
     'home.transparent.title': 'Transparent',
     'home.trust':
       'A company-data check is not a repair-quality guarantee. You agree contact, price, and completion directly with the garage you choose.',
-    'home.workshopOnboarding': 'Register a garage',
+    'home.garageOnboarding': 'Register a garage',
     'profile.details': 'Services and details',
     'profile.language': 'Languages',
     'profile.localDemo': 'Local demo · fictional development data only',
@@ -332,7 +332,7 @@ const messages: Readonly<Record<AppLanguage, MessageCatalog>> = {
     'home.transparent.title': 'Transparent',
     'home.trust':
       'Kontrolli i të dhënave të kompanisë nuk garanton cilësinë e riparimit. Kontaktin, çmimin dhe përfundimin i dakordon drejtpërdrejt me servisin që zgjedh.',
-    'home.workshopOnboarding': 'Regjistro servis',
+    'home.garageOnboarding': 'Regjistro servis',
     'profile.details': 'Shërbimet dhe të dhënat',
     'profile.language': 'Gjuhët',
     'profile.localDemo': 'Demo lokale · vetëm të dhëna zhvillimi fiktive',

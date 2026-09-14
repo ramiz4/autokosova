@@ -3,7 +3,7 @@ import pg from 'pg';
 export const PUBLIC_ANALYTICS_EVENTS = [
   'search_started',
   'search_results_displayed',
-  'workshop_profile_opened',
+  'garage_profile_opened',
   'contact_channel_opened',
 ] as const;
 

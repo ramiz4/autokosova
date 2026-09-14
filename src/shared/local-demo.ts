@@ -1,3 +1,3 @@
-export function isLocalDemoWorkshopId(workshopId: string | undefined): boolean {
-  return workshopId?.startsWith('demo-') ?? false;
+export function isLocalDemoGarageId(garageId: string | undefined): boolean {
+  return garageId?.startsWith('demo-') ?? false;
 }

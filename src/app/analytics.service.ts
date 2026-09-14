@@ -4,7 +4,7 @@ import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 export const ANALYTICS_EVENTS = [
   'search_started',
   'search_results_displayed',
-  'workshop_profile_opened',
+  'garage_profile_opened',
   'contact_channel_opened',
 ] as const;
 
@@ -14,7 +14,7 @@ const consentKey = 'autokosova_analytics_consent_v1';
 
 /**
  * The client submits only an event name after explicit local consent. It deliberately has no
- * visitor ID, URL, query, workshop ID, text, vehicle or travel field. The server remains disabled
+ * visitor ID, URL, query, garage ID, text, vehicle or travel field. The server remains disabled
  * until an operator enables the aggregate-only endpoint after its legal review.
  */
 @Injectable({ providedIn: 'root' })

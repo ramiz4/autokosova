@@ -1,7 +1,7 @@
 import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { WorkshopOnboardingComponent } from './workshop-onboarding.component';
+import { GarageOnboardingComponent } from './garage-onboarding.component';
 import { LanguageService } from './language.service';
 
 const validForm = {
@@ -18,10 +18,10 @@ const validForm = {
 };
 async function setup() {
   await TestBed.configureTestingModule({
-    imports: [WorkshopOnboardingComponent],
+    imports: [GarageOnboardingComponent],
     providers: [provideRouter([]), { provide: PLATFORM_ID, useValue: 'server' }],
   }).compileComponents();
-  const fixture = TestBed.createComponent(WorkshopOnboardingComponent);
+  const fixture = TestBed.createComponent(GarageOnboardingComponent);
   fixture.detectChanges();
   return fixture;
 }

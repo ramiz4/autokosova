@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import pg from 'pg';
-import { demoWorkshops } from '../scripts/db/seed-data.mjs';
-import { PostgresWorkshopSearchStore } from '../src/server/workshop-search-store';
+import { demoGarages } from '../scripts/db/seed-data.mjs';
+import { PostgresGarageSearchStore } from '../src/server/garage-search-store';
 
 const databaseUrl = process.env['DATABASE_URL'];
 const demoDataExpected = process.env['AUTOKOSOVA_EXPECT_DEMO_DATA'] === '1';
@@ -12,30 +12,30 @@ test(
   { skip: !databaseUrl || !demoDataExpected },
   async () => {
     const client = new pg.Client({ connectionString: databaseUrl });
-    const search = new PostgresWorkshopSearchStore(databaseUrl!);
-    const demoIds = demoWorkshops.map((workshop) => workshop.id);
+    const search = new PostgresGarageSearchStore(databaseUrl!);
+    const demoIds = demoGarages.map((garage) => garage.id);
     await client.connect();
     try {
       const profiles = await client.query<{ id: string; name: string }>(
         `SELECT id, name
-         FROM public_workshop_profile
+         FROM public_garage_profile
          WHERE id = ANY($1::text[])
          ORDER BY id`,
         [demoIds],
       );
       const reviews = await client.query<{ count: string }>(
         `SELECT count(*)::text AS count
-         FROM workshop_review
-         WHERE workshop_id = ANY($1::text[])`,
+         FROM garage_review
+         WHERE garage_id = ANY($1::text[])`,
         [demoIds],
       );
       const provenance = await client.query<{ count: string }>(
         `SELECT count(*)::text AS count
-         FROM local_demo_seed_workshop
-         WHERE workshop_id = ANY($1::text[])`,
+         FROM local_demo_seed_garage
+         WHERE garage_id = ANY($1::text[])`,
         [demoIds],
       );
-      const result = await search.searchPublicWorkshops({
+      const result = await search.searchPublicGarages({
         areas: [{ placeId: 'xk-pristina', radiusKm: 5 }],
         language: 'Deutsch',
         page: 1,
@@ -50,9 +50,9 @@ test(
       );
       assert.ok(profiles.rows.every((profile) => profile.name.startsWith('DEMO ·')));
       assert.equal(reviews.rows[0].count, '0');
-      assert.equal(provenance.rows[0].count, String(demoWorkshops.length));
+      assert.equal(provenance.rows[0].count, String(demoGarages.length));
       assert.deepEqual(
-        result.results.map((workshop) => workshop.id),
+        result.results.map((garage) => garage.id),
         ['demo-prishtina-bremsen', 'demo-prishtina-bremsen-offen'],
       );
       assert.equal(result.results[0].reviewSummary.state, 'unavailable');

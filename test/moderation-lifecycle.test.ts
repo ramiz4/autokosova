@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { AccessStore, type WorkshopProfileInput } from '../src/server/access';
+import { AccessStore, type GarageProfileInput } from '../src/server/access';
 import { createServer } from '../src/server/app';
 
-const profile: WorkshopProfileInput = {
+const profile: GarageProfileInput = {
   contactPerson: 'Fiktive Ansprechperson',
   contactPhone: '+383 44 000 210',
   languages: ['Deutsch', 'Shqip'],
@@ -33,7 +33,7 @@ function setup() {
     customer: store.createSession('customer'),
     moderator: store.createSession('moderator'),
     store,
-    workshopOwner: store.createSession('workshop-owner'),
+    garageOwner: store.createSession('garage-owner'),
   };
 }
 
@@ -43,22 +43,22 @@ async function createPublishedReview(
     admin: { csrfToken: string; sessionId: string };
     customer: { csrfToken: string; sessionId: string };
     moderator: { csrfToken: string; sessionId: string };
-    workshopOwner: { csrfToken: string; sessionId: string };
+    garageOwner: { csrfToken: string; sessionId: string };
   },
 ) {
-  const workshop = await app.inject({
-    headers: headers(sessions.workshopOwner, true),
+  const garage = await app.inject({
+    headers: headers(sessions.garageOwner, true),
     method: 'POST',
     payload: { consentVersion: 'moderation-test-v1', profile },
     url: '/api/garages',
   });
-  const workshopId = workshop.json().id as string;
+  const garageId = garage.json().id as string;
   await app.inject({
-    headers: headers(sessions.workshopOwner, true),
+    headers: headers(sessions.garageOwner, true),
     method: 'POST',
-    url: `/api/garages/${workshopId}/submit-for-review`,
+    url: `/api/garages/${garageId}/submit-for-review`,
   });
-  const workshopDecision = await app.inject({
+  const garageDecision = await app.inject({
     headers: headers(sessions.admin, true),
     method: 'POST',
     payload: {
@@ -70,7 +70,7 @@ async function createPublishedReview(
         phone: 'verified',
       },
     },
-    url: `/api/admin/garages/${workshopId}/decision`,
+    url: `/api/admin/garages/${garageId}/decision`,
   });
   const upload = await app.inject({
     headers: headers(sessions.customer, true),
@@ -91,7 +91,7 @@ async function createPublishedReview(
       text: 'Die negative fiktive Bewertung beschreibt eine nachvollziehbare Erfahrung.',
       visitMonth: '2026-08',
       workQuality: 1,
-      workshopId,
+      garageId,
     },
     url: '/api/me/reviews',
   });
@@ -106,24 +106,24 @@ async function createPublishedReview(
     headers: headers(sessions.moderator, true),
     method: 'POST',
     payload: {
-      checklist: { serviceMatches: true, visitMonthMatches: true, workshopMatches: true },
+      checklist: { serviceMatches: true, visitMonthMatches: true, garageMatches: true },
       decision: 'published',
     },
     url: `/api/admin/reviews/${reviewId}/decision`,
   });
-  assert.equal(workshopDecision.statusCode, 204);
+  assert.equal(garageDecision.statusCode, 204);
   assert.equal(reviewDecision.statusCode, 204);
-  return { evidenceFileId: upload.json().fileId as string, reviewId, workshopId };
+  return { evidenceFileId: upload.json().fileId as string, reviewId, garageId };
 }
 
 test('reports do not automatically remove criticism; only an assigned, auditable action can hide and restore it', async () => {
-  const { admin, app, customer, moderator, store, workshopOwner } = setup();
+  const { admin, app, customer, moderator, store, garageOwner } = setup();
   try {
-    const { reviewId, workshopId } = await createPublishedReview(app, {
+    const { reviewId, garageId } = await createPublishedReview(app, {
       admin,
       customer,
       moderator,
-      workshopOwner,
+      garageOwner,
     });
     const report = await app.inject({
       headers: headers(customer, true),
@@ -152,7 +152,7 @@ test('reports do not automatically remove criticism; only an assigned, auditable
     });
     const stillPublic = await app.inject({
       method: 'GET',
-      url: `/api/public/garages/${workshopId}/reviews`,
+      url: `/api/public/garages/${garageId}/reviews`,
     });
     const unassignedQueue = await app.inject({
       headers: headers(moderator),
@@ -178,7 +178,7 @@ test('reports do not automatically remove criticism; only an assigned, auditable
     });
     const hiddenPublic = await app.inject({
       method: 'GET',
-      url: `/api/public/garages/${workshopId}/reviews`,
+      url: `/api/public/garages/${garageId}/reviews`,
     });
     const restored = await app.inject({
       headers: headers(moderator, true),
@@ -188,7 +188,7 @@ test('reports do not automatically remove criticism; only an assigned, auditable
     });
     const restoredPublic = await app.inject({
       method: 'GET',
-      url: `/api/public/garages/${workshopId}/reviews`,
+      url: `/api/public/garages/${garageId}/reviews`,
     });
     const appeal = await app.inject({
       headers: headers(customer, true),
@@ -220,13 +220,13 @@ test('reports do not automatically remove criticism; only an assigned, auditable
 });
 
 test('a policy-gated deletion exports and removes private data, sessions and uploads while retaining only an anonymized public review', async () => {
-  const { admin, app, customer, moderator, store, workshopOwner } = setup();
+  const { admin, app, customer, moderator, store, garageOwner } = setup();
   try {
-    const { evidenceFileId, reviewId, workshopId } = await createPublishedReview(app, {
+    const { evidenceFileId, reviewId, garageId } = await createPublishedReview(app, {
       admin,
       customer,
       moderator,
-      workshopOwner,
+      garageOwner,
     });
     const exported = await app.inject({
       headers: headers(customer),
@@ -276,7 +276,7 @@ test('a policy-gated deletion exports and removes private data, sessions and upl
     });
     const publicReview = await app.inject({
       method: 'GET',
-      url: `/api/public/garages/${workshopId}/reviews`,
+      url: `/api/public/garages/${garageId}/reviews`,
     });
     const newExport = await app.inject({
       headers: headers(freshCustomer),

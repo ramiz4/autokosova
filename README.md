@@ -14,7 +14,7 @@ Privates Repository mit Produktplanung und technischer Grundlage. Der Stack ist 
 - [Arbeitsregeln für Entwickler und AI Agents](AGENTS.md)
 - [Designrichtung und Präzisierungen](docs/design/README.md)
 - [ZITADEL-Integration und offenes Login-Gate](docs/architecture/AUTH-INTEGRATION.md)
-- [Werkstattaufnahme, Prüfung und Bildschutz](docs/architecture/WORKSHOP-ONBOARDING.md)
+- [Werkstattaufnahme, Prüfung und Bildschutz](docs/architecture/GARAGE-ONBOARDING.md)
 - [Kontogebundene Favoriten und Sitzungsanzeige](docs/architecture/FAVORITES.md)
 - [Öffentliche Mehrortsuche und nachvollziehbares Matching](docs/architecture/SEARCH-MATCHING.md)
 - [Bewusster Direktkontakt über WhatsApp oder Telefon](docs/architecture/DIRECT-CONTACT.md)
@@ -150,7 +150,7 @@ und aktuellen Subjects ausschließlich im freigegebenen 1Password-Store. Die ins
 für ZITADEL wird daraus gezielt in Prozessvariablen oder eine ignorierte `.env.local`
 übernommen. Der Starter liest 1Password nicht automatisch; weder `.env.example` noch Git, CI oder Logs enthalten
 Zugangsdaten. Der Server übernimmt `admin` und `moderator` ausschließlich aus dem verifizierten
-ZITADEL-Projektrollen-Claim. Details und die Workshop-Membership-Grenze stehen in
+ZITADEL-Projektrollen-Claim. Details und die Garage-Membership-Grenze stehen in
 [AUTH-INTEGRATION.md](docs/architecture/AUTH-INTEGRATION.md).
 
 ```sh

@@ -1,13 +1,13 @@
 import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { WorkshopProfileComponent } from './workshop-profile.component';
+import { GarageProfileComponent } from './garage-profile.component';
 
 function routeWith(garageId: string) {
   return { snapshot: { paramMap: convertToParamMap({ garageId }) } };
 }
 
-describe('WorkshopProfileComponent', () => {
+describe('GarageProfileComponent', () => {
   it('shows a reviewed profile and a contact preview without unrequested private details', async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async () =>
@@ -28,14 +28,14 @@ describe('WorkshopProfileComponent', () => {
       );
     try {
       await TestBed.configureTestingModule({
-        imports: [WorkshopProfileComponent],
+        imports: [GarageProfileComponent],
         providers: [
           provideRouter([]),
           { provide: ActivatedRoute, useValue: routeWith('fiktive-werkstatt') },
           { provide: PLATFORM_ID, useValue: 'browser' },
         ],
       }).compileComponents();
-      const fixture = TestBed.createComponent(WorkshopProfileComponent);
+      const fixture = TestBed.createComponent(GarageProfileComponent);
       await fixture.whenStable();
       fixture.detectChanges();
 
@@ -70,14 +70,14 @@ describe('WorkshopProfileComponent', () => {
       );
     try {
       await TestBed.configureTestingModule({
-        imports: [WorkshopProfileComponent],
+        imports: [GarageProfileComponent],
         providers: [
           provideRouter([]),
           { provide: ActivatedRoute, useValue: routeWith('fiktive-werkstatt') },
           { provide: PLATFORM_ID, useValue: 'browser' },
         ],
       }).compileComponents();
-      const fixture = TestBed.createComponent(WorkshopProfileComponent);
+      const fixture = TestBed.createComponent(GarageProfileComponent);
       await fixture.whenStable();
       fixture.detectChanges();
 
@@ -110,14 +110,14 @@ describe('WorkshopProfileComponent', () => {
       );
     try {
       await TestBed.configureTestingModule({
-        imports: [WorkshopProfileComponent],
+        imports: [GarageProfileComponent],
         providers: [
           provideRouter([]),
           { provide: ActivatedRoute, useValue: routeWith('demo-prishtina-bremsen') },
           { provide: PLATFORM_ID, useValue: 'browser' },
         ],
       }).compileComponents();
-      const fixture = TestBed.createComponent(WorkshopProfileComponent);
+      const fixture = TestBed.createComponent(GarageProfileComponent);
       await fixture.whenStable();
       fixture.detectChanges();
 

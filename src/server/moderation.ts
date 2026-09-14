@@ -33,7 +33,7 @@ export const MODERATION_ACTIONS = [
 export type ModerationAction = (typeof MODERATION_ACTIONS)[number];
 export type ModerationReasonCode = (typeof MODERATION_REASON_CODES)[number];
 export type ModerationReportCategory = (typeof MODERATION_REPORT_CATEGORIES)[number];
-export type ModerationSubjectType = 'review' | 'workshop_profile';
+export type ModerationSubjectType = 'review' | 'garage_profile';
 export type ModerationCaseStatus =
   'submitted' | 'assigned' | 'waiting_for_subject' | 'resolved' | 'rejected';
 export type ModerationPriority = 'normal' | 'high';
@@ -164,7 +164,7 @@ export function isModerationReportCategory(value: unknown): value is ModerationR
 }
 
 export function isModerationSubjectType(value: unknown): value is ModerationSubjectType {
-  return value === 'review' || value === 'workshop_profile';
+  return value === 'review' || value === 'garage_profile';
 }
 
 export function priorityForReport(category: ModerationReportCategory): ModerationPriority {

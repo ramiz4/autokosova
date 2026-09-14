@@ -7,7 +7,7 @@ import {
   isReviewRejectionReason,
   isReviewUpdateKind,
   type OwnReview,
-  type PublicWorkshopReview,
+  type PublicGarageReview,
   type ReviewDecisionInput,
   type ReviewPublicFilter,
   type ReviewStore,
@@ -26,7 +26,7 @@ interface ReviewRow {
   readonly rejection_reason_code: OwnReview['rejectionReason'] | null;
   readonly service_category_id: string;
   readonly visit_month: string;
-  readonly workshop_id: string;
+  readonly garage_id: string;
   readonly work_quality: number;
 }
 
@@ -108,7 +108,7 @@ export class PostgresReviewStore implements ReviewStore {
         [reviewId, moderatorUserId, admin.userId],
       );
       await client.query(
-        `UPDATE workshop_review SET publication_state = 'under_review' WHERE id = $1`,
+        `UPDATE garage_review SET publication_state = 'under_review' WHERE id = $1`,
         [reviewId],
       );
       await client.query(
@@ -134,11 +134,11 @@ export class PostgresReviewStore implements ReviewStore {
       await client.query('BEGIN');
       await this.setPrincipal(client, principal);
       await this.ensureUser(client, principal.userId);
-      const workshop = await client.query<{ id: string }>(
-        'SELECT id FROM public_workshop_profile WHERE id = $1',
-        [input.workshopId],
+      const garage = await client.query<{ id: string }>(
+        'SELECT id FROM public_garage_profile WHERE id = $1',
+        [input.garageId],
       );
-      if (!workshop.rowCount) throw new AccessError(404, 'Published workshop not found');
+      if (!garage.rowCount) throw new AccessError(404, 'Published garage not found');
       const file = await client.query<{ id: string }>(
         `SELECT id
          FROM file_object
@@ -150,15 +150,15 @@ export class PostgresReviewStore implements ReviewStore {
 
       const id = randomUUID();
       await client.query(
-        `INSERT INTO workshop_review (
-           id, author_user_id, workshop_id, service_category_id, vehicle_make_id, visit_month,
+        `INSERT INTO garage_review (
+           id, author_user_id, garage_id, service_category_id, vehicle_make_id, visit_month,
            work_quality, communication, price_transparency, punctuality, review_text,
            publication_state
          ) VALUES ($1, $2, $3, $4, $5, $6::date, $7, $8, $9, $10, $11, 'submitted')`,
         [
           id,
           principal.userId,
-          input.workshopId,
+          input.garageId,
           input.serviceCategoryId,
           input.vehicleMakeId ?? null,
           `${input.visitMonth}-01`,
@@ -195,7 +195,7 @@ export class PostgresReviewStore implements ReviewStore {
         rejection_reason_code: null,
         service_category_id: input.serviceCategoryId,
         visit_month: input.visitMonth,
-        workshop_id: input.workshopId,
+        garage_id: input.garageId,
         work_quality: input.workQuality,
       });
     } catch (error) {
@@ -227,7 +227,7 @@ export class PostgresReviewStore implements ReviewStore {
           review.retention_state !== 'active' ||
           !decision.checklist.serviceMatches ||
           !decision.checklist.visitMonthMatches ||
-          !decision.checklist.workshopMatches
+          !decision.checklist.garageMatches
         ) {
           throw new AccessError(
             422,
@@ -235,7 +235,7 @@ export class PostgresReviewStore implements ReviewStore {
           );
         }
         await client.query(
-          `UPDATE workshop_review
+          `UPDATE garage_review
            SET publication_state = 'published', published_at = now(), rejection_reason_code = NULL
            WHERE id = $1`,
           [reviewId],
@@ -243,13 +243,13 @@ export class PostgresReviewStore implements ReviewStore {
         await client.query(
           `UPDATE visit_evidence
            SET verification_state = 'verified', service_matches = true, visit_month_matches = true,
-               workshop_matches = true, reviewed_by_user_id = $2, reviewed_at = now()
+               garage_matches = true, reviewed_by_user_id = $2, reviewed_at = now()
            WHERE review_id = $1`,
           [reviewId, principal.userId],
         );
       } else {
         await client.query(
-          `UPDATE workshop_review
+          `UPDATE garage_review
            SET publication_state = 'rejected', rejection_reason_code = $2, published_at = NULL
            WHERE id = $1`,
           [reviewId, decision.rejectionReason],
@@ -257,13 +257,13 @@ export class PostgresReviewStore implements ReviewStore {
         await client.query(
           `UPDATE visit_evidence
            SET verification_state = 'not_verified', service_matches = $2, visit_month_matches = $3,
-               workshop_matches = $4, reviewed_by_user_id = $5, reviewed_at = now()
+               garage_matches = $4, reviewed_by_user_id = $5, reviewed_at = now()
            WHERE review_id = $1`,
           [
             reviewId,
             decision.checklist.serviceMatches,
             decision.checklist.visitMonthMatches,
-            decision.checklist.workshopMatches,
+            decision.checklist.garageMatches,
             principal.userId,
           ],
         );
@@ -348,12 +348,12 @@ export class PostgresReviewStore implements ReviewStore {
       await client.query('BEGIN');
       await this.setPrincipal(client, principal);
       const result = await client.query<ReviewRow>(
-        `SELECT review.id, review.author_user_id, review.workshop_id, review.service_category_id,
+        `SELECT review.id, review.author_user_id, review.garage_id, review.service_category_id,
                 to_char(review.visit_month, 'YYYY-MM') AS visit_month, review.work_quality,
                 review.communication, review.price_transparency, review.punctuality,
                 review.publication_state, review.rejection_reason_code,
                 evidence.verification_state AS evidence_status
-         FROM workshop_review AS review
+         FROM garage_review AS review
          JOIN visit_evidence AS evidence ON evidence.review_id = review.id
          WHERE review.author_user_id = $1
          ORDER BY review.submitted_at DESC`,
@@ -370,19 +370,19 @@ export class PostgresReviewStore implements ReviewStore {
   }
 
   async listPublicReviews(
-    workshopId: string,
+    garageId: string,
     filter: ReviewPublicFilter = {},
-  ): Promise<readonly PublicWorkshopReview[]> {
+  ): Promise<readonly PublicGarageReview[]> {
     const result = await this.pool.query<PublicReviewRow>(
       `SELECT id, service_category_id, vehicle_make_id, to_char(visit_month, 'YYYY-MM') AS visit_month,
               work_quality, communication, price_transparency, punctuality, overall_rating,
               review_text, published_at
-       FROM public_workshop_review
-       WHERE workshop_id = $1
+       FROM public_garage_review
+       WHERE garage_id = $1
          AND ($2::text IS NULL OR service_category_id = $2)
          AND ($3::text IS NULL OR vehicle_make_id = $3)
        ORDER BY visit_month DESC, published_at DESC, id`,
-      [workshopId, filter.serviceCategoryId ?? null, filter.vehicleMakeId ?? null],
+      [garageId, filter.serviceCategoryId ?? null, filter.vehicleMakeId ?? null],
     );
     return Promise.all(result.rows.map((review) => this.toPublicReview(review)));
   }
@@ -419,9 +419,9 @@ export class PostgresReviewStore implements ReviewStore {
     }
   }
 
-  async postWorkshopResponse(
+  async postGarageResponse(
     principal: Principal,
-    workshopId: string,
+    garageId: string,
     reviewId: string,
     text: string,
   ): Promise<void> {
@@ -429,31 +429,31 @@ export class PostgresReviewStore implements ReviewStore {
     try {
       await client.query('BEGIN');
       await this.setPrincipal(client, principal);
-      const review = await client.query<{ workshop_id: string }>(
-        'SELECT workshop_id FROM public_workshop_review WHERE id = $1',
+      const review = await client.query<{ garage_id: string }>(
+        'SELECT garage_id FROM public_garage_review WHERE id = $1',
         [reviewId],
       );
-      if (review.rows[0]?.workshop_id !== workshopId) {
+      if (review.rows[0]?.garage_id !== garageId) {
         throw new AccessError(404, 'Published review not found');
       }
       if (!principal.roles.has('admin')) {
         const member = await client.query(
           `SELECT 1 FROM membership
-           WHERE workshop_id = $1 AND user_id = $2 AND state = 'active'`,
-          [workshopId, principal.userId],
+           WHERE garage_id = $1 AND user_id = $2 AND state = 'active'`,
+          [garageId, principal.userId],
         );
-        if (!member.rowCount) throw new AccessError(403, 'Workshop access denied');
+        if (!member.rowCount) throw new AccessError(403, 'Garage access denied');
       }
       await client.query(
-        `INSERT INTO review_workshop_response (
-           review_id, workshop_id, author_user_id, response_text
+        `INSERT INTO review_garage_response (
+           review_id, garage_id, author_user_id, response_text
          ) VALUES ($1, $2, $3, $4)
          ON CONFLICT (review_id) DO UPDATE
          SET response_text = EXCLUDED.response_text, author_user_id = EXCLUDED.author_user_id,
              updated_at = now()`,
-        [reviewId, workshopId, principal.userId, text.trim()],
+        [reviewId, garageId, principal.userId, text.trim()],
       );
-      await this.audit(client, principal.userId, reviewId, 'review-workshop-response-posted');
+      await this.audit(client, principal.userId, reviewId, 'review-garage-response-posted');
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
@@ -515,7 +515,7 @@ export class PostgresReviewStore implements ReviewStore {
 
   private async getReviewAccess(client: pg.PoolClient, reviewId: string): Promise<ReviewAccessRow> {
     const result = await client.query<ReviewAccessRow>(
-      `SELECT review.id, review.author_user_id, review.workshop_id, review.service_category_id,
+      `SELECT review.id, review.author_user_id, review.garage_id, review.service_category_id,
               to_char(review.visit_month, 'YYYY-MM') AS visit_month, review.work_quality,
               review.communication, review.price_transparency, review.punctuality,
               review.publication_state, review.rejection_reason_code,
@@ -523,7 +523,7 @@ export class PostgresReviewStore implements ReviewStore {
               evidence.verification_state AS evidence_status,
               file.retention_state,
               assignment.moderator_user_id
-       FROM workshop_review AS review
+       FROM garage_review AS review
        JOIN visit_evidence AS evidence ON evidence.review_id = review.id
        JOIN file_object AS file ON file.id = evidence.private_file_id
        LEFT JOIN review_moderator_assignment AS assignment ON assignment.review_id = review.id
@@ -558,10 +558,10 @@ export class PostgresReviewStore implements ReviewStore {
     await client.query(`SELECT set_config('app.system_role', $1, true)`, [systemRole]);
   }
 
-  private async toPublicReview(review: PublicReviewRow): Promise<PublicWorkshopReview> {
+  private async toPublicReview(review: PublicReviewRow): Promise<PublicGarageReview> {
     const [response, updates] = await Promise.all([
       this.pool.query<PublicResponseRow>(
-        `SELECT created_at, response_text FROM public_review_workshop_response WHERE review_id = $1`,
+        `SELECT created_at, response_text FROM public_review_garage_response WHERE review_id = $1`,
         [review.id],
       ),
       this.pool.query<PublicUpdateRow>(
@@ -591,7 +591,7 @@ export class PostgresReviewStore implements ReviewStore {
       visitMonth: review.visit_month,
       ...(response.rows[0]
         ? {
-            workshopResponse: {
+            garageResponse: {
               createdAt: response.rows[0].created_at.toISOString(),
               text: response.rows[0].response_text,
             },
@@ -608,7 +608,7 @@ export class PostgresReviewStore implements ReviewStore {
       !decision.checklist ||
       typeof decision.checklist.serviceMatches !== 'boolean' ||
       typeof decision.checklist.visitMonthMatches !== 'boolean' ||
-      typeof decision.checklist.workshopMatches !== 'boolean'
+      typeof decision.checklist.garageMatches !== 'boolean'
     ) {
       throw new AccessError(422, 'Evidence checklist is invalid');
     }
@@ -637,6 +637,6 @@ function toOwnReview(row: ReviewRow): OwnReview {
     ratings: { ...ratings, overall: calculateOverallRating(ratings) },
     serviceCategoryId: row.service_category_id,
     visitMonth: row.visit_month,
-    workshopId: row.workshop_id,
+    garageId: row.garage_id,
   };
 }

@@ -9,37 +9,37 @@ const supportedFormats = new Map([
   ['image/webp', 'webp'],
 ]);
 
-export interface NormalizedWorkshopPhoto {
+export interface NormalizedGaragePhoto {
   readonly content: Buffer;
   readonly contentType: 'image/webp';
   readonly height: number;
   readonly width: number;
 }
 
-export class WorkshopPhotoError extends Error {}
+export class GaragePhotoError extends Error {}
 
 /**
  * Produces a bounded public-photo derivative. Deliberately never calls sharp's
  * metadata-preserving APIs: the WebP output therefore contains no EXIF, XMP or
  * IPTC location metadata from the upload.
  */
-export async function normalizeWorkshopPhoto(
+export async function normalizeGaragePhoto(
   source: Buffer,
   declaredContentType: string | undefined,
-): Promise<NormalizedWorkshopPhoto> {
+): Promise<NormalizedGaragePhoto> {
   const mediaType = declaredContentType?.split(';', 1)[0]?.trim().toLowerCase();
   if (!mediaType || !supportedFormats.has(mediaType)) {
-    throw new WorkshopPhotoError('Only JPEG, PNG or WebP photos are accepted');
+    throw new GaragePhotoError('Only JPEG, PNG or WebP photos are accepted');
   }
   if (source.length === 0 || source.length > MAX_INPUT_BYTES) {
-    throw new WorkshopPhotoError('Photo size is invalid');
+    throw new GaragePhotoError('Photo size is invalid');
   }
 
   try {
     const image = sharp(source, { failOn: 'error', limitInputPixels: MAX_INPUT_PIXELS });
     const metadata = await image.metadata();
     if (!metadata.format || metadata.format !== supportedFormats.get(mediaType)) {
-      throw new WorkshopPhotoError('Photo content does not match its declared type');
+      throw new GaragePhotoError('Photo content does not match its declared type');
     }
 
     const result = await image
@@ -54,7 +54,7 @@ export async function normalizeWorkshopPhoto(
       .toBuffer({ resolveWithObject: true });
 
     if (!result.info.width || !result.info.height) {
-      throw new WorkshopPhotoError('Photo dimensions are invalid');
+      throw new GaragePhotoError('Photo dimensions are invalid');
     }
     return {
       content: result.data,
@@ -63,7 +63,7 @@ export async function normalizeWorkshopPhoto(
       width: result.info.width,
     };
   } catch (error) {
-    if (error instanceof WorkshopPhotoError) throw error;
-    throw new WorkshopPhotoError('Photo could not be processed safely');
+    if (error instanceof GaragePhotoError) throw error;
+    throw new GaragePhotoError('Photo could not be processed safely');
   }
 }

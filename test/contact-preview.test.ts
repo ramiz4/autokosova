@@ -11,7 +11,7 @@ test('contact preview does not append private request values without the explici
     includeDetails: false,
     repairSummary: 'Privater Diagnosebericht unter https://files.example/report.pdf',
     vehicleSummary: 'VIN: WVGZZZ1TZBW000001',
-    workshopName: 'Fiktive Werkstatt',
+    garageName: 'Fiktive Werkstatt',
   });
 
   assert.match(preview, /Fiktive Werkstatt/);
@@ -25,7 +25,7 @@ test('explicit details remain visible in a Unicode-safe WhatsApp preview before 
     includeDetails: true,
     repairSummary: 'Bremsen prüfen – Geräusch bei Nässe',
     vehicleSummary: 'Škoda Octavia, 2018',
-    workshopName: 'Fiktive Werkstatt Pejë',
+    garageName: 'Fiktive Werkstatt Pejë',
   });
   const href = buildWhatsAppHref('+383 (44) 123-456', preview);
 

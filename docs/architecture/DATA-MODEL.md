@@ -6,7 +6,7 @@ Dieses Modell ergänzt [ADR-001](ADR-001.md). Es ist eine fachliche und technisc
 
 | Klasse | Darf öffentlich erscheinen | Beispiele | Schutz |
 |---|---|---|---|
-| Öffentlich freigegeben | Ja, nur nach Freigabe | Workshopname, freigegebene Leistungen, allgemeiner Standort, freigegebener Bewertungstext und Nachweisstatus | Separate öffentliche View; keine privaten Spalten mitselektieren. |
+| Öffentlich freigegeben | Ja, nur nach Freigabe | Garagename, freigegebene Leistungen, allgemeiner Standort, freigegebener Bewertungstext und Nachweisstatus | Separate öffentliche View; keine privaten Spalten mitselektieren. |
 | Konto- und Betriebsprivat | Nein | OIDC-Subject, Membership, Rollenänderungen, Kontowiederherstellung | RLS, Fachservice und Audit-Ereignis. |
 | Kundenprivat | Nein | Fahrzeug, Reparaturtext, Reisezeitraum, gespeichertes Suchgebiet, Kontaktabsicht | RLS nach Besitzer; nie in Karten-, Such- oder E-Mail-Request. |
 | Besonders schützenswert | Nie | Besuchsnachweis, Bild/PDF, Prüfnotiz, Moderationsbegründung | Private Objektablage, kurzlebiger Zugriff, Quarantäne, Audit und dokumentierte Löschfrist. |
@@ -16,17 +16,17 @@ Dieses Modell ergänzt [ADR-001](ADR-001.md). Es ist eine fachliche und technisc
 | Entität | Kernfelder | Sichtbarkeit und Regel |
 |---|---|---|
 | `User` | `id`, `oidc_subject`, `status`, `created_at`, `deleted_at` | Privat. `oidc_subject` ist eindeutig; E-Mail wird nicht als Autorisierungs- oder Fremdschlüssel verwendet. |
-| `Workshop` | `id`, `name`, `publication_state`, `place_id`, `location_point nullable`, `location_source nullable` | Öffentliche View nur bei `publication_state=published`. `place_id` ist die Ortszuordnung; `location_point` ist ein separat bestätigbarer Werkstattpunkt. Bestehende Ortsmittelpunkte werden nicht übernommen. Unternehmensprüfung und Reparaturqualität bleiben getrennte Aussagen. |
-| `Membership` | `user_id`, `workshop_id`, `role`, `state`, `granted_by`, `granted_at` | Privat. Nur aktive Mitgliedschaft erlaubt Workshop-Verwaltung. Selbstregistrierung erzeugt nie eine aktive Membership zu bestehendem Workshop. |
+| `Garage` | `id`, `name`, `publication_state`, `place_id`, `location_point nullable`, `location_source nullable` | Öffentliche View nur bei `publication_state=published`. `place_id` ist die Ortszuordnung; `location_point` ist ein separat bestätigbarer Werkstattpunkt. Bestehende Ortsmittelpunkte werden nicht übernommen. Unternehmensprüfung und Reparaturqualität bleiben getrennte Aussagen. |
+| `Membership` | `user_id`, `garage_id`, `role`, `state`, `granted_by`, `granted_at` | Privat. Nur aktive Mitgliedschaft erlaubt Garage-Verwaltung. Selbstregistrierung erzeugt nie eine aktive Membership zu bestehendem Garage. |
 | `ServiceCategory` | `id`, `parent_id`, `slug`, `label_de`, `label_sq`, `state` | Öffentlich lesbarer, administrativ gepflegter Katalog. Keine freien Kategorien in der Suche. |
 | `Place` | `id`, `name`, `country_code`, `point geography(Point,4326)`, `source`, `status` | Öffentliche, geprüfte Ortsgrundlage. `source` dokumentiert eigene Prüfung; MapTiler-Suchergebnisse werden nicht persistiert. |
 | `GarageFavorite` | `owner_user_id`, `garage_id`, `created_at` | Kundenprivat. Eindeutig je Besitzer und Werkstatt, Besitzer-RLS, eigener Export und Kontolöschung; siehe [Favoriten](FAVORITES.md). |
 | `Vehicle` | `id`, `owner_user_id`, `make`, `model`, `year`, `notes`, `deleted_at` | Kundenprivat. Kein Kennzeichen und keine VIN, sofern für den MVP nicht ausdrücklich erforderlich und freigegeben. |
 | `RepairRequest` | `id`, `owner_user_id`, `vehicle_id nullable`, `service_category_id`, `symptom nullable`, `earliest_dropoff_on`, `latest_pickup_on`, `state` | Kundenprivat. Die zwei Werte sind lokale Kalendertage (`Abgabe ≤ Abholung`), keine UTC-Zeitpunkte. Wird nicht automatisch an Werkstätten verteilt und ist kein Auftrag oder Angebot. |
 | `RequestSearchArea` | `id`, `repair_request_id`, `place_id`, `radius_m` | Kundenprivat mit RLS über die Anfrage. Null bis drei verschiedene Orte, je 5–100 km Luftlinie. Keine Ortszeilen bedeutet Suche in ganz Kosovo; mehrere Flächen sind eine Vereinigung, nicht mehrere Kontaktanfragen. |
-| `ContactIntent` | `id`, `workshop_id`, `actor_user_id nullable`, `anonymous_key nullable`, `channel`, `created_at` | Privat und minimal. Dokumentiert nur die bewusst gewählte Kontaktabsicht; keine Nachricht, Telefonnummer, Buchung, Preis oder Reparaturdetails. Anonyme Schlüssel sind gehasht, rotierbar und befristet. |
+| `ContactIntent` | `id`, `garage_id`, `actor_user_id nullable`, `anonymous_key nullable`, `channel`, `created_at` | Privat und minimal. Dokumentiert nur die bewusst gewählte Kontaktabsicht; keine Nachricht, Telefonnummer, Buchung, Preis oder Reparaturdetails. Anonyme Schlüssel sind gehasht, rotierbar und befristet. |
 | `VisitEvidence` | `id`, `owner_user_id`, `review_id nullable`, `evidence_kind`, `verification_state`, `private_file_id nullable` | Besonders schützenswert. Nur ein abgeleiteter Status kann bei einer Review erscheinen; Datei und Prüfnotiz bleiben privat. Werkstattbestätigung ist nur eine mögliche Evidenz, keine Voraussetzung für Kritik. |
-| `Review` | `id`, `author_user_id`, `workshop_id`, `service_category_id`, `text`, `rating nullable`, `publication_state`, `evidence_status`, `moderation_state` | Öffentliche View nur nach Moderationsfreigabe. `evidence_status` ist keine Qualitätsgarantie und die Veröffentlichung negativer Kritik hängt nicht an einer Werkstattbestätigung. |
+| `Review` | `id`, `author_user_id`, `garage_id`, `service_category_id`, `text`, `rating nullable`, `publication_state`, `evidence_status`, `moderation_state` | Öffentliche View nur nach Moderationsfreigabe. `evidence_status` ist keine Qualitätsgarantie und die Veröffentlichung negativer Kritik hängt nicht an einer Werkstattbestätigung. |
 | `ModerationEvent` | `id`, `actor_user_id`, `subject_type`, `subject_id`, `event_type`, `reason_code`, `created_at` | Privat, append-only. Freitext und Beleginhalt getrennt und nur wenn fachlich nötig. |
 | `FileObject` | `id`, `owner_scope`, `storage_key`, `content_type`, `size_bytes`, `scan_state`, `retention_state` | Privat. `storage_key` ist nicht öffentlich und enthält keine Namen oder Fahrzeugdaten. |
 | `NotificationOutbox` | `id`, `kind`, `subject_id`, `payload_reference`, `state`, `attempt_count`, `next_attempt_at` | Privat. Enthält Referenzen statt privaten Mailinhalt; wiederholbare Zustellung ohne Event-Bus. |
@@ -36,26 +36,26 @@ Dieses Modell ergänzt [ADR-001](ADR-001.md). Es ist eine fachliche und technisc
 ```mermaid
 erDiagram
   USER ||--o{ MEMBERSHIP : has
-  WORKSHOP ||--o{ MEMBERSHIP : has
-  WORKSHOP }o--|| PLACE : located_at
-  WORKSHOP }o--o{ SERVICE_CATEGORY : offers
+  GARAGE ||--o{ MEMBERSHIP : has
+  GARAGE }o--|| PLACE : located_at
+  GARAGE }o--o{ SERVICE_CATEGORY : offers
   USER ||--o{ VEHICLE : owns
   USER ||--o{ REPAIR_REQUEST : writes
   VEHICLE o|--o{ REPAIR_REQUEST : describes
   USER ||--o{ SEARCH_AREA : saves
-  WORKSHOP ||--o{ CONTACT_INTENT : receives_intent_for
+  GARAGE ||--o{ CONTACT_INTENT : receives_intent_for
   USER o|--o{ CONTACT_INTENT : makes
   USER ||--o{ VISIT_EVIDENCE : owns
   VISIT_EVIDENCE o|--o| REVIEW : supports
   USER ||--o{ REVIEW : authors
-  WORKSHOP ||--o{ REVIEW : receives
+  GARAGE ||--o{ REVIEW : receives
   FILE_OBJECT o|--o{ VISIT_EVIDENCE : stores
   USER ||--o{ MODERATION_EVENT : acts
 ```
 
 Erlaubte zentrale Zustände:
 
-- `Workshop.publication_state`: `draft → pending_review → published → suspended → archived`.
+- `Garage.publication_state`: `draft → pending_review → published → suspended → archived`.
 - `Membership.state`: `invited → active → suspended → revoked`; nur `active` zählt.
 - `Review.publication_state`: `draft → submitted → under_review → published | rejected | withdrawn`.
 - `FileObject.scan_state`: `pending → clean | rejected | failed`; `pending` und `failed` sind niemals downloadbar.
@@ -65,7 +65,7 @@ Alle Zustandsübergänge sind transaktional. Der Fachservice prüft erlaubten Vo
 
 ## Manuelle Betriebsadresse
 
-`workshop.business_address` enthält die manuell eingegebene vollständige Adresse oder eine
+`garage.business_address` enthält die manuell eingegebene vollständige Adresse oder eine
 nachvollziehbare Standortbeschreibung inklusive Ort. Bestandsprofile dürfen noch keine Adresse
 haben. Der Wert ist getrennt von `place_id` und `location_point`, wird im privaten Profil gespeichert
 und ist derzeit nicht Teil der öffentlichen View. Weder Adresse noch Ortszuordnung erzeugen
@@ -73,29 +73,29 @@ automatisch einen bestätigten Werkstattpunkt. Siehe [Aufnahme #61](../design/ON
 
 ## Geosuche und Relevanz
 
-`Place.point` und die Workshopposition verwenden `geography(Point,4326)` mit GiST-Index. Für ein oder mehrere `SearchArea`-Objekte gilt:
+`Place.point` und die Garageposition verwenden `geography(Point,4326)` mit GiST-Index. Für ein oder mehrere `SearchArea`-Objekte gilt:
 
-1. Zuerst nur veröffentlichte Workshops mit passender `ServiceCategory` auswählen.
-2. `ST_DWithin(workshop.point, search_area.point, search_area.radius_m)` serverseitig ausführen.
-3. Bei mehreren Flächen per Workshop-ID deduplizieren. Ein Betrieb erscheint im Überlappungsbereich nur einmal.
+1. Zuerst nur veröffentlichte Garages mit passender `ServiceCategory` auswählen.
+2. `ST_DWithin(garage.point, search_area.point, search_area.radius_m)` serverseitig ausführen.
+3. Bei mehreren Flächen per Garage-ID deduplizieren. Ein Betrieb erscheint im Überlappungsbereich nur einmal.
 4. Ergebnis erklärt die passenderen Kriterien in Textform. Entfernung, Leistung, freigegebene Unternehmensdaten und relevante Erfahrungen dürfen Einfluss haben; Abo, Zahlung, verwehrte Werkstattbestätigung oder Moderationsdruck nie.
 
 PostGIS führt Entfernungen auf `geography` in Metern aus und kann räumliche Indizes für KNN-Suche verwenden. Eine fehlende oder ungültige Position ergibt keinen geschätzten Treffer. Radius ist Luftlinie und wird im UI so bezeichnet; Reisezeiten sind weder Routing-Daten noch Verfügbarkeitsbehauptungen.
 
 ## Serverseitige Berechtigungsmatrix
 
-| Aktion | Gast | Customer | WorkshopMember | Moderator | Admin |
+| Aktion | Gast | Customer | GarageMember | Moderator | Admin |
 |---|---:|---:|---:|---:|---:|
 | Öffentliche Suche und Profil lesen | Ja | Ja | Ja | Ja | Ja |
 | Kontaktkanal bewusst wählen | Ja, rate-limitiert | Ja | Ja | Ja | Ja |
 | Eigenes Fahrzeug, Anfrage, Suchgebiet verwalten | Nein | Nur eigene | Nein | Nein | Nur mit begründetem Supportvorgang |
-| Workshopprofil ändern | Nein | Nein | Nur aktive eigene Membership und nur freigegebene Felder | Nein | Ja, auditierbar |
+| Garageprofil ändern | Nein | Nein | Nur aktive eigene Membership und nur freigegebene Felder | Nein | Ja, auditierbar |
 | Besuchsnachweis lesen oder laden | Nein | Nur eigener | Nie automatisch | Nur zugewiesener Fall | Begründet und auditierbar |
 | Review einreichen | Nein | Eigene | Eigene, falls Rolle erlaubt | Nein | Nie im Namen eines Kunden |
 | Review oder Meldung moderieren | Nein | Nein | Nein | Nur zugewiesener Umfang | Ja, auditierbar |
 | Rolle vergeben oder entziehen | Nein | Nein | Nein | Nein | Ja, kein Self-Service |
 
-Die Matrix wird zweimal durchgesetzt: Fachservice plus PostgreSQL-RLS. Öffentliche Suchendpunkte greifen auf dedizierte Views mit expliziter Spaltenliste zu. Private Endpunkte setzen `app.user_id` und bei Workshopaktionen zusätzlich eine verifizierte Membership in derselben Transaktion; ein ID-Wert aus URL oder Body reicht nie als Berechtigung.
+Die Matrix wird zweimal durchgesetzt: Fachservice plus PostgreSQL-RLS. Öffentliche Suchendpunkte greifen auf dedizierte Views mit expliziter Spaltenliste zu. Private Endpunkte setzen `app.user_id` und bei Garageaktionen zusätzlich eine verifizierte Membership in derselben Transaktion; ein ID-Wert aus URL oder Body reicht nie als Berechtigung.
 
 ## Dateien und Lebenszyklus
 
@@ -111,13 +111,13 @@ niemals Fahrzeug-, Reise-, Freitext- oder Dateiwerte.
 
 ## Szenarioprüfung
 
-**Zwei Suchorte:** Ein Gast wählt Pristina 15 km und Prizren 30 km. Der Server erstellt zwei kurzlebige Flächen, führt eine unionierte PostGIS-Abfrage aus und dedupliziert nach `Workshop.id`. Der Gast übermittelt keine private Anfrage und keine Werkstatt erhält Daten.
+**Zwei Suchorte:** Ein Gast wählt Pristina 15 km und Prizren 30 km. Der Server erstellt zwei kurzlebige Flächen, führt eine unionierte PostGIS-Abfrage aus und dedupliziert nach `Garage.id`. Der Gast übermittelt keine private Anfrage und keine Werkstatt erhält Daten.
 
-**Privater Bewertungsnachweis:** Eine angemeldete Person lädt einen Nachweis in die Quarantäne. Nur nach sauberem Scan wird `VisitEvidence` privat referenziert. Der Review zeigt höchstens `evidence_status`; ein Moderator kann bei Bedarf den zugewiesenen Fall prüfen. Der Workshop sieht weder Datei noch Reise-/Fahrzeugdaten und kann eine negative Review nicht durch fehlende Bestätigung blockieren.
+**Privater Bewertungsnachweis:** Eine angemeldete Person lädt einen Nachweis in die Quarantäne. Nur nach sauberem Scan wird `VisitEvidence` privat referenziert. Der Review zeigt höchstens `evidence_status`; ein Moderator kann bei Bedarf den zugewiesenen Fall prüfen. Der Garage sieht weder Datei noch Reise-/Fahrzeugdaten und kann eine negative Review nicht durch fehlende Bestätigung blockieren.
 
 ## Offene, vor Produktivstart zwingende Entscheidungen
 
 - Rechtlicher Betreiber, Datenschutzhinweise, zulässige Nachweisarten und Aufbewahrungsfristen.
 - DPA, Subprozessoren, Live-Preis, Kostenlimit und Zahlungsfreigabe aller gewählten Dienste.
 - Senderdomain, Karten-Schlüsselrestriktionen, Backup-Verschlüsselungsschlüssel und erfolgreiche Restoreprobe.
-- Konkrete Datensätze für Orte, Leistungen und Workshopaufnahme; keine Übernahme von Anbieter-Geocodingdaten entgegen deren Bedingungen.
+- Konkrete Datensätze für Orte, Leistungen und Garageaufnahme; keine Übernahme von Anbieter-Geocodingdaten entgegen deren Bedingungen.

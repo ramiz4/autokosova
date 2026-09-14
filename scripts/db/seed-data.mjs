@@ -2,11 +2,11 @@ import {
   demoWorkflowRequests,
   demoWorkflowReviews,
   demoWorkflowUsers,
-  demoWorkshops,
+  demoGarages,
 } from '../../db/demo-data.mjs';
 import { places, serviceCategories, vehicleMakes } from '../../db/catalog.mjs';
 
-export { demoWorkshops } from '../../db/demo-data.mjs';
+export { demoGarages } from '../../db/demo-data.mjs';
 export {
   demoWorkflowRequests,
   demoWorkflowReviews,
@@ -141,19 +141,19 @@ async function seedReferenceData(client) {
 }
 
 async function assertDemoIdsAreAvailable(client) {
-  const demoIds = demoWorkshops.map((workshop) => workshop.id);
-  const existing = await client.query('SELECT id, name FROM workshop WHERE id = ANY($1::text[])', [
+  const demoIds = demoGarages.map((garage) => garage.id);
+  const existing = await client.query('SELECT id, name FROM garage WHERE id = ANY($1::text[])', [
     demoIds,
   ]);
   const seeded = await client.query(
-    'SELECT workshop_id FROM local_demo_seed_workshop WHERE workshop_id = ANY($1::text[])',
+    'SELECT garage_id FROM local_demo_seed_garage WHERE garage_id = ANY($1::text[])',
     [demoIds],
   );
-  const seededIds = new Set(seeded.rows.map((row) => row.workshop_id));
+  const seededIds = new Set(seeded.rows.map((row) => row.garage_id));
 
   for (const row of existing.rows) {
     if (!seededIds.has(row.id)) {
-      throw new Error(`Demo workshop ID ${row.id} is occupied by non-demo local data.`);
+      throw new Error(`Demo garage ID ${row.id} is occupied by non-demo local data.`);
     }
   }
 }
@@ -166,9 +166,9 @@ async function seedDemoData(client) {
     [demoSeedMarker.id, demoSeedMarker.label],
   );
 
-  for (const workshop of demoWorkshops) {
+  for (const garage of demoGarages) {
     await client.query(
-      `INSERT INTO workshop (
+      `INSERT INTO garage (
          id, name, publication_state, place_id, description, public_phone,
          contact_person, contact_phone, languages, self_reported_specializations, location_point, location_source
        ) VALUES ($1, $2, 'published', $3, $4, $5, $6, $5, $7, $8,
@@ -186,54 +186,54 @@ async function seedDemoData(client) {
            location_point = EXCLUDED.location_point,
            location_source = EXCLUDED.location_source`,
       [
-        workshop.id,
-        workshop.name,
-        workshop.placeId,
-        workshop.description,
-        workshop.publicPhone,
-        workshop.contactPerson,
-        workshop.languages,
-        workshop.selfReportedSpecializations,
-        workshop.locationPoint.latitude,
-        workshop.locationPoint.longitude,
+        garage.id,
+        garage.name,
+        garage.placeId,
+        garage.description,
+        garage.publicPhone,
+        garage.contactPerson,
+        garage.languages,
+        garage.selfReportedSpecializations,
+        garage.locationPoint.latitude,
+        garage.locationPoint.longitude,
       ],
     );
 
     await client.query(
-      `INSERT INTO local_demo_seed_workshop (workshop_id, seed_version)
+      `INSERT INTO local_demo_seed_garage (garage_id, seed_version)
        VALUES ($1, $2)
-       ON CONFLICT (workshop_id) DO UPDATE
+       ON CONFLICT (garage_id) DO UPDATE
        SET seed_version = EXCLUDED.seed_version, updated_at = now()`,
-      [workshop.id, demoSeedMarker.id],
+      [garage.id, demoSeedMarker.id],
     );
 
     await client.query(
-      `INSERT INTO workshop_verification (
-         workshop_id, phone_state, contact_person_state, company_document_state, location_state
+      `INSERT INTO garage_verification (
+         garage_id, phone_state, contact_person_state, company_document_state, location_state
        ) VALUES ($1, $2, $2, $2, $2)
-       ON CONFLICT (workshop_id) DO UPDATE
+       ON CONFLICT (garage_id) DO UPDATE
        SET phone_state = EXCLUDED.phone_state,
            contact_person_state = EXCLUDED.contact_person_state,
            company_document_state = EXCLUDED.company_document_state,
            location_state = EXCLUDED.location_state`,
-      [workshop.id, workshop.verification],
+      [garage.id, garage.verification],
     );
 
-    for (const serviceCategoryId of workshop.serviceCategoryIds) {
+    for (const serviceCategoryId of garage.serviceCategoryIds) {
       await client.query(
-        `INSERT INTO workshop_service_category (workshop_id, service_category_id)
+        `INSERT INTO garage_service_category (garage_id, service_category_id)
          VALUES ($1, $2)
-         ON CONFLICT (workshop_id, service_category_id) DO NOTHING`,
-        [workshop.id, serviceCategoryId],
+         ON CONFLICT (garage_id, service_category_id) DO NOTHING`,
+        [garage.id, serviceCategoryId],
       );
     }
 
-    for (const vehicleMakeId of workshop.vehicleMakeIds) {
+    for (const vehicleMakeId of garage.vehicleMakeIds) {
       await client.query(
-        `INSERT INTO workshop_vehicle_make (workshop_id, vehicle_make_id)
+        `INSERT INTO garage_vehicle_make (garage_id, vehicle_make_id)
          VALUES ($1, $2)
-         ON CONFLICT (workshop_id, vehicle_make_id) DO NOTHING`,
-        [workshop.id, vehicleMakeId],
+         ON CONFLICT (garage_id, vehicle_make_id) DO NOTHING`,
+        [garage.id, vehicleMakeId],
       );
     }
   }
@@ -252,7 +252,7 @@ function demoWorkflowEntities() {
       request.searchAreas.map((area) => area.id),
     ),
     visit_evidence: demoWorkflowReviews.map((review) => `demo-evidence-row-${review.id}`),
-    workshop_review: demoWorkflowReviews.map((review) => review.id),
+    garage_review: demoWorkflowReviews.map((review) => review.id),
   };
 }
 
@@ -263,7 +263,7 @@ async function assertDemoWorkflowIdsAreAvailable(client) {
     repair_request: 'repair_request',
     request_search_area: 'request_search_area',
     visit_evidence: 'visit_evidence',
-    workshop_review: 'workshop_review',
+    garage_review: 'garage_review',
   };
 
   for (const [entityType, entityIds] of Object.entries(demoWorkflowEntities())) {
@@ -335,8 +335,8 @@ async function seedDemoWorkflowData(client) {
     await recordDemoWorkflowEntity(client, 'file_object', fileId);
 
     await client.query(
-      `INSERT INTO workshop_review (
-         id, author_user_id, workshop_id, service_category_id, vehicle_make_id, visit_month,
+      `INSERT INTO garage_review (
+         id, author_user_id, garage_id, service_category_id, vehicle_make_id, visit_month,
          work_quality, communication, price_transparency, punctuality, review_text,
          publication_state, published_at
        ) VALUES (
@@ -344,7 +344,7 @@ async function seedDemoWorkflowData(client) {
        )
        ON CONFLICT (id) DO UPDATE
        SET author_user_id = EXCLUDED.author_user_id,
-           workshop_id = EXCLUDED.workshop_id,
+           garage_id = EXCLUDED.garage_id,
            service_category_id = EXCLUDED.service_category_id,
            vehicle_make_id = EXCLUDED.vehicle_make_id,
            visit_month = EXCLUDED.visit_month,
@@ -358,7 +358,7 @@ async function seedDemoWorkflowData(client) {
       [
         review.id,
         review.authorUserId,
-        review.workshopId,
+        review.garageId,
         review.serviceCategoryId,
         review.vehicleMakeId ?? null,
         review.visitMonth,
@@ -369,12 +369,12 @@ async function seedDemoWorkflowData(client) {
         review.text,
       ],
     );
-    await recordDemoWorkflowEntity(client, 'workshop_review', review.id);
+    await recordDemoWorkflowEntity(client, 'garage_review', review.id);
 
     await client.query(
       `INSERT INTO visit_evidence (
          id, review_id, owner_user_id, private_file_id, evidence_kind, verification_state,
-         service_matches, visit_month_matches, workshop_matches, reviewed_by_user_id, reviewed_at
+         service_matches, visit_month_matches, garage_matches, reviewed_by_user_id, reviewed_at
        ) VALUES ($1, $2, $3, $4, $5, 'verified', true, true, true, $6, now())
        ON CONFLICT (id) DO UPDATE
        SET review_id = EXCLUDED.review_id,
@@ -384,7 +384,7 @@ async function seedDemoWorkflowData(client) {
            verification_state = EXCLUDED.verification_state,
            service_matches = true,
            visit_month_matches = true,
-           workshop_matches = true,
+           garage_matches = true,
            reviewed_by_user_id = EXCLUDED.reviewed_by_user_id,
            reviewed_at = now()`,
       [

@@ -15,12 +15,12 @@ import {
   buildTelephoneHref,
   buildWhatsAppHref,
 } from '../shared/contact-preview';
-import { isLocalDemoWorkshopId } from '../shared/local-demo';
+import { isLocalDemoGarageId } from '../shared/local-demo';
 import { AnalyticsService } from './analytics.service';
 import { LanguageService } from './language.service';
 import { SiteHeaderComponent } from './site-header.component';
 
-interface PublicWorkshopProfile {
+interface PublicGarageProfile {
   readonly contact: { readonly phone?: string };
   readonly description?: string;
   readonly id: string;
@@ -43,7 +43,7 @@ interface PublicReviewSummary {
   readonly verifiedVisitCount: number;
 }
 
-interface PublicWorkshopReview {
+interface PublicGarageReview {
   readonly evidence: { readonly label: string };
   readonly id: string;
   readonly ratings: {
@@ -62,12 +62,12 @@ interface PublicWorkshopReview {
   }[];
   readonly vehicleMakeId?: string;
   readonly visitMonth: string;
-  readonly workshopResponse?: { readonly createdAt: string; readonly text: string };
+  readonly garageResponse?: { readonly createdAt: string; readonly text: string };
 }
 
 @Component({
   imports: [FormsModule, RouterLink, SiteHeaderComponent],
-  selector: 'app-workshop-profile',
+  selector: 'app-garage-profile',
   template: `
     <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
       <app-site-header [compact]="true" />
@@ -262,11 +262,11 @@ interface PublicWorkshopReview {
                     {{ review.ratings.priceTransparency }}/5 · Termintreue
                     {{ review.ratings.punctuality }}/5
                   </p>
-                  @if (review.workshopResponse) {
+                  @if (review.garageResponse) {
                     <div class="mt-4 border-l-4 border-sky-200 pl-4">
                       <p class="font-semibold">Öffentliche Antwort der Werkstatt</p>
                       <p class="mt-1 leading-7 text-slate-700">
-                        {{ review.workshopResponse.text }}
+                        {{ review.garageResponse.text }}
                       </p>
                     </div>
                   }
@@ -452,7 +452,7 @@ interface PublicWorkshopReview {
     </main>
   `,
 })
-export class WorkshopProfileComponent {
+export class GarageProfileComponent {
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly analytics = inject(AnalyticsService);
   private readonly changeDetector = inject(ChangeDetectorRef);
@@ -461,9 +461,9 @@ export class WorkshopProfileComponent {
   private readonly request = inject(REQUEST);
   private readonly route = inject(ActivatedRoute);
   protected includeDetails = false;
-  protected profile?: PublicWorkshopProfile;
+  protected profile?: PublicGarageProfile;
   protected repairSummary = '';
-  protected reviews: readonly PublicWorkshopReview[] = [];
+  protected reviews: readonly PublicGarageReview[] = [];
   protected reviewServiceCategoryId = '';
   protected reviewState: 'error' | 'loading' | 'ready' = 'loading';
   protected reviewVehicleMakeId = '';
@@ -482,7 +482,7 @@ export class WorkshopProfileComponent {
       includeDetails: this.includeDetails,
       repairSummary: this.repairSummary,
       vehicleSummary: this.vehicleSummary,
-      workshopName: this.profile?.name ?? this.language.t('home.badge'),
+      garageName: this.profile?.name ?? this.language.t('home.badge'),
     });
   }
 
@@ -513,42 +513,42 @@ export class WorkshopProfileComponent {
   }
 
   protected isLocalDemoProfile(): boolean {
-    return isLocalDemoWorkshopId(this.profile?.id);
+    return isLocalDemoGarageId(this.profile?.id);
   }
 
   protected async load(): Promise<void> {
-    const workshopId = this.route.snapshot.paramMap.get('garageId');
-    if (!this.browser || !workshopId) {
+    const garageId = this.route.snapshot.paramMap.get('garageId');
+    if (!this.browser || !garageId) {
       this.state = 'error';
       return;
     }
-    await this.loadProfile(workshopId);
+    await this.loadProfile(garageId);
   }
 
   private async loadForServer(request: Request): Promise<void> {
-    const workshopId = this.route.snapshot.paramMap.get('garageId');
-    if (!workshopId) {
+    const garageId = this.route.snapshot.paramMap.get('garageId');
+    if (!garageId) {
       this.state = 'error';
       return;
     }
-    await this.loadProfile(workshopId, request.url);
+    await this.loadProfile(garageId, request.url);
   }
 
-  private async loadProfile(workshopId: string, requestUrl?: string): Promise<void> {
+  private async loadProfile(garageId: string, requestUrl?: string): Promise<void> {
     this.state = 'loading';
     try {
       const response = await fetch(
-        this.publicApiUrl(`/api/public/garages/${encodeURIComponent(workshopId)}`, requestUrl),
+        this.publicApiUrl(`/api/public/garages/${encodeURIComponent(garageId)}`, requestUrl),
         {
           credentials: 'same-origin',
         },
       );
-      if (!response.ok) throw new Error('Workshop profile request failed');
-      this.profile = (await response.json()) as PublicWorkshopProfile;
+      if (!response.ok) throw new Error('Garage profile request failed');
+      this.profile = (await response.json()) as PublicGarageProfile;
       this.state = 'ready';
       this.language.setProfilePage(this.profile.name, this.profile.description);
-      if (this.browser) this.analytics.track('workshop_profile_opened');
-      await this.loadReviews(workshopId, requestUrl);
+      if (this.browser) this.analytics.track('garage_profile_opened');
+      await this.loadReviews(garageId, requestUrl);
       this.changeDetector.markForCheck();
     } catch {
       this.state = 'error';
@@ -560,8 +560,8 @@ export class WorkshopProfileComponent {
     this.analytics.track('contact_channel_opened');
   }
 
-  protected async loadReviews(workshopId = this.profile?.id, requestUrl?: string): Promise<void> {
-    if ((!this.browser && !requestUrl) || !workshopId) return;
+  protected async loadReviews(garageId = this.profile?.id, requestUrl?: string): Promise<void> {
+    if ((!this.browser && !requestUrl) || !garageId) return;
     this.reviewState = 'loading';
     try {
       const query = new URLSearchParams();
@@ -571,13 +571,13 @@ export class WorkshopProfileComponent {
       const suffix = query.size ? `?${query.toString()}` : '';
       const response = await fetch(
         this.publicApiUrl(
-          `/api/public/garages/${encodeURIComponent(workshopId)}/reviews${suffix}`,
+          `/api/public/garages/${encodeURIComponent(garageId)}/reviews${suffix}`,
           requestUrl,
         ),
         { credentials: 'same-origin' },
       );
-      if (!response.ok) throw new Error('Workshop reviews request failed');
-      const payload = (await response.json()) as { reviews?: readonly PublicWorkshopReview[] };
+      if (!response.ok) throw new Error('Garage reviews request failed');
+      const payload = (await response.json()) as { reviews?: readonly PublicGarageReview[] };
       this.reviews = payload.reviews ?? [];
       this.reviewState = 'ready';
       this.changeDetector.markForCheck();

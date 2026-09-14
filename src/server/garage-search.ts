@@ -1,4 +1,4 @@
-import type { PublicWorkshopProfile } from './access';
+import type { PublicGarageProfile } from './access';
 import { emptyReviewSummary, reviewRelevanceScore, type PublicReviewSummary } from './reviews';
 import { getCatalogPlace, SERVICE_CATEGORY_LABELS, VEHICLE_MAKE_LABELS } from '../shared/catalog';
 import {
@@ -18,13 +18,13 @@ export const SEARCH_LIMITS = {
   maxPageSize: 30,
 } as const;
 
-export interface PublicWorkshopSearchArea {
+export interface PublicGarageSearchArea {
   readonly placeId: string;
   readonly radiusKm: number;
 }
 
-export interface PublicWorkshopSearchInput {
-  readonly areas: readonly PublicWorkshopSearchArea[];
+export interface PublicGarageSearchInput {
+  readonly areas: readonly PublicGarageSearchArea[];
   readonly allResults?: boolean;
   readonly language?: string;
   readonly page: number;
@@ -34,15 +34,15 @@ export interface PublicWorkshopSearchInput {
   readonly vehicleMakeId?: string;
 }
 
-export interface SearchMatchCandidate extends PublicWorkshopProfile {
+export interface SearchMatchCandidate extends PublicGarageProfile {
   readonly distanceM?: number;
   readonly locationAvailable?: boolean;
   readonly matchingPlaceId: string;
 }
 
-export interface PublicWorkshopSearchResult {
+export interface PublicGarageSearchResult {
   readonly companyDataVerified: boolean;
-  readonly contact: PublicWorkshopProfile['contact'];
+  readonly contact: PublicGarageProfile['contact'];
   readonly description?: string;
   readonly distanceKm?: number;
   readonly id: string;
@@ -59,31 +59,31 @@ export interface PublicWorkshopSearchResult {
   readonly vehicleMakeIds: readonly string[];
 }
 
-export interface PublicWorkshopSearchResponse {
+export interface PublicGarageSearchResponse {
   readonly allResults: boolean;
   readonly page: number;
   readonly pageSize: number;
-  readonly results: readonly PublicWorkshopSearchResult[];
+  readonly results: readonly PublicGarageSearchResult[];
   readonly searchAreas: readonly {
     readonly label: string;
     readonly placeId: string;
     readonly radiusKm: number;
   }[];
   readonly serviceCategory: { readonly id: string; readonly label: string };
-  readonly sort: PublicWorkshopSearchInput['sort'];
+  readonly sort: PublicGarageSearchInput['sort'];
   readonly total: number;
   readonly totalPages: number;
 }
 
-export interface WorkshopSearchStore {
+export interface GarageSearchStore {
   close?(): Promise<void>;
-  getPublicWorkshop(
-    workshopId: string,
-  ): PublicWorkshopProfile | undefined | Promise<PublicWorkshopProfile | undefined>;
-  listPublicWorkshopIds(): readonly string[] | Promise<readonly string[]>;
-  searchPublicWorkshops(
-    input: PublicWorkshopSearchInput,
-  ): PublicWorkshopSearchResponse | Promise<PublicWorkshopSearchResponse>;
+  getPublicGarage(
+    garageId: string,
+  ): PublicGarageProfile | undefined | Promise<PublicGarageProfile | undefined>;
+  listPublicGarageIds(): readonly string[] | Promise<readonly string[]>;
+  searchPublicGarages(
+    input: PublicGarageSearchInput,
+  ): PublicGarageSearchResponse | Promise<PublicGarageSearchResponse>;
 }
 
 /**
@@ -91,28 +91,28 @@ export interface WorkshopSearchStore {
  * IDs and the same 5–100 km radius range as the repair-request flow; a malformed filter is never
  * broadened on the server.
  */
-export function parsePublicWorkshopSearch(
+export function parsePublicGarageSearch(
   query: Record<string, unknown>,
-): PublicWorkshopSearchInput | undefined {
+): PublicGarageSearchInput | undefined {
   const places = optionalString(query['places']);
   const serviceCategoryId = optionalString(query['service']);
   const vehicleMakeId = optionalString(query['vehicleMake']);
   if (vehicleMakeId && !knownVehicleMakeIds.has(vehicleMakeId)) {
-    throw new WorkshopSearchValidationError('Please choose a known vehicle make');
+    throw new GarageSearchValidationError('Please choose a known vehicle make');
   }
   const language = optionalString(query['language']);
   if (language && (!isPlainTextFilter(language) || language.length > 40)) {
-    throw new WorkshopSearchValidationError('Language filter is invalid');
+    throw new GarageSearchValidationError('Language filter is invalid');
   }
 
   if (!places) {
     if (!serviceCategoryId && query['all'] !== 'true') return undefined;
     if (serviceCategoryId && !knownServiceCategoryIds.has(serviceCategoryId)) {
-      throw new WorkshopSearchValidationError('Please choose a known service category');
+      throw new GarageSearchValidationError('Please choose a known service category');
     }
     const sort = optionalString(query['sort']) ?? 'recommended';
     if (sort !== 'recommended' && sort !== 'rating') {
-      throw new WorkshopSearchValidationError('Please choose a supported sort order');
+      throw new GarageSearchValidationError('Please choose a supported sort order');
     }
     return {
       allResults: true,
@@ -133,7 +133,7 @@ export function parsePublicWorkshopSearch(
   const areas = places.split(',').map((value) => {
     const [placeId, radius] = value.split(':');
     if (!placeId || !radius || value.split(':').length !== 2) {
-      throw new WorkshopSearchValidationError('Each search area must use placeId:radiusKm');
+      throw new GarageSearchValidationError('Each search area must use placeId:radiusKm');
     }
     const radiusKm = Number(radius);
     if (
@@ -142,7 +142,7 @@ export function parsePublicWorkshopSearch(
       radiusKm < REPAIR_REQUEST_LIMITS.minRadiusKm ||
       radiusKm > REPAIR_REQUEST_LIMITS.maxRadiusKm
     ) {
-      throw new WorkshopSearchValidationError(
+      throw new GarageSearchValidationError(
         'Search areas must use a known place and a radius from 5 to 100 km',
       );
     }
@@ -150,18 +150,18 @@ export function parsePublicWorkshopSearch(
   });
 
   if (!areas.length || areas.length > REPAIR_REQUEST_LIMITS.maxAreas) {
-    throw new WorkshopSearchValidationError('Choose between one and three search areas');
+    throw new GarageSearchValidationError('Choose between one and three search areas');
   }
   if (new Set(areas.map((area) => area.placeId)).size !== areas.length) {
-    throw new WorkshopSearchValidationError('Each search area must use a different place');
+    throw new GarageSearchValidationError('Each search area must use a different place');
   }
   if (serviceCategoryId && !knownServiceCategoryIds.has(serviceCategoryId)) {
-    throw new WorkshopSearchValidationError('Please choose a known service category');
+    throw new GarageSearchValidationError('Please choose a known service category');
   }
 
   const sort = optionalString(query['sort']) ?? 'recommended';
   if (sort !== 'recommended' && sort !== 'rating') {
-    throw new WorkshopSearchValidationError('Please choose a supported sort order');
+    throw new GarageSearchValidationError('Please choose a supported sort order');
   }
 
   return {
@@ -179,25 +179,25 @@ export function parsePublicWorkshopSearch(
   };
 }
 
-export function findPublicWorkshops(
-  workshops: readonly PublicWorkshopProfile[],
-  input: PublicWorkshopSearchInput,
-): PublicWorkshopSearchResponse {
-  const candidates = workshops.flatMap((workshop) => {
-    if (input.serviceCategoryId && !workshop.serviceCategoryIds.includes(input.serviceCategoryId))
+export function findPublicGarages(
+  garages: readonly PublicGarageProfile[],
+  input: PublicGarageSearchInput,
+): PublicGarageSearchResponse {
+  const candidates = garages.flatMap((garage) => {
+    if (input.serviceCategoryId && !garage.serviceCategoryIds.includes(input.serviceCategoryId))
       return [];
-    if (!matchesVehicleMake(workshop, input.vehicleMakeId)) return [];
-    if (!matchesLanguage(workshop, input.language)) return [];
+    if (!matchesVehicleMake(garage, input.vehicleMakeId)) return [];
+    if (!matchesLanguage(garage, input.language)) return [];
 
     const matchingAreas = input.allResults
-      ? [{ matchingPlaceId: workshop.placeId }]
+      ? [{ matchingPlaceId: garage.placeId }]
       : input.areas
           .map((area) => {
             const searchPlace = getCatalogPlace(area.placeId);
-            if (!searchPlace || !workshop.locationPoint) return undefined;
+            if (!searchPlace || !garage.locationPoint) return undefined;
             const distanceM = haversineDistanceM(
-              workshop.locationPoint.latitude,
-              workshop.locationPoint.longitude,
+              garage.locationPoint.latitude,
+              garage.locationPoint.longitude,
               searchPlace.latitude,
               searchPlace.longitude,
             );
@@ -211,7 +211,7 @@ export function findPublicWorkshops(
           );
     if (!matchingAreas.length) return [];
     const closest = matchingAreas.sort(compareMatchingAreaDistance)[0];
-    return [{ ...workshop, ...closest }];
+    return [{ ...garage, ...closest }];
   });
 
   return toSearchResponse(candidates, input);
@@ -220,12 +220,12 @@ export function findPublicWorkshops(
 /**
  * Converts already-deduplicated database candidates into the same public response as the
  * in-memory local-development store. Only published, independently checked visit aggregates can
- * act as a small tie-breaker; payment and workshop confirmation have no ranking field.
+ * act as a small tie-breaker; payment and garage confirmation have no ranking field.
  */
 export function toSearchResponse(
   candidates: readonly SearchMatchCandidate[],
-  input: PublicWorkshopSearchInput,
-): PublicWorkshopSearchResponse {
+  input: PublicGarageSearchInput,
+): PublicGarageSearchResponse {
   const uniqueCandidates = new Map<string, SearchMatchCandidate>();
   for (const candidate of candidates) {
     const existing = uniqueCandidates.get(candidate.id);
@@ -264,8 +264,8 @@ export function toSearchResponse(
 }
 
 function compareRatingResult(
-  left: PublicWorkshopSearchResult,
-  right: PublicWorkshopSearchResult,
+  left: PublicGarageSearchResult,
+  right: PublicGarageSearchResult,
 ): number {
   // A missing or single-review score is never promoted above a more substantial verified basis.
   const ratingDifference = ratingQuality(right) - ratingQuality(left);
@@ -273,13 +273,13 @@ function compareRatingResult(
   return compareSearchResult(left, right);
 }
 
-function ratingQuality(result: PublicWorkshopSearchResult): number {
+function ratingQuality(result: PublicGarageSearchResult): number {
   const summary = result.reviewSummary;
   if (summary.state !== 'available' || !summary.averageRating || !summary.reviewCount) return 0;
   return Math.min(summary.reviewCount, 20) * 10 + Math.round(summary.averageRating * 10);
 }
 
-export class WorkshopSearchValidationError extends Error {}
+export class GarageSearchValidationError extends Error {}
 
 export function isWithinSearchRadius(distanceM: number, radiusM: number): boolean {
   return Number.isFinite(distanceM) && Number.isFinite(radiusM) && distanceM <= radiusM;
@@ -287,8 +287,8 @@ export function isWithinSearchRadius(distanceM: number, radiusM: number): boolea
 
 function toSearchResult(
   candidate: SearchMatchCandidate,
-  input: PublicWorkshopSearchInput,
-): PublicWorkshopSearchResult {
+  input: PublicGarageSearchInput,
+): PublicGarageSearchResult {
   const matchingPlace = getCatalogPlace(candidate.matchingPlaceId);
   const companyDataVerified = candidate.verificationLabel === 'Unternehmensdaten geprüft';
   const distanceKm =
@@ -335,8 +335,8 @@ function toSearchResult(
 }
 
 function compareSearchResult(
-  left: PublicWorkshopSearchResult,
-  right: PublicWorkshopSearchResult,
+  left: PublicGarageSearchResult,
+  right: PublicGarageSearchResult,
 ): number {
   // The fixed order is intentionally explainable: requested service is a hard filter; then an
   // explicit brand match, documented company-data check, language match, and shorter air distance.
@@ -350,7 +350,7 @@ function compareSearchResult(
   return nameDifference || left.id.localeCompare(right.id);
 }
 
-function relevanceScore(result: PublicWorkshopSearchResult): number {
+function relevanceScore(result: PublicGarageSearchResult): number {
   return (
     100 +
     (result.reasons.some((reason) => reason.startsWith('Fahrzeugmarke:')) ? 15 : 0) +
@@ -361,20 +361,20 @@ function relevanceScore(result: PublicWorkshopSearchResult): number {
 }
 
 function matchesVehicleMake(
-  workshop: PublicWorkshopProfile,
+  garage: PublicGarageProfile,
   vehicleMakeId: string | undefined,
 ): boolean {
   return (
     !vehicleMakeId ||
-    workshop.vehicleMakeIds.length === 0 ||
-    workshop.vehicleMakeIds.includes(vehicleMakeId)
+    garage.vehicleMakeIds.length === 0 ||
+    garage.vehicleMakeIds.includes(vehicleMakeId)
   );
 }
 
-function matchesLanguage(workshop: PublicWorkshopProfile, language: string | undefined): boolean {
+function matchesLanguage(garage: PublicGarageProfile, language: string | undefined): boolean {
   return (
     !language ||
-    workshop.languages.some(
+    garage.languages.some(
       (value) => value.toLocaleLowerCase('de') === language.toLocaleLowerCase('de'),
     )
   );
@@ -426,11 +426,11 @@ function optionalString(value: unknown): string | undefined {
 function positiveInteger(value: unknown, fallback: number, maximum: number): number {
   if (value === undefined) return fallback;
   if (typeof value !== 'string' || !/^\d+$/.test(value)) {
-    throw new WorkshopSearchValidationError('Pagination must use positive integers');
+    throw new GarageSearchValidationError('Pagination must use positive integers');
   }
   const parsed = Number(value);
   if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > maximum) {
-    throw new WorkshopSearchValidationError('Pagination is outside the supported range');
+    throw new GarageSearchValidationError('Pagination is outside the supported range');
   }
   return parsed;
 }

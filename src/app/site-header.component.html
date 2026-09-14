@@ -170,13 +170,18 @@
   >
   <a
     class="nav-link px-1"
+    [class.nav-link-active]="active() === 'garage'"
+    [attr.aria-current]="active() === 'garage' ? 'page' : null"
+    [routerLink]="language.link('onboarding')"
+    (click)="closeMenu()"
+    >{{ language.t('nav.garages') }}</a
+  >
+  <a
+    class="nav-link px-1"
     [href]="language.link('home') + '#so-funktionierts'"
     (click)="closeMenu()"
     >{{ language.t('nav.how') }}</a
   >
-  <a class="nav-link px-1" [routerLink]="language.link('onboarding')" (click)="closeMenu()">{{
-    language.t('nav.workshops')
-  }}</a>
   <a class="nav-link px-1" [href]="language.link('home') + '#ueber-uns'" (click)="closeMenu()">{{
     language.t('nav.about')
   }}</a>

@@ -1,12 +1,12 @@
 -- #16: Only daily aggregate counters are retained. There is no visitor, session, URL, query,
--- workshop, vehicle, travel, free-text, IP-address, or user-agent column in this table.
+-- garage, vehicle, travel, free-text, IP-address, or user-agent column in this table.
 CREATE TABLE IF NOT EXISTS public_analytics_daily_count (
   metric_date date NOT NULL,
   event_name text NOT NULL CHECK (
     event_name IN (
       'search_started',
       'search_results_displayed',
-      'workshop_profile_opened',
+      'garage_profile_opened',
       'contact_channel_opened'
     )
   ),

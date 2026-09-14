@@ -2,7 +2,7 @@
 
 Die Oberfläche unter `/garages/new`, die manuelle Betriebsadresse, Such-/Mehrfachauswahl und
 der dauerhafte PostgreSQL-Aufnahmeablauf sind in [Abnahme #61](../design/ONBOARDING-61.md) beschrieben.
-Migration 021 ergänzt `workshop.business_address`; der bestehende Werkstattpunkt aus #59 bleibt
+Migration 021 ergänzt `garage.business_address`; der bestehende Werkstattpunkt aus #59 bleibt
 die einzige Position. Adresse/Ort/Punkt ändern setzt den Standortprüfpunkt zurück.
 
 Dieser Ablauf implementiert #10. Er ist kein Verzeichnisimport, keine Werbeaktion und keine

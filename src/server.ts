@@ -13,7 +13,7 @@ import { readZitadelOidcConfig } from './server/oidc';
 import { PostgresRepairRequestStore } from './server/repair-request-store';
 import { PostgresReviewStore } from './server/review-store';
 import { PostgresModerationStore } from './server/moderation-store';
-import { PostgresWorkshopSearchStore } from './server/workshop-search-store';
+import { PostgresGarageSearchStore } from './server/garage-search-store';
 import { PostgresAnalyticsStore } from './server/analytics';
 import { loadEnvironment } from '../scripts/environment.mjs';
 import { isStaticAssetRequest } from './server/static-asset-path';
@@ -33,7 +33,7 @@ const app = createServer({
   ...(databaseUrl ? { repairRequestStore: new PostgresRepairRequestStore(databaseUrl) } : {}),
   ...(databaseUrl ? { reviewStore: new PostgresReviewStore(databaseUrl) } : {}),
   ...(databaseUrl ? { moderationStore: new PostgresModerationStore(databaseUrl) } : {}),
-  ...(databaseUrl ? { searchStore: new PostgresWorkshopSearchStore(databaseUrl) } : {}),
+  ...(databaseUrl ? { searchStore: new PostgresGarageSearchStore(databaseUrl) } : {}),
   ...(databaseUrl ? { analyticsStore: new PostgresAnalyticsStore(databaseUrl) } : {}),
   analyticsEnabled: process.env['AUTOKOSOVA_ANALYTICS_ENABLED'] === 'true',
   ...(process.env['PUBLIC_SITE_URL'] ? { publicSiteUrl: process.env['PUBLIC_SITE_URL'] } : {}),

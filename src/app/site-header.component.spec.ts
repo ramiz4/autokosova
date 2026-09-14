@@ -40,8 +40,8 @@ describe('Header account actions', () => {
       expect(desktop.map((item) => item.href)).toEqual([
         locale ? `/${locale}/inquiry` : '/inquiry',
         locale ? `/${locale}/garages` : '/garages',
-        (locale ? `/${locale}` : '/') + '#so-funktionierts',
         locale ? `/${locale}/garages/new` : '/garages/new',
+        (locale ? `/${locale}` : '/') + '#so-funktionierts',
         (locale ? `/${locale}` : '/') + '#ueber-uns',
       ]);
     },
@@ -52,6 +52,7 @@ describe('Active navigation', () => {
   it.each([
     ['request', '/inquiry'],
     ['search', '/garages'],
+    ['garage', '/garages/new'],
   ])('marks %s consistently on desktop and mobile', async (active, href) => {
     await TestBed.configureTestingModule({
       imports: [SiteHeaderComponent],

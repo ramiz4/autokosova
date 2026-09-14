@@ -5,10 +5,10 @@ import pg from 'pg';
 import { AccessStore, AccessError, type Principal } from '../src/server/access';
 import { createServer } from '../src/server/app';
 import { PostgresGarageOnboardingStore } from '../src/server/garage-onboarding-store';
-import { PostgresWorkshopSearchStore } from '../src/server/workshop-search-store';
-import { validGarageProfile, type WorkshopProfileInput } from '../src/shared/garage-onboarding';
+import { PostgresGarageSearchStore } from '../src/server/garage-search-store';
+import { validGarageProfile, type GarageProfileInput } from '../src/shared/garage-onboarding';
 
-const profile: WorkshopProfileInput = {
+const profile: GarageProfileInput = {
   name: 'Fiktive Onboarding-Werkstatt',
   placeId: 'xk-pristina',
   address: 'Fiktive Straße 12, 10000 Prishtina',
@@ -106,8 +106,8 @@ test('API saves address privately, rejects a foreign edit and invalid catalogs, 
     });
     assert.equal(bad.statusCode, 422);
     const own = access.getPrincipal(owner.sessionId)!;
-    access.submitWorkshopForReview(own, id);
-    access.reviewWorkshop(admin, id, 'published', verified);
+    access.submitGarageForReview(own, id);
+    access.reviewGarage(admin, id, 'published', verified);
     const publicProfile = await app.inject({ method: 'GET', url: `/api/public/garages/${id}` });
     assert.equal(publicProfile.statusCode, 200);
     assert.equal(publicProfile.body.includes('Private Testperson'), false);
@@ -119,7 +119,7 @@ test('API saves address privately, rejects a foreign edit and invalid catalogs, 
       payload: { ...read.json().profile, address: 'Fiktive Straße 99, Prishtina' },
     });
     assert.equal(changed.statusCode, 204);
-    assert.equal(access.getPrivateWorkshop(own, id).verification.location, 'not_checked');
+    assert.equal(access.getPrivateGarage(own, id).verification.location, 'not_checked');
   } finally {
     await app.close();
   }
@@ -139,20 +139,20 @@ test(
     restricted.searchParams.set('options', '-c role=' + role);
     let store = new PostgresGarageOnboardingStore(restricted.toString());
     const client = new pg.Client({ connectionString: url });
-    const search = new PostgresWorkshopSearchStore(url);
+    const search = new PostgresGarageSearchStore(url);
     const ids: string[] = [];
     await client.connect();
     await client.query(`CREATE ROLE ${role} NOLOGIN`);
     await client.query(`GRANT USAGE ON SCHEMA public TO ${role}`);
     await client.query(
-      `GRANT SELECT, INSERT, UPDATE, DELETE ON app_user, workshop, membership, workshop_consent, workshop_verification, workshop_service_category, workshop_vehicle_make, moderation_event TO ${role}`,
+      `GRANT SELECT, INSERT, UPDATE, DELETE ON app_user, garage, membership, garage_consent, garage_verification, garage_service_category, garage_vehicle_make, moderation_event TO ${role}`,
     );
     await client.query(
-      `GRANT SELECT ON public_workshop_profile, place, service_category, vehicle_make TO ${role}`,
+      `GRANT SELECT ON public_garage_profile, place, service_category, vehicle_make TO ${role}`,
     );
     try {
       for (const [i, latitude] of [42.67572, 42.68272].entries()) {
-        const created = await store.createWorkshopRegistration(
+        const created = await store.createGarageRegistration(
           owner,
           {
             ...profile,
@@ -165,24 +165,21 @@ test(
       }
       await store.close();
       store = new PostgresGarageOnboardingStore(restricted.toString());
-      const restored = await store.getPrivateWorkshop(owner, ids[0]);
+      const restored = await store.getPrivateGarage(owner, ids[0]);
       assert.equal(restored.profile.address, profile.address);
       assert.equal(restored.publicationState, 'draft');
-      assert.equal((await store.listOwnedWorkshops(owner)).length, 2);
+      assert.equal((await store.listOwnedGarages(owner)).length, 2);
+      await assert.rejects(() => store.updateGarageProfile(outsider, ids[0], profile), AccessError);
       await assert.rejects(
-        () => store.updateWorkshopProfile(outsider, ids[0], profile),
+        () => store.reviewGarage(owner, ids[0], 'published', verified),
         AccessError,
       );
-      await assert.rejects(
-        () => store.reviewWorkshop(owner, ids[0], 'published', verified),
-        AccessError,
-      );
-      assert.equal(await search.getPublicWorkshop(ids[0]), undefined);
+      assert.equal(await search.getPublicGarage(ids[0]), undefined);
       for (const id of ids) {
-        await store.submitWorkshopForReview(owner, id);
-        await store.reviewWorkshop(admin, id, 'published', verified);
+        await store.submitGarageForReview(owner, id);
+        await store.reviewGarage(admin, id, 'published', verified);
       }
-      const results = await search.searchPublicWorkshops({
+      const results = await search.searchPublicGarages({
         areas: [{ placeId: 'xk-pristina', radiusKm: 5 }],
         page: 1,
         pageSize: 30,
@@ -192,15 +189,15 @@ test(
       assert.equal(pair.length, 2);
       assert.notEqual(pair[0].distanceKm, pair[1].distanceKm);
       assert.ok(pair.every((row) => row.distanceKm! > 0));
-      await store.updateWorkshopProfile(owner, ids[0], {
+      await store.updateGarageProfile(owner, ids[0], {
         ...restored.profile,
         address: 'Fiktive Straße 13, Prishtina',
       });
       assert.equal(
-        (await store.getPrivateWorkshop(owner, ids[0])).verification.location,
+        (await store.getPrivateGarage(owner, ids[0])).verification.location,
         'not_checked',
       );
-      const after = await search.searchPublicWorkshops({
+      const after = await search.searchPublicGarages({
         areas: [{ placeId: 'xk-pristina', radiusKm: 5 }],
         page: 1,
         pageSize: 30,
@@ -212,18 +209,18 @@ test(
       );
       assert.equal(
         (
-          await search.searchPublicWorkshops({ allResults: true, areas: [], page: 1, pageSize: 30 })
+          await search.searchPublicGarages({ allResults: true, areas: [], page: 1, pageSize: 30 })
         ).results.some((row) => row.id === ids[0]),
         true,
       );
       await assert.rejects(
         () =>
-          store.createWorkshopRegistration(owner, { ...profile, name: `Fiktiv ${suffix} 1` }, 'v1'),
+          store.createGarageRegistration(owner, { ...profile, name: `Fiktiv ${suffix} 1` }, 'v1'),
         AccessError,
       );
       await assert.rejects(
         () =>
-          store.createWorkshopRegistration(
+          store.createGarageRegistration(
             outsider,
             { ...profile, name: `Fiktiv ${suffix} 1` },
             'v1',
@@ -231,21 +228,21 @@ test(
         AccessError,
       );
       await client.query(
-        "UPDATE membership SET state='revoked' WHERE user_id=$1 AND workshop_id=$2",
+        "UPDATE membership SET state='revoked' WHERE user_id=$1 AND garage_id=$2",
         [owner.userId, ids[0]],
       );
-      await assert.rejects(() => store.getPrivateWorkshop(owner, ids[0]), AccessError);
+      await assert.rejects(() => store.getPrivateGarage(owner, ids[0]), AccessError);
     } finally {
       for (const table of [
-        'workshop_service_category',
-        'workshop_vehicle_make',
-        'workshop_consent',
-        'workshop_verification',
+        'garage_service_category',
+        'garage_vehicle_make',
+        'garage_consent',
+        'garage_verification',
         'membership',
       ])
-        await client.query(`DELETE FROM ${table} WHERE workshop_id=ANY($1::text[])`, [ids]);
+        await client.query(`DELETE FROM ${table} WHERE garage_id=ANY($1::text[])`, [ids]);
       await client.query('DELETE FROM moderation_event WHERE subject_id=ANY($1::text[])', [ids]);
-      await client.query('DELETE FROM workshop WHERE id=ANY($1::text[])', [ids]);
+      await client.query('DELETE FROM garage WHERE id=ANY($1::text[])', [ids]);
       await client.query('DELETE FROM app_user WHERE id=ANY($1::text[])', [
         [owner.userId, admin.userId, outsider.userId],
       ]);

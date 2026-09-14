@@ -20,7 +20,7 @@ test('favorites are private, require CSRF, are idempotent and available to anoth
   const owner = store.createSession('favorite-owner');
   const other = store.createSession('favorite-other');
   const principal = store.getPrincipal(owner.sessionId)!;
-  const garage = store.createWorkshopRegistration(
+  const garage = store.createGarageRegistration(
     principal,
     {
       name: 'DEMO Favorite Garage',
@@ -46,8 +46,8 @@ test('favorites are private, require CSRF, are idempotent and available to anoth
       (await app.inject({ method: 'PUT', url, headers: headers(owner, true) })).statusCode,
       404,
     );
-    store.submitWorkshopForReview(principal, garage.id);
-    store.reviewWorkshop(store.getPrincipal(admin.sessionId)!, garage.id, 'published', {
+    store.submitGarageForReview(principal, garage.id);
+    store.reviewGarage(store.getPrincipal(admin.sessionId)!, garage.id, 'published', {
       companyDocument: 'verified',
       contactPerson: 'verified',
       location: 'verified',
@@ -112,7 +112,7 @@ test(
         [owner, other],
       );
       await client.query(
-        "INSERT INTO workshop (id,name,publication_state,place_id) VALUES ($1,'DEMO Favorite Garage','published','xk-pristina')",
+        "INSERT INTO garage (id,name,publication_state,place_id) VALUES ($1,'DEMO Favorite Garage','published','xk-pristina')",
         [garage],
       );
       await store.saveFavorite(owner, garage);
@@ -121,13 +121,13 @@ test(
       assert.deepEqual(await reader.listFavoriteGarageIds(other), []);
       await reader.removeFavorite(other, garage);
       assert.deepEqual(await store.listFavoriteGarageIds(owner), [garage]);
-      await client.query("UPDATE workshop SET publication_state='suspended' WHERE id=$1", [garage]);
+      await client.query("UPDATE garage SET publication_state='suspended' WHERE id=$1", [garage]);
       await assert.rejects(() => store.saveFavorite(other, garage));
       await store.removeFavorite(owner, garage);
       assert.deepEqual(await reader.listFavoriteGarageIds(owner), []);
     } finally {
       await client.query('DELETE FROM garage_favorite WHERE garage_id=$1', [garage]);
-      await client.query('DELETE FROM workshop WHERE id=$1', [garage]);
+      await client.query('DELETE FROM garage WHERE id=$1', [garage]);
       await client.query('DELETE FROM app_user WHERE id=ANY($1::text[])', [[owner, other]]);
       await client.end();
       await store.close();

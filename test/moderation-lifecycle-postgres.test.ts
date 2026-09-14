@@ -34,7 +34,7 @@ test(
     const reporterId = `moderation-reporter-${suffix}`;
     const ownerId = `moderation-owner-${suffix}`;
     const requestId = `moderation-request-${suffix}`;
-    const workshopId = `moderation-workshop-${suffix}`;
+    const garageId = `moderation-garage-${suffix}`;
     const evidenceFileId = `moderation-evidence-${suffix}`;
     let reportId: string | undefined;
     let deletionId: string | undefined;
@@ -51,25 +51,25 @@ test(
         );
       }
       await client.query(
-        `INSERT INTO workshop (
+        `INSERT INTO garage (
            id, name, publication_state, created_by_user_id, place_id, public_phone,
            contact_person, contact_phone, languages, self_reported_specializations
          ) VALUES (
            $1, 'Fiktive PostgreSQL-Moderation', 'published', $2, 'xk-pristina', '+383 44 000 220',
            'Private fiktive Person', '+383 44 000 221', ARRAY['Deutsch'], ARRAY[]::text[]
          )`,
-        [workshopId, ownerId],
+        [garageId, ownerId],
       );
       await client.query(
-        `INSERT INTO workshop_verification (
-           workshop_id, phone_state, contact_person_state, company_document_state, location_state
+        `INSERT INTO garage_verification (
+           garage_id, phone_state, contact_person_state, company_document_state, location_state
          ) VALUES ($1, 'verified', 'verified', 'verified', 'verified')`,
-        [workshopId],
+        [garageId],
       );
       await client.query(
-        `INSERT INTO workshop_service_category (workshop_id, service_category_id)
+        `INSERT INTO garage_service_category (garage_id, service_category_id)
          VALUES ($1, 'bremsen')`,
-        [workshopId],
+        [garageId],
       );
       await client.query(
         `INSERT INTO file_object (
@@ -104,11 +104,11 @@ test(
         text: 'Die fiktive negative Erfahrung hat einen privaten, überprüfbaren Nachweis.',
         visitMonth: '2026-08',
         workQuality: 1,
-        workshopId,
+        garageId,
       });
       await reviews.assignModerator(principal(adminId, ['admin']), review.id, moderatorId);
       await reviews.decideReview(principal(moderatorId, ['moderator']), review.id, {
-        checklist: { serviceMatches: true, visitMonthMatches: true, workshopMatches: true },
+        checklist: { serviceMatches: true, visitMonthMatches: true, garageMatches: true },
         decision: 'published',
       });
       const report = await moderation.createContentReport(principal(reporterId, ['customer']), {
@@ -118,13 +118,13 @@ test(
         subjectType: 'review',
       });
       reportId = report.id;
-      const beforeAction = await reviews.listPublicReviews(workshopId);
+      const beforeAction = await reviews.listPublicReviews(garageId);
       await moderation.assignModerationCase(principal(adminId, ['admin']), report.id, moderatorId);
       await moderation.applyModerationAction(principal(moderatorId, ['moderator']), report.id, {
         action: 'temporarily_hide',
         reasonCode: 'private_data_exposure',
       });
-      const hidden = await reviews.listPublicReviews(workshopId);
+      const hidden = await reviews.listPublicReviews(garageId);
       await moderation.applyModerationAction(principal(moderatorId, ['moderator']), report.id, {
         action: 'restore',
         reasonCode: 'no_violation',
@@ -140,7 +140,7 @@ test(
       });
       await client.query('INSERT INTO garage_favorite (owner_user_id, garage_id) VALUES ($1,$2)', [
         authorId,
-        workshopId,
+        garageId,
       ]);
       const exported = await moderation.exportPersonalData(principal(authorId, ['customer']));
       const deletion = await moderation.requestPersonalDataDeletion(
@@ -151,7 +151,7 @@ test(
         principal(adminId, ['admin']),
         deletion.id,
       );
-      assert.deepEqual(exported.favoriteGarageIds, [workshopId]);
+      assert.deepEqual(exported.favoriteGarageIds, [garageId]);
       assert.equal(
         (
           await client.query(
@@ -161,9 +161,9 @@ test(
         ).rows[0].count,
         0,
       );
-      const retained = await reviews.listPublicReviews(workshopId);
+      const retained = await reviews.listPublicReviews(garageId);
       const retainedAuthor = await client.query<{ readonly author_user_id: string }>(
-        'SELECT author_user_id FROM workshop_review WHERE id = $1',
+        'SELECT author_user_id FROM garage_review WHERE id = $1',
         [review.id],
       );
       anonymizedAuthorId = retainedAuthor.rows[0]?.author_user_id;
@@ -203,29 +203,29 @@ test(
       await client.query('DELETE FROM repair_request WHERE id = $1', [requestId]);
       await client.query(
         `DELETE FROM review_update WHERE review_id IN (
-           SELECT id FROM workshop_review WHERE workshop_id = $1
+           SELECT id FROM garage_review WHERE garage_id = $1
          )`,
-        [workshopId],
+        [garageId],
       );
       await client.query(
-        `DELETE FROM review_workshop_response WHERE review_id IN (
-           SELECT id FROM workshop_review WHERE workshop_id = $1
+        `DELETE FROM review_garage_response WHERE review_id IN (
+           SELECT id FROM garage_review WHERE garage_id = $1
          )`,
-        [workshopId],
+        [garageId],
       );
       await client.query(
         `DELETE FROM review_moderator_assignment WHERE review_id IN (
-           SELECT id FROM workshop_review WHERE workshop_id = $1
+           SELECT id FROM garage_review WHERE garage_id = $1
          )`,
-        [workshopId],
+        [garageId],
       );
       await client.query(
         `DELETE FROM visit_evidence WHERE review_id IN (
-           SELECT id FROM workshop_review WHERE workshop_id = $1
+           SELECT id FROM garage_review WHERE garage_id = $1
          )`,
-        [workshopId],
+        [garageId],
       );
-      await client.query('DELETE FROM workshop_review WHERE workshop_id = $1', [workshopId]);
+      await client.query('DELETE FROM garage_review WHERE garage_id = $1', [garageId]);
       if (reportId) await client.query('DELETE FROM content_report WHERE case_id = $1', [reportId]);
       await client.query('DELETE FROM data_deletion_request WHERE user_id = $1', [authorId]);
       await client.query('DELETE FROM moderation_case WHERE id = ANY($1::text[])', [
@@ -235,11 +235,9 @@ test(
       await client.query('DELETE FROM moderation_event WHERE actor_user_id = ANY($1::text[])', [
         [adminId, authorId, moderatorId, reporterId, ownerId],
       ]);
-      await client.query('DELETE FROM workshop_service_category WHERE workshop_id = $1', [
-        workshopId,
-      ]);
-      await client.query('DELETE FROM workshop_verification WHERE workshop_id = $1', [workshopId]);
-      await client.query('DELETE FROM workshop WHERE id = $1', [workshopId]);
+      await client.query('DELETE FROM garage_service_category WHERE garage_id = $1', [garageId]);
+      await client.query('DELETE FROM garage_verification WHERE garage_id = $1', [garageId]);
+      await client.query('DELETE FROM garage WHERE id = $1', [garageId]);
       await client.query('DELETE FROM file_object WHERE id = $1', [evidenceFileId]);
       await client.query('DELETE FROM app_user WHERE id = ANY($1::text[])', [
         [adminId, authorId, moderatorId, reporterId, ownerId],

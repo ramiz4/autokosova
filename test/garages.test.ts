@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import sharp from 'sharp';
-import { AccessStore, type WorkshopProfileInput } from '../src/server/access';
+import { AccessStore, type GarageProfileInput } from '../src/server/access';
 import { createServer } from '../src/server/app';
 
-const profile: WorkshopProfileInput = {
+const profile: GarageProfileInput = {
   contactPerson: 'Fiktive Ansprechperson',
   contactPhone: '+383 44 000 000',
   description: 'Fiktive Werkstatt für lokale Entwicklungstests.',
@@ -34,15 +34,15 @@ function headers(session: { csrfToken: string; sessionId: string }, write = fals
   };
 }
 
-async function createWorkshop(
+async function createGarage(
   app: ReturnType<typeof createServer>,
   owner: { csrfToken: string; sessionId: string },
-  workshopProfile = profile,
+  garageProfile = profile,
 ) {
   const response = await app.inject({
     headers: headers(owner, true),
     method: 'POST',
-    payload: { consentVersion: 'workshop-onboarding-v1', profile: workshopProfile },
+    payload: { consentVersion: 'garage-onboarding-v1', profile: garageProfile },
     url: '/api/garages',
   });
   assert.equal(response.statusCode, 201);
@@ -56,36 +56,36 @@ const fullyVerified = {
   phone: 'verified',
 } as const;
 
-test('a workshop is private until an admin releases it, while qualification stays self-reported', async () => {
+test('a garage is private until an admin releases it, while qualification stays self-reported', async () => {
   const { admin, app, foreign, owner } = setup();
   try {
-    const workshopId = await createWorkshop(app, owner);
-    const hidden = await app.inject({ method: 'GET', url: `/api/public/garages/${workshopId}` });
+    const garageId = await createGarage(app, owner);
+    const hidden = await app.inject({ method: 'GET', url: `/api/public/garages/${garageId}` });
     const foreignPrivate = await app.inject({
       headers: headers(foreign),
       method: 'GET',
-      url: `/api/garages/${workshopId}`,
+      url: `/api/garages/${garageId}`,
     });
     const prematurePublication = await app.inject({
       headers: headers(admin, true),
       method: 'POST',
       payload: { decision: 'published', verification: fullyVerified },
-      url: `/api/admin/garages/${workshopId}/decision`,
+      url: `/api/admin/garages/${garageId}/decision`,
     });
     const submitted = await app.inject({
       headers: headers(owner, true),
       method: 'POST',
-      url: `/api/garages/${workshopId}/submit-for-review`,
+      url: `/api/garages/${garageId}/submit-for-review`,
     });
     const published = await app.inject({
       headers: headers(admin, true),
       method: 'POST',
       payload: { decision: 'published', verification: fullyVerified },
-      url: `/api/admin/garages/${workshopId}/decision`,
+      url: `/api/admin/garages/${garageId}/decision`,
     });
     const publicProfile = await app.inject({
       method: 'GET',
-      url: `/api/public/garages/${workshopId}`,
+      url: `/api/public/garages/${garageId}`,
     });
 
     assert.equal(hidden.statusCode, 404);
@@ -97,7 +97,7 @@ test('a workshop is private until an admin releases it, while qualification stay
     assert.deepEqual(publicProfile.json(), {
       contact: { phone: '+383 44 000 001' },
       description: 'Fiktive Werkstatt für lokale Entwicklungstests.',
-      id: workshopId,
+      id: garageId,
       languages: ['Deutsch', 'Shqip'],
       name: 'Fiktive Werkstatt Prishtina',
       photoIds: [],
@@ -122,17 +122,17 @@ test('a workshop is private until an admin releases it, while qualification stay
 test('a possible public duplicate is shown but cannot be taken over by another applicant', async () => {
   const { admin, app, foreign, owner } = setup();
   try {
-    const workshopId = await createWorkshop(app, owner);
+    const garageId = await createGarage(app, owner);
     await app.inject({
       headers: headers(owner, true),
       method: 'POST',
-      url: `/api/garages/${workshopId}/submit-for-review`,
+      url: `/api/garages/${garageId}/submit-for-review`,
     });
     await app.inject({
       headers: headers(admin, true),
       method: 'POST',
       payload: { decision: 'published', verification: fullyVerified },
-      url: `/api/admin/garages/${workshopId}/decision`,
+      url: `/api/admin/garages/${garageId}/decision`,
     });
     const candidates = await app.inject({
       headers: headers(foreign),
@@ -143,25 +143,25 @@ test('a possible public duplicate is shown but cannot be taken over by another a
       headers: headers(foreign, true),
       method: 'PUT',
       payload: { ...profile, description: 'Fremder Übernahmeversuch' },
-      url: `/api/garages/${workshopId}`,
+      url: `/api/garages/${garageId}`,
     });
     const duplicate = await app.inject({
       headers: headers(foreign, true),
       method: 'POST',
-      payload: { consentVersion: 'workshop-onboarding-v1', profile },
+      payload: { consentVersion: 'garage-onboarding-v1', profile },
       url: '/api/garages',
     });
 
     assert.equal(candidates.statusCode, 200);
     assert.deepEqual(
       candidates.json().candidates.map((candidate: { id: string }) => candidate.id),
-      [workshopId],
+      [garageId],
     );
     assert.equal(takeover.statusCode, 403);
     assert.equal(duplicate.statusCode, 409);
     assert.deepEqual(
       duplicate.json().candidates.map((candidate: { id: string }) => candidate.id),
-      [workshopId],
+      [garageId],
     );
   } finally {
     await app.close();
@@ -177,7 +177,7 @@ test('admin-assisted onboarding requires documented consent and private verifica
       payload: {
         applicantUserId: 'assisted-owner',
         consentSource: 'documented_support_request',
-        consentVersion: 'workshop-onboarding-v1',
+        consentVersion: 'garage-onboarding-v1',
         profile,
       },
       url: '/api/admin/garages/assisted-onboarding',
@@ -188,17 +188,17 @@ test('admin-assisted onboarding requires documented consent and private verifica
       payload: {
         applicantUserId: 'assisted-owner',
         consentSource: 'documented_support_request',
-        consentVersion: 'workshop-onboarding-v1',
+        consentVersion: 'garage-onboarding-v1',
         profile,
       },
       url: '/api/admin/garages/assisted-onboarding',
     });
-    const workshopId = assisted.json().id as string;
+    const garageId = assisted.json().id as string;
     const assistedOwner = store.createSession('assisted-owner');
     const document = await app.inject({
       headers: headers(assistedOwner, true),
       method: 'POST',
-      url: `/api/garages/${workshopId}/verification-document-grants`,
+      url: `/api/garages/${garageId}/verification-document-grants`,
     });
     const foreignDownload = await app.inject({
       headers: headers(foreign),
@@ -212,8 +212,8 @@ test('admin-assisted onboarding requires documented consent and private verifica
     assert.equal(foreignDownload.statusCode, 403);
     assert.deepEqual(store.auditEvents.at(-1), {
       actorUserId: 'admin',
-      subjectId: workshopId,
-      type: 'workshop-consent-recorded',
+      subjectId: garageId,
+      type: 'garage-consent-recorded',
     });
   } finally {
     await app.close();
@@ -223,7 +223,7 @@ test('admin-assisted onboarding requires documented consent and private verifica
 test('photos are normalized without metadata and only public after profile and photo release', async () => {
   const { admin, app, owner } = setup();
   try {
-    const workshopId = await createWorkshop(app, owner);
+    const garageId = await createGarage(app, owner);
     const source = await sharp({
       create: { background: { b: 30, g: 20, r: 10 }, channels: 3, height: 2000, width: 2400 },
     })
@@ -234,33 +234,33 @@ test('photos are normalized without metadata and only public after profile and p
       headers: { ...headers(owner, true), 'content-type': 'image/jpeg' },
       method: 'POST',
       payload: source,
-      url: `/api/garages/${workshopId}/photos`,
+      url: `/api/garages/${garageId}/photos`,
     });
     const photoId = uploaded.json().id as string;
     const privatePhoto = await app.inject({
       method: 'GET',
-      url: `/api/public/garages/${workshopId}/photos/${photoId}`,
+      url: `/api/public/garages/${garageId}/photos/${photoId}`,
     });
     await app.inject({
       headers: headers(admin, true),
       method: 'POST',
       payload: { approved: true },
-      url: `/api/admin/garages/${workshopId}/photos/${photoId}/decision`,
+      url: `/api/admin/garages/${garageId}/photos/${photoId}/decision`,
     });
     await app.inject({
       headers: headers(owner, true),
       method: 'POST',
-      url: `/api/garages/${workshopId}/submit-for-review`,
+      url: `/api/garages/${garageId}/submit-for-review`,
     });
     await app.inject({
       headers: headers(admin, true),
       method: 'POST',
       payload: { decision: 'published', verification: fullyVerified },
-      url: `/api/admin/garages/${workshopId}/decision`,
+      url: `/api/admin/garages/${garageId}/decision`,
     });
     const publicPhoto = await app.inject({
       method: 'GET',
-      url: `/api/public/garages/${workshopId}/photos/${photoId}`,
+      url: `/api/public/garages/${garageId}/photos/${photoId}`,
     });
     const metadata = await sharp(publicPhoto.rawPayload).metadata();
 
@@ -284,8 +284,8 @@ test('public API uses the garages route and collection name', async () => {
     const response = await app.inject({ method: 'GET', url: '/api/public/garages' });
     assert.equal(response.statusCode, 200);
     assert.deepEqual(Object.keys(response.json()), ['garages']);
-    const removed = await app.inject({ method: 'GET', url: '/api/public/workshops' });
-    assert.equal(removed.statusCode, 404);
+    const singular = await app.inject({ method: 'GET', url: '/api/public/garage' });
+    assert.equal(singular.statusCode, 404);
   } finally {
     await app.close();
   }

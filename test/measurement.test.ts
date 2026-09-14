@@ -66,9 +66,9 @@ test('private and parameterized paths are noindex while the sitemap contains pub
   const app = createServer({
     publicSiteUrl: 'https://autokosova.example',
     searchStore: {
-      listPublicWorkshopIds: () => ['demo-garage'],
-      getPublicWorkshop: () => undefined,
-      searchPublicWorkshops: () => {
+      listPublicGarageIds: () => ['demo-garage'],
+      getPublicGarage: () => undefined,
+      searchPublicGarages: () => {
         throw new Error('Not used');
       },
     },
@@ -86,7 +86,7 @@ test('private and parameterized paths are noindex while the sitemap contains pub
     assert.equal(sitemap.body.includes('/inquiry'), false);
     assert.ok(sitemap.body.includes('/garages/demo-garage'));
     assert.ok(sitemap.body.includes('/sq/garages/demo-garage'));
-    assert.ok(!sitemap.body.includes('/workshop'));
+    assert.ok(!sitemap.body.includes('/garage/'));
     const rules = robots.body.split('\n');
     for (const prefix of ['', '/sq', '/en']) {
       assert.ok(rules.includes(`Disallow: ${prefix}/garages$`));

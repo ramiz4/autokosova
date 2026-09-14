@@ -1,13 +1,14 @@
 import type {
-  WorkshopPublicationState,
-  WorkshopLocationPoint,
-  WorkshopProfileInput,
+  GaragePublicationState,
+  GarageLocationPoint,
+  GarageProfileInput,
   VerificationChecklist,
 } from '../shared/garage-onboarding';
+import { validGarageProfile } from '../shared/garage-onboarding';
 export type {
-  WorkshopPublicationState,
-  WorkshopLocationPoint,
-  WorkshopProfileInput,
+  GaragePublicationState,
+  GarageLocationPoint,
+  GarageProfileInput,
   VerificationChecklist,
 } from '../shared/garage-onboarding';
 import { randomUUID } from 'node:crypto';
@@ -24,7 +25,7 @@ import {
   reviewSummaryLabel,
   type OwnReview,
   type PublicReviewSummary,
-  type PublicWorkshopReview,
+  type PublicGarageReview,
   type ReviewDecisionInput,
   type ReviewEvidenceKind,
   type ReviewEvidenceStatus,
@@ -37,10 +38,10 @@ import {
   type ReviewUpdateKind,
 } from './reviews';
 import {
-  findPublicWorkshops,
-  type PublicWorkshopSearchInput,
-  type PublicWorkshopSearchResponse,
-} from './workshop-search';
+  findPublicGarages,
+  type PublicGarageSearchInput,
+  type PublicGarageSearchResponse,
+} from './garage-search';
 import {
   isModerationAction,
   isModerationReasonCode,
@@ -79,18 +80,18 @@ export interface FileGrant {
   readonly grantId: string;
 }
 
-export interface WorkshopConsent {
+export interface GarageConsent {
   readonly source: 'self_service' | 'documented_support_request';
   readonly version: string;
 }
 
-export interface PublicWorkshopProfile {
+export interface PublicGarageProfile {
   readonly contact: { readonly phone?: string };
   readonly description?: string;
   readonly id: string;
   readonly languages: readonly string[];
   /** Internal-only search data; public route serializers must remove this field. */
-  readonly locationPoint?: WorkshopLocationPoint;
+  readonly locationPoint?: GarageLocationPoint;
   readonly name: string;
   readonly photoIds: readonly string[];
   readonly placeId: string;
@@ -123,7 +124,7 @@ interface Membership {
   readonly role: MembershipRole;
   readonly state: 'active' | 'revoked';
   readonly userId: string;
-  readonly workshopId: string;
+  readonly garageId: string;
 }
 
 interface PrivateFile {
@@ -153,21 +154,21 @@ export interface StoredRepairRequest {
   readonly vehicle?: RepairRequestInput['vehicle'];
 }
 
-interface Workshop {
-  readonly consent: WorkshopConsent;
+interface Garage {
+  readonly consent: GarageConsent;
   readonly createdByUserId: string;
   readonly id: string;
-  profile: WorkshopProfileInput;
-  publicationState: WorkshopPublicationState;
+  profile: GarageProfileInput;
+  publicationState: GaragePublicationState;
   verification: VerificationChecklist;
 }
 
-interface WorkshopDocument {
+interface GarageDocument {
   readonly fileId: string;
-  readonly workshopId: string;
+  readonly garageId: string;
 }
 
-interface WorkshopPhoto {
+interface GaragePhoto {
   readonly content: Buffer;
   readonly contentType: 'image/webp';
   readonly height: number;
@@ -175,7 +176,7 @@ interface WorkshopPhoto {
   readonly uploadedByUserId: string;
   visibility: 'pending_review' | 'approved' | 'rejected';
   readonly width: number;
-  readonly workshopId: string;
+  readonly garageId: string;
 }
 
 interface ReviewEvidence {
@@ -204,10 +205,10 @@ interface ReviewRecord {
   }[];
   readonly vehicleMakeId?: string;
   readonly visitMonth: string;
-  readonly workshopId: string;
-  workshopResponse?: {
+  readonly garageId: string;
+  garageResponse?: {
     readonly createdAt: string;
-    readonly workshopId: string;
+    readonly garageId: string;
     readonly text: string;
   };
 }
@@ -260,9 +261,9 @@ export class AccessError extends Error {
   }
 }
 
-export class DuplicateWorkshopError extends AccessError {
-  constructor(readonly publicMatches: readonly PublicWorkshopProfile[]) {
-    super(409, 'A possible duplicate requires review before a new workshop can be created');
+export class DuplicateGarageError extends AccessError {
+  constructor(readonly publicMatches: readonly PublicGarageProfile[]) {
+    super(409, 'A possible duplicate requires review before a new garage can be created');
   }
 }
 
@@ -281,18 +282,18 @@ export class AccessStore implements ReviewStore {
   private readonly sessions = new Map<string, Session>();
   private readonly users = new Map<string, Set<SystemRole>>();
   private readonly vehicles = new Map<string, Vehicle>();
-  private readonly workshopDocuments = new Map<string, WorkshopDocument>();
-  private readonly workshopPhotos = new Map<string, WorkshopPhoto>();
-  private readonly workshops = new Map<string, Workshop>();
+  private readonly garageDocuments = new Map<string, GarageDocument>();
+  private readonly garagePhotos = new Map<string, GaragePhoto>();
+  private readonly garages = new Map<string, Garage>();
   private retentionPolicy?: RetentionPolicy;
 
   addMembership(
     userId: string,
-    workshopId: string,
+    garageId: string,
     role: MembershipRole,
     state: 'active' | 'revoked' = 'active',
   ) {
-    this.memberships.set(`${userId}:${workshopId}`, { role, state, userId, workshopId });
+    this.memberships.set(`${userId}:${garageId}`, { role, state, userId, garageId });
   }
 
   addRole(userId: string, role: SystemRole) {
@@ -519,7 +520,7 @@ export class AccessStore implements ReviewStore {
       (request) => request.userId === principal.userId && request.status !== 'completed',
     );
     if (existing) return { ...existing };
-    const ownsWorkshop = [...this.memberships.values()].some(
+    const ownsGarage = [...this.memberships.values()].some(
       (membership) =>
         membership.userId === principal.userId &&
         membership.role === 'owner' &&
@@ -528,7 +529,7 @@ export class AccessStore implements ReviewStore {
     const request: DataDeletionRequest = {
       createdAt: new Date().toISOString(),
       id: randomUUID(),
-      status: ownsWorkshop
+      status: ownsGarage
         ? 'manual_content_decision_required'
         : this.retentionPolicy
           ? 'submitted'
@@ -617,23 +618,23 @@ export class AccessStore implements ReviewStore {
     });
   }
 
-  createAssistedWorkshop(
+  createAssistedGarage(
     admin: Principal,
     applicantUserId: string,
-    profile: WorkshopProfileInput,
-    consent: WorkshopConsent,
+    profile: GarageProfileInput,
+    consent: GarageConsent,
   ) {
     this.requireAdmin(admin);
     if (consent.source !== 'documented_support_request') {
       throw new AccessError(422, 'Admin-assisted onboarding requires documented consent');
     }
-    const workshop = this.createWorkshop(applicantUserId, profile, consent);
+    const garage = this.createGarage(applicantUserId, profile, consent);
     this.auditEvents.push({
       actorUserId: admin.userId,
-      subjectId: workshop.id,
-      type: 'workshop-consent-recorded',
+      subjectId: garage.id,
+      type: 'garage-consent-recorded',
     });
-    return workshop;
+    return garage;
   }
 
   createSession(userId: string, expiresAt = new Date(Date.now() + 60 * 60 * 1000)) {
@@ -648,12 +649,12 @@ export class AccessStore implements ReviewStore {
     this.users.set(userId, new Set<SystemRole>(['customer', ...roles]));
   }
 
-  createWorkshopRegistration(
+  createGarageRegistration(
     principal: Principal,
-    profile: WorkshopProfileInput,
+    profile: GarageProfileInput,
     consentVersion: string,
   ) {
-    return this.createWorkshop(principal.userId, profile, {
+    return this.createGarage(principal.userId, profile, {
       source: 'self_service',
       version: consentVersion,
     });
@@ -687,9 +688,9 @@ export class AccessStore implements ReviewStore {
       throw new AccessError(403, 'An admin cannot submit a review on behalf of a customer');
     }
     this.validateReviewSubmission(input);
-    const workshop = this.requireWorkshop(input.workshopId);
-    if (workshop.publicationState !== 'published') {
-      throw new AccessError(404, 'Published workshop not found');
+    const garage = this.requireGarage(input.garageId);
+    if (garage.publicationState !== 'published') {
+      throw new AccessError(404, 'Published garage not found');
     }
     const file = this.files.get(input.evidenceFileId);
     if (!file || file.ownerUserId !== principal.userId) {
@@ -721,7 +722,7 @@ export class AccessStore implements ReviewStore {
       updates: [],
       ...(input.vehicleMakeId ? { vehicleMakeId: input.vehicleMakeId } : {}),
       visitMonth: input.visitMonth,
-      workshopId: input.workshopId,
+      garageId: input.garageId,
     };
     file.reviewId = id;
     this.reviews.set(id, review);
@@ -754,8 +755,8 @@ export class AccessStore implements ReviewStore {
     return this.toStoredRepairRequest(request);
   }
 
-  createWorkshopDocumentGrant(principal: Principal, workshopId: string): FileGrant {
-    this.requireWorkshopAccess(principal, workshopId);
+  createGarageDocumentGrant(principal: Principal, garageId: string): FileGrant {
+    this.requireGarageAccess(principal, garageId);
     const fileId = randomUUID();
     this.files.set(fileId, {
       id: fileId,
@@ -763,7 +764,7 @@ export class AccessStore implements ReviewStore {
       retentionState: 'active',
       storageKey: `quarantine/${fileId}`,
     });
-    this.workshopDocuments.set(fileId, { fileId, workshopId });
+    this.garageDocuments.set(fileId, { fileId, garageId });
     return this.createGrant(fileId);
   }
 
@@ -799,22 +800,22 @@ export class AccessStore implements ReviewStore {
     };
   }
 
-  getPrivateWorkshop(principal: Principal, workshopId: string) {
-    this.requireWorkshopAccess(principal, workshopId);
-    const workshop = this.requireWorkshop(workshopId);
+  getPrivateGarage(principal: Principal, garageId: string) {
+    this.requireGarageAccess(principal, garageId);
+    const garage = this.requireGarage(garageId);
     return {
-      consentVersion: workshop.consent.version,
-      id: workshop.id,
-      profile: workshop.profile,
-      publicationState: workshop.publicationState,
-      verification: workshop.verification,
+      consentVersion: garage.consent.version,
+      id: garage.id,
+      profile: garage.profile,
+      publicationState: garage.publicationState,
+      verification: garage.verification,
     };
   }
 
-  getPublicWorkshop(workshopId: string): PublicWorkshopProfile | undefined {
-    const workshop = this.workshops.get(workshopId);
-    if (!workshop || workshop.publicationState !== 'published') return undefined;
-    return this.toPublicWorkshop(workshop);
+  getPublicGarage(garageId: string): PublicGarageProfile | undefined {
+    const garage = this.garages.get(garageId);
+    if (!garage || garage.publicationState !== 'published') return undefined;
+    return this.toPublicGarage(garage);
   }
 
   assignModerator(admin: Principal, reviewId: string, moderatorUserId: string): void {
@@ -852,7 +853,7 @@ export class AccessStore implements ReviewStore {
         file.retentionState !== 'active' ||
         !decision.checklist.serviceMatches ||
         !decision.checklist.visitMonthMatches ||
-        !decision.checklist.workshopMatches
+        !decision.checklist.garageMatches
       ) {
         throw new AccessError(
           422,
@@ -918,13 +919,13 @@ export class AccessStore implements ReviewStore {
   }
 
   listPublicReviews(
-    workshopId: string,
+    garageId: string,
     filter: ReviewPublicFilter = {},
-  ): readonly PublicWorkshopReview[] {
+  ): readonly PublicGarageReview[] {
     return [...this.reviews.values()]
       .filter(
         (review) =>
-          review.workshopId === workshopId &&
+          review.garageId === garageId &&
           review.publicationState === 'published' &&
           (review.evidence.status === 'verified' ||
             review.evidence.status === 'deleted_after_retention') &&
@@ -968,54 +969,49 @@ export class AccessStore implements ReviewStore {
     });
   }
 
-  postWorkshopResponse(
-    principal: Principal,
-    workshopId: string,
-    reviewId: string,
-    text: string,
-  ): void {
-    this.requireWorkshopAccess(principal, workshopId);
+  postGarageResponse(principal: Principal, garageId: string, reviewId: string, text: string): void {
+    this.requireGarageAccess(principal, garageId);
     const review = this.requireReview(reviewId);
-    if (review.workshopId !== workshopId) throw new AccessError(404, 'Published review not found');
+    if (review.garageId !== garageId) throw new AccessError(404, 'Published review not found');
     if (review.publicationState !== 'published') {
       throw new AccessError(404, 'Published review not found');
     }
     if (!this.isReviewText(text, REVIEW_LIMITS.maxResponseLength)) {
-      throw new AccessError(422, 'Workshop response is invalid');
+      throw new AccessError(422, 'Garage response is invalid');
     }
-    review.workshopResponse = {
+    review.garageResponse = {
       createdAt: new Date().toISOString(),
       text: text.trim(),
-      workshopId,
+      garageId,
     };
     this.auditEvents.push({
       actorUserId: principal.userId,
       subjectId: reviewId,
-      type: 'review-workshop-response-posted',
+      type: 'review-garage-response-posted',
     });
   }
 
-  getWorkshopPhoto(
-    workshopId: string,
+  getGaragePhoto(
+    garageId: string,
     photoId: string,
     principal?: Principal,
-  ): WorkshopPhoto | undefined {
-    const photo = this.workshopPhotos.get(photoId);
-    if (!photo || photo.workshopId !== workshopId) return undefined;
-    const workshop = this.requireWorkshop(workshopId);
+  ): GaragePhoto | undefined {
+    const photo = this.garagePhotos.get(photoId);
+    if (!photo || photo.garageId !== garageId) return undefined;
+    const garage = this.requireGarage(garageId);
     if (principal) {
-      this.requireWorkshopAccess(principal, workshopId);
+      this.requireGarageAccess(principal, garageId);
       return photo;
     }
-    if (workshop.publicationState !== 'published' || photo.visibility !== 'approved')
+    if (garage.publicationState !== 'published' || photo.visibility !== 'approved')
       return undefined;
     return photo;
   }
 
   issueDownloadGrant(principal: Principal, fileId: string): FileGrant {
-    const workshopDocument = this.workshopDocuments.get(fileId);
-    if (workshopDocument) {
-      this.requireWorkshopAccess(principal, workshopDocument.workshopId);
+    const garageDocument = this.garageDocuments.get(fileId);
+    if (garageDocument) {
+      this.requireGarageAccess(principal, garageDocument.garageId);
       return this.createGrant(fileId);
     }
     const file = this.files.get(fileId);
@@ -1029,42 +1025,42 @@ export class AccessStore implements ReviewStore {
     return this.createGrant(fileId);
   }
 
-  listOwnedWorkshops(principal: Principal) {
-    return [...this.workshops.values()]
-      .filter((workshop) => this.hasWorkshopAccess(principal, workshop.id))
-      .map((workshop) => ({
-        id: workshop.id,
-        name: workshop.profile.name,
-        publicationState: workshop.publicationState,
+  listOwnedGarages(principal: Principal) {
+    return [...this.garages.values()]
+      .filter((garage) => this.hasGarageAccess(principal, garage.id))
+      .map((garage) => ({
+        id: garage.id,
+        name: garage.profile.name,
+        publicationState: garage.publicationState,
       }));
   }
 
   listPublicDuplicateCandidates(name: string, placeId: string) {
-    return [...this.workshops.values()]
+    return [...this.garages.values()]
       .filter(
-        (workshop) =>
-          workshop.publicationState === 'published' &&
-          sameWorkshopName(workshop.profile.name, name) &&
-          workshop.profile.placeId === placeId,
+        (garage) =>
+          garage.publicationState === 'published' &&
+          sameGarageName(garage.profile.name, name) &&
+          garage.profile.placeId === placeId,
       )
-      .map((workshop) => this.toPublicWorkshop(workshop));
+      .map((garage) => this.toPublicGarage(garage));
   }
 
-  listPublicWorkshops() {
-    return [...this.workshops.values()]
-      .filter((workshop) => workshop.publicationState === 'published')
-      .map((workshop) => this.toPublicWorkshop(workshop));
+  listPublicGarages() {
+    return [...this.garages.values()]
+      .filter((garage) => garage.publicationState === 'published')
+      .map((garage) => this.toPublicGarage(garage));
   }
 
-  listPublicWorkshopIds(): readonly string[] {
-    return this.listPublicWorkshops().map((workshop) => workshop.id);
+  listPublicGarageIds(): readonly string[] {
+    return this.listPublicGarages().map((garage) => garage.id);
   }
 
-  searchPublicWorkshops(input: PublicWorkshopSearchInput): PublicWorkshopSearchResponse {
-    return findPublicWorkshops(
-      [...this.workshops.values()]
-        .filter((workshop) => workshop.publicationState === 'published')
-        .map((workshop) => this.toSearchableWorkshop(workshop)),
+  searchPublicGarages(input: PublicGarageSearchInput): PublicGarageSearchResponse {
+    return findPublicGarages(
+      [...this.garages.values()]
+        .filter((garage) => garage.publicationState === 'published')
+        .map((garage) => this.toSearchableGarage(garage)),
       input,
     );
   }
@@ -1075,43 +1071,42 @@ export class AccessStore implements ReviewStore {
       .map(({ id, label }) => ({ id, label }));
   }
 
-  publishWorkshopPhoto(admin: Principal, workshopId: string, photoId: string, approved: boolean) {
+  publishGaragePhoto(admin: Principal, garageId: string, photoId: string, approved: boolean) {
     this.requireAdmin(admin);
-    const photo = this.workshopPhotos.get(photoId);
-    if (!photo || photo.workshopId !== workshopId)
-      throw new AccessError(404, 'Workshop photo not found');
+    const photo = this.garagePhotos.get(photoId);
+    if (!photo || photo.garageId !== garageId) throw new AccessError(404, 'Garage photo not found');
     photo.visibility = approved ? 'approved' : 'rejected';
     this.auditEvents.push({
       actorUserId: admin.userId,
       subjectId: photoId,
-      type: approved ? 'workshop-photo-approved' : 'workshop-photo-rejected',
+      type: approved ? 'garage-photo-approved' : 'garage-photo-rejected',
     });
   }
 
-  registerWorkshopPhoto(
+  registerGaragePhoto(
     principal: Principal,
-    workshopId: string,
-    normalized: Omit<WorkshopPhoto, 'id' | 'uploadedByUserId' | 'visibility' | 'workshopId'>,
+    garageId: string,
+    normalized: Omit<GaragePhoto, 'id' | 'uploadedByUserId' | 'visibility' | 'garageId'>,
   ) {
-    this.requireWorkshopAccess(principal, workshopId);
+    this.requireGarageAccess(principal, garageId);
     const id = randomUUID();
-    this.workshopPhotos.set(id, {
+    this.garagePhotos.set(id, {
       ...normalized,
       id,
       uploadedByUserId: principal.userId,
       visibility: 'pending_review',
-      workshopId,
+      garageId,
     });
     this.auditEvents.push({
       actorUserId: principal.userId,
       subjectId: id,
-      type: 'workshop-photo-uploaded',
+      type: 'garage-photo-uploaded',
     });
     return { id, ...normalized };
   }
 
-  requireWorkshopMembership(principal: Principal, workshopId: string) {
-    this.requireWorkshopAccess(principal, workshopId);
+  requireGarageMembership(principal: Principal, garageId: string) {
+    this.requireGarageAccess(principal, garageId);
   }
 
   revokeSession(sessionId: string | undefined) {
@@ -1124,70 +1119,70 @@ export class AccessStore implements ReviewStore {
     }
   }
 
-  reviewWorkshop(
+  reviewGarage(
     admin: Principal,
-    workshopId: string,
+    garageId: string,
     decision: 'published' | 'rejected' | 'suspended',
     verification: VerificationChecklist,
   ) {
     this.requireAdmin(admin);
-    const workshop = this.requireWorkshop(workshopId);
-    const validDecisions: Readonly<Record<WorkshopPublicationState, readonly string[]>> = {
+    const garage = this.requireGarage(garageId);
+    const validDecisions: Readonly<Record<GaragePublicationState, readonly string[]>> = {
       draft: [],
       pending_review: ['published', 'rejected'],
       published: ['suspended'],
       rejected: [],
       suspended: [],
     };
-    if (!validDecisions[workshop.publicationState].includes(decision)) {
-      throw new AccessError(409, 'This workshop state cannot take the requested decision');
+    if (!validDecisions[garage.publicationState].includes(decision)) {
+      throw new AccessError(409, 'This garage state cannot take the requested decision');
     }
-    workshop.publicationState = decision;
-    workshop.verification = verification;
+    garage.publicationState = decision;
+    garage.verification = verification;
     this.auditEvents.push({
       actorUserId: admin.userId,
-      subjectId: workshopId,
-      type: `workshop-${decision}`,
+      subjectId: garageId,
+      type: `garage-${decision}`,
     });
   }
 
-  submitWorkshopForReview(principal: Principal, workshopId: string) {
-    this.requireWorkshopAccess(principal, workshopId);
-    const workshop = this.requireWorkshop(workshopId);
-    if (!['draft', 'rejected'].includes(workshop.publicationState)) {
-      throw new AccessError(409, 'Only a draft or rejected workshop can be submitted for review');
+  submitGarageForReview(principal: Principal, garageId: string) {
+    this.requireGarageAccess(principal, garageId);
+    const garage = this.requireGarage(garageId);
+    if (!['draft', 'rejected'].includes(garage.publicationState)) {
+      throw new AccessError(409, 'Only a draft or rejected garage can be submitted for review');
     }
-    if (!validGarageProfile(workshop.profile, workshop.profile))
+    if (!validGarageProfile(garage.profile, garage.profile))
       throw new AccessError(422, 'Invalid garage profile');
-    workshop.publicationState = 'pending_review';
+    garage.publicationState = 'pending_review';
     this.auditEvents.push({
       actorUserId: principal.userId,
-      subjectId: workshopId,
-      type: 'workshop-submitted',
+      subjectId: garageId,
+      type: 'garage-submitted',
     });
   }
 
-  updateWorkshopProfile(principal: Principal, workshopId: string, profile: WorkshopProfileInput) {
-    this.requireWorkshopAccess(principal, workshopId);
-    const workshop = this.requireWorkshop(workshopId);
-    if (workshop.publicationState === 'suspended') {
-      throw new AccessError(409, 'A suspended workshop cannot be changed through self-service');
+  updateGarageProfile(principal: Principal, garageId: string, profile: GarageProfileInput) {
+    this.requireGarageAccess(principal, garageId);
+    const garage = this.requireGarage(garageId);
+    if (garage.publicationState === 'suspended') {
+      throw new AccessError(409, 'A suspended garage cannot be changed through self-service');
     }
-    if (!validGarageProfile(profile, workshop.profile))
+    if (!validGarageProfile(profile, garage.profile))
       throw new AccessError(422, 'Invalid garage profile');
     const locationChanged =
-      workshop.profile.placeId !== profile.placeId ||
-      JSON.stringify(workshop.profile.address) !== JSON.stringify(profile.address) ||
-      !sameLocationPoint(workshop.profile.locationPoint, profile.locationPoint);
-    workshop.profile = this.copyProfile(profile);
+      garage.profile.placeId !== profile.placeId ||
+      JSON.stringify(garage.profile.address) !== JSON.stringify(profile.address) ||
+      !sameLocationPoint(garage.profile.locationPoint, profile.locationPoint);
+    garage.profile = this.copyProfile(profile);
     if (locationChanged) {
-      workshop.verification = { ...workshop.verification, location: 'not_checked' };
+      garage.verification = { ...garage.verification, location: 'not_checked' };
     }
-    if (workshop.publicationState === 'pending_review') workshop.publicationState = 'draft';
+    if (garage.publicationState === 'pending_review') garage.publicationState = 'draft';
     this.auditEvents.push({
       actorUserId: principal.userId,
-      subjectId: workshopId,
-      type: 'workshop-profile-updated',
+      subjectId: garageId,
+      type: 'garage-profile-updated',
     });
   }
 
@@ -1196,8 +1191,8 @@ export class AccessStore implements ReviewStore {
     if (record.subjectType === 'review') {
       return this.reviews.get(record.subjectId)?.authorUserId === principal.userId;
     }
-    if (record.subjectType === 'workshop_profile') {
-      return this.hasWorkshopAccess(principal, record.subjectId);
+    if (record.subjectType === 'garage_profile') {
+      return this.hasGarageAccess(principal, record.subjectId);
     }
     return false;
   }
@@ -1216,12 +1211,12 @@ export class AccessStore implements ReviewStore {
       review.publicationState = action === 'temporarily_hide' ? 'temporarily_hidden' : 'published';
       return;
     }
-    const workshop = this.requireWorkshop(subjectId);
+    const garage = this.requireGarage(subjectId);
     const expectedState = action === 'temporarily_hide' ? 'published' : 'suspended';
-    if (workshop.publicationState !== expectedState) {
-      throw new AccessError(409, 'This workshop cannot take the requested visibility action');
+    if (garage.publicationState !== expectedState) {
+      throw new AccessError(409, 'This garage cannot take the requested visibility action');
     }
-    workshop.publicationState = action === 'temporarily_hide' ? 'suspended' : 'published';
+    garage.publicationState = action === 'temporarily_hide' ? 'suspended' : 'published';
   }
 
   private requireCaseAccess(principal: Principal, record: ModerationCaseRecord): void {
@@ -1245,9 +1240,9 @@ export class AccessStore implements ReviewStore {
       }
       return;
     }
-    const workshop = this.workshops.get(subjectId);
-    if (!workshop || workshop.publicationState !== 'published') {
-      throw new AccessError(404, 'Published workshop not found');
+    const garage = this.garages.get(subjectId);
+    if (!garage || garage.publicationState !== 'published') {
+      throw new AccessError(404, 'Published garage not found');
     }
   }
 
@@ -1314,16 +1309,16 @@ export class AccessStore implements ReviewStore {
         subjectType: 'review' as const,
       }));
     if (moderatorUserId) return reviews;
-    const workshops = [...this.workshops.values()]
-      .filter((workshop) => workshop.publicationState === 'pending_review')
-      .map((workshop) => ({
-        id: `workshop:${workshop.id}`,
+    const garages = [...this.garages.values()]
+      .filter((garage) => garage.publicationState === 'pending_review')
+      .map((garage) => ({
+        id: `garage:${garage.id}`,
         priority: 'normal' as const,
         status: 'submitted' as const,
-        subjectId: workshop.id,
-        subjectType: 'workshop_profile' as const,
+        subjectId: garage.id,
+        subjectType: 'garage_profile' as const,
       }));
-    return [...reviews, ...workshops];
+    return [...reviews, ...garages];
   }
 
   private toSortedModerationSummaries(
@@ -1358,8 +1353,8 @@ export class AccessStore implements ReviewStore {
     };
   }
 
-  private getPublicReviewSummary(workshopId: string): PublicReviewSummary {
-    const reviews = this.listPublicReviews(workshopId);
+  private getPublicReviewSummary(garageId: string): PublicReviewSummary {
+    const reviews = this.listPublicReviews(garageId);
     if (!reviews.length) return emptyReviewSummary();
     const totalRating = reviews.reduce((total, review) => total + review.ratings.overall, 0);
     const averageRating = Math.round((totalRating / reviews.length) * 10) / 10;
@@ -1410,11 +1405,11 @@ export class AccessStore implements ReviewStore {
       ratings: { ...review.ratings, overall: calculateOverallRating(review.ratings) },
       serviceCategoryId: review.serviceCategoryId,
       visitMonth: review.visitMonth,
-      workshopId: review.workshopId,
+      garageId: review.garageId,
     };
   }
 
-  private toPublicReview(review: ReviewRecord): PublicWorkshopReview {
+  private toPublicReview(review: ReviewRecord): PublicGarageReview {
     return {
       evidence: { label: 'Besuch belegt', state: 'verified' },
       id: review.id,
@@ -1424,11 +1419,11 @@ export class AccessStore implements ReviewStore {
       updates: review.updates.map(({ createdAt, kind, text }) => ({ createdAt, kind, text })),
       ...(review.vehicleMakeId ? { vehicleMakeId: review.vehicleMakeId } : {}),
       visitMonth: review.visitMonth,
-      ...(review.workshopResponse
+      ...(review.garageResponse
         ? {
-            workshopResponse: {
-              createdAt: review.workshopResponse.createdAt,
-              text: review.workshopResponse.text,
+            garageResponse: {
+              createdAt: review.garageResponse.createdAt,
+              text: review.garageResponse.text,
             },
           }
         : {}),
@@ -1444,7 +1439,7 @@ export class AccessStore implements ReviewStore {
       !checklist ||
       typeof checklist.serviceMatches !== 'boolean' ||
       typeof checklist.visitMonthMatches !== 'boolean' ||
-      typeof checklist.workshopMatches !== 'boolean'
+      typeof checklist.garageMatches !== 'boolean'
     ) {
       throw new AccessError(422, 'Evidence checklist is invalid');
     }
@@ -1461,7 +1456,7 @@ export class AccessStore implements ReviewStore {
       input.punctuality,
     ];
     if (
-      !input.workshopId ||
+      !input.garageId ||
       !input.evidenceFileId ||
       !isReviewEvidenceKind(input.evidenceKind) ||
       !Object.hasOwn(SERVICE_CATEGORY_LABELS, input.serviceCategoryId) ||
@@ -1474,23 +1469,23 @@ export class AccessStore implements ReviewStore {
     }
   }
 
-  private createWorkshop(userId: string, profile: WorkshopProfileInput, consent: WorkshopConsent) {
+  private createGarage(userId: string, profile: GarageProfileInput, consent: GarageConsent) {
     if (!consent.version || consent.version.length > 80) {
       throw new AccessError(422, 'A current onboarding consent version is required');
     }
     this.validateProfile(profile);
     const duplicateCandidates = this.listPublicDuplicateCandidates(profile.name, profile.placeId);
-    const privateDuplicateExists = [...this.workshops.values()].some(
-      (workshop) =>
-        workshop.publicationState !== 'published' &&
-        sameWorkshopName(workshop.profile.name, profile.name) &&
-        workshop.profile.placeId === profile.placeId,
+    const privateDuplicateExists = [...this.garages.values()].some(
+      (garage) =>
+        garage.publicationState !== 'published' &&
+        sameGarageName(garage.profile.name, profile.name) &&
+        garage.profile.placeId === profile.placeId,
     );
     if (duplicateCandidates.length > 0 || privateDuplicateExists) {
-      throw new DuplicateWorkshopError(duplicateCandidates);
+      throw new DuplicateGarageError(duplicateCandidates);
     }
     const id = randomUUID();
-    const workshop: Workshop = {
+    const garage: Garage = {
       consent,
       createdByUserId: userId,
       id,
@@ -1503,17 +1498,17 @@ export class AccessStore implements ReviewStore {
         phone: 'not_checked',
       },
     };
-    this.workshops.set(id, workshop);
+    this.garages.set(id, garage);
     this.addMembership(userId, id, 'owner');
     this.auditEvents.push({
       actorUserId: userId,
       subjectId: id,
-      type: 'workshop-registration-started',
+      type: 'garage-registration-started',
     });
-    return workshop;
+    return garage;
   }
 
-  private copyProfile(profile: WorkshopProfileInput): WorkshopProfileInput {
+  private copyProfile(profile: GarageProfileInput): GarageProfileInput {
     return {
       ...profile,
       languages: [...profile.languages],
@@ -1532,9 +1527,9 @@ export class AccessStore implements ReviewStore {
     return roles;
   }
 
-  private hasWorkshopAccess(principal: Principal, workshopId: string) {
-    if (principal.roles.has('admin')) return this.workshops.has(workshopId);
-    const membership = this.memberships.get(`${principal.userId}:${workshopId}`);
+  private hasGarageAccess(principal: Principal, garageId: string) {
+    if (principal.roles.has('admin')) return this.garages.has(garageId);
+    const membership = this.memberships.get(`${principal.userId}:${garageId}`);
     return membership?.state === 'active' && ['editor', 'owner'].includes(membership.role);
   }
 
@@ -1542,48 +1537,48 @@ export class AccessStore implements ReviewStore {
     if (!principal.roles.has('admin')) throw new AccessError(403, 'Admin access denied');
   }
 
-  private requireWorkshop(workshopId: string) {
-    const workshop = this.workshops.get(workshopId);
-    if (!workshop) throw new AccessError(404, 'Workshop not found');
-    return workshop;
+  private requireGarage(garageId: string) {
+    const garage = this.garages.get(garageId);
+    if (!garage) throw new AccessError(404, 'Garage not found');
+    return garage;
   }
 
-  private requireWorkshopAccess(principal: Principal, workshopId: string) {
-    if (!this.hasWorkshopAccess(principal, workshopId)) {
-      throw new AccessError(403, 'Workshop access denied');
+  private requireGarageAccess(principal: Principal, garageId: string) {
+    if (!this.hasGarageAccess(principal, garageId)) {
+      throw new AccessError(403, 'Garage access denied');
     }
   }
 
-  private toPublicWorkshop(workshop: Workshop): PublicWorkshopProfile {
-    const allCompanyDataVerified = Object.values(workshop.verification).every(
+  private toPublicGarage(garage: Garage): PublicGarageProfile {
+    const allCompanyDataVerified = Object.values(garage.verification).every(
       (state) => state === 'verified',
     );
     return {
-      contact: workshop.profile.publicPhone ? { phone: workshop.profile.publicPhone } : {},
-      description: workshop.profile.description,
-      id: workshop.id,
-      languages: [...workshop.profile.languages],
-      name: workshop.profile.name,
-      photoIds: [...this.workshopPhotos.values()]
-        .filter((photo) => photo.workshopId === workshop.id && photo.visibility === 'approved')
+      contact: garage.profile.publicPhone ? { phone: garage.profile.publicPhone } : {},
+      description: garage.profile.description,
+      id: garage.id,
+      languages: [...garage.profile.languages],
+      name: garage.profile.name,
+      photoIds: [...this.garagePhotos.values()]
+        .filter((photo) => photo.garageId === garage.id && photo.visibility === 'approved')
         .map((photo) => photo.id),
-      placeId: workshop.profile.placeId,
-      reviewSummary: this.getPublicReviewSummary(workshop.id),
-      selfReportedSpecializations: [...workshop.profile.selfReportedSpecializations],
-      serviceCategoryIds: [...workshop.profile.serviceCategoryIds],
-      vehicleMakeIds: [...workshop.profile.vehicleMakeIds],
+      placeId: garage.profile.placeId,
+      reviewSummary: this.getPublicReviewSummary(garage.id),
+      selfReportedSpecializations: [...garage.profile.selfReportedSpecializations],
+      serviceCategoryIds: [...garage.profile.serviceCategoryIds],
+      vehicleMakeIds: [...garage.profile.vehicleMakeIds],
       ...(allCompanyDataVerified ? { verificationLabel: 'Unternehmensdaten geprüft' } : {}),
     };
   }
 
-  private toSearchableWorkshop(workshop: Workshop): PublicWorkshopProfile {
-    const publicProfile = this.toPublicWorkshop(workshop);
-    return workshop.verification.location === 'verified' && workshop.profile.locationPoint
-      ? { ...publicProfile, locationPoint: { ...workshop.profile.locationPoint } }
+  private toSearchableGarage(garage: Garage): PublicGarageProfile {
+    const publicProfile = this.toPublicGarage(garage);
+    return garage.verification.location === 'verified' && garage.profile.locationPoint
+      ? { ...publicProfile, locationPoint: { ...garage.profile.locationPoint } }
       : publicProfile;
   }
 
-  private validateProfile(profile: WorkshopProfileInput) {
+  private validateProfile(profile: GarageProfileInput) {
     if (!validGarageProfile(profile)) {
       throw new AccessError(422, 'Garage address or catalog selection is invalid');
     }
@@ -1594,10 +1589,7 @@ export class AccessStore implements ReviewStore {
       profile.contactPhone,
     ];
     if (requiredValues.some((value) => !value.trim())) {
-      throw new AccessError(
-        422,
-        'Workshop name, location and verified contact fields are required',
-      );
+      throw new AccessError(422, 'Garage name, location and verified contact fields are required');
     }
     if (profile.serviceCategoryIds.length === 0 || profile.languages.length === 0) {
       throw new AccessError(422, 'At least one service and language are required');
@@ -1622,20 +1614,19 @@ export class AccessStore implements ReviewStore {
         longitude < -180 ||
         longitude > 180
       ) {
-        throw new AccessError(422, 'Workshop location coordinates are invalid');
+        throw new AccessError(422, 'Garage location coordinates are invalid');
       }
     }
   }
 }
 
 function sameLocationPoint(
-  left: WorkshopLocationPoint | undefined,
-  right: WorkshopLocationPoint | undefined,
+  left: GarageLocationPoint | undefined,
+  right: GarageLocationPoint | undefined,
 ): boolean {
   return left?.latitude === right?.latitude && left?.longitude === right?.longitude;
 }
 
-function sameWorkshopName(left: string, right: string) {
+function sameGarageName(left: string, right: string) {
   return left.trim().toLocaleLowerCase('de-DE') === right.trim().toLocaleLowerCase('de-DE');
 }
-import { validGarageProfile } from '../shared/garage-onboarding';
