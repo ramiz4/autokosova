@@ -1,21 +1,6 @@
 :host {
   display: block;
 }
-.onboarding-page {
-  background: linear-gradient(145deg, #f4faff 30%, #eaf4ff 60%, #f8fbff);
-}
-.onboarding-hero {
-  background-image:
-    linear-gradient(90deg, #edf7ff 0%, #f2f8ff 52%, rgb(244 249 255 / 40%) 70%, transparent),
-    url('/images/home/hero-mountain-road-1672.webp');
-  background-size:
-    cover,
-    auto 460px;
-  background-repeat: no-repeat;
-  background-position:
-    center,
-    right 57%;
-}
 .onboarding-section {
   min-width: 0;
   padding: 20px;
@@ -84,13 +69,5 @@
 @media (max-width: 639px) {
   .onboarding-section {
     padding: 16px;
-  }
-  .onboarding-hero {
-    background-position:
-      center,
-      75% center;
-    background-image:
-      linear-gradient(90deg, #edf7ff 0%, rgb(242 248 255 / 96%) 55%, rgb(242 248 255 / 84%)),
-      url('/images/home/hero-mountain-road-1672.webp');
   }
 }

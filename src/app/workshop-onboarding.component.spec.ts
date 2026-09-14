@@ -45,6 +45,25 @@ it('has no fabricated selections and validates an address conflict with focus on
   );
 });
 
+it('uses the same image, overlay, text container and card overlap as the inquiry hero', async () => {
+  const fixture = await setup();
+  const page = fixture.nativeElement as HTMLElement;
+  const hero = page.querySelector<HTMLElement>('header[aria-labelledby="onboarding-hero-title"]')!;
+  const image = hero.querySelector<HTMLImageElement>('img')!;
+  expect(hero.className).toContain('min-h-64');
+  expect(hero.className).toContain('pt-8');
+  expect(hero.className).toContain('pb-20');
+  expect(image.src).toContain('/images/home/hero-mountain-road-1672.webp');
+  expect(image.className).toContain('object-[75%_54%]');
+  expect(hero.querySelector('.bg-gradient-to-r')).not.toBeNull();
+  expect(
+    [...hero.querySelectorAll('div')].some((element) =>
+      element.className.includes('max-w-[1360px]'),
+    ),
+  ).toBe(true);
+  expect(page.querySelector<HTMLElement>('header + div')!.className).toContain('-mt-10');
+});
+
 it('sends the address, preserves input on a failed save and prevents a second concurrent request', async () => {
   const fixture = await setup(),
     component = fixture.componentInstance;
