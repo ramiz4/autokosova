@@ -7,14 +7,15 @@ import { REPAIR_REQUEST_LIMITS } from '../shared/repair-request';
 import { AnalyticsService } from './analytics.service';
 import { LanguageService } from './language.service';
 import { SiteHeaderComponent } from './site-header.component';
+import { SiteFooterComponent } from './site-footer.component';
 import { ButtonDirective } from './ui/button.directive';
 import { IconComponent } from './ui/icon.component';
 import { BenefitCardComponent } from './ui/benefit-card.component';
 
 @Component({
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, SiteFooterComponent],
   selector: 'app-root',
-  template: '<router-outlet />',
+  template: '<router-outlet /><app-site-footer />',
 })
 export class App {}
 
@@ -67,9 +68,5 @@ export class FoundationComponent {
         places: `${this.placeId}:${this.radiusKm}`,
       },
     });
-  }
-
-  protected toggleAnalyticsConsent(): void {
-    this.analytics.setConsent(!this.analytics.consented);
   }
 }
