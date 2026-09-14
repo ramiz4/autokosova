@@ -24,6 +24,11 @@ jobs:
           cache: npm
       - run: npm install --global npm@11.19.0
       - run: npm ci
+      - name: Formatting diagnostics
+        run: |
+          npx prettier --write src/app/site-footer.component.html scripts/footer-browser-smoke.mjs
+          git diff -- src/app/site-footer.component.html scripts/footer-browser-smoke.mjs
+          git restore -- src/app/site-footer.component.html scripts/footer-browser-smoke.mjs
       - run: npm run build
       - run: node scripts/footer-browser-smoke.mjs
       - name: Upload footer viewport evidence
