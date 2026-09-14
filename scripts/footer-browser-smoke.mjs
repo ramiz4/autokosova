@@ -50,13 +50,16 @@ const selector = 'app-site-footer app-language-switcher';
 let server;
 let browser;
 let socket;
+let closeBrowser;
 let launchError;
+let diagnostics = '';
 
 try {
   server = spawn(process.execPath, ['dist/autokosova/server/server.mjs'], {
     env: { ...process.env, PORT: String(port) },
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'pipe'],
   });
+  server.stderr.on('data', (chunk) => { diagnostics = (diagnostics + chunk).slice(-8000); });
   server.on('error', (error) => (launchError = error));
   await until(async () => {
     if (launchError) throw launchError;
@@ -73,8 +76,9 @@ try {
       `--user-data-dir=${profile}`,
       'about:blank',
     ],
-    { stdio: 'ignore' },
+    { stdio: ['ignore', 'ignore', 'pipe'] },
   );
+  browser.stderr.on('data', (chunk) => { diagnostics = (diagnostics + chunk).slice(-8000); });
   browser.on('error', (error) => (launchError = error));
   const target = await until(async () => {
     if (launchError) throw launchError;
@@ -109,6 +113,7 @@ try {
       socket.send(JSON.stringify({ id: requestId, method, params }));
     });
   }
+  closeBrowser = () => command('Browser.close');
   async function evaluate(expression) {
     const response = await command('Runtime.evaluate', {
       expression,
@@ -127,6 +132,7 @@ try {
   await mkdir(screenshots, { recursive: true });
   for (const locale of ['de', 'sq', 'en']) {
     for (const width of [360, 390, 430, 1280, 1448]) {
+      console.log(`Checking footer: ${locale}, ${width}px`);
       const path = `${locale === 'de' ? '' : `/${locale}`}/privacy`;
       await command('Emulation.setDeviceMetricsOverride', {
         width,
@@ -202,9 +208,15 @@ try {
       console.log(`Footer browser checks passed: ${locale}, ${width}px`);
     }
   }
+} catch (error) {
+  console.error(error, diagnostics);
+  throw error;
 } finally {
+  await closeBrowser?.().catch((error) => console.warn('Browser cleanup:', error.message));
   socket?.close();
   await stop(browser);
   await stop(server);
-  await rm(profile, { recursive: true, force: true });
+  await rm(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }).catch(
+    (error) => console.warn('Temporary profile cleanup:', error.message),
+  );
 }
