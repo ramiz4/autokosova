@@ -16,7 +16,7 @@ Dieses Modell ergänzt [ADR-001](ADR-001.md). Es ist eine fachliche und technisc
 | Entität | Kernfelder | Sichtbarkeit und Regel |
 |---|---|---|
 | `User` | `id`, `oidc_subject`, `status`, `created_at`, `deleted_at` | Privat. `oidc_subject` ist eindeutig; E-Mail wird nicht als Autorisierungs- oder Fremdschlüssel verwendet. |
-| `Workshop` | `id`, `name`, `publication_state`, `verification_state`, `place_id`, `contact_channels`, `published_at` | Öffentliche View nur bei `publication_state=published`. `verification_state` bedeutet ausschließlich Unternehmensdatenprüfung, nie Reparaturqualität. |
+| `Workshop` | `id`, `name`, `publication_state`, `place_id`, `location_point nullable`, `location_source nullable` | Öffentliche View nur bei `publication_state=published`. `place_id` ist die Ortszuordnung; `location_point` ist ein separat bestätigbarer Werkstattpunkt. Bestehende Ortsmittelpunkte werden nicht übernommen. Unternehmensprüfung und Reparaturqualität bleiben getrennte Aussagen. |
 | `Membership` | `user_id`, `workshop_id`, `role`, `state`, `granted_by`, `granted_at` | Privat. Nur aktive Mitgliedschaft erlaubt Workshop-Verwaltung. Selbstregistrierung erzeugt nie eine aktive Membership zu bestehendem Workshop. |
 | `ServiceCategory` | `id`, `parent_id`, `slug`, `label_de`, `label_sq`, `state` | Öffentlich lesbarer, administrativ gepflegter Katalog. Keine freien Kategorien in der Suche. |
 | `Place` | `id`, `name`, `country_code`, `point geography(Point,4326)`, `source`, `status` | Öffentliche, geprüfte Ortsgrundlage. `source` dokumentiert eigene Prüfung; MapTiler-Suchergebnisse werden nicht persistiert. |

@@ -35,7 +35,8 @@ export interface PublicWorkshopSearchInput {
 }
 
 export interface SearchMatchCandidate extends PublicWorkshopProfile {
-  readonly distanceM: number;
+  readonly distanceM?: number;
+  readonly locationAvailable?: boolean;
   readonly matchingPlaceId: string;
 }
 
@@ -43,9 +44,10 @@ export interface PublicWorkshopSearchResult {
   readonly companyDataVerified: boolean;
   readonly contact: PublicWorkshopProfile['contact'];
   readonly description?: string;
-  readonly distanceKm: number;
+  readonly distanceKm?: number;
   readonly id: string;
   readonly languages: readonly string[];
+  readonly locationAvailable: boolean;
   readonly matchingPlace: { readonly id: string; readonly label: string };
   readonly name: string;
   readonly photoIds: readonly string[];
@@ -187,17 +189,15 @@ export function findPublicWorkshops(
     if (!matchesVehicleMake(workshop, input.vehicleMakeId)) return [];
     if (!matchesLanguage(workshop, input.language)) return [];
 
-    const workshopPlace = getCatalogPlace(workshop.placeId);
-    if (!workshopPlace) return [];
     const matchingAreas = input.allResults
-      ? [{ distanceM: 0, matchingPlaceId: workshop.placeId }]
+      ? [{ matchingPlaceId: workshop.placeId }]
       : input.areas
           .map((area) => {
             const searchPlace = getCatalogPlace(area.placeId);
-            if (!searchPlace) return undefined;
+            if (!searchPlace || !workshop.locationPoint) return undefined;
             const distanceM = haversineDistanceM(
-              workshopPlace.latitude,
-              workshopPlace.longitude,
+              workshop.locationPoint.latitude,
+              workshop.locationPoint.longitude,
               searchPlace.latitude,
               searchPlace.longitude,
             );
@@ -291,7 +291,8 @@ function toSearchResult(
 ): PublicWorkshopSearchResult {
   const matchingPlace = getCatalogPlace(candidate.matchingPlaceId);
   const companyDataVerified = candidate.verificationLabel === 'Unternehmensdaten geprüft';
-  const distanceKm = roundDistance(candidate.distanceM / 1000);
+  const distanceKm =
+    candidate.distanceM === undefined ? undefined : roundDistance(candidate.distanceM / 1000);
   const reasons = input.serviceCategoryId
     ? [`Leistung: ${SERVICE_CATEGORY_LABELS[input.serviceCategoryId] ?? input.serviceCategoryId}`]
     : [];
@@ -304,17 +305,20 @@ function toSearchResult(
   }
   if (input.language) reasons.push(`Sprache: ${input.language}`);
   if (companyDataVerified) reasons.push('Unternehmensdaten geprüft');
-  reasons.push(
-    `${formatDistance(distanceKm)} Luftlinie zu ${matchingPlace?.label ?? candidate.matchingPlaceId}`,
-  );
+  if (distanceKm !== undefined) {
+    reasons.push(
+      `${formatDistance(distanceKm)} Luftlinie zu ${matchingPlace?.label ?? candidate.matchingPlaceId}`,
+    );
+  }
 
   return {
     companyDataVerified,
     contact: candidate.contact,
     ...(candidate.description ? { description: candidate.description } : {}),
-    distanceKm,
+    ...(distanceKm === undefined ? {} : { distanceKm }),
     id: candidate.id,
     languages: candidate.languages,
+    locationAvailable: candidate.locationAvailable ?? candidate.locationPoint !== undefined,
     matchingPlace: {
       id: candidate.matchingPlaceId,
       label: matchingPlace?.label ?? candidate.matchingPlaceId,
@@ -340,7 +344,7 @@ function compareSearchResult(
   // one five-star review cannot leapfrog a larger current basis. Paid status has no field here.
   const scoreDifference = relevanceScore(right) - relevanceScore(left);
   if (scoreDifference) return scoreDifference;
-  const distanceDifference = left.distanceKm - right.distanceKm;
+  const distanceDifference = (left.distanceKm ?? Infinity) - (right.distanceKm ?? Infinity);
   if (distanceDifference) return distanceDifference;
   const nameDifference = left.name.localeCompare(right.name, 'de');
   return nameDifference || left.id.localeCompare(right.id);
@@ -381,11 +385,12 @@ function compareCandidateDistance(left: SearchMatchCandidate, right: SearchMatch
 }
 
 function compareMatchingAreaDistance(
-  left: { readonly distanceM: number; readonly matchingPlaceId: string },
-  right: { readonly distanceM: number; readonly matchingPlaceId: string },
+  left: { readonly distanceM?: number; readonly matchingPlaceId: string },
+  right: { readonly distanceM?: number; readonly matchingPlaceId: string },
 ): number {
   return (
-    left.distanceM - right.distanceM || left.matchingPlaceId.localeCompare(right.matchingPlaceId)
+    (left.distanceM ?? Infinity) - (right.distanceM ?? Infinity) ||
+    left.matchingPlaceId.localeCompare(right.matchingPlaceId)
   );
 }
 

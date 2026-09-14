@@ -47,10 +47,12 @@ test(
       await client.query(
         `INSERT INTO workshop (
            id, name, publication_state, created_by_user_id, place_id, public_phone,
-           contact_person, contact_phone, languages, self_reported_specializations
+           contact_person, contact_phone, languages, self_reported_specializations,
+           location_point, location_source
          ) VALUES (
            $1, 'Fiktive PostgreSQL-Bewertungen', 'published', $2, 'xk-pristina', '+383 44 000 120',
-           'Private fiktive Person', '+383 44 000 121', ARRAY['Deutsch'], ARRAY[]::text[]
+           'Private fiktive Person', '+383 44 000 121', ARRAY['Deutsch'], ARRAY[]::text[],
+           ST_SetSRID(ST_MakePoint(21.16688, 42.67272), 4326)::geography, 'self_reported'
          )`,
         [workshopId, ownerId],
       );

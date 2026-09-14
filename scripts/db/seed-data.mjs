@@ -170,8 +170,9 @@ async function seedDemoData(client) {
     await client.query(
       `INSERT INTO workshop (
          id, name, publication_state, place_id, description, public_phone,
-         contact_person, contact_phone, languages, self_reported_specializations
-       ) VALUES ($1, $2, 'published', $3, $4, $5, $6, $5, $7, $8)
+         contact_person, contact_phone, languages, self_reported_specializations, location_point, location_source
+       ) VALUES ($1, $2, 'published', $3, $4, $5, $6, $5, $7, $8,
+         ST_SetSRID(ST_MakePoint($10, $9), 4326)::geography, 'local_demo')
        ON CONFLICT (id) DO UPDATE
        SET name = EXCLUDED.name,
            publication_state = EXCLUDED.publication_state,
@@ -181,7 +182,9 @@ async function seedDemoData(client) {
            contact_person = EXCLUDED.contact_person,
            contact_phone = EXCLUDED.contact_phone,
            languages = EXCLUDED.languages,
-           self_reported_specializations = EXCLUDED.self_reported_specializations`,
+           self_reported_specializations = EXCLUDED.self_reported_specializations,
+           location_point = EXCLUDED.location_point,
+           location_source = EXCLUDED.location_source`,
       [
         workshop.id,
         workshop.name,
@@ -191,6 +194,8 @@ async function seedDemoData(client) {
         workshop.contactPerson,
         workshop.languages,
         workshop.selfReportedSpecializations,
+        workshop.locationPoint.latitude,
+        workshop.locationPoint.longitude,
       ],
     );
 

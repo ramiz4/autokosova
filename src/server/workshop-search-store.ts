@@ -13,10 +13,11 @@ interface SearchRow {
   readonly average_rating: number | string | null;
   readonly company_data_verified: boolean;
   readonly description: string | null;
-  readonly distance_m: number;
+  readonly distance_m: number | null;
   readonly id: string;
   readonly latest_visit_month: string | null;
   readonly languages: readonly string[] | null;
+  readonly location_available: boolean;
   readonly matching_place_id: string;
   readonly name: string;
   readonly photo_ids: readonly string[] | null;
@@ -62,8 +63,8 @@ export class PostgresWorkshopSearchStore implements WorkshopSearchStore {
          summary.latest_visit_month,
          summary.verified_visit_count,
          ARRAY[]::text[] AS photo_ids,
-         profile.place_id AS matching_place_id,
-         0::double precision AS distance_m
+         profile.place_id AS matching_place_id, profile.workshop_point IS NOT NULL AS location_available,
+         NULL::double precision AS distance_m
        FROM public_workshop_profile AS profile
        LEFT JOIN public_workshop_review_summary AS summary ON summary.workshop_id = profile.id
        WHERE profile.id = $1`,
@@ -91,7 +92,8 @@ export class PostgresWorkshopSearchStore implements WorkshopSearchStore {
            profile.vehicle_make_ids, profile.company_data_verified, summary.review_count,
            summary.average_rating, summary.latest_visit_month, summary.verified_visit_count,
            ARRAY[]::text[] AS photo_ids, profile.place_id AS matching_place_id,
-           0::double precision AS distance_m
+           profile.workshop_point IS NOT NULL AS location_available,
+           NULL::double precision AS distance_m
          FROM public_workshop_profile AS profile
          LEFT JOIN public_workshop_review_summary AS summary ON summary.workshop_id = profile.id
          WHERE ($1::text IS NULL OR $1 = ANY(COALESCE(profile.service_category_ids, ARRAY[]::text[])))
@@ -126,12 +128,13 @@ export class PostgresWorkshopSearchStore implements WorkshopSearchStore {
            summary.verified_visit_count,
            ARRAY[]::text[] AS photo_ids,
            search_areas.id AS matching_place_id,
-           ST_Distance(profile.place_point, search_areas.point) AS distance_m
+           true AS location_available,
+           ST_Distance(profile.workshop_point, search_areas.point) AS distance_m
          FROM public_workshop_profile AS profile
          LEFT JOIN public_workshop_review_summary AS summary ON summary.workshop_id = profile.id
          JOIN search_areas
-           ON profile.place_point IS NOT NULL
-          AND ST_DWithin(profile.place_point, search_areas.point, search_areas.radius_m)
+          ON profile.workshop_point IS NOT NULL
+          AND ST_DWithin(profile.workshop_point, search_areas.point, search_areas.radius_m)
          WHERE (
              $3::text IS NULL
              OR $3::text = ANY(COALESCE(profile.service_category_ids, ARRAY[]::text[]))
@@ -149,7 +152,7 @@ export class PostgresWorkshopSearchStore implements WorkshopSearchStore {
                WHERE lower(language.value) = lower($5::text)
              )
            )
-         ORDER BY profile.id, ST_Distance(profile.place_point, search_areas.point), search_areas.id
+         ORDER BY profile.id, ST_Distance(profile.workshop_point, search_areas.point), search_areas.id
        )
        SELECT * FROM matched`,
       [
@@ -169,7 +172,8 @@ function toCandidate(row: SearchRow): SearchMatchCandidate {
   const profile = toPublicProfile(row);
   return {
     ...profile,
-    distanceM: Number(row.distance_m),
+    ...(row.distance_m === null ? {} : { distanceM: Number(row.distance_m) }),
+    locationAvailable: row.location_available,
     matchingPlaceId: row.matching_place_id,
   };
 }

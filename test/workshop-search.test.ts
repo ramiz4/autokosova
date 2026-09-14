@@ -14,11 +14,12 @@ import {
   parsePublicWorkshopSearch,
 } from '../src/server/workshop-search';
 import { PostgresWorkshopSearchStore } from '../src/server/workshop-search-store';
+import { getCatalogPlace } from '../src/shared/catalog';
 
 const databaseUrl = process.env['DATABASE_URL'];
 
 function profile(overrides: Partial<PublicWorkshopProfile> = {}): PublicWorkshopProfile {
-  return {
+  const result = {
     contact: { phone: '+383 44 000 001' },
     id: 'workshop-pristina',
     languages: ['Deutsch', 'Shqip'],
@@ -31,6 +32,9 @@ function profile(overrides: Partial<PublicWorkshopProfile> = {}): PublicWorkshop
     verificationLabel: 'Unternehmensdaten geprüft',
     ...overrides,
   };
+  if (Object.hasOwn(overrides, 'locationPoint')) return result;
+  const place = getCatalogPlace(result.placeId)!;
+  return { ...result, locationPoint: { latitude: place.latitude, longitude: place.longitude } };
 }
 
 function query(overrides: Record<string, string> = {}) {
@@ -65,6 +69,23 @@ test('a radius includes its centre and its boundary, but never silently expands 
   );
   assert.equal(result.results[0].distanceKm, 0);
   assert.equal(result.results[0].matchingPlace.label, 'Prishtina');
+});
+
+test('a workshop without a confirmed point stays discoverable without a radius but never gains a zero-distance placeholder', () => {
+  const withoutPoint = profile({ id: 'without-point', locationPoint: undefined });
+  const radiusResult = findPublicWorkshops([withoutPoint], query({ places: 'xk-pristina:5' }));
+  const allResult = findPublicWorkshops(
+    [withoutPoint],
+    parsePublicWorkshopSearch({ all: 'true', service: 'bremsen' })!,
+  );
+
+  assert.equal(radiusResult.total, 0);
+  assert.equal(allResult.total, 1);
+  assert.equal(allResult.results[0].distanceKm, undefined);
+  assert.equal(
+    allResult.results[0].reasons.some((reason) => /Luftlinie/.test(reason)),
+    false,
+  );
 });
 
 test('multiple places are unioned, overlap is deduplicated, and the closest matching place is shown', () => {
@@ -238,6 +259,7 @@ test('the public endpoint only returns released workshops and does not accept pr
     name: 'Freigegebene fiktive Suche',
     placeId: 'xk-pristina',
     publicPhone: '+383 44 000 003',
+    locationPoint: { latitude: 42.67272, longitude: 21.16688 },
     selfReportedSpecializations: [],
     serviceCategoryIds: ['bremsen'],
     vehicleMakeIds: [],
@@ -270,11 +292,48 @@ test('the public endpoint only returns released workshops and does not accept pr
     assert.equal(response.statusCode, 200);
     assert.equal(response.json().total, 1);
     assert.equal(JSON.stringify(response.json()).includes('Private fiktive Person'), false);
+    assert.equal(JSON.stringify(response.json()).includes('locationPoint'), false);
     assert.equal(rejected.statusCode, 200);
     assert.equal(JSON.stringify(rejected.json()).includes('private'), false);
   } finally {
     await app.close();
   }
+});
+
+test('changing a workshop point withdraws its separate location confirmation', () => {
+  const store = new AccessStore();
+  store.addRole('admin', 'admin');
+  const owner = store.getPrincipal(store.createSession('owner').sessionId)!;
+  const admin = store.getPrincipal(store.createSession('admin').sessionId)!;
+  const registered = store.createWorkshopRegistration(
+    owner,
+    {
+      contactPerson: 'Fiktive Person',
+      contactPhone: '+38344000009',
+      languages: ['Deutsch'],
+      locationPoint: { latitude: 42.67, longitude: 21.16 },
+      name: 'Fiktiver Standort',
+      placeId: 'xk-pristina',
+      selfReportedSpecializations: [],
+      serviceCategoryIds: ['bremsen'],
+      vehicleMakeIds: [],
+    },
+    'test-v1',
+  );
+  store.submitWorkshopForReview(owner, registered.id);
+  store.reviewWorkshop(admin, registered.id, 'published', {
+    companyDocument: 'verified',
+    contactPerson: 'verified',
+    location: 'verified',
+    phone: 'verified',
+  });
+  const privateWorkshop = store.getPrivateWorkshop(owner, registered.id);
+  store.updateWorkshopProfile(owner, registered.id, {
+    ...privateWorkshop.profile,
+    locationPoint: { latitude: 42.68, longitude: 21.17 },
+  });
+
+  assert.equal(store.getPrivateWorkshop(owner, registered.id).verification.location, 'not_checked');
 });
 
 test(
@@ -295,10 +354,12 @@ test(
       await client.query(
         `INSERT INTO workshop (
            id, name, publication_state, created_by_user_id, place_id, public_phone,
-           contact_person, contact_phone, languages, self_reported_specializations
+           contact_person, contact_phone, languages, self_reported_specializations,
+           location_point, location_source
          ) VALUES (
            $1, 'Fiktive PostgreSQL-Suche', 'published', $2, 'xk-pristina', '+383 44 000 010',
-           'Private fiktive Person', '+383 44 000 011', ARRAY['Deutsch'], ARRAY['Bremsen']
+           'Private fiktive Person', '+383 44 000 011', ARRAY['Deutsch'], ARRAY['Bremsen'],
+           ST_SetSRID(ST_MakePoint(21.16688, 42.67272), 4326)::geography, 'self_reported'
          )`,
         [workshopId, ownerId],
       );
