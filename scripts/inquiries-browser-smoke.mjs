@@ -364,17 +364,25 @@ try {
     }
   }
   assert.deepEqual(analytics, [], 'Private overview must not emit analytics');
+  // The URL changes before Angular finishes activating a route. Do not race a second
+  // history traversal against the first navigation; wait for the actual destination UI.
+  const searchRendered = `location.pathname === '/garages' &&
+    !!document.querySelector('app-search-handoff #search-title') &&
+    !document.querySelector('app-inquiries') && !document.querySelector('[data-search-skeleton]')`;
   await command('Page.navigate', { url: origin + '/inquiries' });
   await until(() => evaluate(rendered), 'overview');
   await evaluate(`document.querySelector('[data-inquiry-search]').click()`);
-  await until(() => evaluate(`location.pathname === '/garages'`), 'matching navigation');
+  await until(() => evaluate(searchRendered), 'matching navigation');
   assert.equal(await evaluate(`sessionStorage.getItem(${JSON.stringify(draftKey)})`), draft);
   await evaluate('history.back()');
   await until(() => evaluate(`location.pathname === '/inquiries' && ${rendered}`), 'browser back');
   await evaluate('history.forward()');
-  await until(() => evaluate(`location.pathname === '/garages'`), 'browser forward');
+  await until(() => evaluate(searchRendered), 'browser forward');
   await evaluate('history.back()');
-  await until(() => evaluate(rendered), 'back to saved requests');
+  await until(
+    () => evaluate(`location.pathname === '/inquiries' && ${rendered}`),
+    'back to saved requests',
+  );
   await command('Page.reload', { ignoreCache: true });
   await until(() => evaluate(rendered), 'reload persists account view');
   assert.equal(
