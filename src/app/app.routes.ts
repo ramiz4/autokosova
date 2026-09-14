@@ -68,6 +68,8 @@ function localizedRoutes(prefix: string): Routes {
     {
       component: GarageProfileComponent,
       path: `${childPrefix}garages/:garageId`,
+      // The profile keeps the shared footer inside its mobile safe-area layout.
+      data: { ownsFooter: true },
     },
   ];
 }
