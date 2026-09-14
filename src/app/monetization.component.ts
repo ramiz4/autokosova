@@ -36,6 +36,11 @@ export class MonetizationComponent {
     return monetizationCopy[this.language.language];
   }
 
+  protected get skipLink(): string {
+    // A fragment-only href would resolve against the global base URL instead of this page.
+    return `${this.router.url.split('#', 1)[0]}#monetization-main`;
+  }
+
   constructor() {
     this.updateMetadata();
     this.router.events

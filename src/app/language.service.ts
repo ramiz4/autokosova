@@ -45,9 +45,10 @@ export class LanguageService {
 
   switchUrl(target: AppLanguage): string {
     const current = this.router.url || this.browserPath();
-    const [path, query = ''] = current.split('?', 2);
+    const [pathAndQuery, fragment = ''] = current.split('#', 2);
+    const [path, query = ''] = pathAndQuery.split('?', 2);
     const { parameter, route } = identifyRoute(path);
-    return `${routePath(target, route, parameter)}${query ? `?${query}` : ''}`;
+    return `${routePath(target, route, parameter)}${query ? `?${query}` : ''}${fragment ? `#${fragment}` : ''}`;
   }
 
   t(key: string, replacements?: Readonly<Record<string, string | number>>): string {
@@ -80,12 +81,12 @@ export class LanguageService {
 
   private browserPath(): string {
     if (!isPlatformBrowser(this.platformId)) return '/';
-    return `${window.location.pathname}${window.location.search}`;
+    return `${window.location.pathname}${window.location.search}${window.location.hash}`;
   }
 }
 
 export function languageFromUrl(url: string): AppLanguage {
-  const path = url.split('?', 1)[0];
+  const path = url.split(/[?#]/, 1)[0];
   if (path === '/sq' || path.startsWith('/sq/')) return 'sq';
   if (path === '/en' || path.startsWith('/en/')) return 'en';
   return 'de';

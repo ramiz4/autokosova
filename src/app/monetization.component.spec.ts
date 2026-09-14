@@ -6,7 +6,7 @@ import { monetizationCopy } from '../shared/monetization-copy';
 import { AccountSessionService } from './account-session.service';
 import { AnalyticsService } from './analytics.service';
 import { routes } from './app.routes';
-import { LanguageService, routePath } from './language.service';
+import { LanguageService, languageFromUrl, routePath } from './language.service';
 import { MonetizationComponent } from './monetization.component';
 
 const languages = ['de', 'sq', 'en'] as const;
@@ -41,32 +41,35 @@ describe('Costs and fairness page', () => {
     return { fixture, page: fixture.nativeElement as HTMLElement };
   }
 
-  it.each(languages)('explains the current free phase without future offers in %s', async (locale) => {
-    const { page } = await render(locale);
-    const copy = monetizationCopy[locale];
-    expect(page.querySelector('h1')?.textContent?.trim()).toBe(copy.title);
-    expect(Object.keys(copy.cards)).toEqual(['drivers', 'profiles']);
-    expect(page.querySelectorAll('article[data-card]')).toHaveLength(2);
-    for (const id of ['drivers', 'profiles'] as const) {
-      const card = page.querySelector(`[data-card="${id}"]`)!;
-      expect(card.querySelector('h2')?.textContent?.trim()).toBe(copy.cards[id].title);
-      expect(card.querySelectorAll('li')).toHaveLength(copy.cards[id].points.length);
-    }
-    expect(page.querySelector('[data-phase-label]')?.textContent).toContain(copy.currentLabel);
-    for (const text of [copy.pilotNotice, copy.feesNotice, copy.principlesBody]) {
-      expect(page.textContent).toContain(text);
-    }
-    expect(page.querySelector('header img')?.getAttribute('src')).toBe(
-      '/branding/autokosova-logo-header.png',
-    );
-    expect(page.querySelector('app-site-footer footer')).toBeTruthy();
-    expect(page.querySelector('picture img')?.getAttribute('alt')).toBe('');
-    expect(page.querySelector('[data-card="tools"], [data-card="partners"]')).toBeNull();
-    expect(page.querySelector('main')?.textContent).not.toMatch(
-      /Pro-Abo|Pro-Werkzeuge|Kooperationen|Zukunftsidee|future idea|partner[sz]?hips|(?:29|49)\s*(?:EUR|€)|10[’']?000|500\+|Bosch|Continental|Allianz|Liqui.Moly/i,
-    );
-    expect(page.querySelectorAll('main form, main input, main button')).toHaveLength(0);
-  });
+  it.each(languages)(
+    'explains the current free phase without future offers in %s',
+    async (locale) => {
+      const { page } = await render(locale);
+      const copy = monetizationCopy[locale];
+      expect(page.querySelector('h1')?.textContent?.trim()).toBe(copy.title);
+      expect(Object.keys(copy.cards)).toEqual(['drivers', 'profiles']);
+      expect(page.querySelectorAll('article[data-card]')).toHaveLength(2);
+      for (const id of ['drivers', 'profiles'] as const) {
+        const card = page.querySelector(`[data-card="${id}"]`)!;
+        expect(card.querySelector('h2')?.textContent?.trim()).toBe(copy.cards[id].title);
+        expect(card.querySelectorAll('li')).toHaveLength(copy.cards[id].points.length);
+      }
+      expect(page.querySelector('[data-phase-label]')?.textContent).toContain(copy.currentLabel);
+      for (const text of [copy.pilotNotice, copy.feesNotice, copy.principlesBody]) {
+        expect(page.textContent).toContain(text);
+      }
+      expect(page.querySelector('header img')?.getAttribute('src')).toBe(
+        '/branding/autokosova-logo-header.png',
+      );
+      expect(page.querySelector('app-site-footer footer')).toBeTruthy();
+      expect(page.querySelector('picture img')?.getAttribute('alt')).toBe('');
+      expect(page.querySelector('[data-card="tools"], [data-card="partners"]')).toBeNull();
+      expect(page.querySelector('main')?.textContent).not.toMatch(
+        /Pro-Abo|Pro-Werkzeuge|Kooperationen|Zukunftsidee|future idea|partner[sz]?hips|(?:29|49)\s*(?:EUR|€)|10[’']?000|500\+|Bosch|Continental|Allianz|Liqui.Moly/i,
+      );
+      expect(page.querySelectorAll('main form, main input, main button')).toHaveLength(0);
+    },
+  );
 
   it.each(languages)('links only to existing localized user flows in %s', async (locale) => {
     const { page } = await render(locale);
@@ -106,6 +109,27 @@ describe('Costs and fairness page', () => {
     }
   });
 
+  it.each(languages)('keeps the skip link and language switch on the page in %s', async (locale) => {
+    const { fixture, page } = await render(locale);
+    const router = TestBed.inject(Router);
+    const language = TestBed.inject(LanguageService);
+    const base = routePath(locale, 'monetization');
+    for (const query of ['', '?source=information']) {
+      await router.navigateByUrl(`${base}${query}#monetization-principles`);
+      await fixture.whenStable();
+      const skip = page.querySelector<HTMLAnchorElement>('a[href$="#monetization-main"]')!;
+      expect(skip.getAttribute('href')).toBe(`${base}${query}#monetization-main`);
+      expect(new URL(skip.href).pathname).toBe(base);
+      await router.navigateByUrl(skip.getAttribute('href')!);
+      for (const target of languages) {
+        expect(language.switchUrl(target)).toBe(
+          `${routePath(target, 'monetization')}${query}#monetization-main`,
+        );
+      }
+    }
+    expect(languageFromUrl(`${routePath(locale, 'home')}#content`)).toBe(locale);
+  });
+
   it('distinguishes platform fees, repair costs, review evidence and publication', async () => {
     const { page } = await render();
     const text = page.querySelector('main')!.textContent;
@@ -127,7 +151,7 @@ describe('Costs and fairness page', () => {
 
   it('keeps the skip target, section labels and optional analytics connected', async () => {
     const { page } = await render();
-    expect(page.querySelector('a[href="#monetization-main"]')).toBeTruthy();
+    expect(page.querySelector('a[href="/monetization#monetization-main"]')).toBeTruthy();
     expect(page.querySelector('#monetization-main')?.getAttribute('tabindex')).toBe('-1');
     for (const section of page.querySelectorAll('main [aria-labelledby]')) {
       expect(page.querySelector('#' + section.getAttribute('aria-labelledby'))).toBeTruthy();
