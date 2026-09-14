@@ -77,7 +77,7 @@ describe('Provisional public pages and shared shell', () => {
     expect(meta.getTag('name="robots"')).toBeNull();
   });
 
-  it.each(APP_LANGUAGES)('keeps one footer across public and profile layouts in %s', async (locale) => {
+  it.each(APP_LANGUAGES)('keeps one footer across layouts in %s', async (locale) => {
     const fixture = TestBed.createComponent(App);
     const router = TestBed.inject(Router);
     const page = fixture.nativeElement as HTMLElement;
