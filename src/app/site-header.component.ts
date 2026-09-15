@@ -89,6 +89,10 @@ export class SiteHeaderComponent {
   }
 
   protected loginUrl(register = false): string {
-    return `/auth/login?returnTo=${encodeURIComponent(this.loginReturnTo() ?? this.language.link('request'))}${register ? '&prompt=create' : ''}`;
+    const returnTo = this.loginReturnTo();
+    const destination = returnTo
+      ? `returnTo=${encodeURIComponent(returnTo)}`
+      : `locale=${this.language.language}`;
+    return `/auth/login?${destination}${register ? '&prompt=create' : ''}`;
   }
 }
