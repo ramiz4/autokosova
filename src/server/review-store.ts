@@ -1,3 +1,4 @@
+import { assertCurrentStaffIdentity, assertStaffCandidate } from './staff-identity';
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
 import type { FileGrant, Principal } from './access';
@@ -45,6 +46,8 @@ interface PublicReviewRow {
 }
 
 interface ReviewAccessRow extends ReviewRow {
+  readonly scan_state: string;
+  readonly appeal_against_user_id: string | null;
   readonly evidence_file_id: string;
   readonly evidence_status: OwnReview['evidenceStatus'];
   readonly moderator_user_id: string | null;
@@ -89,11 +92,15 @@ export class PostgresReviewStore implements ReviewStore {
       await client.query('BEGIN');
       await this.setPrincipal(client, admin);
       await this.ensureUser(client, admin.userId);
-      await this.ensureUser(client, moderatorUserId);
-      const review = await this.getReviewAccess(client, reviewId);
+      await assertStaffCandidate(client, moderatorUserId);
+      await client.query('SELECT id FROM moderation_case WHERE id=$1 FOR UPDATE', [
+        `review:${reviewId}`,
+      ]);
+      const review = await this.getReviewAccess(client, reviewId, true);
       if (review.publication_state !== 'submitted') {
         throw new AccessError(409, 'Only submitted reviews can be assigned for review');
       }
+      await this.requireNoReviewInterest(client, review, moderatorUserId);
       if (review.author_user_id === moderatorUserId) {
         throw new AccessError(409, 'A reviewer cannot be assigned to their own review');
       }
@@ -216,8 +223,12 @@ export class PostgresReviewStore implements ReviewStore {
       await client.query('BEGIN');
       await this.setPrincipal(client, principal);
       await this.ensureUser(client, principal.userId);
-      const review = await this.getReviewAccess(client, reviewId);
+      await client.query('SELECT id FROM moderation_case WHERE id=$1 FOR UPDATE', [
+        `review:${reviewId}`,
+      ]);
+      const review = await this.getReviewAccess(client, reviewId, true);
       this.requireModerationAccess(principal, review);
+      await this.requireNoReviewInterest(client, review, principal.userId);
       if (review.publication_state !== 'under_review') {
         throw new AccessError(409, 'Only reviews under review can receive a decision');
       }
@@ -225,6 +236,7 @@ export class PostgresReviewStore implements ReviewStore {
       if (decision.decision === 'published') {
         if (
           review.retention_state !== 'active' ||
+          review.scan_state !== 'clean' ||
           !decision.checklist.serviceMatches ||
           !decision.checklist.visitMonthMatches ||
           !decision.checklist.garageMatches
@@ -268,6 +280,10 @@ export class PostgresReviewStore implements ReviewStore {
           ],
         );
       }
+      await client.query('UPDATE moderation_case SET decided_by_user_id=$2 WHERE id=$1', [
+        `review:${reviewId}`,
+        principal.userId,
+      ]);
       await this.audit(client, principal.userId, reviewId, `review-${decision.decision}`);
       await client.query('COMMIT');
     } catch (error) {
@@ -285,7 +301,10 @@ export class PostgresReviewStore implements ReviewStore {
       await client.query('BEGIN');
       await this.setPrincipal(client, admin);
       await this.ensureUser(client, admin.userId);
-      const review = await this.getReviewAccess(client, reviewId);
+      await client.query('SELECT id FROM moderation_case WHERE id=$1 FOR UPDATE', [
+        `review:${reviewId}`,
+      ]);
+      const review = await this.getReviewAccess(client, reviewId, true);
       if (review.publication_state !== 'published' || review.evidence_status !== 'verified') {
         throw new AccessError(409, 'Only verified evidence of a published review can be deleted');
       }
@@ -325,7 +344,7 @@ export class PostgresReviewStore implements ReviewStore {
       ) {
         throw new AccessError(404, 'Private visit evidence not found');
       }
-      if (review.retention_state !== 'active') {
+      if (review.retention_state !== 'active' || review.scan_state !== 'clean') {
         throw new AccessError(404, 'Private visit evidence not found');
       }
       await client.query('COMMIT');
@@ -436,7 +455,7 @@ export class PostgresReviewStore implements ReviewStore {
       if (review.rows[0]?.garage_id !== garageId) {
         throw new AccessError(404, 'Published review not found');
       }
-      if (!principal.roles.has('admin')) {
+      {
         const member = await client.query(
           `SELECT 1 FROM membership
            WHERE garage_id = $1 AND user_id = $2 AND state = 'active'`,
@@ -508,12 +527,16 @@ export class PostgresReviewStore implements ReviewStore {
     await client.query(
       `INSERT INTO app_user (id, oidc_subject, status)
        VALUES ($1, $1, 'active')
-       ON CONFLICT (id) DO UPDATE SET status = 'active'`,
+       ON CONFLICT (id) DO NOTHING`,
       [userId],
     );
   }
 
-  private async getReviewAccess(client: pg.PoolClient, reviewId: string): Promise<ReviewAccessRow> {
+  private async getReviewAccess(
+    client: pg.PoolClient,
+    reviewId: string,
+    lock = false,
+  ): Promise<ReviewAccessRow> {
     const result = await client.query<ReviewAccessRow>(
       `SELECT review.id, review.author_user_id, review.garage_id, review.service_category_id,
               to_char(review.visit_month, 'YYYY-MM') AS visit_month, review.work_quality,
@@ -521,13 +544,14 @@ export class PostgresReviewStore implements ReviewStore {
               review.publication_state, review.rejection_reason_code,
               evidence.private_file_id AS evidence_file_id,
               evidence.verification_state AS evidence_status,
-              file.retention_state,
+              file.retention_state, file.scan_state,
+              (SELECT appeal_against_user_id FROM moderation_case WHERE id='review:'||review.id) AS appeal_against_user_id,
               assignment.moderator_user_id
        FROM garage_review AS review
        JOIN visit_evidence AS evidence ON evidence.review_id = review.id
        JOIN file_object AS file ON file.id = evidence.private_file_id
        LEFT JOIN review_moderator_assignment AS assignment ON assignment.review_id = review.id
-       WHERE review.id = $1`,
+       WHERE review.id = $1${lock ? ' FOR UPDATE OF review, evidence, file' : ''}`,
       [reviewId],
     );
     const review = result.rows[0];
@@ -537,6 +561,20 @@ export class PostgresReviewStore implements ReviewStore {
 
   private requireAdmin(principal: Principal): void {
     if (!principal.roles.has('admin')) throw new AccessError(403, 'Admin access denied');
+  }
+
+  private async requireNoReviewInterest(
+    client: pg.PoolClient,
+    review: ReviewAccessRow,
+    userId: string,
+  ): Promise<void> {
+    if (review.author_user_id === userId || review.appeal_against_user_id === userId)
+      throw new AccessError(403, 'A person involved in this review cannot decide it');
+    const member = await client.query(
+      "SELECT 1 FROM membership WHERE garage_id=$1 AND user_id=$2 AND state='active' FOR SHARE",
+      [review.garage_id, userId],
+    );
+    if (member.rowCount) throw new AccessError(403, 'A garage member cannot moderate its reviews');
   }
 
   private requireModerationAccess(principal: Principal, review: ReviewAccessRow): void {
@@ -556,6 +594,7 @@ export class PostgresReviewStore implements ReviewStore {
         ? 'moderator'
         : '';
     await client.query(`SELECT set_config('app.system_role', $1, true)`, [systemRole]);
+    await assertCurrentStaffIdentity(client, principal);
   }
 
   private async toPublicReview(review: PublicReviewRow): Promise<PublicGarageReview> {

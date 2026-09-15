@@ -29,6 +29,10 @@ Reparaturqualität, Unternehmensprüfung und belegter Werkstattbesuch sind unter
 
 Serverseitige Objektberechtigungen. Private Belege, Fahrzeugdaten und Reisezeiten nicht veröffentlichen oder loggen. Secrets nur über freigegebene Secret-Verwaltung; keine Tokens in Issues/PRs. Kein Scraping personenbezogener Daten oder Versenden von Nachrichten ohne Auftrag. Keine kostenpflichtigen Buchungen oder öffentlichen Deployments ohne Freigabe.
 
+## Änderungen an Berechtigungen
+
+`docs/architecture/ROLES-AND-PERMISSIONS.md` ist die gemeinsame Rollen-/Aktionsreferenz. Bei jeder Berechtigungsänderung Matrix, betroffene Fachbeschreibung, tatsächliche Server-/Objektprüfung und passende Positiv-/Negativtests im selben PR aktualisieren. Geplante, implementierte, geprüfte und nur extern verfügbare Vorgänge unterscheiden; keine zweite Rollentabelle oder neue Rechtevergabe durch UI/Seeds.
+
 ## Definition of Done
 
 Akzeptanzkriterien erfüllt; passende Tests tatsächlich ausgeführt; Fehler-/Leerzustände behandelt; mobile Oberfläche und DE/SQ-Texte berücksichtigt; Datenschutz/Berechtigungen geprüft; relevante Dokumentation aktualisiert; PR/CI überprüfbar. Nicht ausgeführte Prüfungen ausdrücklich benennen. Story Points sind vorläufige relative Grössen, keine Stunden- oder Lieferzusagen.

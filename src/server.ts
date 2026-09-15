@@ -1,3 +1,4 @@
+import { LocalDemoFileStore } from './server/local-demo-files';
 import { PostgresFavoriteStore, UnavailableFavoriteStore } from './server/favorites';
 import { PostgresGarageOnboardingStore } from './server/garage-onboarding-store';
 import {
@@ -31,6 +32,9 @@ if (process.env['NODE_ENV'] === 'production' && !databaseUrl) {
 const accessStore = new AccessStore();
 const app = createServer({
   accessStore,
+  ...(databaseUrl && process.env['AUTOKOSOVA_LOCAL_DEMO_FILES'] === '1'
+    ? { localDemoFiles: new LocalDemoFileStore(databaseUrl) }
+    : {}),
   ...(databaseUrl ? { garageStore: new PostgresGarageOnboardingStore(databaseUrl) } : {}),
   favoriteStore: databaseUrl
     ? new PostgresFavoriteStore(databaseUrl)

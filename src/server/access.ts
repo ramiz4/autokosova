@@ -170,6 +170,7 @@ interface PrivateRepairRequest {
 export type StoredRepairRequest = SavedRepairRequest;
 
 interface Garage {
+  moderationHiddenCaseId?: string;
   readonly consent: GarageConsent;
   readonly createdByUserId: string;
   readonly id: string;
@@ -201,6 +202,7 @@ interface ReviewEvidence {
 }
 
 interface ReviewRecord {
+  moderationHiddenCaseId?: string;
   authorUserId: string;
   readonly createdAt: string;
   readonly evidence: ReviewEvidence;
@@ -229,6 +231,8 @@ interface ReviewRecord {
 }
 
 interface ModerationCaseRecord {
+  decidedByUserId?: string;
+  appealAgainstUserId?: string;
   assignedModeratorUserId?: string;
   createdAt: string;
   readonly id: string;
@@ -406,6 +410,7 @@ export class AccessStore implements ReviewStore {
     if (!['submitted', 'assigned'].includes(record.status)) {
       throw new AccessError(409, 'Only an open moderation case can be assigned');
     }
+    this.requireNoCaseConflict(record, moderatorUserId);
     record.assignedModeratorUserId = moderatorUserId;
     record.status = 'assigned';
     this.auditEvents.push({
@@ -425,11 +430,17 @@ export class AccessStore implements ReviewStore {
     }
     const record = this.requireModerationCase(caseId);
     this.requireCaseAccess(principal, record);
+    this.requireNoCaseConflict(record, principal.userId);
+    if (
+      input.action !== 'restore' &&
+      !['submitted', 'assigned', 'waiting_for_subject'].includes(record.status)
+    )
+      throw new AccessError(409, 'The case already has a decision');
     if (record.subjectType === 'data_deletion') {
       throw new AccessError(409, 'Data deletion uses its dedicated workflow');
     }
     if (input.action === 'temporarily_hide' || input.action === 'restore') {
-      this.changeSubjectVisibility(record.subjectType, record.subjectId, input.action);
+      this.changeSubjectVisibility(record.subjectType, record.subjectId, input.action, record.id);
       record.status = 'resolved';
     } else if (input.action === 'request_information') {
       record.status = 'waiting_for_subject';
@@ -439,6 +450,7 @@ export class AccessStore implements ReviewStore {
       record.status = 'rejected';
     }
     record.reasonCode = input.reasonCode;
+    record.decidedByUserId = principal.userId;
     this.auditEvents.push({
       actorUserId: principal.userId,
       subjectId: caseId,
@@ -468,6 +480,8 @@ export class AccessStore implements ReviewStore {
       message: input.message.trim(),
     });
     record.status = 'submitted';
+    record.appealAgainstUserId = record.decidedByUserId;
+    delete record.assignedModeratorUserId;
     record.reasonCode = 'missing_information';
     this.auditEvents.push({
       actorUserId: principal.userId,
@@ -1039,6 +1053,8 @@ export class AccessStore implements ReviewStore {
     if (review.publicationState !== 'submitted') {
       throw new AccessError(409, 'Only submitted reviews can be assigned for review');
     }
+    if (this.memberships.get(`${moderatorUserId}:${review.garageId}`)?.state === 'active')
+      throw new AccessError(403, 'A garage member cannot moderate its reviews');
     if (review.authorUserId === moderatorUserId) {
       throw new AccessError(409, 'A reviewer cannot be assigned to their own review');
     }
@@ -1183,6 +1199,8 @@ export class AccessStore implements ReviewStore {
 
   postGarageResponse(principal: Principal, garageId: string, reviewId: string, text: string): void {
     this.requireGarageAccess(principal, garageId);
+    if (this.memberships.get(`${principal.userId}:${garageId}`)?.state !== 'active')
+      throw new AccessError(403, 'Active garage membership required');
     const review = this.requireReview(reviewId);
     if (review.garageId !== garageId) throw new AccessError(404, 'Published review not found');
     if (review.publicationState !== 'published') {
@@ -1363,6 +1381,14 @@ export class AccessStore implements ReviewStore {
     if (!validDecisions[garage.publicationState].includes(decision)) {
       throw new AccessError(409, 'This garage state cannot take the requested decision');
     }
+    if (this.memberships.get(`${admin.userId}:${garageId}`)?.state === 'active')
+      throw new AccessError(403, 'A garage member cannot approve their own garage');
+    if (
+      decision === 'published' &&
+      Object.values(verification).some((value) => value !== 'verified')
+    )
+      throw new AccessError(422, 'All company verification checks are required');
+    delete garage.moderationHiddenCaseId;
     garage.publicationState = decision;
     garage.verification = verification;
     this.auditEvents.push({
@@ -1427,6 +1453,7 @@ export class AccessStore implements ReviewStore {
     subjectType: ModerationSubjectType,
     subjectId: string,
     action: 'temporarily_hide' | 'restore',
+    caseId: string,
   ): void {
     if (subjectType === 'review') {
       const review = this.requireReview(subjectId);
@@ -1434,6 +1461,14 @@ export class AccessStore implements ReviewStore {
       if (review.publicationState !== expectedState) {
         throw new AccessError(409, 'This review cannot take the requested visibility action');
       }
+      if (
+        action === 'restore' &&
+        (review.moderationHiddenCaseId !== caseId ||
+          !review.publishedAt ||
+          !['verified', 'deleted_after_retention'].includes(review.evidence.status))
+      )
+        throw new AccessError(409, 'This case cannot restore the review');
+      review.moderationHiddenCaseId = action === 'temporarily_hide' ? caseId : undefined;
       review.publicationState = action === 'temporarily_hide' ? 'temporarily_hidden' : 'published';
       return;
     }
@@ -1442,7 +1477,27 @@ export class AccessStore implements ReviewStore {
     if (garage.publicationState !== expectedState) {
       throw new AccessError(409, 'This garage cannot take the requested visibility action');
     }
+    if (
+      this.deletedGarageIds.has(subjectId) ||
+      (action === 'restore' &&
+        (garage.moderationHiddenCaseId !== caseId ||
+          Object.values(garage.verification).some((value) => value !== 'verified')))
+    )
+      throw new AccessError(409, 'This case cannot restore the garage');
+    garage.moderationHiddenCaseId = action === 'temporarily_hide' ? caseId : undefined;
     garage.publicationState = action === 'temporarily_hide' ? 'suspended' : 'published';
+  }
+
+  private requireNoCaseConflict(record: ModerationCaseRecord, userId: string): void {
+    const review = record.subjectType === 'review' ? this.reviews.get(record.subjectId) : undefined;
+    const garageId = record.subjectType === 'garage_profile' ? record.subjectId : review?.garageId;
+    if (
+      record.report?.reporterUserId === userId ||
+      record.appealAgainstUserId === userId ||
+      review?.authorUserId === userId ||
+      (garageId && this.memberships.get(`${userId}:${garageId}`)?.state === 'active')
+    )
+      throw new AccessError(403, 'A person involved in a case cannot decide it');
   }
 
   private requireCaseAccess(principal: Principal, record: ModerationCaseRecord): void {
@@ -1606,6 +1661,8 @@ export class AccessStore implements ReviewStore {
 
   private requireModerationAccess(principal: Principal, reviewId: string): ReviewRecord {
     const review = this.requireReview(reviewId);
+    if (this.memberships.get(`${principal.userId}:${review.garageId}`)?.state === 'active')
+      throw new AccessError(403, 'A garage member cannot moderate its reviews');
     if (review.authorUserId === principal.userId) {
       throw new AccessError(403, 'A reviewer cannot decide their own review');
     }

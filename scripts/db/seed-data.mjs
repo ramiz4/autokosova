@@ -1,3 +1,4 @@
+import { seedStaffDemo, readStaffDemoConfig } from './staff-demo.mjs';
 import { isManagedDemoEntity, readDemoAccountConfig, seedDemoAccounts } from './demo-accounts.mjs';
 import {
   demoWorkflowRequests,
@@ -80,6 +81,7 @@ export function assertLocalDatabaseTarget(databaseUrl) {
 
 export async function seedDatabase(client, profile, environment = process.env) {
   const accounts = profile === 'demo-workflows' ? readDemoAccountConfig(environment) : undefined;
+  if (profile === 'demo-workflows') readStaffDemoConfig(environment);
   await client.query('BEGIN');
   try {
     await client.query(
@@ -93,6 +95,7 @@ export async function seedDatabase(client, profile, environment = process.env) {
     if (profile === 'demo-workflows') {
       await seedDemoWorkflowData(client);
       await seedDemoAccounts(client, accounts);
+      await seedStaffDemo(client, environment);
     }
 
     await client.query('COMMIT');
@@ -327,6 +330,11 @@ async function seedDemoWorkflowData(client) {
   }
 
   for (const review of demoWorkflowReviews) {
+    const seeded = await client.query(
+      "SELECT 1 FROM local_demo_seed_entity WHERE entity_type='garage_review' AND entity_id=$1",
+      [review.id],
+    );
+    if (seeded.rowCount) continue;
     const fileId = demoWorkflowFileId(review);
     const evidenceId = `demo-evidence-row-${review.id}`;
 

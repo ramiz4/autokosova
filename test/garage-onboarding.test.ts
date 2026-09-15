@@ -268,6 +268,10 @@ test(
       ])
         await client.query(`DELETE FROM ${table} WHERE garage_id=ANY($1::text[])`, [ids]);
       await client.query('DELETE FROM moderation_event WHERE subject_id=ANY($1::text[])', [ids]);
+      await client.query(
+        "DELETE FROM moderation_case WHERE kind='garage_submission' AND subject_id=ANY($1::text[])",
+        [ids],
+      );
       await client.query('DELETE FROM garage WHERE id=ANY($1::text[])', [ids]);
       await client.query('DELETE FROM app_user WHERE id=ANY($1::text[])', [
         [owner.userId, admin.userId, outsider.userId],
