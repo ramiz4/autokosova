@@ -1,3 +1,4 @@
+import { isCanceledFixtureResponse } from './browser-fixture-lifecycle.mjs';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
@@ -102,7 +103,8 @@ try {
     if (!task) return;
     pending.delete(message.id);
     clearTimeout(task.timer);
-    if (message.error) task.reject(new Error(message.error.message));
+    if (message.error)
+      task.reject(Object.assign(new Error(message.error.message), { code: message.error.code }));
     else task.resolve(message.result);
   });
   function command(method, params = {}) {
@@ -199,8 +201,18 @@ try {
     empty = false;
   const errors = [],
     analytics = [];
+  const canceledRequests = new Set();
+  const documentVersions = new Map();
+  const fixtureFailures = [];
+  const fixtureResponses = [];
   socket.addEventListener('message', ({ data }) => {
     const event = JSON.parse(data);
+    if (event.method === 'Page.frameNavigated' || event.method === 'Page.frameDetached') {
+      const id = event.params.frame?.id ?? event.params.frameId;
+      documentVersions.set(id, (documentVersions.get(id) ?? 0) + 1);
+    }
+    if (event.method === 'Network.loadingFailed' && event.params.canceled)
+      canceledRequests.add(event.params.requestId);
     if (event.method === 'Runtime.exceptionThrown') errors.push('Browser runtime exception');
     if (
       event.method === 'Network.requestWillBeSent' &&
@@ -208,7 +220,8 @@ try {
     )
       analytics.push(event.params.request.url);
     if (event.method !== 'Fetch.requestPaused') return;
-    const { requestId, request } = event.params;
+    const { requestId, request, networkId, frameId } = event.params;
+    const documentVersion = documentVersions.get(frameId) ?? 0;
     const url = new URL(request.url);
     let status = 200,
       payload;
@@ -246,15 +259,23 @@ try {
       status = detailStatus;
       payload = detail;
     }
-    void command('Fetch.fulfillRequest', {
-      requestId,
-      responseCode: status,
-      responseHeaders: [
-        { name: 'content-type', value: 'application/json' },
-        { name: 'cache-control', value: 'private, no-store' },
-      ],
-      body: status === 204 ? '' : Buffer.from(JSON.stringify(payload ?? {})).toString('base64'),
-    }).catch(() => errors.push('Fixture response failed'));
+    fixtureResponses.push(
+      command('Fetch.fulfillRequest', {
+        requestId,
+        responseCode: status,
+        responseHeaders: [
+          { name: 'content-type', value: 'application/json' },
+          { name: 'cache-control', value: 'private, no-store' },
+        ],
+        body: status === 204 ? '' : Buffer.from(JSON.stringify(payload ?? {})).toString('base64'),
+      }).catch((error) =>
+        fixtureFailures.push({
+          error,
+          networkId,
+          documentChanged: (documentVersions.get(frameId) ?? 0) !== documentVersion,
+        }),
+      ),
+    );
   });
   await command('Runtime.enable');
   await command('Network.enable');
@@ -488,6 +509,11 @@ try {
     await evaluate(`document.querySelector('[data-inquiries-login]').getAttribute('href')`),
     '/auth/login?returnTo=%2Fsq%2Finquiries',
   );
+  await Promise.all(fixtureResponses);
+  for (const failure of fixtureFailures) {
+    if (!isCanceledFixtureResponse(failure, canceledRequests))
+      errors.push('Fixture response failed: ' + (failure.error.code ?? 'unknown protocol error'));
+  }
   assert.deepEqual(errors, []);
   console.log(
     'Inquiries navigation, reload, account switch, empty/error/retry/missing, expiry and logout passed. Fixtures only; not live ZITADEL.',

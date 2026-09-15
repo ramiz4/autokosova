@@ -140,3 +140,36 @@ beendete eigene Prozesse und erhaltene DB-Daten bleiben unverändert.
 Ein Regressionstest mit einer absichtlich über 3 Sekunden dauernden Bereinigung
 bestätigte das vollständige Aufräumen. Alle 10 Entwicklungsruntime-Tests bestanden
 lokal. Der vollständige CI-Lauf des abschließenden Commits ist separat maßgeblich.
+
+
+## Nachtrag zu #85: Demo-Anfragen müssen im Editor öffnen
+
+Bei der abschließenden Vertragsprüfung fehlten den geseedeten Anfragen gültige
+Abgabe-/Abholdaten. Die Übersicht akzeptierte deren Kurzansichten, der gemeinsame
+Detailvalidator wies sie jedoch ab. Der Seed enthält nun deterministische fiktive
+Termine. Bereits gebundene alte Zeilen werden ausschließlich bei aktiver Revision 1,
+beiden fehlenden Terminen und passender Eigentümerbindung ergänzt; die Revision steigt.
+Geänderte Termine, andere lokale Anfragen und Löschungen werden nicht überschrieben.
+
+Die PostgreSQL-Regression prüft den unveränderten Detailvertrag beider Fixtures,
+die konservative Bestandskorrektur und die Erhaltung später geänderter Termine und
+Revisionen. Der signierte synthetische OIDC-Browsertest öffnet, bearbeitet und löscht
+jetzt die tatsächlichen Seed-Anfragen im normalen Dialog; Reseed/Reload bleiben
+Bestandteil des Nachweises. Der neue CI-Job heißt `demo-accounts-browser`.
+
+Die Browser-Fixture-Race wurde mit um 100 ms verzögerten Antworten reproduziert:
+Chrome meldet bei bereits abgebrochenen Anfragen `Invalid InterceptionId.`. Die
+Testtreiber erkennen ausschließlich diesen konkreten Protokollfehler zusammen mit
+einem passenden Netzwerkabbruch oder einer bereits ersetzten Dokumentinstanz.
+Unbekannte Fehler, Zeitüberschreitungen und fehlerhafte Antworten lebender Requests
+bleiben Fehler. Zwei Tests sichern diese Abgrenzung ab. Der komplette verzögerte
+Browserlauf und der Account-Browserlauf waren erfolgreich; keine UI-Abnahme entfiel.
+
+Lokal erfolgreich: Format, Lint, Typecheck, 200 Angular-Tests, 102 erfolgreiche
+Server-/DB-Tests (zwei Profiltests standardmäßig übersprungen), beide Profiltests
+separat, Build, SSR-Smoke und der erweiterte signierte Demo-Browserlauf. Die
+Entwicklungsprüfungen wurden zusätzlich mit der CI-npm-Version 11.19.0 ausgeführt:
+20 Tests erfolgreich sowie der vollständige Zwei-Worktree-Start mit kontrolliertem
+Abbruch, Sperrbereinigung und Datenerhalt. GitHub-Checks des finalen Korrektur-Commits
+werden im zugehörigen PR festgehalten. Reale ZITADEL-Passwortanmeldungen bleiben
+unverändert separat und sind nicht durch die synthetischen Tests behauptet.

@@ -1,3 +1,5 @@
+import { demoWorkflowRequests } from '../../db/demo-data.mjs';
+
 /** Explicit local fixture assignment. Email/profile claims never grant a membership. */
 export const demoAccountGarageIds = ['demo-prishtina-bremsen', 'demo-prizren-klima-toyota'];
 export const demoAccountRequestIds = [
@@ -117,7 +119,20 @@ export async function seedDemoAccounts(client, config) {
     await mark(client, 'garage', id, 'garage');
   }
   for (const id of demoAccountRequestIds) {
-    if (await isManagedDemoEntity(client, 'repair_request', id)) continue;
+    if (await isManagedDemoEntity(client, 'repair_request', id)) {
+      // Repair only untouched, previously seeded v1 rows. Never change a user's saved dates,
+      // edited revisions, deactivations or deleted rows; a missing row is not recreated.
+      const fixture = demoWorkflowRequests.find((request) => request.id === id);
+      await client.query(
+        `UPDATE repair_request SET earliest_dropoff_on=$3, latest_pickup_on=$4,
+         revision=revision+1, updated_at=now()
+         WHERE id=$1 AND owner_user_id=$2 AND revision=1 AND active
+           AND earliest_dropoff_on IS NULL AND latest_pickup_on IS NULL
+           AND state='matching'`,
+        [id, config.customer, fixture.earliestDropoffOn, fixture.latestPickupOn],
+      );
+      continue;
+    }
     const provenance = await client.query(
       `SELECT r.id FROM repair_request r JOIN local_demo_seed_entity p
        ON p.entity_id=r.id AND p.entity_type='repair_request' WHERE r.id=$1 FOR UPDATE OF r`,

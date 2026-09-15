@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import pg from 'pg';
 import { seedDatabase } from './db/seed-data.mjs';
-import { demoAccountGarageIds } from './db/demo-accounts.mjs';
+import { demoAccountGarageIds, demoAccountRequestIds } from './db/demo-accounts.mjs';
 import { freePort, startBrowser, until } from './inquiries-test-browser.mjs';
 import { startTestOidc } from './inquiries-test-oidc.mjs';
 
@@ -134,6 +134,61 @@ try {
   await click('button[aria-controls="account-menu"]');
   await screenshot('customer', 1280);
   await screenshot('customer', 390);
+  // Test the seeded requests themselves, not replacement rows created by the test.
+  for (const [index, id] of demoAccountRequestIds.entries()) {
+    await click(`[data-inquiry-id="${id}"] [data-edit-inquiry]`);
+    await until(
+      () => evaluate("!!document.querySelector('[data-inquiry-editor][open]')"),
+      'seeded inquiry opens in the actual editor',
+    );
+    const symptom = `Fiktive Demo-Anfrage ${index + 1}: im Browser bearbeitet.`;
+    await fill('#edit-symptom', symptom);
+    await click('[data-save-inquiry]');
+    await until(
+      () =>
+        evaluate(
+          "!document.querySelector('[data-inquiry-editor]') && !!document.querySelector('[data-inquiry-notice]')",
+        ),
+      'saved demo inquiry edit',
+    );
+    const row = await client.query(
+      'SELECT symptom FROM repair_request WHERE id=$1 AND owner_user_id=$2',
+      [id, customerSubject],
+    );
+    assert.equal(row.rows[0].symptom, symptom);
+  }
+  await seedDatabase(client, 'demo-workflows', config);
+  await command('Page.reload', { ignoreCache: true });
+  await until(
+    () =>
+      evaluate(
+        "document.querySelectorAll('[data-inquiry-card]').length === 2 && document.querySelector('main').textContent.includes('im Browser bearbeitet')",
+      ),
+    'demo inquiry edits survive reseed and reload',
+  );
+  const removedId = demoAccountRequestIds[1];
+  await click(`[data-inquiry-id="${removedId}"] [data-inquiry-menu]`);
+  await click(`[data-inquiry-id="${removedId}"] [data-delete-inquiry]`);
+  await until(
+    () => evaluate("!!document.querySelector('[data-delete-dialog][open]')"),
+    'inquiry delete confirmation',
+  );
+  await click('[data-confirm-delete]');
+  await until(
+    () => evaluate("document.querySelectorAll('[data-inquiry-card]').length === 1"),
+    'demo inquiry deleted',
+  );
+  await seedDatabase(client, 'demo-workflows', config);
+  await command('Page.reload', { ignoreCache: true });
+  await until(
+    () => evaluate("document.querySelectorAll('[data-inquiry-card]').length === 1"),
+    'deleted inquiry not reseeded',
+  );
+  assert.equal(
+    (await client.query('SELECT 1 FROM repair_request WHERE id=$1', [removedId])).rowCount,
+    0,
+  );
+
   assert.equal(
     await evaluate(`fetch('/api/garages/${demoAccountGarageIds[1]}').then(r=>r.status)`),
     403,
@@ -144,7 +199,7 @@ try {
   );
   assert.deepEqual(browser.errors, []);
   console.log(
-    'PASS: signed OIDC garage/customer switching, assigned records, private navigation, garage edit/delete/reseed, new form and desktop/mobile layout.',
+    'PASS: signed OIDC garage/customer switching, assigned records, private navigation, garage and seeded inquiry edit/delete/reseed, new form and desktop/mobile layout.',
   );
 } finally {
   await browser?.close();

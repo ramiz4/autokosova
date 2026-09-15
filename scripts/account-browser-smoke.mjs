@@ -1,3 +1,4 @@
+import { isCanceledFixtureResponse } from './browser-fixture-lifecycle.mjs';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
@@ -162,27 +163,47 @@ try {
   let accountPayload = fixture();
   let accountStatus = 200;
   const errors = [];
+  const canceledRequests = new Set();
+  const documentVersions = new Map();
+  const fixtureFailures = [];
+  const fixtureResponses = [];
   socket.addEventListener('message', ({ data }) => {
     const event = JSON.parse(data);
+    if (event.method === 'Page.frameNavigated' || event.method === 'Page.frameDetached') {
+      const id = event.params.frame?.id ?? event.params.frameId;
+      documentVersions.set(id, (documentVersions.get(id) ?? 0) + 1);
+    }
+    if (event.method === 'Network.loadingFailed' && event.params.canceled)
+      canceledRequests.add(event.params.requestId);
     if (event.method === 'Runtime.exceptionThrown') errors.push('Browser runtime exception');
     if (event.method !== 'Fetch.requestPaused') return;
-    const { requestId, request } = event.params;
+    const { requestId, request, networkId, frameId } = event.params;
+    const documentVersion = documentVersions.get(frameId) ?? 0;
     const isLogout = new URL(request.url).pathname === '/auth/logout';
     if (isLogout) {
       accountStatus = 401;
       accountPayload = { loginAvailable: true };
     }
-    void command('Fetch.fulfillRequest', {
-      requestId,
-      responseCode: isLogout ? 204 : accountStatus,
-      responseHeaders: [
-        { name: 'content-type', value: 'application/json' },
-        { name: 'cache-control', value: 'private, no-store' },
-      ],
-      body: isLogout ? '' : Buffer.from(JSON.stringify(accountPayload)).toString('base64'),
-    }).catch(() => errors.push('Fixture response failed'));
+    fixtureResponses.push(
+      command('Fetch.fulfillRequest', {
+        requestId,
+        responseCode: isLogout ? 204 : accountStatus,
+        responseHeaders: [
+          { name: 'content-type', value: 'application/json' },
+          { name: 'cache-control', value: 'private, no-store' },
+        ],
+        body: isLogout ? '' : Buffer.from(JSON.stringify(accountPayload)).toString('base64'),
+      }).catch((error) =>
+        fixtureFailures.push({
+          error,
+          networkId,
+          documentChanged: (documentVersions.get(frameId) ?? 0) !== documentVersion,
+        }),
+      ),
+    );
   });
   await command('Runtime.enable');
+  await command('Network.enable');
   await command('Fetch.enable', {
     patterns: [
       { urlPattern: `${origin}/api/me`, requestStage: 'Request' },
@@ -363,6 +384,11 @@ try {
       `document.querySelector('main').textContent.includes('Nicht vom Anmeldedienst bereitgestellt')`,
     ),
   );
+  await Promise.all(fixtureResponses);
+  for (const failure of fixtureFailures) {
+    if (!isCanceledFixtureResponse(failure, canceledRequests))
+      errors.push('Fixture response failed: ' + (failure.error.code ?? 'unknown protocol error'));
+  }
   assert.deepEqual(errors, []);
   console.log(
     'Account browser state/reload/switch/logout/error checks passed (fictional API fixtures; not live ZITADEL).',

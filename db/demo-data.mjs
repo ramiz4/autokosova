@@ -436,6 +436,8 @@ export const demoWorkflowReviews = [
 export const demoWorkflowRequests = [
   {
     id: 'demo-request-prishtina-bremsen',
+    earliestDropoffOn: '2026-10-02',
+    latestPickupOn: '2026-10-06',
     ownerUserId: 'demo-workflow-requester-a',
     searchAreas: [{ id: 'demo-request-area-prishtina', placeId: 'xk-pristina', radiusM: 20000 }],
     serviceCategoryId: 'bremsen',
@@ -443,6 +445,8 @@ export const demoWorkflowRequests = [
   },
   {
     id: 'demo-request-prizren-klima',
+    earliestDropoffOn: '2026-10-08',
+    latestPickupOn: '2026-10-12',
     ownerUserId: 'demo-workflow-requester-b',
     searchAreas: [{ id: 'demo-request-area-prizren', placeId: 'xk-prizren', radiusM: 30000 }],
     serviceCategoryId: 'klima',
@@ -450,6 +454,8 @@ export const demoWorkflowRequests = [
   },
   {
     id: 'demo-request-ferizaj-service',
+    earliestDropoffOn: '2026-10-15',
+    latestPickupOn: '2026-10-18',
     ownerUserId: 'demo-workflow-requester-c',
     searchAreas: [{ id: 'demo-request-area-ferizaj', placeId: 'xk-ferizaj', radiusM: 25000 }],
     serviceCategoryId: 'service-inspektion',
