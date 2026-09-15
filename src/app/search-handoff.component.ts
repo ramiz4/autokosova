@@ -68,7 +68,6 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
     SiteHeaderComponent,
   ],
   selector: 'app-search-handoff',
-  providers: [FavoritesService],
   template: ` <main class="min-h-screen bg-[#f4f8fe] text-ink" aria-labelledby="search-title">
     <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
       <app-site-header [compact]="true" active="search" />

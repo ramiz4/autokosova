@@ -94,7 +94,6 @@ const PROFILE_SECTIONS = new Set(['about', 'reviews', 'services', 'makes', 'loca
     SiteFooterComponent,
     SiteHeaderComponent,
   ],
-  providers: [FavoritesService],
   templateUrl: './garage-profile.component.html',
 })
 export class GarageProfileComponent {

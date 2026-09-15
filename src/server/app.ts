@@ -158,7 +158,7 @@ const repairRequestBodySchema = {
 function safeReturnTo(value: unknown): string {
   if (typeof value !== 'string' || value.length > 2000) return '/';
   const match = value.match(
-    /^(\/(?:(?:sq|en)\/)?(?:profile|inquiries|inquiry|anfrage|garages(?:\/[A-Za-z0-9_-]{1,128})?))(?:\?([^#]*))?$/,
+    /^(\/(?:(?:sq|en)\/)?(?:profile|inquiries|favorites|inquiry|anfrage|garages(?:\/[A-Za-z0-9_-]{1,128})?))(?:\?([^#]*))?$/,
   );
   if (!match) return '/';
   const path = match[1].replace(/\/anfrage$/, '/inquiry');
@@ -456,7 +456,7 @@ export function createServer(options: ServerOptions = {}) {
     const sitemap = options.publicSiteUrl
       ? `\nSitemap: ${siteUrl(options.publicSiteUrl, '/sitemap.xml')}`
       : '';
-    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /profile\nDisallow: /sq/profile\nDisallow: /en/profile\nDisallow: /inquiries\nDisallow: /sq/inquiries\nDisallow: /en/inquiries\nDisallow: /inquiry\nDisallow: /sq/inquiry\nDisallow: /en/inquiry\nDisallow: /garages/new\nDisallow: /sq/garages/new\nDisallow: /en/garages/new\nDisallow: /garages$\nDisallow: /garages?\nDisallow: /sq/garages$\nDisallow: /sq/garages?\nDisallow: /en/garages$\nDisallow: /en/garages?\nDisallow: /suche\nDisallow: /werkstaetten${sitemap}\n`;
+    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /profile\nDisallow: /sq/profile\nDisallow: /en/profile\nDisallow: /favorites\nDisallow: /sq/favorites\nDisallow: /en/favorites\nDisallow: /inquiries\nDisallow: /sq/inquiries\nDisallow: /en/inquiries\nDisallow: /inquiry\nDisallow: /sq/inquiry\nDisallow: /en/inquiry\nDisallow: /garages/new\nDisallow: /sq/garages/new\nDisallow: /en/garages/new\nDisallow: /garages$\nDisallow: /garages?\nDisallow: /sq/garages$\nDisallow: /sq/garages?\nDisallow: /en/garages$\nDisallow: /en/garages?\nDisallow: /suche\nDisallow: /werkstaetten${sitemap}\n`;
   });
   app.get('/sitemap.xml', async (_request, reply) => {
     if (!options.publicSiteUrl) {
@@ -673,11 +673,15 @@ export function createServer(options: ServerOptions = {}) {
   app.get('/api/me/favorites', async (request, reply) => {
     reply.header('cache-control', 'private, no-store');
     try {
-      return {
-        garageIds: await favoriteStore.listFavoriteGarageIds(requirePrincipal(request).userId),
-      };
+      const principal = requirePrincipal(request);
+      if (Object.keys(request.query as object).length)
+        throw new AccessError(400, 'Unexpected favorites query');
+      const garageIds = await favoriteStore.listFavoriteGarageIds(principal.userId);
+      accessStore.getOwnAccount(principal);
+      return { garageIds };
     } catch (error) {
-      return errorResponse(error, reply);
+      if (error instanceof AccessError) return errorResponse(error, reply);
+      return reply.code(503).send({ error: 'Favorites unavailable' });
     }
   });
   const favoriteParams = {
@@ -696,10 +700,15 @@ export function createServer(options: ServerOptions = {}) {
         const { garageId } = request.params as { garageId: string };
         if (!(await searchStore.getPublicGarage(garageId)))
           throw new AccessError(404, 'Garage not available');
-        await favoriteStore.saveFavorite(principal.userId, garageId);
+        accessStore.getOwnAccount(principal);
+        await favoriteStore.saveFavorite(principal.userId, garageId, () => {
+          accessStore.getOwnAccount(principal);
+        });
+        accessStore.getOwnAccount(principal);
         return reply.code(204).send();
       } catch (error) {
-        return errorResponse(error, reply);
+        if (error instanceof AccessError) return errorResponse(error, reply);
+        return reply.code(503).send({ error: 'Favorites unavailable' });
       }
     },
   );
@@ -713,10 +722,15 @@ export function createServer(options: ServerOptions = {}) {
         await favoriteStore.removeFavorite(
           principal.userId,
           (request.params as { garageId: string }).garageId,
+          () => {
+            accessStore.getOwnAccount(principal);
+          },
         );
+        accessStore.getOwnAccount(principal);
         return reply.code(204).send();
       } catch (error) {
-        return errorResponse(error, reply);
+        if (error instanceof AccessError) return errorResponse(error, reply);
+        return reply.code(503).send({ error: 'Favorites unavailable' });
       }
     },
   );

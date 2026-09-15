@@ -237,3 +237,14 @@ Noch keine Open-Source-Lizenz festgelegt. Veröffentlichung oder Lizenzierung er
 ## URL-Konvention
 
 Kanonische Pfade bleiben in allen UI-Sprachen Englisch: `/inquiry`, `/garages`, `/garages/new` und `/garages/:garageId`, jeweils optional mit `/sq` oder `/en`. Alte deutsche UI-Pfade leiten weiter. Werkstatt-API-Pfade verwenden ebenfalls `garages`; Collection-Antworten verwenden den Schlüssel `garages`.
+
+### Eigene Favoriten
+
+Unter **Mein Konto → Favoriten** (`/favorites`, `/sq/favorites`, `/en/favorites`) stehen die
+in der Werkstattsuche gespeicherten Betriebe, unabhängig von den letzten Suchfiltern.
+Profile werden seitenweise geladen; nicht mehr öffentliche Profile bleiben neutral und
+entfernbar. Die bestätigte Entfernung wird im gemeinsamen Herz-Zustand berücksichtigt.
+Ohne Datenbank werden Favoriten nicht als dauerhaft gespeichert bestätigt. Verträge und
+Prüfgrenzen: [FAVORITES.md](docs/architecture/FAVORITES.md). Der DB-Browsernachweis läuft
+nach Build, Migrationen und explizitem lokalem Demo-Seed mit
+`node scripts/favorites-db-browser-smoke.mjs`; CI erstellt isolierte Testdaten dafür.
