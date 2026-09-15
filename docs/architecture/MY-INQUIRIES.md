@@ -103,24 +103,12 @@ unabhängiger SQL-Nachprüfung. Ohne `DATABASE_URL` werden nur die DB-Tests expl
 `node scripts/inquiries-browser-smoke.mjs` prüft die bisherigen Zustände und
 Navigation mit isolierten Browserfixtures. **Diese Fixtures sind kein DB-Nachweis.**
 
-`node scripts/inquiries-db-browser-smoke.mjs` benötigt eine migrierte, mit Referenzdaten
-versehene lokale Test-DB, Produktionsbuild und Chrome. Der neue CI-Job verwendet einen
-eigenen PostGIS-Service. Er führt die echte Formularerstellung sowie Bearbeiten,
-Deaktivieren, Reaktivieren, Löschen, Konflikte und Kontowechsel über die unveränderten
-privaten HTTP-APIs aus und kontrolliert die Ergebnisse zusätzlich mit unabhängigen
-SQL-Abfragen. Es werden **keine Anwendungsantworten abgefangen**. Seine Daten sind
-fiktive Testdaten, aber tatsächlich in PostgreSQL gespeichert. Bereinigt werden nur
-die zufälligen eigenen Testkonten und deren Daten, niemals ein fremder Bestand.
-
-Die testlokale OIDC-Gegenstelle erzeugt einmalige Codes, kontrolliert PKCE und signiert
-JWTs; die Anwendung durchläuft ihren regulären Codeaustausch und ihre kryptografische
-Verifikation. **Das ist nicht die freigegebene echte Test-ZITADEL aus #38.** Deren
-Durchlauf mit vorhandenen Testkonten bleibt separat auszuführen und im PR zu belegen.
-Keine produktive Anbieter-Konfiguration, Geheimnisse oder Runtime-Login-Bypässe.
-
-Screenshots und `verification.json` des DB-Browserjobs liegen unter
-`test-results/inquiries-db`; sie decken DE/SQ/EN bei 360/390/430/1280 CSS-Pixeln ab.
-Die tatsächlichen Ergebnisse je Commit und nicht ausgeführte Prüfungen stehen im PR.
+`npm run test:e2e` prüft die Kunden-/Werkstattabläufe mit Playwright Test,
+gebauter Anwendung, eigenständiger PostgreSQL-Datenbank und signiertem Test-OIDC.
+Die vorherigen DB-/Demo-Smoketests wurden einschließlich Menü-/Tastatur-/Kontrastnachweisen
+in diese Abnahme übernommen. Die gezielt simulierten Fehler-/Listen-Revalidierungstests bleiben
+separat bestehen. Commands, Testinventar, Isolation und Nachweisgrenzen:
+[Automatisierte E2E-Abnahme](../development/E2E-ACCEPTANCE.md).
 
 ## Bedienung seit #107
 

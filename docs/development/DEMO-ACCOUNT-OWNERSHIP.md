@@ -118,7 +118,7 @@ für veröffentlichte Betriebe. Der öffentliche Registrierungseinstieg behält 
 Erläuterungen; die tägliche Verwaltung zeigt keinen Werbekopf und keine Werbespalte.
 
 Regression: `garage-overview.component.spec.ts`, bestehende Navigations-/CRUD-Tests
-und `scripts/demo-accounts-browser-smoke.mjs` (signierter synthetischer OIDC-Provider,
+und `npm run test:e2e` (Playwright, signierter synthetischer OIDC-Provider,
 eigene PostgreSQL-Fixtures, DE/SQ/EN, 390/1280 px). Der echte Testkonto-Login bleibt
 als gesonderter Nachweis in #81/#92 offen.
 

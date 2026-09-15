@@ -27,6 +27,11 @@ export function safeLogger(environment, write = (line) => process.stdout.write(l
 
 // One process group per command: npm/ng descendants must not survive Ctrl+C.
 // Only groups created by this instance are signalled; Docker DBs stay intact.
+/**
+ * @param {string} command
+ * @param {string[]} args
+ * @param {{cwd?: string, env?: NodeJS.ProcessEnv, log?: (text: string) => void, shutdownTimeout?: number}} [options]
+ */
 export function startProcess(
   command,
   args,
@@ -89,6 +94,11 @@ export function startProcess(
   };
 }
 
+/**
+ * @param {string} command
+ * @param {string[]} args
+ * @param {{cwd?: string, env?: NodeJS.ProcessEnv, log?: (text: string) => void, timeout?: number, signal?: AbortSignal, shutdownTimeout?: number}} [options]
+ */
 export async function runProcess(command, args, { timeout = 30000, signal, ...options } = {}) {
   signal?.throwIfAborted();
   const child = startProcess(command, args, options);

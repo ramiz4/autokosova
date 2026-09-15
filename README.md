@@ -166,6 +166,21 @@ vollständigen Nachweis führt `test:dev:smoke:full` zwei frische Worktrees mit 
 PostGIS-DBs, Abhängigkeitsinstallationen, Wiederholung, Isolation und Fehlerfällen aus.
 CI verwendet ausschließlich diesen vollständigen Test mit fiktiven Daten.
 
+## Automatisierte funktionale E2E-Abnahme
+
+```sh
+npx playwright install chromium
+npm run test:e2e
+```
+
+Die Suite baut die App und prüft Kunden-/Werkstatt-CRUD, Kontentrennung, Fehler, drei Sprachen,
+Desktop/Mobil und einen echten Anwendungsneustart. Sie verwendet eigene Testdatenbanken und
+den signierenden Test-OIDC; laufende App und echte Konten werden nicht verändert.
+Der Check `e2e-acceptance` läuft vor dem Merge im PR und danach auf `main`.
+Details zu Abnahmeinventar, lokalen Einzeltests, Secret-freiem CI und der derzeit fehlenden
+administrativen Merge-Sperre: [E2E-ACCEPTANCE.md](docs/development/E2E-ACCEPTANCE.md).
+Der separate echte ZITADEL-Test ist opt-in und kein funktionales Abschlussgate.
+
 ## Lokale Test-OIDC-Konten
 
 Die fiktiven Konten für Kunde, Werkstattmitglied, Moderator und Admin liegen mit ihren Passwörtern

@@ -17,8 +17,8 @@
     "test:smoke": "node scripts/smoke.mjs",
     "lint": "eslint src --max-warnings=0",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "format:check": "prettier --check .github/workflows .github/PULL_REQUEST_TEMPLATE.md .postcssrc.json .prettierrc angular.json compose.yaml eslint.config.mjs package.json tsconfig*.json src scripts test db",
-    "format:write": "prettier --write .github/workflows .github/PULL_REQUEST_TEMPLATE.md .postcssrc.json .prettierrc angular.json compose.yaml eslint.config.mjs package.json tsconfig*.json src scripts test db",
+    "format:check": "prettier --check .github/workflows .github/PULL_REQUEST_TEMPLATE.md .postcssrc.json .prettierrc angular.json compose.yaml eslint.config.mjs package.json tsconfig*.json src scripts test db playwright.config.ts e2e",
+    "format:write": "prettier --write .github/workflows .github/PULL_REQUEST_TEMPLATE.md .postcssrc.json .prettierrc angular.json compose.yaml eslint.config.mjs package.json tsconfig*.json src scripts test db playwright.config.ts e2e",
     "db:migrate": "node scripts/db/migrate.mjs",
     "db:seed": "node scripts/db/seed.mjs",
     "db:seed:demo": "node scripts/db/seed.mjs --profile demo",
@@ -33,7 +33,11 @@
     "dev:doctor": "node scripts/dev.mjs --doctor",
     "test:dev": "node --test test/dev-*.test.mjs",
     "test:dev:smoke": "node scripts/dev/quick-smoke.mjs",
-    "test:dev:smoke:full": "node scripts/dev/smoke.mjs"
+    "test:dev:smoke:full": "node scripts/dev/smoke.mjs",
+    "test:e2e": "node scripts/e2e/run.mjs",
+    "test:e2e:real": "node scripts/e2e/real.mjs",
+    "test:e2e:policy": "node --test test/e2e-*.test.mjs",
+    "typecheck:e2e": "tsc --noEmit -p tsconfig.e2e.json"
   },
   "private": true,
   "dependencies": {
@@ -59,6 +63,7 @@
     "@angular/cli": "^22.1.8",
     "@angular/compiler-cli": "^22.1.0",
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4.1.12",
     "@types/node": "^20.17.19",
     "@types/pg": "8.23.1",
