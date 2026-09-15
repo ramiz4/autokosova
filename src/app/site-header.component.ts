@@ -1,3 +1,4 @@
+import { accountType } from '../shared/account';
 import { NgTemplateOutlet } from '@angular/common';
 import { afterNextRender } from '@angular/core';
 import { AccountSessionService } from './account-session.service';
@@ -29,6 +30,7 @@ export class SiteHeaderComponent {
     'garage' | 'search' | 'request' | 'inquiries' | 'favorites' | undefined
   >();
   protected readonly account = inject(AccountSessionService);
+  protected readonly accountType = accountType;
   protected readonly accountPanel = signal<'account' | 'notifications' | null>(null);
   protected readonly logoutError = signal(false);
   private readonly router = inject(Router);

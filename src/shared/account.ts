@@ -12,6 +12,7 @@ export interface OwnGarageMembership {
   readonly role: 'owner' | 'editor';
 }
 export interface OwnAccount extends AccountProfile {
+  readonly accountType?: 'customer' | 'garage';
   readonly userId: string;
   readonly roles: readonly ApplicationRole[];
   readonly garageMemberships: readonly OwnGarageMembership[];
@@ -24,6 +25,9 @@ export function isOwnAccount(value: unknown): value is OwnAccount {
   if (!value || typeof value !== 'object') return false;
   const account = value as Record<string, unknown>;
   return (
+    (account['accountType'] === undefined ||
+      account['accountType'] === 'customer' ||
+      account['accountType'] === 'garage') &&
     typeof account['userId'] === 'string' &&
     account['userId'].length > 0 &&
     typeof account['expiresAt'] === 'string' &&
@@ -50,4 +54,9 @@ export function isOwnAccount(value: unknown): value is OwnAccount {
       );
     })
   );
+}
+
+/** Account purpose is presentation context, never an authorization decision. */
+export function accountType(account: OwnAccount | null | undefined): 'customer' | 'garage' {
+  return account?.accountType ?? (account?.garageMemberships.length ? 'garage' : 'customer');
 }

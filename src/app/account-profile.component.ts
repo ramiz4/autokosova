@@ -1,3 +1,4 @@
+import { accountType } from '../shared/account';
 import { Component, afterNextRender, effect, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AccountSessionService } from './account-session.service';
@@ -20,6 +21,7 @@ import { IconComponent } from './ui/icon.component';
 })
 export class AccountProfileComponent {
   protected readonly account = inject(AccountSessionService);
+  protected readonly accountType = accountType;
   protected readonly language = inject(LanguageService);
   protected readonly logoutError = signal(false);
   private readonly router = inject(Router);

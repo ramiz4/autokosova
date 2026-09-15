@@ -289,6 +289,8 @@ export class AccessStore implements ReviewStore {
   private readonly deletionRequests = new Map<string, DataDeletionRequest>();
   private readonly deletedStorageKeys = new Set<string>();
   private readonly files = new Map<string, PrivateFile>();
+  private readonly deletedGarageIds = new Set<string>();
+  private readonly garageUsers = new Set<string>();
   private readonly memberships = new Map<string, Membership>();
   private readonly moderationCases = new Map<string, ModerationCaseRecord>();
   private readonly oidcTransactions = new Map<string, OidcTransaction>();
@@ -308,6 +310,7 @@ export class AccessStore implements ReviewStore {
     role: MembershipRole,
     state: 'active' | 'revoked' = 'active',
   ) {
+    if (state === 'active') this.garageUsers.add(userId);
     this.memberships.set(`${userId}:${garageId}`, { role, state, userId, garageId });
   }
 
@@ -687,11 +690,32 @@ export class AccessStore implements ReviewStore {
     };
   }
 
+  getAccountType(principal: Principal): 'customer' | 'garage' {
+    return this.garageUsers.has(principal.userId) ? 'garage' : 'customer';
+  }
+
+  deleteGarage(principal: Principal, garageId: string): void {
+    this.requireGarageAccess(principal, garageId);
+    const membership = this.memberships.get(`${principal.userId}:${garageId}`);
+    if (membership?.state !== 'active' || membership.role !== 'owner')
+      throw new AccessError(403, 'Garage owner access required');
+    this.requireGarage(garageId).publicationState = 'suspended';
+    this.deletedGarageIds.add(garageId);
+    this.auditEvents.push({
+      actorUserId: principal.userId,
+      subjectId: garageId,
+      type: 'garage-deleted',
+    });
+  }
+
   listOwnMemberships(principal: Principal): readonly OwnGarageMembership[] {
     // Admin access to a garage is not a membership. Never use hasGarageAccess here.
     return [...this.memberships.values()]
       .filter(
-        (membership) => membership.userId === principal.userId && membership.state === 'active',
+        (membership) =>
+          membership.userId === principal.userId &&
+          membership.state === 'active' &&
+          !this.deletedGarageIds.has(membership.garageId),
       )
       .map((membership) => ({
         garageId: membership.garageId,
@@ -985,6 +1009,9 @@ export class AccessStore implements ReviewStore {
     this.requireGarageAccess(principal, garageId);
     const garage = this.requireGarage(garageId);
     return {
+      canDelete:
+        this.memberships.get(`${principal.userId}:${garageId}`)?.role === 'owner' &&
+        this.memberships.get(`${principal.userId}:${garageId}`)?.state === 'active',
       consentVersion: garage.consent.version,
       id: garage.id,
       profile: garage.profile,
@@ -1675,6 +1702,7 @@ export class AccessStore implements ReviewStore {
     const duplicateCandidates = this.listPublicDuplicateCandidates(profile.name, profile.placeId);
     const privateDuplicateExists = [...this.garages.values()].some(
       (garage) =>
+        !this.deletedGarageIds.has(garage.id) &&
         garage.publicationState !== 'published' &&
         sameGarageName(garage.profile.name, profile.name) &&
         garage.profile.placeId === profile.placeId,
@@ -1726,6 +1754,7 @@ export class AccessStore implements ReviewStore {
   }
 
   private hasGarageAccess(principal: Principal, garageId: string) {
+    if (this.deletedGarageIds.has(garageId)) return false;
     if (principal.roles.has('admin')) return this.garages.has(garageId);
     const membership = this.memberships.get(`${principal.userId}:${garageId}`);
     return membership?.state === 'active' && ['editor', 'owner'].includes(membership.role);

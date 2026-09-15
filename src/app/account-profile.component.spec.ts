@@ -53,7 +53,9 @@ it.each(['de', 'sq', 'en'] as const)(
     );
     for (const role of identity.roles) {
       expect(page.querySelector('[data-account-roles]')?.textContent).toContain(
-        accountCopy[locale][`account.role.${role}`],
+        accountCopy[locale][
+          role === 'customer' ? 'account.type.garage' : (`account.role.${role}` as const)
+        ],
       );
     }
     expect(page.querySelector('[data-account-memberships]')?.textContent).toContain(

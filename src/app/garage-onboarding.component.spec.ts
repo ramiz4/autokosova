@@ -182,3 +182,65 @@ it.each(['de', 'sq', 'en'] as const)(
     expect(page.querySelector('app-site-header img')).not.toBeNull();
   },
 );
+
+it('does not send a delete without ownership, confirmation or a CSRF token', async () => {
+  const fixture = await setup();
+  const component = fixture.componentInstance;
+  component['form'] = { ...validForm };
+  component['garageId'] = 'demo-owned';
+  const request = vi.fn();
+  vi.stubGlobal('fetch', request);
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  try {
+    await component['remove']();
+    expect(confirm).not.toHaveBeenCalled();
+    component['canDelete'] = true;
+    await component['remove']();
+    expect(request).not.toHaveBeenCalled();
+    expect(component['garageId']).toBe('demo-owned');
+    confirm.mockReturnValue(true);
+    await component['remove']();
+    expect(request).not.toHaveBeenCalled();
+    expect(component['needsLogin']).toBe(true);
+  } finally {
+    confirm.mockRestore();
+  }
+});
+
+it('deletes only the selected garage and preserves form data on a failed delete', async () => {
+  const fixture = await setup();
+  const component = fixture.componentInstance;
+  component['form'] = { ...validForm };
+  component['garageId'] = 'demo-owned';
+  component['canDelete'] = true;
+  document.cookie = 'autokosova_csrf=test-csrf; path=/';
+  const request = vi.fn().mockResolvedValue(new Response('{}', { status: 503 }));
+  vi.stubGlobal('fetch', request);
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  try {
+    await component['remove']();
+    expect(component['garageId']).toBe('demo-owned');
+    expect(component['form'].name).toBe(validForm.name);
+    expect(component['sending']).toBe(false);
+    request
+      .mockReset()
+      .mockImplementation(async (url: string) =>
+        url === '/api/garages/demo-owned'
+          ? new Response(null, { status: 204 })
+          : new Response(JSON.stringify({ garages: [] }), { status: 200 }),
+      );
+    await component['remove']();
+    expect(request.mock.calls[0][0]).toBe('/api/garages/demo-owned');
+    expect(request.mock.calls[0][1]).toMatchObject({
+      method: 'DELETE',
+      headers: { 'x-csrf-token': 'test-csrf' },
+    });
+    expect(component['garageId']).toBeUndefined();
+    expect(component['canDelete']).toBe(false);
+    expect(component['form'].name).toBe('');
+    expect(component['owned']).toEqual([]);
+    expect(component['message']).toContain('entfernt');
+  } finally {
+    confirm.mockRestore();
+  }
+});

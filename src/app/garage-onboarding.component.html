@@ -40,18 +40,43 @@
       aria-labelledby="form-title"
     >
       <h2 id="form-title" class="text-3xl font-bold tracking-tight sm:text-[34px]">
-        {{ copy.title }}
+        {{
+          garageId
+            ? management.editTitle
+            : accountType(account.identity()) === 'garage'
+              ? management.title
+              : copy.title
+        }}
       </h2>
-      <p class="mt-1 text-muted">{{ copy.intro }}</p>
+      <p class="mt-1 text-muted">
+        {{
+          garageId || accountType(account.identity()) === 'garage' ? management.intro : copy.intro
+        }}
+      </p>
+      @if (account.signedIn()) {
+        <button
+          data-new-garage
+          type="button"
+          class="mt-4 min-h-11 rounded-lg border border-blue-200 px-4 text-sm font-semibold text-brand"
+          [disabled]="sending || loading"
+          (click)="reset()"
+        >
+          {{ management.create }}
+        </button>
+        @if (!owned.length && !ownedLoadFailed) {
+          <p data-garages-empty class="mt-3 text-sm text-muted">{{ management.empty }}</p>
+        }
+      }
       @if (owned.length) {
-        <details class="mt-5 rounded-xl border border-blue-100 bg-blue-50/40 px-3 text-sm">
-          <summary class="min-h-11 py-3 font-semibold">{{ copy.ownDrafts }}</summary>
+        <details open class="mt-5 rounded-xl border border-blue-100 bg-blue-50/40 px-3 text-sm">
+          <summary class="min-h-11 py-3 font-semibold">{{ management.title }}</summary>
           @for (garage of owned; track garage.id) {
             <button
               type="button"
               class="mb-2 flex min-h-11 w-full items-center justify-between gap-3 rounded-lg bg-white p-3 text-left hover:bg-blue-50"
               [disabled]="sending || loading"
               (click)="open(garage.id)"
+              [attr.data-owned-garage]="garage.id"
             >
               <span class="break-all">{{ garage.name }}</span
               ><span class="text-brand">{{ copy.open }}</span>
@@ -316,6 +341,17 @@
         </button>
         @if (garageId) {
           <div class="flex flex-wrap gap-3 text-sm">
+            @if (canDelete) {
+              <button
+                data-delete-garage
+                type="button"
+                class="min-h-11 rounded-lg border border-rose-300 px-3 text-rose-800 disabled:opacity-50"
+                [disabled]="sending || loading"
+                (click)="remove()"
+              >
+                {{ management.remove }}
+              </button>
+            }
             <button
               type="button"
               class="min-h-11 rounded-lg border border-blue-200 px-3 text-brand"

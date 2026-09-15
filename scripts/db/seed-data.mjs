@@ -1,3 +1,4 @@
+import { isManagedDemoEntity, readDemoAccountConfig, seedDemoAccounts } from './demo-accounts.mjs';
 import {
   demoWorkflowRequests,
   demoWorkflowReviews,
@@ -77,15 +78,22 @@ export function assertLocalDatabaseTarget(databaseUrl) {
   }
 }
 
-export async function seedDatabase(client, profile) {
+export async function seedDatabase(client, profile, environment = process.env) {
+  const accounts = profile === 'demo-workflows' ? readDemoAccountConfig(environment) : undefined;
   await client.query('BEGIN');
   try {
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtextextended('local-demo-account-binding', 0))",
+    );
     if (profile !== 'reference') await assertDemoIdsAreAvailable(client);
     if (profile === 'demo-workflows') await assertDemoWorkflowIdsAreAvailable(client);
 
     await seedReferenceData(client);
     if (profile !== 'reference') await seedDemoData(client);
-    if (profile === 'demo-workflows') await seedDemoWorkflowData(client);
+    if (profile === 'demo-workflows') {
+      await seedDemoWorkflowData(client);
+      await seedDemoAccounts(client, accounts);
+    }
 
     await client.query('COMMIT');
   } catch (error) {
@@ -167,6 +175,7 @@ async function seedDemoData(client) {
   );
 
   for (const garage of demoGarages) {
+    if (await isManagedDemoEntity(client, 'garage', garage.id)) continue;
     await client.query(
       `INSERT INTO garage (
          id, name, publication_state, place_id, description, public_phone, public_whatsapp,
@@ -412,6 +421,7 @@ async function seedDemoWorkflowData(client) {
   }
 
   for (const request of demoWorkflowRequests) {
+    if (await isManagedDemoEntity(client, 'repair_request', request.id)) continue;
     await client.query(
       `INSERT INTO repair_request (
          id, owner_user_id, description, service_category_id, symptom, state

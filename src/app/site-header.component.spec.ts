@@ -189,3 +189,35 @@ it('shows notification and account controls instead of login buttons for an auth
   expect(page.textContent).not.toContain('Meine Anfragen');
   expect(page.textContent).not.toContain('Favoriten');
 });
+
+it('keeps a garage operator in the business menu even after deleting the last garage', async () => {
+  const account = {
+    signedIn: signal(true),
+    state: signal('ready'),
+    identity: signal({
+      userId: 'fictitious-operator',
+      accountType: 'garage',
+      roles: ['customer'],
+      garageMemberships: [],
+    }),
+    displayName: () => 'Fiktiver Werkstattbetreiber',
+    loginAvailable: signal(true),
+    busy: signal(false),
+    refresh: vi.fn().mockResolvedValue(undefined),
+    logout: vi.fn().mockResolvedValue(true),
+  };
+  await TestBed.configureTestingModule({
+    imports: [SiteHeaderComponent],
+    providers: [provideRouter([]), { provide: AccountSessionService, useValue: account }],
+  }).compileComponents();
+  const fixture = TestBed.createComponent(SiteHeaderComponent);
+  await fixture.whenStable();
+  const page = fixture.nativeElement as HTMLElement;
+  page.querySelector<HTMLButtonElement>('button[aria-controls="account-menu"]')!.click();
+  await fixture.whenStable();
+  const menu = page.querySelector('#account-menu')!;
+  expect(menu.textContent).toContain('Werkstattbetreiber');
+  expect(menu.querySelector('[data-account-garages]')?.getAttribute('href')).toBe('/garages/new');
+  expect(menu.querySelector('[data-account-inquiries]')).toBeNull();
+  expect(menu.querySelector('[data-account-favorites]')).toBeNull();
+});
