@@ -126,6 +126,8 @@ export async function startBrowser(port, environment) {
     }
     await command('Runtime.enable');
     await command('Page.enable');
+    await command('Page.bringToFront');
+    await command('Emulation.setFocusEmulationEnabled', { enabled: true });
     return {
       origin,
       command,
@@ -160,10 +162,14 @@ export async function startBrowser(port, environment) {
         });
       },
       async navigate(path, ready) {
+        // Do not accept the previous DOM when navigating/reloading the same URL.
+        await evaluate('window.__inquiriesPreviousDocument = true');
         await command('Page.navigate', { url: origin + path });
         await until(
           () =>
-            evaluate(`location.pathname === ${JSON.stringify(path.split('?')[0])} && (${ready})`),
+            evaluate(
+              `!window.__inquiriesPreviousDocument && document.readyState === 'complete' && location.pathname === ${JSON.stringify(path.split('?')[0])} && (${ready})`,
+            ),
           'navigation ' + path,
         );
       },

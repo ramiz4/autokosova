@@ -95,7 +95,6 @@
 .place-chips li span {
   border-left: 1px solid #d9e1ee;
   padding-left: 6px;
-  margin-left: 3px;
   color: #536d98;
 }
 .card-footer {
@@ -251,9 +250,6 @@ button:disabled {
 }
 
 @media (max-width: 480px) {
-  .page-heading {
-    margin-bottom: 24px;
-  }
   .page-heading > a {
     width: 100%;
   }
