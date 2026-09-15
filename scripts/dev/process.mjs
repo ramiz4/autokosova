@@ -1,11 +1,15 @@
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 
+// This fixture is not assigned to an interactive account. Owned profiles may legitimately
+// leave radius search after address edits or deletion; that must not break app startup.
+export const DEMO_READINESS_GARAGE_ID = 'demo-prishtina-bremsen-offen';
+
 export function safeLogger(environment, write = (line) => process.stdout.write(line)) {
   const privateValues = Object.entries(environment)
     .filter(
       ([key, value]) =>
-        value && /SECRET|TOKEN|PASSWORD|DATABASE_URL|ZITADEL|PRIVATE_KEY/i.test(key),
+        value && /SECRET|TOKEN|PASSWORD|DATABASE_URL|ZITADEL|PRIVATE_KEY|_SUBJECT/i.test(key),
     )
     .map(([, value]) => value)
     .sort((a, b) => b.length - a.length);
@@ -23,7 +27,11 @@ export function safeLogger(environment, write = (line) => process.stdout.write(l
 
 // One process group per command: npm/ng descendants must not survive Ctrl+C.
 // Only groups created by this instance are signalled; Docker DBs stay intact.
-export function startProcess(command, args, { cwd, env, log = () => {} } = {}) {
+export function startProcess(
+  command,
+  args,
+  { cwd, env, log = () => {}, shutdownTimeout = 3000 } = {},
+) {
   const child = spawn(command, args, {
     cwd,
     env,
@@ -58,14 +66,14 @@ export function startProcess(command, args, { cwd, env, log = () => {} } = {}) {
   }
   async function stop() {
     signal('SIGTERM');
-    await Promise.race([done, delay(3000, undefined, { ref: false })]);
+    await Promise.race([done, delay(shutdownTimeout, undefined, { ref: false })]);
     // Also kill remaining grandchildren after the group leader has exited.
     signal('SIGKILL');
     await done;
   }
   async function interrupt() {
     signal('SIGINT');
-    await Promise.race([done, delay(3000, undefined, { ref: false })]);
+    await Promise.race([done, delay(shutdownTimeout, undefined, { ref: false })]);
     if (!finished) await stop();
   }
   return {
@@ -128,7 +136,7 @@ export async function waitForApplication(
         (!instance || response.headers.get('x-autokosova-dev-instance') === instance) &&
         Array.isArray(body.results) &&
         (profile === 'reference' ||
-          body.results.some((item) => item.id === 'demo-prishtina-bremsen'))
+          body.results.some((item) => item.id === DEMO_READINESS_GARAGE_ID))
       )
         return;
     } catch {

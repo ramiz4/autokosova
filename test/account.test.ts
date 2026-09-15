@@ -31,6 +31,7 @@ test('own account is session-bound, minimal, non-cacheable and does not change /
     assert.equal(result.headers['vary'], 'Cookie');
     assert.equal(result.headers['x-robots-tag'], 'noindex, nofollow');
     assert.deepEqual(result.json(), {
+      accountType: 'garage',
       userId: 'fictional-a',
       displayName: 'Fiktives Konto A',
       username: 'fixture-a',
@@ -45,6 +46,7 @@ test('own account is session-bound, minimal, non-cacheable and does not change /
     );
     const other = await app.inject({ url: '/api/me', headers: cookie(b) });
     assert.equal(other.json().userId, 'fictional-b');
+    assert.equal(other.json().accountType, 'garage');
     assert.equal(other.json().displayName, undefined);
     assert.deepEqual(other.json().roles, ['customer']);
     const minimal = await app.inject({ url: '/api/session', headers: cookie(a) });

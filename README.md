@@ -258,3 +258,12 @@ Ohne Datenbank werden Favoriten nicht als dauerhaft gespeichert bestätigt. Vert
 Prüfgrenzen: [FAVORITES.md](docs/architecture/FAVORITES.md). Der DB-Browsernachweis läuft
 nach Build, Migrationen und explizitem lokalem Demo-Seed mit
 `node scripts/favorites-db-browser-smoke.mjs`; CI erstellt isolierte Testdaten dafür.
+
+## Demo-Konten mit eigenen Daten
+
+Privatkunden und Werkstattbetreiber erhalten eigene Kontomenüs. Der zusätzlich
+konfigurierte Workflow-Seed weist den zwei freigegebenen OIDC-Testkonten jeweils
+zwei eigene Datensätze zu; Änderungen und Löschungen bleiben bei Neustarts erhalten.
+Die tatsächlichen Test-Subjects werden ausschließlich lokal konfiguriert, niemals
+über E-Mail-Claims als Berechtigung verwendet. Einrichtung, Fixture-IDs und die
+bewusste Löschgrenze: [Demo-Konten und Datenbesitz](docs/development/DEMO-ACCOUNT-OWNERSHIP.md).

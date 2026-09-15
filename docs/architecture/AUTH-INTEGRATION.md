@@ -170,3 +170,12 @@ separat nachzuweisen. Kein öffentliches Deployment oder Provider-Administration
 Referenzen: [ZITADEL-Endpunkte](https://zitadel.com/docs/apis/openidoauth/endpoints),
 [RP-Initiated Logout](https://openid.net/specs/openid-connect-rpinitiated-1_0.html),
 [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest).
+
+## Kontozweck und lokale Demo-Zuordnung (#81)
+
+Die Basisrolle `customer` ist von `accountType` getrennt. Der persistierte Kontozweck
+`customer` oder `garage` steuert die Oberfläche, nicht die Objektberechtigung.
+Eigene Werkstätten brauchen weiterhin aktive Memberships; Löschen verlangt die
+Owner-Rolle. Die Zuordnung lokaler Workflow-Fixtures verwendet ausdrücklich
+konfigurierte tatsächliche OIDC-Subjects plus Issuer, nie eine E-Mail-Übereinstimmung.
+Einzelheiten: [Demo-Konten und Datenbesitz](../development/DEMO-ACCOUNT-OWNERSHIP.md).

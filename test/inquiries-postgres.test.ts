@@ -108,7 +108,7 @@ test(
       assert.equal(own.vehicle?.engineDetails, 'PRIVATE-ENGINE');
       await assert.rejects(store.listRepairRequests(owner, { limit: 51 }), AccessError);
       const index = await pool.query(
-        "SELECT indexname FROM pg_indexes WHERE indexname = 'repair_request_owner_created_id_idx'",
+        "SELECT indexname FROM pg_indexes WHERE schemaname = current_schema() AND indexname = 'repair_request_owner_created_id_idx'",
       );
       assert.equal(index.rowCount, 1);
 

@@ -10,6 +10,7 @@ import {
 } from '../shared/garage-onboarding';
 
 export interface PrivateGarage {
+  readonly canDelete?: boolean;
   readonly id: string;
   readonly profile: GarageProfileInput;
   readonly publicationState: GaragePublicationState;
@@ -19,6 +20,8 @@ export interface PrivateGarage {
 type Maybe<T> = T | Promise<T>;
 export interface GarageOnboardingStore {
   close?(): Promise<void>;
+  getAccountType(principal: Principal): Maybe<'customer' | 'garage'>;
+  deleteGarage(principal: Principal, garageId: string): Maybe<void>;
   listOwnMemberships(principal: Principal): Maybe<readonly OwnGarageMembership[]>;
   createGarageRegistration(
     principal: Principal,
@@ -59,6 +62,32 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
   }
   async close(): Promise<void> {
     await this.pool.end();
+  }
+  async getAccountType(principal: Principal): Promise<'customer' | 'garage'> {
+    return this.transaction(principal, async (client) => {
+      const result = await client.query(
+        `SELECT CASE WHEN account_type='garage' OR EXISTS
+          (SELECT 1 FROM membership m WHERE m.user_id=$1 AND m.state='active')
+          THEN 'garage' ELSE 'customer' END AS type FROM app_user WHERE id=$1`,
+        [principal.userId],
+      );
+      return result.rows[0].type;
+    });
+  }
+  async deleteGarage(principal: Principal, id: string): Promise<void> {
+    await this.transaction(principal, async (client) => {
+      await this.authorize(client, principal, id);
+      const owner = await client.query(
+        "SELECT user_id FROM membership WHERE user_id=$1 AND garage_id=$2 AND state='active' AND role='owner' FOR SHARE",
+        [principal.userId, id],
+      );
+      if (!owner.rowCount) throw new AccessError(403, 'Garage owner access required');
+      await client.query(
+        "UPDATE garage SET deleted_at=now(), publication_state='suspended' WHERE id=$1",
+        [id],
+      );
+      await this.audit(client, principal, id, 'garage-deleted');
+    });
   }
   async listPublicDuplicateCandidates(name: string, placeId: string) {
     const result = await this.pool.query(
@@ -103,7 +132,7 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
         profile.name.trim().toLowerCase() + ':' + profile.placeId,
       ]);
       const existing = await client.query(
-        `SELECT id FROM garage WHERE lower(trim(name)) = lower(trim($1)) AND place_id = $2
+        `SELECT id FROM garage WHERE lower(trim(name)) = lower(trim($1)) AND place_id = $2 AND deleted_at IS NULL
          UNION SELECT id FROM public_garage_profile WHERE lower(trim(name)) = lower(trim($1)) AND place_id = $2`,
         [profile.name, profile.placeId],
       );
@@ -117,6 +146,7 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
         "INSERT INTO membership(user_id, garage_id, role, state, granted_by) VALUES($1,$2,'owner','active',$3)",
         [owner, id, principal.userId],
       );
+      await client.query("UPDATE app_user SET account_type='garage' WHERE id=$1", [owner]);
       await this.writeProfile(client, id, profile);
       await client.query(
         'INSERT INTO garage_consent(id,garage_id,applicant_user_id,recorded_by_user_id,source,consent_version) VALUES($1,$2,$3,$4,$5,$6)',
@@ -135,7 +165,7 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
       const result = await client.query<OwnGarageMembership>(
         `SELECT m.garage_id AS "garageId", g.name AS "garageName", m.role
          FROM membership m JOIN garage g ON g.id = m.garage_id
-         WHERE m.user_id = $1 AND m.state = 'active' ORDER BY m.garage_id`,
+         WHERE m.user_id = $1 AND m.state = 'active' AND g.deleted_at IS NULL ORDER BY m.garage_id`,
         [principal.userId],
       );
       return result.rows;
@@ -144,7 +174,7 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
   async listOwnedGarages(principal: Principal) {
     return this.transaction(principal, async (client) => {
       const result = await client.query(
-        'SELECT w.id, w.name, w.publication_state AS "publicationState" FROM garage w JOIN membership m ON m.garage_id = w.id WHERE m.user_id=$1 AND m.state=\'active\' ORDER BY w.name,w.id',
+        'SELECT w.id, w.name, w.publication_state AS "publicationState" FROM garage w JOIN membership m ON m.garage_id = w.id WHERE m.user_id=$1 AND m.state=\'active\' AND w.deleted_at IS NULL ORDER BY w.name,w.id',
         [principal.userId],
       );
       return result.rows;
@@ -153,7 +183,12 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
   async getPrivateGarage(principal: Principal, id: string): Promise<PrivateGarage> {
     return this.transaction(principal, async (client) => {
       await this.authorize(client, principal, id);
-      return this.read(client, id);
+      const garage = await this.read(client, id);
+      const owner = await client.query(
+        "SELECT 1 FROM membership WHERE user_id=$1 AND garage_id=$2 AND state='active' AND role='owner'",
+        [principal.userId, id],
+      );
+      return { ...garage, canDelete: !!owner.rowCount };
     });
   }
   async updateGarageProfile(
@@ -228,7 +263,10 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
   }
   private async authorize(client: pg.PoolClient, principal: Principal, id: string): Promise<void> {
     // Locks prevent membership revocation or another profile update from racing a save.
-    const garage = await client.query('SELECT id FROM garage WHERE id=$1 FOR UPDATE', [id]);
+    const garage = await client.query(
+      'SELECT id FROM garage WHERE id=$1 AND deleted_at IS NULL FOR UPDATE',
+      [id],
+    );
     if (!garage.rowCount) throw new AccessError(403, 'Garage access denied');
     if (principal.roles.has('admin')) return;
     const membership = await client.query(
@@ -241,7 +279,7 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
     const result = await client.query(
       `SELECT w.id, w.publication_state AS "publicationState", c.consent_version AS "consentVersion",
       jsonb_build_object('phone',v.phone_state,'contactPerson',v.contact_person_state,'companyDocument',v.company_document_state,'location',v.location_state) AS verification,
-      jsonb_strip_nulls(jsonb_build_object('name',w.name,'placeId',w.place_id,'address',w.business_address,'contactPerson',w.contact_person,'contactPhone',w.contact_phone,'publicPhone',w.public_phone,'contactEmail',w.contact_email,'description',w.description,'languages',w.languages,'selfReportedSpecializations',w.self_reported_specializations,
+      jsonb_strip_nulls(jsonb_build_object('name',w.name,'placeId',w.place_id,'address',w.business_address,'contactPerson',w.contact_person,'contactPhone',w.contact_phone,'publicPhone',w.public_phone,'publicWhatsapp',w.public_whatsapp,'contactEmail',w.contact_email,'description',w.description,'languages',w.languages,'selfReportedSpecializations',w.self_reported_specializations,
       'serviceCategoryIds',ARRAY(SELECT service_category_id FROM garage_service_category WHERE garage_id=w.id ORDER BY service_category_id),
       'vehicleMakeIds',ARRAY(SELECT vehicle_make_id FROM garage_vehicle_make WHERE garage_id=w.id ORDER BY vehicle_make_id),
       'locationPoint',CASE WHEN w.location_point IS NOT NULL THEN jsonb_build_object('latitude',ST_Y(w.location_point::geometry),'longitude',ST_X(w.location_point::geometry)) END)) AS profile
@@ -257,7 +295,7 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
     profile: GarageProfileInput,
   ): Promise<void> {
     await client.query(
-      `UPDATE garage SET name=$2,place_id=$3,business_address=$4,contact_person=$5,contact_phone=$6,public_phone=$7,contact_email=$8,description=$9,languages=$10,self_reported_specializations=$11,
+      `UPDATE garage SET name=$2,place_id=$3,business_address=$4,contact_person=$5,contact_phone=$6,public_phone=$7,contact_email=$8,description=$9,public_whatsapp=$14,languages=$10,self_reported_specializations=$11,
       location_source=CASE WHEN $12::double precision IS NULL THEN NULL WHEN location_point IS NOT DISTINCT FROM ST_SetSRID(ST_MakePoint($13,$12),4326)::geography THEN location_source ELSE 'self_reported' END,
       location_point=CASE WHEN $12::double precision IS NULL THEN NULL ELSE ST_SetSRID(ST_MakePoint($13,$12),4326)::geography END WHERE id=$1`,
       [
@@ -274,6 +312,7 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
         profile.selfReportedSpecializations,
         profile.locationPoint?.latitude ?? null,
         profile.locationPoint?.longitude ?? null,
+        profile.publicWhatsapp ?? false,
       ],
     );
     await client.query(

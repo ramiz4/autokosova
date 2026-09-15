@@ -693,9 +693,11 @@ export function createServer(options: ServerOptions = {}) {
     }
     try {
       const memberships = await garageStore.listOwnMemberships(principal);
+      const accountType = await garageStore.getAccountType(principal);
       // Recheck expiry after the asynchronous store read, then whitelist the response.
       return {
         ...accessStore.getOwnAccount(principal),
+        accountType,
         garageMemberships: memberships.map((membership) => ({
           garageId: membership.garageId,
           ...(membership.garageName ? { garageName: membership.garageName } : {}),
@@ -1159,6 +1161,17 @@ export function createServer(options: ServerOptions = {}) {
       }
     },
   );
+
+  app.delete('/api/garages/:garageId', async (request, reply) => {
+    try {
+      const principal = requirePrincipal(request, true);
+      const params = request.params as { garageId: string };
+      await garageStore.deleteGarage(principal, params.garageId);
+      return reply.code(204).send();
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
 
   app.post('/api/garages/:garageId/submit-for-review', async (request, reply) => {
     try {

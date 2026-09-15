@@ -1,3 +1,5 @@
+import { garageManagementCopy } from '../shared/garage-management-copy';
+import { accountType } from '../shared/account';
 import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectorRef,
@@ -36,6 +38,7 @@ interface OwnedGarage {
   publicationState: GaragePublicationState;
 }
 interface PrivateGarage {
+  canDelete?: boolean;
   id: string;
   profile: GarageProfileInput;
   consentVersion: string;
@@ -70,6 +73,7 @@ function blankForm(): Form {
 export class GarageOnboardingComponent {
   protected readonly language = inject(LanguageService);
   protected readonly account = inject(AccountSessionService);
+  protected readonly accountType = accountType;
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly formElement = viewChild<ElementRef<HTMLFormElement>>('formElement');
   protected form = blankForm();
@@ -80,10 +84,15 @@ export class GarageOnboardingComponent {
   protected needsLogin = false;
   protected errors: Record<string, string> = {};
   protected garageId?: string;
+  protected canDelete = false;
+  protected get management() {
+    return garageManagementCopy[this.language.language];
+  }
   protected publicationState: GaragePublicationState = 'draft';
   protected locationVerified = false;
   protected savedSnapshot = JSON.stringify(this.form);
   protected owned: OwnedGarage[] = [];
+  protected ownedLoadFailed = false;
   protected readonly places = CATALOG_PLACES;
   protected get copy() {
     return onboardingCopy[this.language.language];
@@ -148,11 +157,13 @@ export class GarageOnboardingComponent {
     this.cdr.markForCheck();
   }
   private async loadOwned(): Promise<void> {
+    this.ownedLoadFailed = false;
     try {
       const response = await fetch('/api/me/garages', { cache: 'no-store' });
       if (!response.ok) throw new Error();
       this.owned = ((await response.json()) as { garages: OwnedGarage[] }).garages;
     } catch {
+      this.ownedLoadFailed = true;
       this.message = this.copy.loadError;
     }
   }
@@ -237,7 +248,11 @@ export class GarageOnboardingComponent {
         return;
       }
       if (!response.ok) throw new Error();
-      if (!this.garageId) this.garageId = ((await response.json()) as { id: string }).id;
+      if (!this.garageId) {
+        this.garageId = ((await response.json()) as { id: string }).id;
+        this.canDelete = true;
+        await this.account.refresh();
+      }
       if (this.publicationState === 'pending_review') this.publicationState = 'draft';
       this.form = profile;
       this.savedSnapshot = JSON.stringify(this.form);
@@ -261,6 +276,7 @@ export class GarageOnboardingComponent {
       const garage = (await response.json()) as PrivateGarage;
       this.form = { ...garage.profile, address: garage.profile.address ?? blankForm().address };
       this.garageId = garage.id;
+      this.canDelete = garage.canDelete === true;
       this.publicationState = garage.publicationState;
       this.consentAccepted = true;
       this.locationVerified =
@@ -276,6 +292,10 @@ export class GarageOnboardingComponent {
   }
   protected reset(): void {
     if (!this.canLeave()) return;
+    this.clearForm();
+  }
+  private clearForm(): void {
+    this.canDelete = false;
     this.form = blankForm();
     this.garageId = undefined;
     this.consentAccepted = false;
@@ -284,6 +304,43 @@ export class GarageOnboardingComponent {
     this.message = '';
     this.errors = {};
     this.savedSnapshot = JSON.stringify(this.form);
+  }
+  protected async remove(): Promise<void> {
+    if (!this.garageId || !this.canDelete || this.sending || this.loading) return;
+    if (!window.confirm(this.management.confirm.replace('{name}', this.form.name))) return;
+    const csrf = document.cookie
+      .split('; ')
+      .find((cookie) => cookie.startsWith('autokosova_csrf='))
+      ?.split('=')[1];
+    if (!csrf) {
+      this.needsLogin = true;
+      this.message = this.copy.signIn;
+      return;
+    }
+    this.sending = true;
+    this.message = '';
+    try {
+      const response = await fetch('/api/garages/' + encodeURIComponent(this.garageId), {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers: { 'x-csrf-token': csrf },
+      });
+      if (response.status === 401 || response.status === 403) {
+        this.needsLogin = true;
+        this.message = this.copy.signIn;
+        return;
+      }
+      if (!response.ok) throw new Error();
+      this.clearForm();
+      this.message = this.management.deleted;
+      await this.loadOwned();
+      await this.account.refresh();
+    } catch {
+      this.message = this.copy.error;
+    } finally {
+      this.sending = false;
+      this.cdr.markForCheck();
+    }
   }
   protected async submitForReview(): Promise<void> {
     if (
