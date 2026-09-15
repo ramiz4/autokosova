@@ -341,3 +341,69 @@ it.each([
     }
   },
 );
+
+it('clears private garage fields on logout rather than rendering the previous account in public onboarding', async () => {
+  const { fixture, component, page } = await setup();
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: 'private-owned',
+          profile: { ...profile, name: 'PRIVATE-ACCOUNT-A' },
+          publicationState: 'draft',
+          verification: { location: 'not_checked' },
+        }),
+      ),
+    ),
+  );
+  await component['open']('private-owned');
+  fixture.detectChanges();
+  expect(page.textContent).toContain('PRIVATE-ACCOUNT-A');
+  const account = TestBed.inject(AccountSessionService);
+  account.identity.set(null);
+  account.state.set('guest');
+  account.signedIn.set(false);
+  await fixture.whenStable();
+  expect(page.textContent).not.toContain('PRIVATE-ACCOUNT-A');
+  expect(component['garageId']).toBeUndefined();
+  expect(component['form'].name).toBe('');
+});
+
+it('ignores a late private profile response after an account switch', async () => {
+  const { fixture, component, page } = await setup();
+  let finish!: (response: Response) => void;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    ),
+  );
+  const read = component['open']('private-owned');
+  const account = TestBed.inject(AccountSessionService);
+  account.identity.set({
+    userId: 'other-owner',
+    accountType: 'garage',
+    roles: ['customer'],
+    garageMemberships: [],
+    expiresAt: new Date(Date.now() + 3600000).toISOString(),
+  });
+  await fixture.whenStable();
+  finish(
+    new Response(
+      JSON.stringify({
+        id: 'private-owned',
+        profile: { ...profile, name: 'PRIVATE-ACCOUNT-A' },
+        publicationState: 'draft',
+        verification: { location: 'not_checked' },
+      }),
+    ),
+  );
+  await read;
+  fixture.detectChanges();
+  expect(page.textContent).not.toContain('PRIVATE-ACCOUNT-A');
+  expect(component['garageId']).toBeUndefined();
+});

@@ -19,6 +19,7 @@ const config = {
 test('authorization URL binds state, PKCE challenge and local redirect', () => {
   const url = new URL(createAuthorizationUrl(config, 'opaque-state', 'pkce-challenge'));
   assert.equal(url.searchParams.get('state'), 'opaque-state');
+  assert.equal(url.searchParams.get('scope'), 'openid profile email');
   assert.equal(url.searchParams.get('code_challenge'), 'pkce-challenge');
   assert.equal(url.searchParams.get('code_challenge_method'), 'S256');
   assert.equal(url.searchParams.get('redirect_uri'), config.redirectUri);
@@ -64,4 +65,31 @@ test('only supported ZITADEL project roles become server roles', () => {
   );
   assert.deepEqual(extractZitadelProjectRoles({ ignored: { moderator: false } }), []);
   assert.deepEqual(extractZitadelProjectRoles([{ customer: { 'org-1': 'test.example' } }]), []);
+});
+
+test('optional UserInfo configuration preserves existing seven-variable setup and rejects unsafe overrides', () => {
+  const env = {
+    ZITADEL_AUDIENCE: config.audience,
+    ZITADEL_AUTHORIZATION_ENDPOINT: config.authorizationEndpoint,
+    ZITADEL_CLIENT_ID: config.clientId,
+    ZITADEL_ISSUER: config.issuer,
+    ZITADEL_JWKS_URI: config.jwksUri,
+    ZITADEL_REDIRECT_URI: config.redirectUri,
+    ZITADEL_TOKEN_ENDPOINT: config.tokenEndpoint,
+  };
+  const endpoint = config.issuer + '/oidc/v1/userinfo';
+  assert.equal(
+    readZitadelOidcConfig({ ...env, ZITADEL_USERINFO_ENDPOINT: endpoint })?.userInfoEndpoint,
+    endpoint,
+  );
+  for (const invalid of [
+    'https://other.invalid/userinfo',
+    'http://issuer.example/userinfo',
+    endpoint + '?token=private',
+    endpoint + '#fragment',
+  ])
+    assert.throws(
+      () => readZitadelOidcConfig({ ...env, ZITADEL_USERINFO_ENDPOINT: invalid }),
+      /ZITADEL UserInfo configuration is invalid/,
+    );
 });

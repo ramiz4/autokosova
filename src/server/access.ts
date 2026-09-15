@@ -669,6 +669,9 @@ export class AccessStore implements ReviewStore {
       expiresAt,
       userId,
       profile: {
+        ...(profile.profileStatus === 'ready' || profile.profileStatus === 'unavailable'
+          ? { profileStatus: profile.profileStatus }
+          : {}),
         ...(profile.displayName ? { displayName: profile.displayName } : {}),
         ...(profile.username ? { username: profile.username } : {}),
         ...(profile.email ? { email: profile.email } : {}),

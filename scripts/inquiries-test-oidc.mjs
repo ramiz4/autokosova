@@ -9,6 +9,15 @@ export async function startTestOidc(redirectUri, initialSubject) {
   const { privateKey, publicKey } = await generateKeyPair('RS256');
   const jwk = { ...(await exportJWK(publicKey)), kid: randomUUID(), use: 'sig', alg: 'RS256' };
   const codes = new Map();
+  const tokens = new Map();
+  let profile = {
+    name: 'Testkonto · Anfragen',
+    preferred_username: 'inquiries-test',
+    email: 'inquiries@example.invalid',
+  };
+  let userInfoMode = 'ready';
+  let userInfoRequests = 0;
+  let userInfoPause;
   let subject = initialSubject;
   let issuer;
   let exchanges = 0;
@@ -19,15 +28,37 @@ export async function startTestOidc(redirectUri, initialSubject) {
       if (url.pathname === '/jwks') {
         response.setHeader('content-type', 'application/json');
         response.end(JSON.stringify({ keys: [jwk] }));
+      } else if (url.pathname === '/.well-known/openid-configuration') {
+        assert.equal(request.headers.authorization, undefined);
+        response.setHeader('content-type', 'application/json');
+        response.end(JSON.stringify({ issuer, userinfo_endpoint: issuer + '/userinfo' }));
+      } else if (url.pathname === '/userinfo') {
+        userInfoRequests++;
+        const grant = tokens.get(request.headers.authorization);
+        assert.ok(grant);
+        if (userInfoPause) await userInfoPause;
+        if (userInfoMode === 'error') {
+          response.writeHead(503).end('{}');
+          return;
+        }
+        response.setHeader('content-type', 'application/json');
+        response.end(
+          JSON.stringify({
+            ...grant.profile,
+            sub: userInfoMode === 'mismatch' ? 'wrong-subject' : grant.subject,
+          }),
+        );
       } else if (url.pathname === '/authorize') {
         assert.equal(url.searchParams.get('client_id'), 'inquiries-browser-test');
         assert.equal(url.searchParams.get('redirect_uri'), redirectUri);
         assert.equal(url.searchParams.get('code_challenge_method'), 'S256');
         assert.equal(url.searchParams.get('response_type'), 'code');
+        assert.equal(url.searchParams.get('scope'), 'openid profile email');
         assert.ok(url.searchParams.get('state'));
         const code = randomUUID();
         codes.set(code, {
           subject,
+          profile: { ...profile },
           challenge: url.searchParams.get('code_challenge'),
           nonce: url.searchParams.get('nonce'),
           authTime: Math.floor(Date.now() / 1000),
@@ -62,8 +93,6 @@ export async function startTestOidc(redirectUri, initialSubject) {
         const token = await new SignJWT({
           nonce: grant.nonce,
           auth_time: grant.authTime,
-          name: 'Testkonto · Anfragen',
-          preferred_username: 'inquiries-test',
         })
           .setProtectedHeader({ alg: 'RS256', kid: jwk.kid })
           .setIssuer(issuer)
@@ -74,7 +103,11 @@ export async function startTestOidc(redirectUri, initialSubject) {
           .sign(privateKey);
         exchanges++;
         response.setHeader('content-type', 'application/json');
-        response.end(JSON.stringify({ id_token: token }));
+        const accessToken = randomUUID();
+        tokens.set('Bearer ' + accessToken, grant);
+        response.end(
+          JSON.stringify({ id_token: token, access_token: accessToken, token_type: 'Bearer' }),
+        );
       } else response.writeHead(404).end();
     } catch {
       // No credentials, authorization codes, request bodies or tokens in test logs.
@@ -98,6 +131,18 @@ export async function startTestOidc(redirectUri, initialSubject) {
     },
     setSubject(value) {
       subject = value;
+    },
+    setProfile(value) {
+      profile = { ...value };
+    },
+    setUserInfoMode(value) {
+      userInfoMode = value;
+    },
+    pauseUserInfo(promise) {
+      userInfoPause = promise;
+    },
+    get userInfoRequests() {
+      return userInfoRequests;
     },
     get exchanges() {
       return exchanges;

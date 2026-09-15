@@ -36,7 +36,12 @@ export function resolveConfig(root, environment = process.env) {
   ];
   const oidcPresent = oidcKeys.filter((key) => env[key]);
   if (oidcPresent.length !== oidcKeys.length) {
-    for (const key of [...oidcKeys, 'ZITADEL_END_SESSION_ENDPOINT', 'ZITADEL_POST_LOGOUT_URI'])
+    for (const key of [
+      ...oidcKeys,
+      'ZITADEL_END_SESSION_ENDPOINT',
+      'ZITADEL_POST_LOGOUT_URI',
+      'ZITADEL_USERINFO_ENDPOINT',
+    ])
       env[key] = '';
     notices.push(
       'Login nicht konfiguriert; öffentliche Suche verfügbar. Siehe docs/architecture/AUTH-INTEGRATION.md.',

@@ -3,11 +3,14 @@ import { accountType } from '../shared/account';
 import { isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectorRef,
+  DestroyRef,
   Component,
   ElementRef,
   PLATFORM_ID,
   inject,
   viewChild,
+  effect,
+  untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -83,6 +86,9 @@ export class GarageOnboardingComponent {
   protected readonly account = inject(AccountSessionService);
   protected readonly accountType = accountType;
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
+  private dataOwnerId?: string;
+  private accountRevision = 0;
   private readonly formElement = viewChild<ElementRef<HTMLFormElement>>('formElement');
   protected form = blankForm();
   protected consentAccepted = false;
@@ -112,6 +118,27 @@ export class GarageOnboardingComponent {
   }
   protected get showForm(): boolean {
     return !this.managing || this.editing;
+  }
+  protected get workspaceVisible(): boolean {
+    return (
+      !this.dataOwnerId ||
+      (this.account.state() === 'ready' &&
+        this.account.identity()?.userId === this.dataOwnerId &&
+        !this.account.busy())
+    );
+  }
+  private captureContext() {
+    const userId = this.account.identity()?.userId;
+    this.dataOwnerId ??= userId;
+    return { userId, revision: this.accountRevision };
+  }
+  private currentContext(context: { userId?: string; revision: number }): boolean {
+    return (
+      context.revision === this.accountRevision &&
+      (context.userId === this.account.identity()?.userId ||
+        (['loading', 'error'].includes(this.account.state()) &&
+          this.dataOwnerId === context.userId))
+    );
   }
   private focusTitle(): void {
     this.cdr.detectChanges();
@@ -152,6 +179,7 @@ export class GarageOnboardingComponent {
   }
   protected get saveDisabled(): boolean {
     return (
+      !this.workspaceVisible ||
       this.sending ||
       this.loading ||
       this.publicationState === 'suspended' ||
@@ -186,7 +214,7 @@ export class GarageOnboardingComponent {
     return !this.unchanged || (!this.garageId && this.consentAccepted);
   }
   canLeave(): boolean {
-    if (this.sending || this.loading) return false;
+    if (!this.workspaceVisible || this.sending || this.loading) return false;
     return (
       !this.hasUnsavedChanges ||
       (typeof window !== 'undefined' && window.confirm(this.copy.discard))
@@ -232,7 +260,41 @@ export class GarageOnboardingComponent {
   }
   constructor() {
     this.language.setPage('home.garageOnboarding', 'home.intro', true);
-    if (isPlatformBrowser(inject(PLATFORM_ID))) void this.refreshSession();
+    effect(() => {
+      const id = this.account.identity()?.userId;
+      const state = this.account.state();
+      untracked(() => {
+        // A refresh of the same account temporarily hides, but does not discard, unsaved work.
+        // A confirmed logout or different account must forget the previous private workspace.
+        if (
+          this.dataOwnerId &&
+          (state === 'guest' || (state === 'ready' && id !== this.dataOwnerId))
+        ) {
+          this.accountRevision++;
+          this.clearForm();
+          this.editing = false;
+          this.owned = [];
+          this.ownedLoaded = false;
+          this.ownedLoading = false;
+          this.ownedLoadFailed = false;
+          this.sending = false;
+          this.loading = false;
+          this.dataOwnerId = undefined;
+        }
+        if (state === 'ready' && id) {
+          this.dataOwnerId = id;
+          if (this.browser && !this.ownedLoaded && !this.ownedLoading) void this.loadOwned();
+        }
+        this.cdr.markForCheck();
+      });
+    });
+    inject(DestroyRef).onDestroy(() => {
+      this.accountRevision++;
+      this.clearForm();
+      this.owned = [];
+      this.dataOwnerId = undefined;
+    });
+    if (this.browser) void this.refreshSession();
   }
   protected async refreshSession(): Promise<void> {
     await this.account.refresh();
@@ -242,23 +304,31 @@ export class GarageOnboardingComponent {
     this.cdr.markForCheck();
   }
   private async loadOwned(): Promise<void> {
+    if (this.ownedLoading) return;
+    const context = this.captureContext();
     this.ownedLoadFailed = false;
     this.ownedLoading = true;
     try {
       const response = await fetch('/api/me/garages', { cache: 'no-store' });
+      if (!this.currentContext(context)) return;
       if (await this.rejectResponse(response, this.copy.loadError)) {
         this.ownedLoadFailed = true;
         return;
       }
-      this.owned = ((await response.json()) as { garages: OwnedGarage[] }).garages;
+      const data = (await response.json()) as { garages: OwnedGarage[] };
+      if (!this.currentContext(context)) return;
+      this.owned = data.garages;
     } catch {
+      if (!this.currentContext(context)) return;
       this.ownedLoadFailed = true;
       this.messageRole = 'alert';
       this.message = this.copy.loadError;
     } finally {
-      this.ownedLoading = false;
-      this.ownedLoaded = true;
-      this.cdr.markForCheck();
+      if (this.currentContext(context)) {
+        this.ownedLoading = false;
+        this.ownedLoaded = true;
+        this.cdr.markForCheck();
+      }
     }
   }
   protected addressChanged(): void {
@@ -318,6 +388,7 @@ export class GarageOnboardingComponent {
       this.message = this.copy.signIn;
       return;
     }
+    const context = this.captureContext();
     this.sending = true;
     this.message = '';
     try {
@@ -333,40 +404,51 @@ export class GarageOnboardingComponent {
           ),
         },
       );
+      if (!this.currentContext(context)) return;
       if (await this.rejectResponse(response, this.copy.error, !this.garageId)) return;
       this.needsLogin = false;
       this.messageRole = 'status';
       if (!this.garageId) {
-        this.garageId = ((await response.json()) as { id: string }).id;
+        const created = (await response.json()) as { id: string };
+        if (!this.currentContext(context)) return;
+        this.garageId = created.id;
         this.canDelete = true;
         this.editing = true;
         await this.account.refresh();
+        if (!this.currentContext(context)) return;
       }
       this.form = profile;
       this.savedSnapshot = JSON.stringify(this.form);
       await this.refreshStatus();
+      if (!this.currentContext(context)) return;
       this.message = !this.statusKnown
         ? this.management.statusUnavailable
         : this.publicationState === 'published'
           ? this.copy.publicSaved
           : this.copy.saved;
     } catch {
+      if (!this.currentContext(context)) return;
       this.messageRole = 'alert';
       this.message = this.copy.error;
     } finally {
-      this.sending = false;
-      this.cdr.markForCheck();
+      if (this.currentContext(context)) {
+        this.sending = false;
+        this.cdr.markForCheck();
+      }
     }
   }
   protected async open(id: string): Promise<void> {
     if (!this.canLeave()) return;
+    const context = this.captureContext();
     this.loading = true;
     this.message = '';
     try {
       const response = await fetch('/api/garages/' + encodeURIComponent(id), { cache: 'no-store' });
+      if (!this.currentContext(context)) return;
       if (await this.rejectResponse(response, this.copy.loadError)) return;
       this.needsLogin = false;
       const garage = (await response.json()) as PrivateGarage;
+      if (!this.currentContext(context)) return;
       this.form = { ...garage.profile, address: garage.profile.address ?? blankForm().address };
       this.garageId = garage.id;
       this.canDelete = garage.canDelete === true;
@@ -380,11 +462,14 @@ export class GarageOnboardingComponent {
       this.editing = true;
       this.focusTitle();
     } catch {
+      if (!this.currentContext(context)) return;
       this.messageRole = 'alert';
       this.message = this.copy.loadError;
     } finally {
-      this.loading = false;
-      this.cdr.markForCheck();
+      if (this.currentContext(context)) {
+        this.loading = false;
+        this.cdr.markForCheck();
+      }
     }
   }
   protected reset(): void {
@@ -407,7 +492,8 @@ export class GarageOnboardingComponent {
     this.savedSnapshot = JSON.stringify(this.form);
   }
   protected async remove(): Promise<void> {
-    if (!this.garageId || !this.canDelete || this.sending || this.loading) return;
+    if (!this.workspaceVisible || !this.garageId || !this.canDelete || this.sending || this.loading)
+      return;
     if (!window.confirm(this.management.confirm.replace('{name}', this.form.name))) return;
     const csrf = document.cookie
       .split('; ')
@@ -419,6 +505,7 @@ export class GarageOnboardingComponent {
       this.message = this.copy.signIn;
       return;
     }
+    const context = this.captureContext();
     this.sending = true;
     this.message = '';
     try {
@@ -427,6 +514,7 @@ export class GarageOnboardingComponent {
         credentials: 'same-origin',
         headers: { 'x-csrf-token': csrf },
       });
+      if (!this.currentContext(context)) return;
       if (await this.rejectResponse(response)) return;
       this.needsLogin = false;
       this.messageRole = 'status';
@@ -435,17 +523,22 @@ export class GarageOnboardingComponent {
       this.message = this.management.deleted;
       await this.loadOwned();
       await this.account.refresh();
+      if (!this.currentContext(context)) return;
       this.focusTitle();
     } catch {
+      if (!this.currentContext(context)) return;
       this.messageRole = 'alert';
       this.message = this.copy.error;
     } finally {
-      this.sending = false;
-      this.cdr.markForCheck();
+      if (this.currentContext(context)) {
+        this.sending = false;
+        this.cdr.markForCheck();
+      }
     }
   }
   protected async submitForReview(): Promise<void> {
     if (
+      !this.workspaceVisible ||
       !this.garageId ||
       !this.unchanged ||
       !this.statusKnown ||
@@ -454,6 +547,7 @@ export class GarageOnboardingComponent {
       (this.publicationState !== 'draft' && this.publicationState !== 'rejected')
     )
       return;
+    const context = this.captureContext();
     this.sending = true;
     this.message = '';
     try {
@@ -466,18 +560,22 @@ export class GarageOnboardingComponent {
         '/api/garages/' + encodeURIComponent(this.garageId) + '/submit-for-review',
         { method: 'POST', headers: { 'x-csrf-token': csrf } },
       );
+      if (!this.currentContext(context)) return;
       if (await this.rejectResponse(response)) return;
       this.needsLogin = false;
       this.messageRole = 'status';
-      this.needsLogin = false;
       await this.refreshStatus();
+      if (!this.currentContext(context)) return;
       this.message = this.statusKnown ? this.copy.submitted : this.management.statusUnavailable;
     } catch {
+      if (!this.currentContext(context)) return;
       this.messageRole = 'alert';
       this.message = this.copy.error;
     } finally {
-      this.sending = false;
-      this.cdr.markForCheck();
+      if (this.currentContext(context)) {
+        this.sending = false;
+        this.cdr.markForCheck();
+      }
     }
   }
 }

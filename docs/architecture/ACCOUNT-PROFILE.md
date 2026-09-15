@@ -15,11 +15,37 @@ Ein fehlender Anzeigename fällt auf Benutzername, E-Mail und schließlich Konto
 fehlende Detailfelder werden ausdrücklich als nicht bereitgestellt angezeigt.
 
 Optionale Angaben stammen aus `name`, `preferred_username` und `email` des **bereits
-verifizierten** ID-Tokens. Signatur, Issuer, Audience, Subject und Ablaufprüfung bleiben im
-vorhandenen OIDC-Adapter. Kein Userinfo-Nachladen, Claim-Dump oder Token wird an den Browser
-weitergegeben. Profilfelder sind kein Nachweis einer E-Mail-Verifizierung. Fehlende Angaben
-führen weder zu erfundenen Werten noch zu einem Login-Fehler. Die Anbieterkonfiguration muss
-sie im ID-Token bereitstellen; sie wird durch diese Änderung nicht verändert.
+verifizierten** ID-Tokens oder aus dem serverseitig aufgelösten UserInfo-Endpunkt (#100).
+Fehlt `name`, können ausschließlich gültige `given_name`-/`family_name`-Angaben den
+Anzeigenamen bilden; Benutzername und E-Mail werden nicht aus anderen Feldern geraten.
+
+Im Authorization-Code-Flow liefert ZITADEL Profil-/E-Mail-Claims standardmäßig über UserInfo.
+Der Callback behält den Access-Token nur bis zu diesem Abruf; Signatur, Issuer, Audience,
+Nonce, Authentifizierungszeit und Subject des ID-Tokens werden **vorher** geprüft. Vollständige
+ID-Token-Profile benötigen keinen zusätzlichen Abruf. Ansonsten wird der explizit konfigurierte
+`ZITADEL_USERINFO_ENDPOINT` oder `userinfo_endpoint` aus der Discovery des konfigurierten
+Issuers verwendet. Discovery muss denselben Issuer bestätigen. Nur derselbe Origin und HTTPS
+(bzw. explizites lokales HTTP außerhalb Produktion) sind zulässig; keine Weiterleitungen,
+URL-Zugangsdaten oder Query-/Fragmentparameter. Discovery erhält keinen Bearer-Token.
+Abrufe und Antwortkörper teilen ein 5-Sekunden-Limit; jeder JSON-Körper ist auf 64 KiB begrenzt.
+
+UserInfo-`sub` muss dem bereits verifizierten Subject exakt entsprechen. Andernfalls schlägt
+der Login fehl und erstellt keine neue Sitzung. Nur die drei normalisierten Profilfelder werden
+übernommen; verifizierte ID-Token-Felder haben Vorrang. UserInfo vergibt **keine Rollen**.
+Nach dem asynchronen Abruf wird der bestehende Transaktions-/Logout-Widerruf erneut geprüft.
+
+Die eigene Kontoauskunft ergänzt `profileStatus: ready|unavailable`. Bei erfolgreicher Auflösung
+zeigt nur ein tatsächlich fehlendes Feld den bisherigen Fallback. Bei fehlendem Access-Token,
+Discovery-/Netzwerk-/Antwortfehler oder Timeout bleibt die verifizierte Anmeldung nutzbar,
+aber fehlende Angaben heißen ausdrücklich „Derzeit nicht abrufbar“. Die Profilseite erklärt den
+Abruffehler und bietet erneuten regulären Login mit lokalisiertem Rücksprung. Ein einfacher
+API-Retry löst den Provider nicht erneut auf; Tokens werden nicht in der Sitzung aufbewahrt.
+Beim nächsten Login werden Provider-Angaben neu aufgelöst. Bestehende Sitzungen vor #100
+benötigen einmaliges Ab-/Anmelden; kein lokales Nachtragen von Testwerten.
+
+Tokens, komplette Claims und Providerfehler werden weder in Kontoauskunft, SSR/Transfer-Cache,
+Browserstorage noch Logs ausgegeben. Profilfelder sind kein Nachweis einer E-Mail-Verifizierung.
+Die Anbieterkonfiguration und bestehende `openid profile email`-Scopes werden nicht verändert.
 
 Rollen kommen unverändert aus `AccessStore.getPrincipal`: Basisrolle `customer` sowie die
 serverseitig verifizierten Projektrollen `moderator` und `admin`. Alle wirksamen Rollen werden
@@ -92,7 +118,28 @@ Profilpfade. Profil-Rücksprünge akzeptieren keine beliebigen Query-Parameter o
   jedes Animationsframes DOM-Identität, Inhalte und Geometrie von Navbar und Kontomenü.
   Der CI-Check `Account browser` behält Screenshots sieben Tage als Artefakt.
 
-## Echte lokale Test-OIDC-Abnahme – noch offen
+## Ergänzender Nachweis #100 (15.09.2026)
+
+`test/oidc-profile.test.ts` prüft tatsächliche HTTP-Discovery/UserInfo, ID-Token-Vorrang,
+Whitelist, fehlende Felder, Timeout/Körperlimit/Fehler, Redirect-/Origin-/Issuer-Ablehnung,
+fehlendes/abweichendes Subject, unveränderte Rollen und Logout während UserInfo.
+Der vollständige Callback nutzt einen signierenden PKCE-Testprovider; keine App-Antwort wird ersetzt.
+`node scripts/profile-oidc-browser-smoke.mjs` ergänzt den bestehenden Account-CI-Job um
+signierten Login → UserInfo → Konto-API → UI, Reload, DE/SQ/EN, 390/1280 px,
+Logout/Kontowechsel, Vor-/Nachnamen-Fallback, einzelnes fehlendes Feld sowie Fehler/erneuten Login.
+Die Screenshots enthalten ausschließlich fiktive Fixture-Identitäten.
+
+Die Discovery der vorhandenen lokalen Test-ZITADEL wurde lesend erreicht; Issuer und
+UserInfo-Origin stimmen mit der freigegebenen lokalen Konfiguration überein. Der tatsächliche
+Kunden-/Werkstatt-Login konnte nicht ausgeführt werden: Der automatisierte Zugriff auf die
+freigegebenen Testpasswörter wurde blockiert. Keine Passwörter, Roh-Tokens, Subjects oder
+Freigabelinks wurden als Nachweis gespeichert. Die synthetischen Durchläufe ersetzen den noch
+fehlenden echten Konto-/Profilabgleich **nicht**. Keine Provider-Konfiguration geändert.
+
+Referenzen: [ZITADEL-Endpunkte](https://zitadel.com/docs/apis/openidoauth/endpoints),
+[OIDC Core 5.3.2](https://openid.net/specs/openid-connect-core-1_0.html#UserInfoResponse).
+
+## Echte lokale Test-OIDC-Abnahme aus #69 – historischer Stand, weiterhin separat offen
 
 Für diese Bearbeitung sind der freigegebene 1Password-Eintrag und die vier vorhandenen
 Testkonten nicht zugänglich. Keine Zugangsdaten wurden angefordert, kopiert oder erfunden.
