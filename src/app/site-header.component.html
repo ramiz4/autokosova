@@ -1,234 +1,58 @@
 <header
   [class.is-authenticated]="account.signedIn()"
-  [class]="
-    compact()
-      ? 'relative z-20 mx-auto max-w-340 px-4 py-1.5 text-ink sm:px-6'
-      : 'relative z-20 mx-auto max-w-340 rounded-2xl border border-white/80 bg-white/97 px-4 py-3 text-ink shadow-xl shadow-black/10 sm:px-6 xl:rounded-[18px] xl:py-4'
-  "
+  [class]="compact() ? 'relative z-20 mx-auto max-w-340 px-4 py-1.5 text-ink sm:px-6' : 'relative z-20 mx-auto max-w-340 rounded-2xl border border-white/80 bg-white/97 px-4 py-3 text-ink shadow-xl shadow-black/10 sm:px-6 xl:rounded-[18px] xl:py-4'"
   (keydown.escape)="closeMenu(true)"
 >
   <div class="flex min-h-13 items-center justify-between gap-3">
-    <a
-      [routerLink]="language.link('home')"
-      [attr.aria-label]="language.t('common.backHome')"
-      class="flex shrink-0 items-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand"
-    >
-      <img
-        src="/branding/autokosova-logo-header.png"
-        width="640"
-        height="122"
-        alt="AutoKosova"
-        class="site-logo block h-7 w-auto max-w-full sm:h-8"
-      />
+    <a [routerLink]="language.link('home')" [attr.aria-label]="language.t('common.backHome')" class="flex shrink-0 items-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand">
+      <img src="/branding/autokosova-logo-header.png" width="640" height="122" alt="AutoKosova" class="site-logo block h-7 w-auto max-w-full sm:h-8" />
     </a>
-    <nav
-      id="desktop-navigation"
-      class="hidden h-full shrink-0 items-center gap-4 text-[13px] font-semibold whitespace-nowrap text-[#475569] xl:flex"
-      [attr.aria-label]="language.t('nav.main')"
-    >
-      <ng-container [ngTemplateOutlet]="publicNavigation" />
-    </nav>
+    <nav id="desktop-navigation" class="hidden h-full shrink-0 items-center gap-4 text-[13px] font-semibold whitespace-nowrap text-[#475569] xl:flex" [attr.aria-label]="language.t('nav.main')"><ng-container [ngTemplateOutlet]="publicNavigation" /></nav>
     <div class="flex items-center gap-2 sm:gap-3">
       <app-language-switcher [compact]="true" class="flex items-center" />
       @if (account.signedIn() || account.state() !== 'guest') {
         <div class="flex items-center gap-2">
           @if (account.signedIn()) {
-            <button
-              #notificationButton
-              type="button"
-              class="flex size-11 items-center justify-center rounded-full bg-blue-50 text-ink hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-brand"
-              [attr.aria-label]="language.t('account.notifications')"
-              [attr.aria-expanded]="accountPanel() === 'notifications'"
-              aria-controls="account-notifications"
-              (click)="togglePanel('notifications')"
-            >
-              <app-icon name="bell" class="size-5" />
-            </button>
+            <button #notificationButton type="button" class="flex size-11 items-center justify-center rounded-full bg-blue-50 text-ink hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-brand" [attr.aria-label]="language.t('account.notifications')" [attr.aria-expanded]="accountPanel() === 'notifications'" aria-controls="account-notifications" (click)="togglePanel('notifications')"><app-icon name="bell" class="size-5" /></button>
           }
-          <button
-            #accountButton
-            type="button"
-            class="flex size-11 items-center justify-center rounded-full bg-blue-50 text-ink hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-brand"
-            [attr.aria-label]="
-              language.t(
-                account.state() === 'loading'
-                  ? 'account.loading'
-                  : account.state() === 'error'
-                    ? 'account.loadError'
-                    : 'account.title'
-              )
-            "
-            [attr.aria-expanded]="accountPanel() === 'account'"
-            aria-controls="account-menu"
-            (click)="togglePanel('account')"
-          >
-            <app-icon name="user" class="size-5" />
+          <button #accountButton type="button" class="flex min-h-11 items-center gap-2 rounded-full bg-blue-50 px-2 text-ink hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-brand sm:pr-3" [attr.aria-label]="language.t(account.state() === 'loading' ? 'account.loading' : account.state() === 'error' ? 'account.loadError' : 'account.title')" [attr.aria-expanded]="accountPanel() === 'account'" aria-controls="account-menu" (click)="togglePanel('account')">
+            <span class="flex size-8 items-center justify-center rounded-full bg-white shadow-sm"><app-icon name="user" class="size-4.5" /></span>
+            @if (account.signedIn()) { <span class="hidden max-w-36 truncate text-sm font-semibold sm:block">{{ account.displayName() }}</span> }
+            <app-icon name="chevron-down" class="hidden size-4 sm:block" />
           </button>
         </div>
       } @else {
-        <div class="hidden items-center gap-3 xl:flex">
-          <a appButton="outline" size="compact" [href]="loginUrl()">{{
-            language.t('nav.login')
-          }}</a>
-          <a appButton size="compact" [href]="loginUrl(true)">{{ language.t('nav.register') }}</a>
-        </div>
+        <div class="hidden items-center gap-3 xl:flex"><a appButton="outline" size="compact" [href]="loginUrl()">{{ language.t('nav.login') }}</a><a appButton size="compact" [href]="loginUrl(true)">{{ language.t('nav.register') }}</a></div>
       }
-      <button
-        #menuButton
-        type="button"
-        class="mobile-menu-toggle flex size-11 items-center justify-center rounded-lg hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand xl:hidden"
-        [attr.aria-label]="language.t(menuOpen() ? 'nav.close' : 'nav.open')"
-        [attr.aria-expanded]="menuOpen()"
-        aria-controls="mobile-navigation"
-        (click)="toggleMenu()"
-      >
-        <app-icon [name]="menuOpen() ? 'close' : 'menu'" class="size-6" />
-      </button>
+      <button #menuButton type="button" class="mobile-menu-toggle flex size-11 items-center justify-center rounded-lg hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand xl:hidden" [attr.aria-label]="language.t(menuOpen() ? 'nav.close' : 'nav.open')" [attr.aria-expanded]="menuOpen()" aria-controls="mobile-navigation" (click)="toggleMenu()"><app-icon [name]="menuOpen() ? 'close' : 'menu'" class="size-6" /></button>
     </div>
   </div>
-  <nav
-    id="mobile-navigation"
-    [hidden]="!menuOpen()"
-    class="site-menu-surface absolute inset-x-0 top-full mt-2 max-h-[calc(100dvh-10rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/80 p-4 shadow-xl shadow-slate-900/10 sm:p-5 xl:hidden"
-    [attr.aria-label]="language.t('nav.mobile')"
-  >
-    <div class="grid gap-1">
-      <ng-container [ngTemplateOutlet]="publicNavigation" />
-      @if (account.state() === 'guest') {
-        <div class="mt-2 grid grid-cols-2 gap-3">
-          <a appButton="outline" size="compact" [href]="loginUrl()">{{
-            language.t('nav.login')
-          }}</a>
-          <a appButton size="compact" [href]="loginUrl(true)">{{ language.t('nav.register') }}</a>
-        </div>
-      }
-    </div>
+  <nav id="mobile-navigation" [hidden]="!menuOpen()" class="site-menu-surface absolute inset-x-0 top-full mt-2 max-h-[calc(100dvh-10rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/80 p-4 shadow-xl shadow-slate-900/10 sm:p-5 xl:hidden" [attr.aria-label]="language.t('nav.mobile')">
+    <div class="grid gap-1"><ng-container [ngTemplateOutlet]="publicNavigation" />@if (account.state() === 'guest') {<div class="mt-2 grid grid-cols-2 gap-3"><a appButton="outline" size="compact" [href]="loginUrl()">{{ language.t('nav.login') }}</a><a appButton size="compact" [href]="loginUrl(true)">{{ language.t('nav.register') }}</a></div>}</div>
   </nav>
   @if (account.signedIn() && accountPanel() === 'notifications') {
-    <section
-      id="account-notifications"
-      class="site-menu-surface absolute top-full right-0 left-0 mt-2 rounded-2xl border border-white/80 p-5 shadow-xl sm:left-auto sm:w-80"
-      [attr.aria-label]="language.t('account.notifications')"
-    >
-      <h2 class="font-semibold">{{ language.t('account.notifications') }}</h2>
-      <p class="mt-2 text-sm leading-6 text-muted">
-        {{ language.t('account.notificationsUnavailable') }}
-      </p>
-    </section>
+    <section id="account-notifications" class="site-menu-surface absolute top-full right-0 left-0 mt-2 rounded-2xl border border-white/80 p-5 shadow-xl sm:left-auto sm:w-80" [attr.aria-label]="language.t('account.notifications')"><h2 class="font-semibold">{{ language.t('account.notifications') }}</h2><p class="mt-2 text-sm leading-6 text-muted">{{ language.t('account.notificationsUnavailable') }}</p></section>
   }
   @if (account.state() !== 'guest' && accountPanel() === 'account') {
-    <section
-      id="account-menu"
-      class="site-menu-surface absolute top-full right-0 left-0 mt-2 max-h-[calc(100dvh-10rem)] overflow-y-auto rounded-2xl border border-white/80 p-4 shadow-xl sm:left-auto sm:w-72"
-      [attr.aria-label]="language.t('account.title')"
-    >
-      <h2 class="px-2 py-2 font-semibold">{{ language.t('account.title') }}</h2>
+    <section id="account-menu" class="site-menu-surface absolute top-full right-0 left-0 mt-2 max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-2xl border border-white/80 p-2 shadow-xl sm:left-auto sm:w-88" [attr.aria-label]="language.t('account.title')">
       @if (account.identity(); as identity) {
-        <p class="px-2 text-xs text-muted">{{ language.t('account.signedInAs') }}</p>
-        <p data-account-name class="px-2 py-1 font-semibold [overflow-wrap:anywhere]">
-          {{ account.displayName() }}
-        </p>
-        <ul data-account-menu-roles class="flex flex-wrap gap-2 px-2 py-2">
-          @for (role of identity.roles; track role) {
-            <li class="rounded-full bg-blue-50 px-2 py-1 text-xs text-brand-dark">
-              {{ language.t('account.role.' + role) }}
-            </li>
-          }
-        </ul>
-      } @else if (account.state() === 'loading') {
-        <p role="status" class="px-2 py-2 text-sm">{{ language.t('account.loading') }}</p>
-      } @else if (account.state() === 'error') {
-        <p role="alert" class="px-2 py-2 text-sm text-rose-800">
-          {{ language.t('account.loadError') }}
-        </p>
-        <button
-          type="button"
-          class="min-h-11 rounded-lg px-2 text-sm font-semibold text-brand-dark focus-visible:outline-2 focus-visible:outline-brand"
-          [disabled]="account.busy()"
-          (click)="account.refresh()"
-        >
-          {{ language.t('common.retry') }}
-        </button>
-      } @else {
-        <p class="px-2 py-2 text-sm">{{ language.t('account.guest') }}</p>
-      }
-      <a
-        data-account-profile
-        [routerLink]="language.link('profile')"
-        (click)="closeMenu()"
-        class="flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
-        >{{ language.t('account.profileTitle') }}</a
-      >
-      <div class="mb-2 grid gap-1 border-b border-slate-200/70 pb-2">
-        @if (account.signedIn()) {
-          <a
-            data-account-inquiries
-            [routerLink]="language.link('inquiries')"
-            (click)="closeMenu()"
-            [attr.aria-current]="active() === 'inquiries' ? 'page' : null"
-            [class.bg-blue-50]="active() === 'inquiries'"
-            class="flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
-          >
-            {{ language.t('nav.myRequests') }}
-          </a>
-        }
-        @if (account.signedIn()) {
-          <a
-            data-account-favorites
-            [routerLink]="language.link('favorites')"
-            [attr.aria-current]="active() === 'favorites' ? 'page' : null"
-            [class.bg-blue-50]="active() === 'favorites'"
-            (click)="closeMenu()"
-            class="flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
-            >{{ language.t('nav.favorites') }}</a
-          >
-        }
-      </div>
-      <div class="grid gap-1 sm:hidden">
-        <ng-container [ngTemplateOutlet]="publicNavigation" />
-      </div>
-      @if (account.signedIn()) {
-        <button
-          type="button"
-          class="mt-2 flex min-h-11 w-full items-center rounded-lg px-2 text-left text-sm font-semibold text-brand-dark hover:bg-blue-50 disabled:opacity-50"
-          [disabled]="account.busy()"
-          (click)="logout()"
-        >
-          {{ language.t('account.logout') }}
-        </button>
-      }
-      @if (logoutError()) {
-        <p role="alert" class="mt-2 text-sm text-rose-800">
-          {{ language.t('account.logoutError') }}
-        </p>
-      }
+        <div class="rounded-xl bg-slate-50 p-4">
+          <div class="flex items-start gap-3"><span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-white text-brand shadow-sm"><app-icon name="user" class="size-5" /></span><div class="min-w-0"><p class="text-xs font-medium text-muted">{{ language.t('account.signedInAs') }}</p><p data-account-name class="mt-0.5 truncate font-bold">{{ account.displayName() }}</p>@if (identity.email) {<p data-account-email class="mt-0.5 truncate text-sm text-muted">{{ identity.email }}</p>} @else if (identity.username) {<p data-account-username class="mt-0.5 truncate text-sm text-muted">{{ identity.username }}</p>}</div></div>
+          <ul data-account-menu-roles class="mt-3 flex flex-wrap gap-1.5">@for (role of identity.roles; track role) {<li class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-brand-dark">{{ language.t('account.role.' + role) }}</li>}</ul>
+        </div>
+      } @else if (account.state() === 'loading') {<p role="status" class="p-3 text-sm">{{ language.t('account.loading') }}</p>} @else if (account.state() === 'error') {<div class="p-3"><p role="alert" class="text-sm text-rose-800">{{ language.t('account.loadError') }}</p><button type="button" class="mt-2 min-h-11 text-sm font-semibold text-brand-dark" [disabled]="account.busy()" (click)="account.refresh()">{{ language.t('common.retry') }}</button></div>}
+      <nav class="mt-2 grid gap-1" [attr.aria-label]="language.t('account.title')">
+        <a data-account-profile [routerLink]="language.link('profile')" (click)="closeMenu()" class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"><app-icon name="user" class="size-4.5" />{{ language.t('account.profileTitle') }}</a>
+        @if (account.signedIn()) {<a data-account-inquiries [routerLink]="language.link('inquiries')" (click)="closeMenu()" [attr.aria-current]="active() === 'inquiries' ? 'page' : null" [class.bg-blue-50]="active() === 'inquiries'" class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"><app-icon name="wrench" class="size-4.5" />{{ language.t('nav.myRequests') }}</a><a data-account-favorites [routerLink]="language.link('favorites')" [attr.aria-current]="active() === 'favorites' ? 'page' : null" [class.bg-blue-50]="active() === 'favorites'" (click)="closeMenu()" class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"><app-icon name="heart" class="size-4.5" />{{ language.t('nav.favorites') }}</a>}
+      </nav>
+      <div class="mt-2 grid gap-1 border-t border-slate-200 pt-2 sm:hidden"><ng-container [ngTemplateOutlet]="publicNavigation" /></div>
+      @if (account.signedIn()) {<button type="button" class="mt-2 flex min-h-11 w-full items-center gap-3 rounded-lg border-t border-slate-200 px-3 pt-2 text-left text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50" [disabled]="account.busy()" (click)="logout()"><app-icon name="close" class="size-4.5" />{{ language.t('account.logout') }}</button>}
+      @if (logoutError()) {<p role="alert" class="m-2 text-sm text-rose-800">{{ language.t('account.logoutError') }}</p>}
     </section>
   }
 </header>
-
 <ng-template #publicNavigation>
-  <a
-    class="nav-link px-1"
-    [class.nav-link-active]="active() === 'request'"
-    [attr.aria-current]="active() === 'request' ? 'page' : null"
-    [routerLink]="language.link('request')"
-    (click)="closeMenu()"
-    >{{ language.t('nav.newRequest') }}</a
-  >
-  <a
-    class="nav-link px-1"
-    [class.nav-link-active]="active() === 'search'"
-    [attr.aria-current]="active() === 'search' ? 'page' : null"
-    [routerLink]="language.link('search')"
-    (click)="closeMenu()"
-    >{{ language.t('nav.search') }}</a
-  >
-  <a
-    class="nav-link px-1"
-    [class.nav-link-active]="active() === 'garage'"
-    [attr.aria-current]="active() === 'garage' ? 'page' : null"
-    [routerLink]="language.link('onboarding')"
-    (click)="closeMenu()"
-    >{{ language.t('nav.garages') }}</a
-  >
+  <a class="nav-link px-1" [class.nav-link-active]="active() === 'request'" [attr.aria-current]="active() === 'request' ? 'page' : null" [routerLink]="language.link('request')" (click)="closeMenu()">{{ language.t('nav.newRequest') }}</a>
+  <a class="nav-link px-1" [class.nav-link-active]="active() === 'search'" [attr.aria-current]="active() === 'search' ? 'page' : null" [routerLink]="language.link('search')" (click)="closeMenu()">{{ language.t('nav.search') }}</a>
+  <a class="nav-link px-1" [class.nav-link-active]="active() === 'garage'" [attr.aria-current]="active() === 'garage' ? 'page' : null" [routerLink]="language.link('onboarding')" (click)="closeMenu()">{{ language.t('nav.garages') }}</a>
 </ng-template>
