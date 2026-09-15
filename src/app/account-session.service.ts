@@ -1,6 +1,11 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { DestroyRef, Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, InjectionToken, PLATFORM_ID, inject, signal } from '@angular/core';
 import { accountName, isOwnAccount, type OwnAccount } from '../shared/account';
+
+export const AUTH_NAVIGATE = new InjectionToken<(path: string) => void>('AUTH_NAVIGATE', {
+  providedIn: 'root',
+  factory: () => (path) => window.location.assign(path),
+});
 
 type AccountState = 'loading' | 'guest' | 'ready' | 'error';
 
@@ -13,6 +18,8 @@ export class AccountSessionService {
   readonly loginAvailable = signal<boolean | null>(null);
   private readonly document = inject(DOCUMENT);
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly navigate = inject(AUTH_NAVIGATE);
+  private departing = false;
   private version = 0;
   private refreshInFlight?: Promise<void>;
   private controller?: AbortController;
@@ -61,7 +68,7 @@ export class AccountSessionService {
 
   refresh(): Promise<void> {
     // No private fetch during SSR, and no refresh may overtake an in-flight logout.
-    if (!this.browser || this.busy()) return Promise.resolve();
+    if (!this.browser || this.busy() || this.departing) return Promise.resolve();
     if (this.refreshInFlight) return this.refreshInFlight;
     const task = this.readAccount().finally(() => {
       if (this.refreshInFlight === task) this.refreshInFlight = undefined;
@@ -125,7 +132,7 @@ export class AccountSessionService {
     this.clear('guest');
   }
 
-  async logout(): Promise<boolean> {
+  async logout(locale = 'de'): Promise<boolean | 'redirect'> {
     if (!this.browser || this.busy()) return false;
     this.busy.set(true);
     // Drop personal fields immediately; late reads cannot repopulate an old identity.
@@ -136,25 +143,48 @@ export class AccountSessionService {
           .split('; ')
           .find((cookie) => cookie.startsWith('autokosova_csrf='))
           ?.split('=')[1] ?? '';
-      const response = await fetch('/auth/logout', {
+      const version = this.version;
+      const language = locale === 'sq' || locale === 'en' ? locale : 'de';
+      const response = await fetch(`/auth/logout?locale=${language}`, {
         method: 'POST',
         credentials: 'same-origin',
         cache: 'no-store',
-        headers: { 'x-csrf-token': csrf },
+        headers: { 'x-csrf-token': csrf, accept: 'application/json' },
       });
+      if (version !== this.version) return false;
       if (!response.ok && response.status !== 401) {
         this.state.set('error');
         return false;
       }
+      let redirectTo: string | undefined;
+      if (response.status === 200) {
+        const payload: unknown = await response.json();
+        if (version !== this.version) return false;
+        if (
+          !payload ||
+          typeof payload !== 'object' ||
+          !('redirectTo' in payload) ||
+          typeof payload.redirectTo !== 'string' ||
+          !/^\/auth\/(?:logout\/provider|logged-out\?locale=(?:de|sq|en))$/.test(payload.redirectTo)
+        )
+          throw new Error('Invalid logout navigation');
+        redirectTo = payload.redirectTo;
+      }
       this.invalidate();
       // Only an invalidation signal crosses tabs, never account data or credentials.
       this.channel?.postMessage('changed');
+      if (redirectTo) {
+        this.departing = true;
+        this.navigate(redirectTo);
+        return 'redirect';
+      }
       return true;
     } catch {
+      this.departing = false;
       this.state.set('error');
       return false;
     } finally {
-      this.busy.set(false);
+      this.busy.set(this.departing);
     }
   }
 }

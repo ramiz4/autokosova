@@ -26,11 +26,23 @@ export async function startTestOidc(redirectUri, initialSubject) {
         assert.equal(url.searchParams.get('response_type'), 'code');
         assert.ok(url.searchParams.get('state'));
         const code = randomUUID();
-        codes.set(code, { subject, challenge: url.searchParams.get('code_challenge') });
+        codes.set(code, {
+          subject,
+          challenge: url.searchParams.get('code_challenge'),
+          nonce: url.searchParams.get('nonce'),
+          authTime: Math.floor(Date.now() / 1000),
+        });
         const target = new URL(redirectUri);
         target.searchParams.set('state', url.searchParams.get('state'));
         target.searchParams.set('code', code);
         response.writeHead(302, { location: target.toString() }).end();
+      } else if (url.pathname === '/end_session') {
+        assert.equal(url.searchParams.get('client_id'), 'inquiries-browser-test');
+        const target = new URL('/auth/logout/callback', redirectUri);
+        assert.equal(url.searchParams.get('post_logout_redirect_uri'), target.href);
+        assert.ok(url.searchParams.get('state'));
+        target.searchParams.set('state', url.searchParams.get('state'));
+        response.writeHead(302, { location: target.href }).end();
       } else if (url.pathname === '/token' && request.method === 'POST') {
         let body = '';
         for await (const chunk of request) body += chunk;
@@ -48,6 +60,8 @@ export async function startTestOidc(redirectUri, initialSubject) {
           grant.challenge,
         );
         const token = await new SignJWT({
+          nonce: grant.nonce,
+          auth_time: grant.authTime,
           name: 'Testkonto · Anfragen',
           preferred_username: 'inquiries-test',
         })
@@ -79,6 +93,8 @@ export async function startTestOidc(redirectUri, initialSubject) {
       ZITADEL_TOKEN_ENDPOINT: issuer + '/token',
       ZITADEL_JWKS_URI: issuer + '/jwks',
       ZITADEL_REDIRECT_URI: redirectUri,
+      ZITADEL_END_SESSION_ENDPOINT: issuer + '/end_session',
+      ZITADEL_POST_LOGOUT_URI: new URL('/auth/logout/callback', redirectUri).href,
     },
     setSubject(value) {
       subject = value;

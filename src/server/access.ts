@@ -127,6 +127,10 @@ interface Session {
 }
 
 interface OidcTransaction {
+  readonly browserId?: string;
+  readonly nonce?: string;
+  readonly reauthenticateAfter?: number;
+  claimed?: boolean;
   readonly codeVerifier: string;
   readonly expiresAt: Date;
   readonly returnTo: string;
@@ -714,8 +718,19 @@ export class AccessStore implements ReviewStore {
     });
   }
 
-  createOidcTransaction(state: string, codeVerifier: string, returnTo = '/') {
+  createOidcTransaction(
+    state: string,
+    codeVerifier: string,
+    returnTo = '/',
+    binding?: { browserId: string; nonce: string; reauthenticateAfter?: number },
+  ) {
+    if (binding) this.revokeOidcTransactions(binding.browserId);
+    for (const [key, value] of this.oidcTransactions)
+      if (value.expiresAt.getTime() <= Date.now()) this.oidcTransactions.delete(key);
+    if (this.oidcTransactions.size >= 1000)
+      throw new AccessError(503, 'Login temporarily unavailable');
     this.oidcTransactions.set(state, {
+      ...binding,
       codeVerifier,
       expiresAt: new Date(Date.now() + 10 * 60 * 1000),
       returnTo,
@@ -808,6 +823,36 @@ export class AccessStore implements ReviewStore {
     const id = randomUUID();
     this.vehicles.set(id, { id, label, ownerUserId });
     return id;
+  }
+
+  revokeOidcTransactions(browserId: string | undefined): void {
+    if (!browserId) return;
+    for (const [state, transaction] of this.oidcTransactions)
+      if (transaction.browserId === browserId) this.oidcTransactions.delete(state);
+  }
+
+  claimOidcTransaction(state: string, browserId: string | undefined) {
+    const transaction = this.oidcTransactions.get(state);
+    if (
+      !browserId ||
+      !transaction ||
+      transaction.browserId !== browserId ||
+      transaction.claimed ||
+      transaction.expiresAt.getTime() <= Date.now()
+    )
+      return undefined;
+    transaction.claimed = true;
+    return transaction;
+  }
+
+  finishOidcTransaction(state: string, transaction: OidcTransaction): boolean {
+    if (
+      this.oidcTransactions.get(state) !== transaction ||
+      transaction.expiresAt.getTime() <= Date.now()
+    )
+      return false;
+    this.oidcTransactions.delete(state);
+    return true;
   }
 
   consumeOidcTransaction(state: string, now = new Date()) {

@@ -16,6 +16,8 @@ export interface ZitadelOidcConfig extends ZitadelVerifierConfig {
   readonly clientId: string;
   readonly redirectUri: string;
   readonly tokenEndpoint: string;
+  readonly endSessionEndpoint?: string;
+  readonly postLogoutRedirectUri?: string;
 }
 
 export function readZitadelOidcConfig(
@@ -31,25 +33,38 @@ export function readZitadelOidcConfig(
     tokenEndpoint: environment['ZITADEL_TOKEN_ENDPOINT'],
   };
   const supplied = Object.values(values).filter(Boolean).length;
-  if (supplied === 0) return undefined;
+  const endSessionEndpoint = environment['ZITADEL_END_SESSION_ENDPOINT'];
+  const postLogoutRedirectUri = environment['ZITADEL_POST_LOGOUT_URI'];
+  if (supplied === 0 && !endSessionEndpoint && !postLogoutRedirectUri) return undefined;
   if (supplied !== Object.keys(values).length) {
     throw new Error('ZITADEL OIDC configuration is incomplete');
   }
-  return values as ZitadelOidcConfig;
+  const config = values as ZitadelOidcConfig;
+  if (!endSessionEndpoint && !postLogoutRedirectUri) return config;
+  if (!endSessionEndpoint || !postLogoutRedirectUri)
+    throw new Error('ZITADEL logout configuration is incomplete');
+  const logout = { ...config, endSessionEndpoint, postLogoutRedirectUri };
+  try {
+    validateLogoutConfig(logout, environment['NODE_ENV'] === 'production');
+  } catch {
+    throw new Error('ZITADEL logout configuration is invalid');
+  }
+  return logout;
 }
 
 export function createPkceTransaction() {
   const codeVerifier = randomBytes(48).toString('base64url');
   const codeChallenge = createHash('sha256').update(codeVerifier).digest('base64url');
   const state = randomBytes(32).toString('base64url');
-  return { codeChallenge, codeVerifier, state };
+  return { codeChallenge, codeVerifier, state, nonce: randomBytes(32).toString('base64url') };
 }
 
 export function createAuthorizationUrl(
   config: ZitadelOidcConfig,
   state: string,
   codeChallenge: string,
-  prompt?: 'create',
+  prompt: 'login' | 'select_account' | 'create' = 'login',
+  nonce?: string,
 ) {
   const url = new URL(config.authorizationEndpoint);
   url.searchParams.set('client_id', config.clientId);
@@ -59,7 +74,9 @@ export function createAuthorizationUrl(
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('scope', 'openid profile email');
   url.searchParams.set('state', state);
-  if (prompt === 'create') url.searchParams.set('prompt', 'create');
+  url.searchParams.set('prompt', prompt);
+  if (prompt === 'login') url.searchParams.set('max_age', '0');
+  if (nonce) url.searchParams.set('nonce', nonce);
   return url.toString();
 }
 
@@ -91,12 +108,32 @@ export async function exchangeAuthorizationCode(
   return payload.id_token;
 }
 
-export async function verifyZitadelAccessToken(token: string, config: ZitadelVerifierConfig) {
+export async function verifyZitadelAccessToken(
+  token: string,
+  config: ZitadelVerifierConfig,
+  authentication?: { readonly nonce: string; readonly reauthenticateAfter?: number },
+) {
   const verification = await jwtVerify(token, createRemoteJWKSet(new URL(config.jwksUri)), {
     audience: config.audience,
     issuer: config.issuer,
   });
 
+  if (authentication) {
+    if (verification.payload['nonce'] !== authentication.nonce)
+      throw new Error('OIDC nonce does not match');
+    if (authentication.reauthenticateAfter !== undefined) {
+      const time = verification.payload['auth_time'];
+      // max_age=0 is only meaningful if the signed token proves fresh authentication.
+      // Five seconds tolerate provider clock skew, not an old SSO login.
+      if (
+        typeof time !== 'number' ||
+        !Number.isInteger(time) ||
+        time < authentication.reauthenticateAfter - 5 ||
+        time > Date.now() / 1000 + 5
+      )
+        throw new Error('OIDC authentication is not fresh');
+    }
+  }
   if (!verification.payload.sub) {
     throw new Error('OIDC token has no subject');
   }
@@ -118,4 +155,47 @@ export function extractZitadelProjectRoles(value: unknown): readonly ('admin' | 
     }
   }
   return [...roles].sort();
+}
+
+/** Explicit trusted configuration only; never use Host, Referer or a user-supplied redirect. */
+export function validateLogoutConfig(config: ZitadelOidcConfig, production = false): void {
+  if (!config.endSessionEndpoint || !config.postLogoutRedirectUri)
+    throw new Error('ZITADEL logout configuration is incomplete');
+  const endpoint = new URL(config.endSessionEndpoint);
+  const callback = new URL(config.postLogoutRedirectUri);
+  const loginCallback = new URL(config.redirectUri);
+  const safe = (url: URL) =>
+    !url.username &&
+    !url.password &&
+    !url.hash &&
+    !url.search &&
+    (url.protocol === 'https:' ||
+      (!production &&
+        url.protocol === 'http:' &&
+        ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)));
+  if (
+    !safe(endpoint) ||
+    !safe(callback) ||
+    callback.origin !== loginCallback.origin ||
+    callback.pathname !== '/auth/logout/callback' ||
+    ![new URL(config.issuer).origin, new URL(config.authorizationEndpoint).origin].includes(
+      endpoint.origin,
+    )
+  )
+    throw new Error('ZITADEL logout configuration is invalid');
+}
+
+export function createEndSessionUrl(
+  config: ZitadelOidcConfig,
+  state: string,
+  locale: string,
+): string {
+  validateLogoutConfig(config, process.env['NODE_ENV'] === 'production');
+  const url = new URL(config.endSessionEndpoint!);
+  // ZITADEL supports client_id + its own browser cookie. Do not retain/forward raw ID tokens.
+  url.searchParams.set('client_id', config.clientId);
+  url.searchParams.set('post_logout_redirect_uri', config.postLogoutRedirectUri!);
+  url.searchParams.set('state', state);
+  url.searchParams.set('ui_locales', locale);
+  return url.toString();
 }

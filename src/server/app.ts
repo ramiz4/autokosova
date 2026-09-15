@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+import { AUTH_BROWSER_COOKIE, registerOidcLogout } from './oidc-logout';
 import type { RepairRequestMutation } from '../shared/saved-repair-request';
 import { parseRepairRequestPage } from './repair-request-list';
 import type { FavoriteStore } from './favorites';
@@ -370,7 +372,11 @@ export function createServer(options: ServerOptions = {}) {
 
   app.addHook('onRequest', async (request, reply) => {
     if (isNoIndexPath(request.url)) reply.header('x-robots-tag', 'noindex, nofollow');
-    if (isAccountPagePath(request.url) || /^\/api\/me(?:[/?]|$)/.test(request.url)) {
+    if (
+      isAccountPagePath(request.url) ||
+      /^\/api\/me(?:[/?]|$)/.test(request.url) ||
+      request.url.startsWith('/auth/')
+    ) {
       reply.header('cache-control', 'private, no-store');
       reply.header('vary', 'Cookie');
       reply.header('referrer-policy', 'no-referrer');
@@ -581,17 +587,40 @@ export function createServer(options: ServerOptions = {}) {
     }
     const transaction = createPkceTransaction();
     const query = request.query as { returnTo?: string; prompt?: string };
+    const prompt =
+      query.prompt === 'create'
+        ? 'create'
+        : query.prompt === 'select_account'
+          ? 'select_account'
+          : 'login';
+    const browserId =
+      (/^[A-Za-z0-9_-]{43}$/.test(request.cookies[AUTH_BROWSER_COOKIE] ?? '')
+        ? request.cookies[AUTH_BROWSER_COOKIE]
+        : undefined) || randomBytes(32).toString('base64url');
+    reply.setCookie(AUTH_BROWSER_COOKIE, browserId, {
+      httpOnly: true,
+      path: '/auth',
+      sameSite: 'lax',
+      secure: process.env['NODE_ENV'] === 'production',
+      maxAge: 600,
+    });
     accessStore.createOidcTransaction(
       transaction.state,
       transaction.codeVerifier,
       safeReturnTo(query.returnTo),
+      {
+        browserId,
+        nonce: transaction.nonce,
+        ...(prompt === 'login' ? { reauthenticateAfter: Math.floor(Date.now() / 1000) } : {}),
+      },
     );
     return reply.redirect(
       createAuthorizationUrl(
         options.oidcConfig,
         transaction.state,
         transaction.codeChallenge,
-        query.prompt === 'create' ? 'create' : undefined,
+        prompt,
+        transaction.nonce,
       ),
     );
   });
@@ -604,7 +633,10 @@ export function createServer(options: ServerOptions = {}) {
     if (!query.code || !query.state || query.error) {
       return reply.code(400).send({ error: 'Invalid OIDC callback' });
     }
-    const transaction = accessStore.consumeOidcTransaction(query.state);
+    const transaction = accessStore.claimOidcTransaction(
+      query.state,
+      request.cookies[AUTH_BROWSER_COOKIE],
+    );
     if (!transaction) {
       return reply.code(400).send({ error: 'OIDC state is invalid or expired' });
     }
@@ -615,7 +647,12 @@ export function createServer(options: ServerOptions = {}) {
         query.code,
         transaction.codeVerifier,
       );
-      const identity = await verifyZitadelAccessToken(idToken, options.oidcConfig);
+      const identity = await verifyZitadelAccessToken(idToken, options.oidcConfig, {
+        nonce: transaction.nonce!,
+        reauthenticateAfter: transaction.reauthenticateAfter,
+      });
+      if (!accessStore.finishOidcTransaction(query.state, transaction))
+        return reply.code(401).send({ error: 'OIDC login was cancelled or expired' });
       accessStore.setVerifiedRoles(identity.subject, identity.roles);
       const session = accessStore.createSession(identity.subject, undefined, identity.profile);
       const previousSession = request.cookies['autokosova_session'];
@@ -635,6 +672,7 @@ export function createServer(options: ServerOptions = {}) {
       });
       return reply.redirect(transaction.returnTo);
     } catch {
+      accessStore.finishOidcTransaction(query.state, transaction);
       return reply.code(401).send({ error: 'OIDC authentication failed' });
     }
   });
@@ -1592,17 +1630,7 @@ export function createServer(options: ServerOptions = {}) {
     }
   });
 
-  app.post('/auth/logout', async (request, reply) => {
-    try {
-      const principal = requirePrincipal(request, true);
-      accessStore.revokeSession(principal.sessionId);
-      reply.clearCookie('autokosova_session', { path: '/' });
-      reply.clearCookie('autokosova_csrf', { path: '/' });
-      return reply.code(204).send();
-    } catch (error) {
-      return errorResponse(error, reply);
-    }
-  });
+  registerOidcLogout(app, accessStore, options.oidcConfig);
 
   app.post('/auth/recovery', async (_request, reply) => {
     return reply

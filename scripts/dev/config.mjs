@@ -36,7 +36,8 @@ export function resolveConfig(root, environment = process.env) {
   ];
   const oidcPresent = oidcKeys.filter((key) => env[key]);
   if (oidcPresent.length !== oidcKeys.length) {
-    for (const key of oidcKeys) env[key] = '';
+    for (const key of [...oidcKeys, 'ZITADEL_END_SESSION_ENDPOINT', 'ZITADEL_POST_LOGOUT_URI'])
+      env[key] = '';
     notices.push(
       'Login nicht konfiguriert; öffentliche Suche verfügbar. Siehe docs/architecture/AUTH-INTEGRATION.md.',
     );
@@ -51,6 +52,39 @@ export function resolveConfig(root, environment = process.env) {
       throw new Error(
         'OIDC-Redirect passt nicht zum App-Port. AUTOKOSOVA_APP_PORT auf den freigegebenen localhost-Callback abstimmen.',
       );
+    }
+  }
+  if (oidcPresent.length === oidcKeys.length) {
+    const endpoint = env.ZITADEL_END_SESSION_ENDPOINT;
+    const callback = env.ZITADEL_POST_LOGOUT_URI;
+    if (!endpoint && !callback) {
+      notices.push(
+        'Provider-Logout nicht konfiguriert; lokale Abmeldung und erneute Authentifizierung bleiben verfügbar. Siehe AUTH-INTEGRATION.md.',
+      );
+    } else {
+      let valid = false;
+      try {
+        const end = new URL(endpoint);
+        valid =
+          callback === `http://localhost:${appPort}/auth/logout/callback` &&
+          !end.username &&
+          !end.password &&
+          !end.hash &&
+          !end.search &&
+          [
+            new URL(env.ZITADEL_ISSUER).origin,
+            new URL(env.ZITADEL_AUTHORIZATION_ENDPOINT).origin,
+          ].includes(end.origin) &&
+          (end.protocol === 'https:' ||
+            (end.protocol === 'http:' &&
+              ['localhost', '127.0.0.1', '[::1]'].includes(end.hostname)));
+      } catch {
+        /* fail closed without echoing configuration values */
+      }
+      if (!valid)
+        throw new Error(
+          'OIDC-Logout-Konfiguration ungültig oder unvollständig; Endpunkt und registrierten localhost-Logout-Callback prüfen.',
+        );
     }
   }
   // Explicit profile selection is the only source of seed permissions here.
