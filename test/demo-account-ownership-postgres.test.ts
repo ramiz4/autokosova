@@ -1,3 +1,4 @@
+import { isSavedRepairRequest } from '../src/shared/saved-repair-request-validation';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
@@ -70,7 +71,39 @@ test(
       assert.equal((await client.query('SELECT * FROM local_demo_account_binding')).rowCount, 0);
       await client.query('DELETE FROM membership WHERE user_id=$1', [outsiderId]);
       await seedDatabase(client, 'demo-workflows', config);
+      for (const id of demoAccountRequestIds) {
+        const response = await app.inject({
+          url: '/api/me/repair-requests/' + id,
+          headers: headers(customer),
+        });
+        assert.equal(
+          isSavedRepairRequest(response.json()),
+          true,
+          'the actual UI must accept every seeded request before any edit',
+        );
+      }
+      // Simulate an already-bound v1 fixture; this was previously visible but not openable.
+      await client.query(
+        'UPDATE repair_request SET earliest_dropoff_on=NULL,latest_pickup_on=NULL WHERE id=$1',
+        [demoAccountRequestIds[0]],
+      );
       await seedDatabase(client, 'demo-workflows', config);
+      const repaired = await app.inject({
+        url: '/api/me/repair-requests/' + demoAccountRequestIds[0],
+        headers: headers(customer),
+      });
+      assert.equal(isSavedRepairRequest(repaired.json()), true);
+      assert.equal(repaired.json().revision, 2);
+      await seedDatabase(client, 'demo-workflows', config);
+      assert.equal(
+        (
+          await app.inject({
+            url: '/api/me/repair-requests/' + demoAccountRequestIds[0],
+            headers: headers(customer),
+          })
+        ).json().revision,
+        2,
+      );
       const mine = (await app.inject({ url: '/api/me/garages', headers: headers(garage) })).json();
       assert.deepEqual(
         mine.garages.map((g: { id: string }) => g.id).sort(),
@@ -151,6 +184,7 @@ test(
       const requestUrl = '/api/me/repair-requests/' + demoAccountRequestIds[0];
       const saved = await app.inject({ url: requestUrl, headers: headers(customer) });
       assert.equal(saved.statusCode, 200);
+      assert.equal(isSavedRepairRequest(saved.json()), true);
       assert.equal(
         (await app.inject({ url: requestUrl, headers: headers(garage) })).statusCode,
         404,
@@ -159,8 +193,8 @@ test(
         serviceCategoryId: 'bremsen',
         symptom: 'Geänderte fiktive Demo-Anfrage',
         areas: [{ placeId: 'xk-pristina', radiusKm: 20 }],
-        earliestDropoffOn: '2026-10-02',
-        latestPickupOn: '2026-10-06',
+        earliestDropoffOn: '2026-11-02',
+        latestPickupOn: '2026-11-06',
       };
       assert.equal(
         (
@@ -228,6 +262,10 @@ test(
         (await app.inject({ url: requestUrl, headers: headers(customer) })).json().symptom,
         input.symptom,
       );
+      const retained = (await app.inject({ url: requestUrl, headers: headers(customer) })).json();
+      assert.equal(retained.earliestDropoffOn, input.earliestDropoffOn);
+      assert.equal(retained.latestPickupOn, input.latestPickupOn);
+      assert.equal(retained.revision, 3);
       assert.equal(
         (await app.inject({ url: removedUrl, headers: headers(customer) })).statusCode,
         404,

@@ -424,15 +424,24 @@ async function seedDemoWorkflowData(client) {
     if (await isManagedDemoEntity(client, 'repair_request', request.id)) continue;
     await client.query(
       `INSERT INTO repair_request (
-         id, owner_user_id, description, service_category_id, symptom, state
-       ) VALUES ($1, $2, $3, $4, $3, 'matching')
+         id, owner_user_id, description, service_category_id, symptom, state, earliest_dropoff_on, latest_pickup_on
+       ) VALUES ($1, $2, $3, $4, $3, 'matching', $5, $6)
        ON CONFLICT (id) DO UPDATE
        SET owner_user_id = EXCLUDED.owner_user_id,
            description = EXCLUDED.description,
            service_category_id = EXCLUDED.service_category_id,
            symptom = EXCLUDED.symptom,
-           state = EXCLUDED.state`,
-      [request.id, request.ownerUserId, request.symptom, request.serviceCategoryId],
+           state = EXCLUDED.state,
+           earliest_dropoff_on = EXCLUDED.earliest_dropoff_on,
+           latest_pickup_on = EXCLUDED.latest_pickup_on`,
+      [
+        request.id,
+        request.ownerUserId,
+        request.symptom,
+        request.serviceCategoryId,
+        request.earliestDropoffOn,
+        request.latestPickupOn,
+      ],
     );
     await recordDemoWorkflowEntity(client, 'repair_request', request.id);
 
