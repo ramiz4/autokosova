@@ -170,7 +170,7 @@
           </button>
         </div>
       }
-      <nav class="mt-2 grid gap-1" [attr.aria-label]="language.t('account.title')">
+      <div class="mt-2 grid gap-1">
         <a
           data-account-profile
           [routerLink]="language.link('profile')"
@@ -197,7 +197,7 @@
             ><app-icon name="heart" class="size-4.5" />{{ language.t('nav.favorites') }}</a
           >
         }
-      </nav>
+      </div>
       <div class="mt-2 grid gap-1 border-t border-slate-200 pt-2 sm:hidden">
         <ng-container [ngTemplateOutlet]="publicNavigation" />
       </div>
