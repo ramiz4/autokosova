@@ -159,8 +159,11 @@ it('shows notification and account controls instead of login buttons for an auth
   expect(inquiries.getAttribute('href')).toBe('/inquiries');
   expect(inquiries.hasAttribute('disabled')).toBe(false);
   expect(inquiries.getAttribute('aria-current')).toBeNull();
-  expect(menu.querySelectorAll('button:disabled')).toHaveLength(1);
-  expect(menu.querySelector('button:disabled')?.textContent).toContain('Favoriten');
+  expect(menu.querySelectorAll('button:disabled')).toHaveLength(0);
+  const favorites = menu.querySelector<HTMLAnchorElement>('[data-account-favorites]')!;
+  expect(favorites.getAttribute('href')).toBe('/favorites');
+  expect(favorites.hasAttribute('disabled')).toBe(false);
+  expect(favorites.getAttribute('aria-current')).toBeNull();
   expect(
     Array.from(menu.querySelectorAll('a.nav-link')).map((link) => link.getAttribute('href')),
   ).toEqual(

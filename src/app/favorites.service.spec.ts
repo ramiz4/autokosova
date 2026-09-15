@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { AccountSessionService } from './account-session.service';
 import { TestBed } from '@angular/core/testing';
 import { FavoritesService } from './favorites.service';
@@ -13,6 +13,18 @@ beforeEach(() => {
         provide: AccountSessionService,
         useValue: {
           signedIn,
+          state: computed(() => (signedIn() ? 'ready' : 'guest')),
+          identity: computed(() =>
+            signedIn()
+              ? {
+                  userId: 'fixture-owner',
+                  roles: ['customer'],
+                  garageMemberships: [],
+                  expiresAt: new Date(Date.now() + 3600000).toISOString(),
+                }
+              : null,
+          ),
+          busy: signal(false),
           refresh: vi.fn(async () => {}),
           invalidate: () => signedIn.set(false),
         },

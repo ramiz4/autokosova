@@ -25,7 +25,9 @@ export class SiteHeaderComponent {
   // Keep the logo consistent across landing, inquiry, search and onboarding navigation.
   readonly smallLogo = input(true);
   readonly loginReturnTo = input<string>();
-  readonly active = input<'garage' | 'search' | 'request' | 'inquiries' | undefined>();
+  readonly active = input<
+    'garage' | 'search' | 'request' | 'inquiries' | 'favorites' | undefined
+  >();
   protected readonly account = inject(AccountSessionService);
   protected readonly accountPanel = signal<'account' | 'notifications' | null>(null);
   protected readonly logoutError = signal(false);

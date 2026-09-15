@@ -1,0 +1,137 @@
+<article
+  data-favorite-card
+  [attr.data-favorite-id]="card().id"
+  class="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm [overflow-wrap:anywhere]"
+>
+  @if (card().state === 'loading') {
+    <div
+      class="h-48 animate-pulse bg-slate-100 motion-reduce:animate-none"
+      aria-hidden="true"
+    ></div>
+    <p role="status" class="p-6 text-sm text-muted">{{ language.t('common.loading') }}</p>
+  } @else if (card().garage; as garage) {
+    <div class="relative flex h-48 items-center justify-center bg-slate-100 sm:h-52">
+      @if (photo(); as url) {
+        @if (failedPhoto() !== url) {
+          <img
+            data-favorite-photo
+            [src]="url"
+            alt=""
+            width="560"
+            height="224"
+            loading="lazy"
+            referrerpolicy="no-referrer"
+            class="h-full w-full object-cover"
+            (error)="failedPhoto.set(url)"
+          />
+        }
+      }
+      @if (!photo() || failedPhoto() === photo()) {
+        <div data-favorite-no-photo class="flex flex-col items-center gap-3 text-slate-500">
+          <app-icon name="wrench" class="size-10" />
+          <p class="text-xs font-medium">{{ text('noPhoto') }}</p>
+        </div>
+      }
+      <span
+        class="absolute top-3 right-3 flex size-9 items-center justify-center rounded-full bg-white text-brand shadow-sm"
+        ><app-icon name="heart-filled" class="size-5"
+      /></span>
+    </div>
+    <div class="flex grow flex-col p-5 sm:p-6">
+      <h3 class="text-xl leading-7 font-bold">{{ garage.name }}</h3>
+      <p class="mt-2 flex items-center gap-1.5 text-sm text-muted">
+        <app-icon name="pin" class="size-4" />{{ placeLabel() }}
+      </p>
+      <p
+        class="mt-4 flex items-start gap-1.5 text-xs font-semibold"
+        [class.text-brand-dark]="garage.companyDataVerified"
+        [class.text-muted]="!garage.companyDataVerified"
+      >
+        <app-icon [name]="garage.companyDataVerified ? 'badge-check' : 'info'" class="size-4" />{{
+          text(garage.companyDataVerified ? 'verified' : 'notVerified')
+        }}
+      </p>
+      @if (garage.rating; as rating) {
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <app-rating-stars [rating]="rating.average" [label]="ratingLabel()" /><span
+            class="text-sm font-medium"
+            >{{ ratingLabel() }}</span
+          >
+        </div>
+        <p class="mt-1 text-xs text-muted">
+          {{ text('verifiedVisits', { count: rating.verifiedVisits }) }}
+        </p>
+      } @else {
+        <p data-favorite-no-reviews class="mt-4 text-sm text-muted">{{ text('noReviews') }}</p>
+      }
+      <ul class="mt-4 flex flex-wrap gap-2">
+        @for (service of garage.serviceCategoryIds.slice(0, 3); track service) {
+          <li class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-600">
+            {{ language.serviceLabel(service) }}
+          </li>
+        }
+        @if (garage.serviceCategoryIds.length > 3) {
+          <li class="py-1.5 text-xs text-muted">
+            {{ text('moreServices', { count: garage.serviceCategoryIds.length - 3 }) }}
+          </li>
+        }
+      </ul>
+      <div class="mt-auto pt-5">
+        <a
+          data-favorite-profile
+          appButton
+          size="compact"
+          class="w-full"
+          [routerLink]="language.link('garage', garage.id)"
+          >{{ text('profile') }}<app-icon name="arrow" class="size-4"
+        /></a>
+      </div>
+    </div>
+  } @else {
+    <div class="flex grow flex-col items-start p-6 sm:p-8">
+      <span class="flex size-12 items-center justify-center rounded-xl bg-slate-100 text-muted"
+        ><app-icon name="wrench" class="size-6"
+      /></span>
+      <h3 class="mt-4 text-xl font-bold">
+        {{ text(card().state === 'unavailable' ? 'unavailable' : 'profileError') }}
+      </h3>
+      <p class="mt-3 text-sm leading-6 text-muted">
+        {{ text(card().state === 'unavailable' ? 'unavailableHelp' : 'profileErrorHelp') }}
+      </p>
+      @if (card().state === 'error') {
+        <button
+          data-favorite-profile-retry
+          type="button"
+          appButton="outline"
+          size="compact"
+          class="mt-5 w-full"
+          (click)="retry.emit()"
+        >
+          {{ text('retry') }}
+        </button>
+      }
+    </div>
+  }
+  @if (card().state !== 'loading') {
+    <div class="border-t border-slate-100 px-5 py-2 sm:px-6">
+      @if (failed()) {
+        <p data-favorite-remove-error role="alert" class="mt-2 text-sm text-rose-800">
+          {{ text('removeError') }}
+        </p>
+      }
+      <button
+        data-favorite-remove
+        type="button"
+        class="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg px-2 text-sm font-semibold text-muted hover:bg-rose-50 hover:text-rose-800 focus-visible:outline-2 focus-visible:outline-brand disabled:cursor-wait disabled:opacity-60"
+        [disabled]="pending()"
+        [attr.aria-label]="
+          text('removeLabel', { name: card().garage?.name || text('unavailable') })
+        "
+        [attr.aria-busy]="pending()"
+        (click)="remove.emit()"
+      >
+        <app-icon name="heart" class="size-4" />{{ text(pending() ? 'removing' : 'remove') }}
+      </button>
+    </div>
+  }
+</article>

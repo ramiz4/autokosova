@@ -1,4 +1,4 @@
-import { PostgresFavoriteStore } from './server/favorites';
+import { PostgresFavoriteStore, UnavailableFavoriteStore } from './server/favorites';
 import { PostgresGarageOnboardingStore } from './server/garage-onboarding-store';
 import {
   AngularNodeAppEngine,
@@ -32,7 +32,9 @@ const accessStore = new AccessStore();
 const app = createServer({
   accessStore,
   ...(databaseUrl ? { garageStore: new PostgresGarageOnboardingStore(databaseUrl) } : {}),
-  ...(databaseUrl ? { favoriteStore: new PostgresFavoriteStore(databaseUrl) } : {}),
+  favoriteStore: databaseUrl
+    ? new PostgresFavoriteStore(databaseUrl)
+    : new UnavailableFavoriteStore(),
   oidcConfig: readZitadelOidcConfig(process.env),
   repairRequestStore: databaseUrl
     ? new PostgresRepairRequestStore(databaseUrl)

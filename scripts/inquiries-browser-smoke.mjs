@@ -219,6 +219,11 @@ try {
     } else if (url.pathname === '/api/me') {
       status = accountStatus;
       payload = accountPayload;
+    } else if (url.pathname === '/api/me/favorites') {
+      // The search and account UI now share one session-aware favorites service.
+      // Keep this fixture session consistent across its private read endpoints.
+      status = accountStatus;
+      payload = { garageIds: [] };
     } else if (url.pathname === '/api/me/repair-requests') {
       status = listStatus;
       payload = empty
@@ -258,6 +263,7 @@ try {
   await command('Fetch.enable', {
     patterns: [
       { urlPattern: `${origin}/api/me`, requestStage: 'Request' },
+      { urlPattern: `${origin}/api/me/favorites`, requestStage: 'Request' },
       { urlPattern: `${origin}/api/me/repair-requests*`, requestStage: 'Request' },
       { urlPattern: `${origin}/auth/logout`, requestStage: 'Request' },
     ],

@@ -53,6 +53,12 @@ function localizedRoutes(prefix: string): Routes {
       loadComponent: () =>
         import('./inquiries.component').then((module) => module.InquiriesComponent),
     },
+    {
+      path: `${childPrefix}favorites`,
+      pathMatch: 'full',
+      loadComponent: () =>
+        import('./favorites.component').then((module) => module.FavoritesComponent),
+    },
     // Compatibility redirects only; generated links always use English route names.
     {
       path: `${childPrefix}anfrage`,

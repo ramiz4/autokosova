@@ -172,14 +172,17 @@
             {{ language.t('nav.myRequests') }}
           </a>
         }
-        <button
-          type="button"
-          disabled
-          class="flex min-h-11 w-full cursor-not-allowed items-center rounded-lg px-2 text-left text-sm text-slate-400"
-          [title]="language.t('nav.privateUnavailable')"
-        >
-          {{ language.t('nav.favorites') }}
-        </button>
+        @if (account.signedIn()) {
+          <a
+            data-account-favorites
+            [routerLink]="language.link('favorites')"
+            [attr.aria-current]="active() === 'favorites' ? 'page' : null"
+            [class.bg-blue-50]="active() === 'favorites'"
+            (click)="closeMenu()"
+            class="flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
+            >{{ language.t('nav.favorites') }}</a
+          >
+        }
       </div>
       <div class="grid gap-1 sm:hidden">
         <ng-container [ngTemplateOutlet]="publicNavigation" />
