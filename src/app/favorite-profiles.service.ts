@@ -9,7 +9,6 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import type { OwnAccount } from '../shared/account';
 import { favoriteGarage, type FavoriteGarage } from '../shared/favorite-garage';
 import { AccountSessionService } from './account-session.service';
 import { FavoritesService } from './favorites.service';
@@ -27,7 +26,7 @@ export class FavoriteProfilesService {
   private readonly favorites = inject(FavoritesService);
   private readonly account = inject(AccountSessionService);
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
-  private readonly owner = signal<OwnAccount | null>(null);
+  private readonly owner = signal<string | null>(null);
   private readonly profiles = signal<ReadonlyMap<string, FavoriteCard>>(new Map());
   readonly limit = signal(FAVORITES_PAGE_SIZE);
   private readonly retryVersion = signal(0);
@@ -38,7 +37,7 @@ export class FavoriteProfilesService {
       : [...this.favorites.garageIds()]
           .slice(0, this.limit())
           .map((id) =>
-            this.owner() === this.account.identity()
+            this.owner() === this.account.dataContext()
               ? (this.profiles().get(id) ?? { id, state: 'loading' })
               : { id, state: 'loading' },
           ),
@@ -47,19 +46,19 @@ export class FavoriteProfilesService {
   readonly loading = computed(() => this.cards().some((card) => card.state === 'loading'));
   constructor() {
     effect(() => {
-      const identity = this.account.identity(),
+      const context = this.account.dataContext(),
         state = this.favorites.state();
       const ids = [...this.favorites.garageIds()];
       this.limit();
       this.retryVersion();
       untracked(() => {
         this.controller?.abort();
-        if (identity !== this.owner()) {
+        if (context !== this.owner()) {
           this.profiles.set(new Map());
-          this.owner.set(identity);
+          this.owner.set(context);
           this.limit.set(FAVORITES_PAGE_SIZE);
         }
-        if (!this.browser || !identity || state !== 'ready') {
+        if (!this.browser || !context || state !== 'ready') {
           this.profiles.set(new Map());
           return;
         }
@@ -72,7 +71,7 @@ export class FavoriteProfilesService {
         this.controller = controller;
         void this.resolve(
           selected.filter((id) => !this.profiles().has(id)),
-          identity,
+          context,
           controller,
         );
       });
@@ -93,15 +92,16 @@ export class FavoriteProfilesService {
   }
   private async resolve(
     ids: readonly string[],
-    identity: OwnAccount,
+    context: string,
     controller: AbortController,
   ): Promise<void> {
     let cursor = 0;
     const current = () =>
       !controller.signal.aborted &&
-      identity === this.account.identity() &&
+      context === this.account.dataContext() &&
       this.account.state() === 'ready' &&
-      !this.account.busy();
+      !this.account.busy() &&
+      Date.parse(this.account.identity()?.expiresAt ?? '') > Date.now();
     await Promise.all(
       Array.from({ length: Math.min(FAVORITES_PROFILE_CONCURRENCY, ids.length) }, async () => {
         while (cursor < ids.length && current()) {

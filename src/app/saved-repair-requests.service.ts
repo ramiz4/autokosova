@@ -9,7 +9,6 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import type { OwnAccount } from '../shared/account';
 import {
   isRepairRequestPage,
   isSavedRepairRequest,
@@ -48,11 +47,11 @@ export class SavedRepairRequestsService {
   readonly detailState = signal<'loading' | 'ready' | 'error' | 'missing'>('loading');
   private readonly account = inject(AccountSessionService);
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
-  private readonly owner = signal<OwnAccount | null>(null);
+  private readonly owner = signal<string | null>(null);
   private readonly visible = computed(
     () =>
       this.owner() !== null &&
-      this.owner() === this.account.identity() &&
+      this.owner() === this.account.dataContext() &&
       this.account.state() === 'ready' &&
       !this.account.busy(),
   );
@@ -65,13 +64,13 @@ export class SavedRepairRequestsService {
 
   constructor() {
     effect(() => {
-      const identity = this.account.identity();
+      const context = this.account.dataContext();
       const state = this.account.state();
       const busy = this.account.busy();
       untracked(() => {
         this.clear();
         if (state === 'guest' && this.hadSession) this.expired.set(true);
-        if (this.browser && identity && state === 'ready' && !busy) {
+        if (this.browser && context && state === 'ready' && !busy) {
           this.hadSession = true;
           this.expired.set(false);
           void this.loadPage();
@@ -108,8 +107,8 @@ export class SavedRepairRequestsService {
   }
 
   async openDetail(id: string): Promise<void> {
-    const identity = this.account.identity();
-    if (!this.browser || !identity || this.account.state() !== 'ready' || this.account.busy())
+    const context = this.account.dataContext();
+    if (!this.browser || !context || this.account.state() !== 'ready' || this.account.busy())
       return;
     this.detailController?.abort();
     const controller = new AbortController();
@@ -124,7 +123,7 @@ export class SavedRepairRequestsService {
         cache: 'no-store',
         signal: controller.signal,
       });
-      if (!this.current(identity, generation, controller)) return;
+      if (!this.current(context, generation, controller)) return;
       if (response.status === 401) return this.expire();
       if (response.status === 404) {
         this.detailState.set('missing');
@@ -132,21 +131,21 @@ export class SavedRepairRequestsService {
       }
       if (!response.ok) throw new Error('Private request unavailable');
       const detail: unknown = await response.json();
-      if (!this.current(identity, generation, controller)) return;
+      if (!this.current(context, generation, controller)) return;
       if (!isSavedRepairRequest(detail) || detail.id !== id)
         throw new Error('Invalid private response');
       this.storedDetail.set(detail);
       this.detailState.set('ready');
     } catch {
-      if (this.current(identity, generation, controller)) this.detailState.set('error');
+      if (this.current(context, generation, controller)) this.detailState.set('error');
     }
   }
 
   private async loadPage(cursor?: string): Promise<void> {
-    const identity = this.account.identity();
-    if (!this.browser || !identity || this.account.state() !== 'ready' || this.account.busy())
+    const context = this.account.dataContext();
+    if (!this.browser || !context || this.account.state() !== 'ready' || this.account.busy())
       return;
-    this.owner.set(identity);
+    this.owner.set(context);
     this.listController?.abort();
     const controller = new AbortController();
     this.listController = controller;
@@ -162,12 +161,12 @@ export class SavedRepairRequestsService {
         cache: 'no-store',
         signal: controller.signal,
       });
-      if (!this.current(identity, generation, controller)) return;
+      if (!this.current(context, generation, controller)) return;
       if (response.status === 401) return this.expire();
       if (response.status === 404 && cursor) this.cursorUnavailable.set(true);
       if (!response.ok) throw new Error('Private requests unavailable');
       const page: unknown = await response.json();
-      if (!this.current(identity, generation, controller)) return;
+      if (!this.current(context, generation, controller)) return;
       if (!isRepairRequestPage(page) || page.nextCursor === cursor)
         throw new Error('Invalid private page');
       const previous = cursor ? this.requests() : [];
@@ -176,7 +175,7 @@ export class SavedRepairRequestsService {
       this.nextCursor.set(page.nextCursor);
       this.state.set('ready');
     } catch {
-      if (this.current(identity, generation, controller)) this.state.set('error');
+      if (this.current(context, generation, controller)) this.state.set('error');
     }
   }
 
@@ -184,10 +183,10 @@ export class SavedRepairRequestsService {
     request: Pick<SavedRepairRequest, 'id' | 'revision'>,
     mutation: RepairRequestMutation,
   ): Promise<boolean> {
-    const identity = this.account.identity();
+    const context = this.account.dataContext();
     if (
       !this.browser ||
-      !identity ||
+      !context ||
       this.account.state() !== 'ready' ||
       this.account.busy() ||
       this.writeState() === 'saving'
@@ -228,14 +227,14 @@ export class SavedRepairRequestsService {
               ),
             }),
       });
-      if (!this.current(identity, generation, controller)) return false;
+      if (!this.current(context, generation, controller)) return false;
       if (response.status === 401) {
         this.expire();
         return false;
       }
       if (response.status === 403) {
         const body = (await response.json().catch(() => ({}))) as { code?: unknown } | null;
-        if (this.current(identity, generation, controller))
+        if (this.current(context, generation, controller))
           this.writeState.set(body?.code === 'csrf_invalid' ? 'csrf' : 'forbidden');
         return false;
       }
@@ -248,7 +247,7 @@ export class SavedRepairRequestsService {
         if (response.status !== 204) throw new Error('Deletion not confirmed');
       } else {
         const result: unknown = await response.json();
-        if (!this.current(identity, generation, controller)) return false;
+        if (!this.current(context, generation, controller)) return false;
         if (
           !isSavedRepairRequest(result) ||
           result.id !== request.id ||
@@ -272,19 +271,20 @@ export class SavedRepairRequestsService {
       );
       return true;
     } catch {
-      if (this.current(identity, generation, controller)) this.writeState.set('error');
+      if (this.current(context, generation, controller)) this.writeState.set('error');
       return false;
     }
   }
 
-  private current(identity: OwnAccount, generation: number, controller: AbortController): boolean {
-    // Check the identity synchronously, too: an effect may not have run yet after logout/change.
+  private current(context: string, generation: number, controller: AbortController): boolean {
+    // Check the context synchronously, too: an effect may not have run yet after logout/change.
     return (
       generation === this.generation &&
       !controller.signal.aborted &&
-      this.account.identity() === identity &&
+      this.account.dataContext() === context &&
       this.account.state() === 'ready' &&
-      !this.account.busy()
+      !this.account.busy() &&
+      Date.parse(this.account.identity()?.expiresAt ?? '') > Date.now()
     );
   }
 

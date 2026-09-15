@@ -9,7 +9,6 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import type { OwnAccount } from '../shared/account';
 import { AccountSessionService } from './account-session.service';
 
 type FavoriteMessage = 'saved' | 'removed' | 'signIn' | 'error' | null;
@@ -21,7 +20,7 @@ export class FavoritesService {
   private readonly account = inject(AccountSessionService);
   private readonly document = inject(DOCUMENT);
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
-  private readonly owner = signal<OwnAccount | null>(null);
+  private readonly owner = signal<string | null>(null);
   private readonly ids = signal<ReadonlySet<string>>(emptyIds);
   private readonly loadingState = signal<'loading' | 'ready' | 'error'>('loading');
   private readonly writes = signal<ReadonlySet<string>>(emptyIds);
@@ -29,7 +28,7 @@ export class FavoritesService {
   private readonly visible = computed(
     () =>
       this.owner() !== null &&
-      this.owner() === this.account.identity() &&
+      this.owner() === this.account.dataContext() &&
       this.account.state() === 'ready' &&
       !this.account.busy(),
   );
@@ -52,21 +51,23 @@ export class FavoritesService {
   private readInFlight?: Promise<boolean>;
   private readonly controllers = new Set<AbortController>();
   private generation = 0;
+  private changeVersion = 0;
   private destroyed = false;
   private channel?: BroadcastChannel;
 
   constructor() {
     effect(() => {
-      const identity = this.account.identity();
+      const context = this.account.dataContext();
       const ready = this.account.state() === 'ready' && !this.account.busy();
       untracked(() => {
-        if (identity !== this.owner() || (!ready && this.owner() !== null)) this.clear();
-        if (this.browser && ready && identity) void this.read(identity);
+        if (context !== this.owner() || (!ready && this.owner() !== null)) this.clear();
+        if (this.browser && ready && context) void this.read(context);
       });
     });
     if (this.browser && typeof BroadcastChannel !== 'undefined') {
       this.channel = new BroadcastChannel('autokosova-favorites');
       this.channel.onmessage = () => {
+        this.changeVersion++;
         void this.load();
       };
     }
@@ -95,54 +96,64 @@ export class FavoritesService {
     if (this.refreshInFlight) return this.refreshInFlight;
     const task = (async () => {
       await this.account.refresh();
-      const identity = this.account.identity();
-      if (!identity || this.account.state() !== 'ready' || this.account.busy()) {
+      const context = this.account.dataContext();
+      if (!context || this.account.state() !== 'ready' || this.account.busy()) {
         this.clear();
         return false;
       }
-      return this.read(identity);
+      return this.read(context, true);
     })().finally(() => {
       if (this.refreshInFlight === task) this.refreshInFlight = undefined;
     });
     this.refreshInFlight = task;
     return task;
   }
-  private read(identity: OwnAccount): Promise<boolean> {
+  private read(context: string, refresh = false): Promise<boolean> {
     if (this.destroyed) return Promise.resolve(false);
-    if (identity === this.owner() && this.readInFlight) return this.readInFlight;
-    if (identity === this.owner() && this.loadingState() === 'ready') return Promise.resolve(true);
-    if (identity !== this.owner()) {
+    if (context === this.owner() && this.readInFlight) return this.readInFlight;
+    if (!refresh && context === this.owner() && this.loadingState() === 'ready')
+      return Promise.resolve(true);
+    if (context !== this.owner()) {
       this.clear();
-      this.owner.set(identity);
+      this.owner.set(context);
     }
     const version = this.generation;
     const controller = this.controller();
-    this.loadingState.set('loading');
+    // Explicit reloads (including cross-tab changes) retain confirmed cards while reading.
+    if (this.loadingState() !== 'ready') this.loadingState.set('loading');
     const task = (async () => {
       try {
-        const response = await fetch('/api/me/favorites', {
-          credentials: 'same-origin',
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-        if (!this.current(identity, version, controller)) return false;
-        if (response.status === 401) {
-          this.account.invalidate();
-          return false;
+        while (this.current(context, version, controller)) {
+          const changeVersion = this.changeVersion;
+          const response = await fetch('/api/me/favorites', {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            signal: controller.signal,
+          });
+          if (!this.current(context, version, controller)) return false;
+          if (response.status === 401) {
+            this.account.invalidate();
+            return false;
+          }
+          if (!response.ok) throw new Error('Favorites unavailable');
+          const data = (await response.json()) as { garageIds?: unknown };
+          if (!this.current(context, version, controller)) return false;
+          if (
+            !Array.isArray(data.garageIds) ||
+            !data.garageIds.every(
+              (id) => typeof id === 'string' && id.length > 0 && id.length <= 128,
+            )
+          )
+            throw new Error('Invalid favorite IDs');
+          // Re-read a snapshot overtaken by a confirmed write or another tab's change.
+          if (changeVersion !== this.changeVersion) continue;
+          this.ids.set(new Set(data.garageIds));
+          this.loadingState.set('ready');
+          return true;
         }
-        if (!response.ok) throw new Error('Favorites unavailable');
-        const data = (await response.json()) as { garageIds?: unknown };
-        if (!this.current(identity, version, controller)) return false;
-        if (
-          !Array.isArray(data.garageIds) ||
-          !data.garageIds.every((id) => typeof id === 'string' && id.length > 0 && id.length <= 128)
-        )
-          throw new Error('Invalid favorite IDs');
-        this.ids.set(new Set(data.garageIds));
-        this.loadingState.set('ready');
-        return true;
+        return false;
       } catch {
-        if (this.current(identity, version, controller)) {
+        if (this.current(context, version, controller)) {
           this.ids.set(emptyIds);
           this.loadingState.set('error');
         }
@@ -171,7 +182,7 @@ export class FavoritesService {
       this.pending().has(garageId)
     )
       return false;
-    const initiatingOwner = this.account.identity()?.userId;
+    const initiatingOwner = this.account.dataContext();
     this.starting.add(garageId);
     if (this.state() !== 'ready' && !(await this.load())) {
       this.starting.delete(garageId);
@@ -179,8 +190,8 @@ export class FavoritesService {
       return false;
     }
     this.starting.delete(garageId);
-    const identity = this.account.identity();
-    if (!identity || !this.visible() || (initiatingOwner && initiatingOwner !== identity.userId))
+    const context = this.account.dataContext();
+    if (!context || !this.visible() || (initiatingOwner && initiatingOwner !== context))
       return false;
     const version = this.generation,
       controller = this.controller();
@@ -201,7 +212,7 @@ export class FavoritesService {
         signal: controller.signal,
         headers: { 'x-csrf-token': csrf },
       });
-      if (!this.current(identity, version, controller)) return false;
+      if (!this.current(context, version, controller)) return false;
       if (response.status === 401) {
         this.clear();
         this.account.invalidate();
@@ -209,6 +220,7 @@ export class FavoritesService {
         return false;
       }
       if (!response.ok) throw new Error('Favorite write failed');
+      this.changeVersion++;
       const next = new Set(this.ids());
       if (saved) next.add(garageId);
       else next.delete(garageId);
@@ -217,14 +229,14 @@ export class FavoritesService {
       this.channel?.postMessage('changed'); // No IDs or identities cross tabs.
       return true;
     } catch {
-      if (this.current(identity, version, controller)) {
+      if (this.current(context, version, controller)) {
         this.failures.update((ids) => new Set([...ids, garageId]));
         this.notify('error');
       }
       return false;
     } finally {
       this.controllers.delete(controller);
-      if (this.current(identity, version, controller))
+      if (this.current(context, version, controller))
         this.writes.update((ids) => new Set([...ids].filter((id) => id !== garageId)));
     }
   }
@@ -233,15 +245,15 @@ export class FavoritesService {
     this.controllers.add(controller);
     return controller;
   }
-  private current(identity: OwnAccount, version: number, controller: AbortController): boolean {
+  private current(context: string, version: number, controller: AbortController): boolean {
     return (
       !this.destroyed &&
       !controller.signal.aborted &&
       version === this.generation &&
-      identity === this.account.identity() &&
+      context === this.account.dataContext() &&
       this.account.state() === 'ready' &&
       !this.account.busy() &&
-      Date.parse(identity.expiresAt) > Date.now()
+      Date.parse(this.account.identity()?.expiresAt ?? '') > Date.now()
     );
   }
   private clear(): void {

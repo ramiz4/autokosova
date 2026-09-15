@@ -1,6 +1,14 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { DestroyRef, Injectable, InjectionToken, PLATFORM_ID, inject, signal } from '@angular/core';
-import { accountName, isOwnAccount, type OwnAccount } from '../shared/account';
+import {
+  DestroyRef,
+  Injectable,
+  InjectionToken,
+  PLATFORM_ID,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { accountType, accountName, isOwnAccount, type OwnAccount } from '../shared/account';
 
 export const AUTH_NAVIGATE = new InjectionToken<(path: string) => void>('AUTH_NAVIGATE', {
   providedIn: 'root',
@@ -16,6 +24,23 @@ export class AccountSessionService {
   readonly state = signal<AccountState>('loading');
   readonly identity = signal<OwnAccount | null>(null);
   readonly loginAvailable = signal<boolean | null>(null);
+  private readonly contextEpoch = signal(0);
+  // Private list lifetime is not the lifetime of a freshly parsed /api/me object.
+  // Metadata/expiry can update independently; ownership, rights or invalidation cannot.
+  readonly dataContext = computed(() => {
+    const identity = this.identity();
+    return identity
+      ? JSON.stringify([
+          this.contextEpoch(),
+          identity.userId,
+          accountType(identity),
+          [...identity.roles].sort(),
+          identity.garageMemberships
+            .map(({ garageId, role }) => JSON.stringify([garageId, role]))
+            .sort(),
+        ])
+      : null;
+  });
   private readonly document = inject(DOCUMENT);
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly navigate = inject(AUTH_NAVIGATE);
@@ -118,7 +143,10 @@ export class AccountSessionService {
         this.invalidate();
         return;
       }
+      const previousContext = this.dataContext();
       this.identity.set(data);
+      // Returning to previous rights must not revive requests from before the change.
+      if (this.dataContext() !== previousContext) this.contextEpoch.update((epoch) => epoch + 1);
       this.signedIn.set(true);
       this.loginAvailable.set(true);
       this.state.set('ready');
@@ -140,6 +168,8 @@ export class AccountSessionService {
   }
 
   private clearIdentity(state: AccountState): void {
+    // A later login with the same subject must not revive an earlier session's data.
+    this.contextEpoch.update((epoch) => epoch + 1);
     clearTimeout(this.expiryTimer);
     this.expiryTimer = undefined;
     this.identity.set(null);
