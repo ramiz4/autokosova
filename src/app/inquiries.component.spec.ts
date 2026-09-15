@@ -19,6 +19,9 @@ const identity: OwnAccount = {
   expiresAt: new Date(Date.now() + 3600_000).toISOString(),
 };
 const detail: SavedRepairRequest = {
+  active: true,
+  revision: 1,
+  updatedAt: '2026-09-14T12:00:00Z',
   id: 'fixture-inquiry',
   serviceCategoryId: 'bremsen',
   symptom: '<b>PRIVATE-SYMPTOM</b>',
@@ -38,6 +41,9 @@ const detail: SavedRepairRequest = {
 const pageData: RepairRequestPage = {
   requests: [
     {
+      active: detail.active,
+      revision: detail.revision,
+      updatedAt: detail.updatedAt,
       id: detail.id,
       serviceCategoryId: detail.serviceCategoryId,
       symptomPreview: detail.symptom,
@@ -228,4 +234,107 @@ it('preserves overview context on language change and clears private data during
     expect(Object.keys(inquiriesCopy[locale]).sort()).toEqual(Object.keys(inquiriesCopy.de).sort());
     expect(Object.values(inquiriesCopy[locale]).every((text) => text.trim())).toBe(true);
   }
+});
+
+// jsdom has no native top-layer implementation. Actual focus trapping is exercised in Chrome.
+function supportTestDialog() {
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+    configurable: true,
+    value: function (this: HTMLDialogElement) {
+      this.open = true;
+    },
+  });
+}
+
+afterEach(() => {
+  delete (HTMLDialogElement.prototype as unknown as { showModal?: unknown }).showModal;
+});
+
+it('edits the stored detail, keeps private attachments and the separate creation draft, and only confirms an API success', async () => {
+  supportTestDialog();
+  const { page, fixture, service } = await render();
+  page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
+  await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
+  await fixture.whenStable();
+  const dialog = page.querySelector<HTMLDialogElement>('[data-inquiry-editor]')!;
+  expect(dialog.open).toBe(true);
+  const symptom = dialog.querySelector<HTMLTextAreaElement>('#edit-symptom')!;
+  expect(symptom.value).toBe(detail.symptom);
+  symptom.value = 'Geänderter fiktiver Bedarf';
+  symptom.dispatchEvent(new Event('input', { bubbles: true }));
+  await fixture.whenStable();
+  const mutate = vi.spyOn(service, 'mutate').mockResolvedValue(false);
+  dialog.querySelector<HTMLButtonElement>('[data-save-inquiry]')!.click();
+  await fixture.whenStable();
+  expect(mutate).toHaveBeenCalledWith(detail, {
+    kind: 'update',
+    input: expect.objectContaining({
+      symptom: symptom.value,
+      attachmentIds: detail.attachmentIds,
+      vehicle: detail.vehicle,
+    }),
+  });
+  expect(page.querySelector('[data-inquiry-editor]')).toBeTruthy();
+  expect(TestBed.inject(RepairRequestDraft).read()?.['symptom']).toBe('UNSAVED-DRAFT');
+  mutate.mockResolvedValue(true);
+  dialog.querySelector<HTMLButtonElement>('[data-save-inquiry]')!.click();
+  await fixture.whenStable();
+  expect(page.querySelector('[data-inquiry-editor]')).toBeNull();
+});
+
+it('validates local dates and guards unsaved edits on Escape and navigation', async () => {
+  supportTestDialog();
+  const { page, fixture, service } = await render();
+  page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
+  await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
+  await fixture.whenStable();
+  const dialog = page.querySelector<HTMLDialogElement>('[data-inquiry-editor]')!;
+  const pickup = dialog.querySelector<HTMLInputElement>('#edit-pickup')!;
+  pickup.value = '2026-01-01';
+  pickup.dispatchEvent(new Event('input', { bubbles: true }));
+  const mutation = vi.spyOn(service, 'mutate');
+  dialog.querySelector<HTMLButtonElement>('[data-save-inquiry]')!.click();
+  await fixture.whenStable();
+  expect(mutation).not.toHaveBeenCalled();
+  expect(dialog.querySelector('[data-edit-validation]')).toBeTruthy();
+  dialog.dispatchEvent(new Event('cancel', { cancelable: true }));
+  await fixture.whenStable();
+  expect(dialog.textContent).toContain(inquiriesCopy.de.discardTitle);
+  const leaving = fixture.componentInstance.canLeave();
+  expect(leaving).toBeInstanceOf(Promise);
+  await fixture.whenStable();
+  dialog.querySelector<HTMLButtonElement>('[data-discard-edit]')!.click();
+  await fixture.whenStable();
+  expect(await leaving).toBe(true);
+  expect(page.querySelector('[data-inquiry-editor]')).toBeNull();
+});
+
+it('requires confirmation before deletion, supports cancellation and discards the dialog on account change', async () => {
+  supportTestDialog();
+  const { page, fixture, service } = await render();
+  const mutate = vi.spyOn(service, 'mutate').mockResolvedValue(true);
+  page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
+  await fixture.whenStable();
+  page.querySelector<HTMLButtonElement>('[data-delete-inquiry]')!.click();
+  await fixture.whenStable();
+  expect(mutate).not.toHaveBeenCalled();
+  page.querySelector<HTMLButtonElement>('[data-cancel-delete]')!.click();
+  await fixture.whenStable();
+  expect(page.querySelector('[data-delete-dialog]')).toBeNull();
+  expect(mutate).not.toHaveBeenCalled();
+  page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
+  await fixture.whenStable();
+  page.querySelector<HTMLButtonElement>('[data-delete-inquiry]')!.click();
+  await fixture.whenStable();
+  page.querySelector<HTMLButtonElement>('[data-confirm-delete]')!.click();
+  await fixture.whenStable();
+  expect(mutate).toHaveBeenCalledWith(pageData.requests[0], { kind: 'delete' });
+  expect(page.querySelector('[data-delete-dialog]')).toBeNull();
+  page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
+  await fixture.whenStable();
+  page.querySelector<HTMLButtonElement>('[data-delete-inquiry]')!.click();
+  await fixture.whenStable();
+  TestBed.inject(AccountSessionService).invalidate();
+  await fixture.whenStable();
+  expect(page.querySelector('[data-delete-dialog]')).toBeNull();
 });

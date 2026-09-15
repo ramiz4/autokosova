@@ -1,0 +1,212 @@
+<dialog
+  #dialog
+  aria-labelledby="inquiry-edit-title"
+  aria-describedby="inquiry-edit-help"
+  (cancel)="cancel($event)"
+  data-inquiry-editor
+>
+  <header class="dialog-header">
+    <div>
+      <p class="eyebrow">{{ text('privateLabel') }}</p>
+      <h2 id="inquiry-edit-title">{{ text('editTitle') }}</h2>
+    </div>
+    <button
+      type="button"
+      class="icon-button"
+      [attr.aria-label]="text('closeEditor')"
+      [disabled]="saved.writeState() === 'saving'"
+      (click)="cancel()"
+    >
+      <app-icon name="close" class="size-5" />
+    </button>
+  </header>
+  <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <div class="dialog-body">
+      <p id="inquiry-edit-help" class="help">{{ text('editHelp') }}</p>
+      <fieldset [disabled]="saved.writeState() === 'saving'" class="edit-section">
+        <legend>{{ field('repair') }}</legend>
+        <label for="edit-service">{{ field('service') }}</label>
+        <select
+          id="edit-service"
+          required
+          formControlName="serviceCategoryId"
+          autofocus
+          [attr.aria-invalid]="
+            form.controls.serviceCategoryId.touched && form.controls.serviceCategoryId.invalid
+          "
+        >
+          <option value="">{{ language.t('common.choose') }}</option>
+          @for (id of services; track id) {
+            <option [value]="id">{{ language.serviceLabel(id) }}</option>
+          }
+        </select>
+        <label for="edit-symptom"
+          >{{ field('problem') }}
+          <span class="optional">{{ language.t('common.optional') }}</span></label
+        >
+        <textarea id="edit-symptom" formControlName="symptom" rows="3" maxlength="2000"></textarea>
+      </fieldset>
+      <details class="edit-section" [open]="!!request().vehicle">
+        <summary>
+          {{ field('vehicle') }} <span class="optional">{{ language.t('common.optional') }}</span>
+        </summary>
+        <fieldset
+          formGroupName="vehicle"
+          [disabled]="saved.writeState() === 'saving'"
+          class="field-grid"
+        >
+          <div>
+            <label for="edit-make">{{ field('make') }}</label
+            ><select id="edit-make" formControlName="makeId">
+              <option value="">{{ language.t('common.optional') }}</option>
+              @for (id of makes; track id) {
+                <option [value]="id">{{ makeLabels[id] }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label for="edit-model">{{ field('model') }}</label
+            ><input id="edit-model" formControlName="model" maxlength="120" />
+          </div>
+          <div>
+            <label for="edit-class">{{ field('class') }}</label
+            ><select id="edit-class" formControlName="vehicleClass">
+              <option value="">{{ language.t('common.optional') }}</option>
+              @for (id of classes; track id) {
+                <option [value]="id">{{ field(id) }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label for="edit-year">{{ field('year') }}</label
+            ><input
+              id="edit-year"
+              type="number"
+              formControlName="year"
+              min="1886"
+              max="2100"
+              step="1"
+            />
+          </div>
+          <div>
+            <label for="edit-fuel">{{ field('fuel') }}</label
+            ><select id="edit-fuel" formControlName="fuel">
+              <option value="">{{ language.t('common.optional') }}</option>
+              @for (id of fuels; track id) {
+                <option [value]="id">{{ field(id) }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label for="edit-engine">{{ field('engine') }}</label
+            ><input id="edit-engine" formControlName="engineDetails" maxlength="120" />
+          </div>
+          <div>
+            <label for="edit-transmission">{{ field('transmission') }}</label
+            ><select id="edit-transmission" formControlName="transmissionDetails">
+              <option value="">{{ language.t('common.optional') }}</option>
+              @for (id of transmissions; track id) {
+                <option [value]="id">{{ field(id) }}</option>
+              }
+              @if (request().vehicle?.transmissionDetails; as value) {
+                @if (!isKnownTransmission(value)) {
+                  <option [value]="value">{{ value }}</option>
+                }
+              }
+            </select>
+          </div>
+          <div>
+            <label for="edit-mileage">{{ field('mileage') }}</label
+            ><input
+              id="edit-mileage"
+              type="number"
+              formControlName="mileageKm"
+              min="0"
+              max="2000000"
+              step="1"
+            />
+          </div>
+        </fieldset>
+      </details>
+      <fieldset class="edit-section" [disabled]="saved.writeState() === 'saving'">
+        <legend>{{ field('placeTime') }}</legend>
+        <app-search-areas
+          formControlName="areas"
+          idPrefix="inquiry-edit"
+          (editingChange)="areasEditing.set($event)"
+        />
+        <div class="field-grid">
+          <div>
+            <label for="edit-dropoff">{{ field('dropoff') }}</label
+            ><input id="edit-dropoff" type="date" required formControlName="earliestDropoffOn" />
+          </div>
+          <div>
+            <label for="edit-pickup">{{ field('pickup') }}</label
+            ><input id="edit-pickup" type="date" required formControlName="latestPickupOn" />
+          </div>
+        </div>
+      </fieldset>
+      @if (request().attachmentIds.length) {
+        <p class="help">
+          {{ text('attachments') }}: {{ request().attachmentIds.length }}.
+          {{ text('attachmentsKept') }}
+        </p>
+      }
+      @if (validation()) {
+        <p role="alert" class="error" data-edit-validation>{{ validation() }}</p>
+      }
+      @if (
+        saved.writeState() === 'conflict' ||
+        saved.writeState() === 'error' ||
+        saved.writeState() === 'missing'
+      ) {
+        <p role="alert" class="error">
+          {{
+            text(
+              saved.writeState() === 'conflict'
+                ? 'conflict'
+                : saved.writeState() === 'missing'
+                  ? 'missing'
+                  : 'writeError'
+            )
+          }}
+        </p>
+      }
+      @if (discarding()) {
+        <section role="alert" class="discard-box" aria-labelledby="discard-title">
+          <h3 id="discard-title">{{ text('discardTitle') }}</h3>
+          <p>{{ text('discardBody') }}</p>
+          <div class="dialog-actions">
+            <button type="button" appButton="outline" size="compact" (click)="keepEditing()">
+              {{ text('keepEditing') }}</button
+            ><button type="button" appButton size="compact" (click)="discard()" data-discard-edit>
+              {{ text('discard') }}
+            </button>
+          </div>
+        </section>
+      }
+    </div>
+    <footer class="dialog-footer">
+      <button
+        type="button"
+        appButton="outline"
+        size="compact"
+        [disabled]="saved.writeState() === 'saving'"
+        (click)="cancel()"
+      >
+        {{ text('cancel') }}
+      </button>
+      <button
+        type="submit"
+        appButton
+        size="compact"
+        [disabled]="saved.writeState() === 'saving' || areasEditing() || discarding()"
+        data-save-inquiry
+      >
+        <app-icon name="check" class="size-4" />{{
+          text(saved.writeState() === 'saving' ? 'saving' : 'save')
+        }}
+      </button>
+    </footer>
+  </form>
+</dialog>

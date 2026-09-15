@@ -10,7 +10,7 @@ export function parseRepairRequestPage(value: unknown): RepairRequestPageOptions
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new AccessError(400, 'Invalid request page');
   const query = value as Record<string, unknown>;
-  if (Object.keys(query).some((key) => key !== 'limit' && key !== 'cursor'))
+  if (Object.keys(query).some((key) => !['limit', 'cursor', 'activity'].includes(key)))
     throw new AccessError(400, 'Invalid request page');
   if (
     query['limit'] !== undefined &&
@@ -19,7 +19,15 @@ export function parseRepairRequestPage(value: unknown): RepairRequestPageOptions
     throw new AccessError(400, 'Invalid request page');
   if (query['cursor'] !== undefined && typeof query['cursor'] !== 'string')
     throw new AccessError(400, 'Invalid request page');
+  if (
+    query['activity'] !== undefined &&
+    !['all', 'active', 'inactive'].includes(query['activity'] as string)
+  )
+    throw new AccessError(400, 'Invalid request page');
   const options: RepairRequestPageOptions = {
+    ...(query['activity'] === undefined
+      ? {}
+      : { activity: query['activity'] as RepairRequestPageOptions['activity'] }),
     limit: query['limit'] === undefined ? REPAIR_REQUEST_PAGE_LIMIT : Number(query['limit']),
     ...(query['cursor'] === undefined ? {} : { cursor: query['cursor'] as string }),
   };

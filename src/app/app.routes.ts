@@ -45,6 +45,10 @@ function localizedRoutes(prefix: string): Routes {
     },
     {
       path: `${childPrefix}inquiries`,
+      canDeactivate: [
+        (component: import('./inquiries.component').InquiriesComponent | null) =>
+          component?.canLeave() ?? true,
+      ],
       pathMatch: 'full',
       loadComponent: () =>
         import('./inquiries.component').then((module) => module.InquiriesComponent),

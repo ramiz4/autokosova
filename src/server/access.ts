@@ -1,9 +1,11 @@
+import { validateRepairRequest } from '../shared/repair-request-validation';
 import {
   repairRequestSummary,
   validRepairRequestPageOptions,
   type RepairRequestPage,
   type RepairRequestPageOptions,
   type SavedRepairRequest,
+  type RepairRequestMutation,
 } from '../shared/saved-repair-request';
 import type {
   GaragePublicationState,
@@ -152,6 +154,9 @@ interface PrivateFile {
 }
 
 interface PrivateRepairRequest {
+  readonly active: boolean;
+  readonly revision: number;
+  readonly updatedAt: string;
   readonly createdAt: string;
   readonly id: string;
   readonly input: RepairRequestInput;
@@ -728,8 +733,24 @@ export class AccessStore implements ReviewStore {
     const id = randomUUID();
     const createdAt = new Date().toISOString();
     const storedInput = structuredClone(input);
-    this.repairRequests.set(id, { createdAt, id, input: storedInput, ownerUserId });
-    return this.toStoredRepairRequest({ createdAt, id, input: storedInput, ownerUserId });
+    this.repairRequests.set(id, {
+      active: true,
+      revision: 1,
+      updatedAt: createdAt,
+      createdAt,
+      id,
+      input: storedInput,
+      ownerUserId,
+    });
+    return this.toStoredRepairRequest({
+      active: true,
+      revision: 1,
+      updatedAt: createdAt,
+      createdAt,
+      id,
+      input: storedInput,
+      ownerUserId,
+    });
   }
 
   createReview(principal: Principal, input: ReviewSubmissionInput): OwnReview {
@@ -803,7 +824,15 @@ export class AccessStore implements ReviewStore {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
     const cursorIndex = options.cursor ? own.findIndex((item) => item.id === options.cursor) : -1;
     if (options.cursor && cursorIndex < 0) throw new AccessError(404, 'Request page unavailable');
-    const page = own.slice(cursorIndex + 1, cursorIndex + 1 + options.limit + 1);
+    const page = own
+      .slice(cursorIndex + 1)
+      .filter(
+        (item) =>
+          !options.activity ||
+          options.activity === 'all' ||
+          item.active === (options.activity === 'active'),
+      )
+      .slice(0, options.limit + 1);
     const requests = page
       .slice(0, options.limit)
       .map((item) => repairRequestSummary(this.toStoredRepairRequest(item)));
@@ -811,6 +840,47 @@ export class AccessStore implements ReviewStore {
       requests,
       nextCursor: page.length > options.limit ? requests[requests.length - 1].id : null,
     };
+  }
+
+  mutateRepairRequest(
+    ownerUserId: string,
+    id: string,
+    revision: number,
+    mutation: RepairRequestMutation,
+    authorize: () => void = () => undefined,
+  ): StoredRepairRequest | null {
+    const request = this.repairRequests.get(id);
+    if (!request || request.ownerUserId !== ownerUserId)
+      throw new AccessError(404, 'Private repair request not found');
+    if (request.revision !== revision)
+      throw new AccessError(409, 'Request changed; reload before saving');
+    authorize();
+    if (mutation.kind === 'delete') {
+      this.repairRequests.delete(id);
+      return null;
+    }
+    if (mutation.kind === 'update') {
+      const error = validateRepairRequest(mutation.input);
+      if (error) throw new AccessError(400, error);
+      for (const fileId of mutation.input.attachmentIds ?? []) {
+        const file = this.files.get(fileId);
+        if (
+          !file ||
+          file.ownerUserId !== ownerUserId ||
+          (file.retentionState !== 'active' && !request.input.attachmentIds?.includes(fileId))
+        )
+          throw new AccessError(404, 'Private file not found');
+      }
+    }
+    const changed: PrivateRepairRequest = {
+      ...request,
+      active: mutation.kind === 'activity' ? mutation.active : request.active,
+      input: mutation.kind === 'update' ? structuredClone(mutation.input) : request.input,
+      revision: request.revision + 1,
+      updatedAt: new Date().toISOString(),
+    };
+    this.repairRequests.set(id, changed);
+    return this.toStoredRepairRequest(changed);
   }
 
   getRepairRequest(userId: string, repairRequestId: string): StoredRepairRequest {
@@ -1421,15 +1491,18 @@ export class AccessStore implements ReviewStore {
 
   private toStoredRepairRequest(request: PrivateRepairRequest): StoredRepairRequest {
     return {
-      areas: request.input.areas,
-      attachmentIds: request.input.attachmentIds ?? [],
+      active: request.active,
+      revision: request.revision,
+      updatedAt: request.updatedAt,
+      areas: structuredClone(request.input.areas),
+      attachmentIds: [...(request.input.attachmentIds ?? [])],
       createdAt: request.createdAt,
       earliestDropoffOn: request.input.earliestDropoffOn,
       id: request.id,
       latestPickupOn: request.input.latestPickupOn,
       serviceCategoryId: request.input.serviceCategoryId,
       symptom: request.input.symptom,
-      vehicle: request.input.vehicle,
+      vehicle: structuredClone(request.input.vehicle),
     };
   }
 

@@ -12,6 +12,9 @@ const identity = (userId: string): OwnAccount => ({
   expiresAt: new Date(Date.now() + 3600_000).toISOString(),
 });
 const detail: SavedRepairRequest = {
+  active: true,
+  revision: 1,
+  updatedAt: '2026-09-14T12:00:00Z',
   id: 'fixture-request',
   serviceCategoryId: 'bremsen',
   createdAt: '2026-09-14T12:00:00Z',
@@ -25,6 +28,9 @@ const detail: SavedRepairRequest = {
 const page: RepairRequestPage = {
   requests: [
     {
+      active: detail.active,
+      revision: detail.revision,
+      updatedAt: detail.updatedAt,
       id: detail.id,
       serviceCategoryId: 'bremsen',
       createdAt: detail.createdAt,
@@ -220,4 +226,99 @@ it('distinguishes an unavailable cursor and rejects malformed payloads without d
   service.reload();
   await vi.waitFor(() => expect(service.state()).toBe('error'));
   expect(service.requests()).toEqual([]);
+});
+
+it('sends only a confirmed, CSRF-protected revisioned write, then reloads from the API', async () => {
+  const { service, signIn } = setup();
+  signIn('owner');
+  await vi.waitFor(() => expect(service.state()).toBe('ready'));
+  document.cookie = 'autokosova_csrf=fixture-csrf';
+  const pending = deferred<Response>();
+  vi.mocked(fetch).mockReturnValueOnce(pending.promise);
+  const task = service.mutate(detail, { kind: 'activity', active: false });
+  expect(service.writeState()).toBe('saving');
+  expect(service.notice()).toBeNull();
+  expect(service.requests()[0].active).toBe(true);
+  expect(await service.mutate(detail, { kind: 'delete' })).toBe(false);
+  expect(fetch).toHaveBeenLastCalledWith(
+    `/api/me/repair-requests/${detail.id}`,
+    expect.objectContaining({
+      method: 'PATCH',
+      cache: 'no-store',
+      credentials: 'same-origin',
+      headers: expect.objectContaining({ 'x-csrf-token': 'fixture-csrf', 'if-match': '"1"' }),
+      body: JSON.stringify({ active: false }),
+    }),
+  );
+  vi.mocked(fetch).mockResolvedValueOnce(
+    response({ requests: [{ ...page.requests[0], active: false, revision: 2 }], nextCursor: null }),
+  );
+  pending.resolve(response({ ...detail, active: false, revision: 2 }));
+  expect(await task).toBe(true);
+  await vi.waitFor(() => expect(service.state()).toBe('ready'));
+  expect(service.requests()[0].active).toBe(false);
+  expect(service.notice()).toBe('deactivated');
+  document.cookie = 'autokosova_csrf=; max-age=0';
+});
+
+it.each([
+  [409, 'conflict'],
+  [404, 'missing'],
+  [503, 'error'],
+] as const)('retains data and never confirms a failed %s write', async (status, state) => {
+  const { service, signIn } = setup();
+  signIn('owner');
+  await vi.waitFor(() => expect(service.state()).toBe('ready'));
+  vi.mocked(fetch).mockResolvedValueOnce(response({}, status));
+  expect(await service.mutate(detail, { kind: 'delete' })).toBe(false);
+  expect(service.writeState()).toBe(state);
+  expect(service.notice()).toBeNull();
+  expect(service.requests()).toEqual(page.requests);
+});
+
+it('ignores late mutation JSON after logout even when abort does not stop the response', async () => {
+  const { service, account, signIn } = setup();
+  signIn('owner');
+  await vi.waitFor(() => expect(service.state()).toBe('ready'));
+  const body = deferred<unknown>();
+  vi.mocked(fetch).mockResolvedValueOnce({
+    ok: true,
+    status: 200,
+    json: () => body.promise,
+  } as Response);
+  const task = service.mutate(detail, { kind: 'activity', active: false });
+  await Promise.resolve();
+  account.invalidate();
+  TestBed.tick();
+  body.resolve({ ...detail, active: false, revision: 2 });
+  expect(await task).toBe(false);
+  expect(service.requests()).toEqual([]);
+  expect(service.detail()).toBeNull();
+  expect(service.notice()).toBeNull();
+});
+
+it('invalidates an expired mutation and sends activity filters to the API rather than filtering a partial page', async () => {
+  const { service, account, signIn } = setup();
+  signIn('owner');
+  await vi.waitFor(() => expect(service.state()).toBe('ready'));
+  service.filter('inactive');
+  await vi.waitFor(() => expect(service.state()).toBe('ready'));
+  expect(fetch).toHaveBeenLastCalledWith(
+    '/api/me/repair-requests?limit=20&activity=inactive',
+    expect.anything(),
+  );
+  vi.mocked(fetch).mockResolvedValueOnce(response({}, 401));
+  expect(await service.mutate(detail, { kind: 'delete' })).toBe(false);
+  expect(account.state()).toBe('guest');
+  expect(service.requests()).toEqual([]);
+});
+
+it('rejects an invalid mutation result instead of falsely acknowledging a save', async () => {
+  const { service, signIn } = setup();
+  signIn('owner');
+  await vi.waitFor(() => expect(service.state()).toBe('ready'));
+  vi.mocked(fetch).mockResolvedValueOnce(response({ ...detail, id: 'wrong-id', revision: 2 }));
+  expect(await service.mutate(detail, { kind: 'activity', active: false })).toBe(false);
+  expect(service.notice()).toBeNull();
+  expect(service.writeState()).toBe('error');
 });

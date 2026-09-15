@@ -2,6 +2,9 @@ import type { RepairRequestInput, RepairRequestVehicle } from './repair-request'
 
 /** The existing owner-only detail response; never use this type in public search URLs. */
 export interface SavedRepairRequest {
+  readonly active: boolean;
+  readonly revision: number;
+  readonly updatedAt: string;
   readonly areas: RepairRequestInput['areas'];
   readonly attachmentIds: readonly string[];
   readonly createdAt: string;
@@ -14,6 +17,9 @@ export interface SavedRepairRequest {
 }
 
 export interface RepairRequestSummary {
+  readonly active: boolean;
+  readonly revision: number;
+  readonly updatedAt: string;
   readonly id: string;
   readonly createdAt: string;
   readonly serviceCategoryId: string;
@@ -29,6 +35,7 @@ export interface RepairRequestPage {
 
 export interface RepairRequestPageOptions {
   readonly limit: number;
+  readonly activity?: 'all' | 'active' | 'inactive';
   /** ID of the last displayed request, resolved within the current owner's records. */
   readonly cursor?: string;
 }
@@ -39,6 +46,7 @@ export const REPAIR_REQUEST_PREVIEW_LENGTH = 160;
 
 export function validRepairRequestPageOptions(options: RepairRequestPageOptions): boolean {
   return (
+    (options.activity === undefined || ['all', 'active', 'inactive'].includes(options.activity)) &&
     Number.isInteger(options.limit) &&
     options.limit >= 1 &&
     options.limit <= REPAIR_REQUEST_MAX_PAGE_LIMIT &&
@@ -51,12 +59,23 @@ export function validRepairRequestPageOptions(options: RepairRequestPageOptions)
 export function repairRequestSummary(
   request: Pick<
     SavedRepairRequest,
-    'id' | 'createdAt' | 'serviceCategoryId' | 'symptom' | 'areas' | 'vehicle'
+    | 'id'
+    | 'createdAt'
+    | 'serviceCategoryId'
+    | 'symptom'
+    | 'areas'
+    | 'vehicle'
+    | 'active'
+    | 'revision'
+    | 'updatedAt'
   >,
 ): RepairRequestSummary {
   const vehicle = request.vehicle;
   return {
     id: request.id,
+    active: request.active,
+    revision: request.revision,
+    updatedAt: request.updatedAt,
     createdAt: request.createdAt,
     serviceCategoryId: request.serviceCategoryId,
     ...(request.symptom
@@ -76,3 +95,9 @@ export function repairRequestSummary(
       : {}),
   };
 }
+
+/** Mutations never infer ownership from the body. Every operation requires the last read revision. */
+export type RepairRequestMutation =
+  | { readonly kind: 'update'; readonly input: RepairRequestInput }
+  | { readonly kind: 'activity'; readonly active: boolean }
+  | { readonly kind: 'delete' };

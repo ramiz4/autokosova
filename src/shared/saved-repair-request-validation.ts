@@ -42,6 +42,11 @@ function summary(value: unknown): value is RecordValue {
   if (!record(value)) return false;
   return (
     identifier(value['id']) &&
+    typeof value['active'] === 'boolean' &&
+    typeof value['revision'] === 'number' &&
+    integer(value['revision'], 1, 2_147_483_647) &&
+    typeof value['updatedAt'] === 'string' &&
+    Number.isFinite(Date.parse(value['updatedAt'])) &&
     typeof value['createdAt'] === 'string' &&
     Number.isFinite(Date.parse(value['createdAt'])) &&
     typeof value['serviceCategoryId'] === 'string' &&

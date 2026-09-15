@@ -149,6 +149,9 @@ try {
     expiresAt: new Date(Date.now() + 3600_000).toISOString(),
   });
   const detail = {
+    active: true,
+    revision: 1,
+    updatedAt: '2026-09-14T12:00:00Z',
     id: 'fictional-request-a',
     createdAt: '2026-09-14T12:00:00Z',
     serviceCategoryId: 'bremsen',
@@ -170,6 +173,9 @@ try {
     attachmentIds: ['PRIVATE-ATTACHMENT'],
   };
   const summary = {
+    active: detail.active,
+    revision: detail.revision,
+    updatedAt: detail.updatedAt,
     id: detail.id,
     createdAt: detail.createdAt,
     serviceCategoryId: detail.serviceCategoryId,
@@ -178,6 +184,9 @@ try {
     vehicle: { makeId: 'skoda', model: 'Fiktives Modell', year: 2018, vehicleClass: 'suv' },
   };
   const minimal = {
+    active: detail.active,
+    revision: detail.revision,
+    updatedAt: detail.updatedAt,
     id: 'fictional-minimal',
     createdAt: detail.createdAt,
     serviceCategoryId: 'reifen',

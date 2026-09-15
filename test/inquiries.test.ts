@@ -85,11 +85,14 @@ test('existing POST persists into the same owner-only list and detail, including
       ])
         assert.ok(!list.body.includes(privateValue));
       assert.deepEqual(Object.keys(list.json().requests[0]).sort(), [
+        'active',
         'areas',
         'createdAt',
         'id',
+        'revision',
         'serviceCategoryId',
         'symptomPreview',
+        'updatedAt',
         'vehicle',
       ]);
     }
@@ -243,6 +246,7 @@ for (const detail of [false, true]) {
     const session = store.createSession('owner');
     const created = store.createRepairRequest('owner', input);
     const delegate: RepairRequestStore = {
+      mutateRepairRequest: (...args) => store.mutateRepairRequest(...args),
       createRepairRequest: (owner, body) => store.createRepairRequest(owner, body),
       getRepairRequest: async (owner, id) => {
         store.revokeSession(session.sessionId);
@@ -277,6 +281,7 @@ test('unexpected database errors are sanitized for both private reads', async ()
   const app = createServer({
     accessStore: store,
     repairRequestStore: {
+      mutateRepairRequest: fail,
       createRepairRequest: fail,
       getRepairRequest: fail,
       listRepairRequests: fail,

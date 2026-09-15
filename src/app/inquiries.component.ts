@@ -1,4 +1,12 @@
-import { Component, afterNextRender, effect, inject } from '@angular/core';
+import {
+  Component,
+  afterNextRender,
+  effect,
+  inject,
+  signal,
+  viewChild,
+  untracked,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { getCatalogPlace, VEHICLE_MAKE_LABELS } from '../shared/catalog';
 import { inquiriesCopy, type InquiriesCopyKey } from '../shared/inquiries-copy';
@@ -13,11 +21,26 @@ import { AccountSessionService } from './account-session.service';
 import { LanguageService } from './language.service';
 import { SavedRepairRequestsService } from './saved-repair-requests.service';
 import { SiteHeaderComponent } from './site-header.component';
+import { InquiryEditorComponent } from './inquiry-editor.component';
+import { InquiryDeleteDialogComponent } from './inquiry-delete-dialog.component';
+import { IconComponent } from './ui/icon.component';
 import { ButtonDirective } from './ui/button.directive';
 
 @Component({
   selector: 'app-inquiries',
-  imports: [RouterLink, SiteHeaderComponent, ButtonDirective],
+  imports: [
+    RouterLink,
+    SiteHeaderComponent,
+    ButtonDirective,
+    IconComponent,
+    InquiryEditorComponent,
+    InquiryDeleteDialogComponent,
+  ],
+  styleUrl: './inquiries.component.scss',
+  host: {
+    '(document:pointerdown)': 'dismissActions($event)',
+    '(keydown.escape)': 'closeActions(true)',
+  },
   providers: [SavedRepairRequestsService],
   templateUrl: './inquiries.component.html',
 })
@@ -26,12 +49,59 @@ export class InquiriesComponent {
   protected readonly language = inject(LanguageService);
   protected readonly saved = inject(SavedRepairRequestsService);
 
+  protected readonly filters = ['all', 'active', 'inactive'] as const;
+  protected readonly actionsId = signal<string | null>(null);
+  protected readonly editingId = signal<string | null>(null);
+  protected readonly deleting = signal<RepairRequestSummary | null>(null);
+  private readonly editor = viewChild(InquiryEditorComponent);
+  private actionTrigger?: HTMLElement;
+
   constructor() {
+    effect(() => {
+      this.account.identity();
+      untracked(() => {
+        this.editingId.set(null);
+        this.deleting.set(null);
+        this.closeActions();
+      });
+    });
     effect(() => this.language.setPageText(this.text('title'), this.text('description'), true));
     // Browser-only session validation; no private data is fetched into SSR/TransferState.
     afterNextRender(() => {
       void this.account.refresh();
     });
+  }
+
+  canLeave(): boolean | Promise<boolean> {
+    return this.account.state() !== 'ready' || this.account.busy()
+      ? true
+      : (this.editor()?.canLeave() ?? true);
+  }
+  protected async edit(request: RepairRequestSummary): Promise<void> {
+    this.closeActions();
+    this.editingId.set(request.id);
+    await this.saved.openDetail(request.id);
+  }
+  protected toggleActions(id: string, event: Event): void {
+    this.actionTrigger = event.currentTarget as HTMLElement;
+    this.actionsId.set(this.actionsId() === id ? null : id);
+  }
+  protected closeActions(restore = false): void {
+    if (!this.actionsId()) return;
+    this.actionsId.set(null);
+    if (restore) this.actionTrigger?.focus();
+  }
+  protected dismissActions(event: Event): void {
+    if (event.target instanceof Element && !event.target.closest('[data-inquiry-actions]'))
+      this.closeActions();
+  }
+  protected deactivate(request: RepairRequestSummary): void {
+    this.closeActions(true);
+    void this.saved.mutate(request, { kind: 'activity', active: !request.active });
+  }
+  protected confirmDelete(request: RepairRequestSummary): void {
+    this.closeActions(true);
+    this.deleting.set(request);
   }
 
   protected text(key: InquiriesCopyKey): string {
@@ -47,6 +117,7 @@ export class InquiriesComponent {
   }
 
   protected searchQuery(request: RepairRequestSummary): Record<string, string> | null {
+    if (!request.active) return null;
     const serviceCategoryId = REPAIR_REQUEST_SERVICE_CATEGORIES.find(
       (id) => id === request.serviceCategoryId,
     );
