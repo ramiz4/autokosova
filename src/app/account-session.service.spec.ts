@@ -237,3 +237,256 @@ it('clears a second tab immediately when it receives the logout invalidation', a
   await session.refresh();
   expect(session.state()).toBe('guest');
 });
+
+describe('non-destructive session revalidation', () => {
+  it('keeps a confirmed identity until its replacement is parsed and deduplicates the read', async () => {
+    let finish!: (value: unknown) => void;
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(response())
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        json: () => new Promise((resolve) => (finish = resolve)),
+      });
+    vi.stubGlobal('fetch', request);
+    const session = TestBed.inject(AccountSessionService);
+    await session.refresh();
+    const previous = session.identity();
+    const refresh = session.refresh();
+    expect(session.refresh()).toBe(refresh);
+    await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+    expect(session.state()).toBe('ready');
+    expect(session.signedIn()).toBe(true);
+    expect(session.identity()).toBe(previous);
+    expect(request).toHaveBeenCalledTimes(2);
+    finish(identity('fixture-b'));
+    await refresh;
+    expect(session.identity()?.userId).toBe('fixture-b');
+    expect(session.state()).toBe('ready');
+  });
+
+  it('keeps a confirmed guest state while checking again', async () => {
+    let finish!: (value: Response) => void;
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(new Response('{"loginAvailable":false}', { status: 401 }))
+        .mockImplementationOnce(() => new Promise<Response>((resolve) => (finish = resolve))),
+    );
+    const session = TestBed.inject(AccountSessionService);
+    await session.refresh();
+    const refresh = session.refresh();
+    expect(session.state()).toBe('guest');
+    expect(session.loginAvailable()).toBe(false);
+    expect(session.identity()).toBeNull();
+    finish(new Response('{"loginAvailable":true}', { status: 401 }));
+    await refresh;
+    expect(session.state()).toBe('guest');
+    expect(session.loginAvailable()).toBe(true);
+  });
+
+  it.each(['unauthorized', 'network', 'server', 'invalid', 'json'])(
+    'removes a previously confirmed identity on %s failure',
+    async (kind) => {
+      const request = vi.fn().mockResolvedValueOnce(response());
+      vi.stubGlobal('fetch', request);
+      const session = TestBed.inject(AccountSessionService);
+      await session.refresh();
+      if (kind === 'network') request.mockRejectedValueOnce(new Error('offline'));
+      else
+        request.mockResolvedValueOnce(
+          kind === 'unauthorized'
+            ? new Response('{}', { status: 401 })
+            : kind === 'server'
+              ? new Response(null, { status: 503 })
+              : new Response(kind === 'json' ? '{' : '{"roles":["admin"]}'),
+        );
+      await session.refresh();
+      expect(session.identity()).toBeNull();
+      expect(session.signedIn()).toBe(false);
+      expect(session.state()).toBe(kind === 'unauthorized' ? 'guest' : 'error');
+    },
+  );
+
+  it('clears identity on 401 headers without waiting for optional login metadata', async () => {
+    let finish!: (value: unknown) => void;
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(response())
+      .mockResolvedValueOnce({
+        status: 401,
+        json: () => new Promise((resolve) => (finish = resolve)),
+      });
+    vi.stubGlobal('fetch', request);
+    const session = TestBed.inject(AccountSessionService);
+    await session.refresh();
+    const refresh = session.refresh();
+    await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+    expect(session.identity()).toBeNull();
+    expect(session.signedIn()).toBe(false);
+    expect(session.state()).toBe('guest');
+    expect(session.refresh()).toBe(refresh);
+    // A later invalidation and account change supersede this response body as well.
+    session.invalidate();
+    request.mockResolvedValueOnce(response('fixture-b'));
+    await session.refresh();
+    finish({ loginAvailable: false });
+    await refresh;
+    expect(session.identity()?.userId).toBe('fixture-b');
+    expect(session.loginAvailable()).toBe(true);
+  });
+
+  it.each(['null', '[false]', '{', '{}'])(
+    'treats a 401 with optional metadata %s as guest, not an account error',
+    async (body) => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValueOnce(response())
+          .mockResolvedValueOnce(new Response(body, { status: 401 })),
+      );
+      const session = TestBed.inject(AccountSessionService);
+      await session.refresh();
+      await session.refresh();
+      expect(session.state()).toBe('guest');
+      expect(session.identity()).toBeNull();
+      expect(session.loginAvailable()).toBeNull();
+    },
+  );
+
+  it('keeps the original expiry active while refreshing and rejects a late success', async () => {
+    vi.useFakeTimers();
+    let finish!: (value: Response) => void;
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ ...identity(), expiresAt: new Date(Date.now() + 1000).toISOString() }),
+        ),
+      )
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => (finish = resolve)));
+    vi.stubGlobal('fetch', request);
+    const session = TestBed.inject(AccountSessionService);
+    await session.refresh();
+    const refresh = session.refresh();
+    expect(session.state()).toBe('ready');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(session.identity()).toBeNull();
+    expect(session.state()).toBe('guest');
+    expect(request.mock.calls[1][1].signal.aborted).toBe(true);
+    finish(response());
+    await refresh;
+    expect(session.identity()).toBeNull();
+    expect(session.state()).toBe('guest');
+  });
+
+  it('replaces the old expiry timer only after a successful response', async () => {
+    vi.useFakeTimers();
+    const account = (milliseconds: number) =>
+      new Response(
+        JSON.stringify({
+          ...identity(),
+          expiresAt: new Date(Date.now() + milliseconds).toISOString(),
+        }),
+      );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce(account(1000)).mockResolvedValueOnce(account(5000)),
+    );
+    const session = TestBed.inject(AccountSessionService);
+    await session.refresh();
+    await session.refresh();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(session.state()).toBe('ready');
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(session.state()).toBe('guest');
+    expect(session.identity()).toBeNull();
+  });
+
+  it('does not preserve an expired identity when the browser delayed its timer', async () => {
+    vi.useFakeTimers();
+    let finish!: (value: Response) => void;
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(response())
+        .mockImplementationOnce(() => new Promise<Response>((resolve) => (finish = resolve))),
+    );
+    const session = TestBed.inject(AccountSessionService);
+    await session.refresh();
+    vi.setSystemTime(Date.now() + 3600_001);
+    const refresh = session.refresh();
+    expect(session.identity()).toBeNull();
+    expect(session.state()).toBe('guest');
+    finish(new Response('{}', { status: 401 }));
+    await refresh;
+  });
+
+  it('retries an error through the initial loading state', async () => {
+    let finish!: (value: Response) => void;
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockImplementationOnce(() => new Promise<Response>((resolve) => (finish = resolve))),
+    );
+    const session = TestBed.inject(AccountSessionService);
+    await session.refresh();
+    expect(session.state()).toBe('error');
+    const refresh = session.refresh();
+    expect(session.state()).toBe('loading');
+    finish(response());
+    await refresh;
+    expect(session.state()).toBe('ready');
+  });
+});
+
+it.each(['logout', 'pagehide', 'broadcast'])(
+  'invalidates a confirmed session during refresh on %s and ignores its late response',
+  async (kind) => {
+    let receive!: () => void;
+    let finish!: (value: Response) => void;
+    class Channel {
+      set onmessage(value: () => void) {
+        receive = value;
+      }
+      close() {
+        /* fixture has no resources */
+      }
+      postMessage() {
+        /* fixture sends no real account events */
+      }
+    }
+    vi.stubGlobal('BroadcastChannel', Channel);
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(response())
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => (finish = resolve)))
+      .mockResolvedValueOnce(
+        kind === 'logout'
+          ? new Response(null, { status: 204 })
+          : new Response('{}', { status: 401 }),
+      );
+    vi.stubGlobal('fetch', request);
+    const session = TestBed.inject(AccountSessionService);
+    await session.refresh();
+    const refresh = session.refresh();
+    expect(session.identity()).not.toBeNull();
+    if (kind === 'logout') expect(await session.logout()).toBe(true);
+    else if (kind === 'pagehide') window.dispatchEvent(new Event('pagehide'));
+    else receive();
+    expect(session.identity()).toBeNull();
+    expect(session.signedIn()).toBe(false);
+    expect(request.mock.calls[1][1].signal.aborted).toBe(true);
+    if (kind === 'broadcast') await session.refresh();
+    finish(response());
+    await refresh;
+    expect(session.identity()).toBeNull();
+    expect(session.state()).toBe(kind === 'pagehide' ? 'loading' : 'guest');
+  },
+);

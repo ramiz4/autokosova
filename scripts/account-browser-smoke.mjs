@@ -162,6 +162,9 @@ try {
   });
   let accountPayload = fixture();
   let accountStatus = 200;
+  let accountResponseGate;
+  let accountRequests = 0;
+  let accountReplies = 0;
   const errors = [];
   const canceledRequests = new Set();
   const documentVersions = new Map();
@@ -184,22 +187,32 @@ try {
       accountStatus = 401;
       accountPayload = { loginAvailable: true };
     }
+    const responseCode = isLogout ? 204 : accountStatus;
+    const body = isLogout ? '' : Buffer.from(JSON.stringify(accountPayload)).toString('base64');
+    if (!isLogout) accountRequests++;
     fixtureResponses.push(
-      command('Fetch.fulfillRequest', {
-        requestId,
-        responseCode: isLogout ? 204 : accountStatus,
-        responseHeaders: [
-          { name: 'content-type', value: 'application/json' },
-          { name: 'cache-control', value: 'private, no-store' },
-        ],
-        body: isLogout ? '' : Buffer.from(JSON.stringify(accountPayload)).toString('base64'),
-      }).catch((error) =>
-        fixtureFailures.push({
-          error,
-          networkId,
-          documentChanged: (documentVersions.get(frameId) ?? 0) !== documentVersion,
-        }),
-      ),
+      (isLogout ? Promise.resolve() : (accountResponseGate ?? Promise.resolve()))
+        .then(() =>
+          command('Fetch.fulfillRequest', {
+            requestId,
+            responseCode,
+            responseHeaders: [
+              { name: 'content-type', value: 'application/json' },
+              { name: 'cache-control', value: 'private, no-store' },
+            ],
+            body,
+          }),
+        )
+        .then(() => {
+          if (!isLogout) accountReplies++;
+        })
+        .catch((error) =>
+          fixtureFailures.push({
+            error,
+            networkId,
+            documentChanged: (documentVersions.get(frameId) ?? 0) !== documentVersion,
+          }),
+        ),
     );
   });
   await command('Runtime.enable');
@@ -214,6 +227,81 @@ try {
   await command('Page.bringToFront');
   await command('Emulation.setFocusEmulationEnabled', { enabled: true });
   await mkdir(screenshots, { recursive: true });
+  // Hold the actual session refresh and inspect every animation frame, not just its final state.
+  async function openStableAccountMenu() {
+    let release;
+    accountResponseGate = new Promise((resolve) => (release = resolve));
+    const requestsBefore = accountRequests;
+    const repliesBefore = accountReplies;
+    try {
+      await evaluate(`document.querySelector('button[aria-controls="account-menu"]').focus()`);
+      await evaluate(`(async () => {
+        await document.fonts.ready;
+        const selectors = ['header', '#desktop-navigation', 'header app-language-switcher',
+          'button[aria-controls="account-menu"]', '.mobile-menu-toggle', '.site-logo'];
+        const elements = selectors.map((selector) => document.querySelector(selector));
+        const box = (element) => {
+          const rect = element.getBoundingClientRect();
+          return [rect.x, rect.y, rect.width, rect.height];
+        };
+        const boxes = elements.map(box);
+        const name = elements[3].textContent;
+        const probe = window.__navbarProbe = { frames: 0, menuFrames: 0, failures: [] };
+        let animation;
+        let menuBox;
+        const fail = (message) => { if (probe.failures.length < 10) probe.failures.push(message); };
+        const sample = () => {
+          probe.frames++;
+          elements.forEach((element, index) => {
+            if (document.querySelector(selectors[index]) !== element)
+              fail('DOM node replaced: ' + selectors[index]);
+            if (box(element).some((value, dimension) => Math.abs(value - boxes[index][dimension]) > 0.25))
+              fail('Layout moved: ' + selectors[index]);
+          });
+          if (!elements[0].classList.contains('is-authenticated')) fail('Authenticated class removed');
+          if (elements[3].textContent !== name) fail('Account button name changed');
+          if (elements[3].getAttribute('aria-expanded') === 'true') {
+            probe.menuFrames++;
+            const menu = document.querySelector('#account-menu');
+            if (!menu?.querySelector('[data-account-name]') || !menu?.querySelector('[data-account-inquiries]'))
+              fail('Account menu contents disappeared');
+            if (menu) {
+              menuBox ??= box(menu);
+              if (box(menu).some((value, dimension) => Math.abs(value - menuBox[dimension]) > 0.25))
+                fail('Account menu resized');
+            }
+          }
+          animation = requestAnimationFrame(sample);
+        };
+        probe.stop = () => {
+          cancelAnimationFrame(animation);
+          return { frames: probe.frames, failures: probe.failures };
+        };
+        animation = requestAnimationFrame(sample);
+      })()`);
+      await key('Enter', 13);
+      await until(() => accountRequests > requestsBefore, 'held account refresh');
+      await until(() => evaluate('window.__navbarProbe.menuFrames >= 8'), 'pending refresh frames');
+      release();
+      accountResponseGate = undefined;
+      await until(() => accountReplies > repliesBefore, 'released account response');
+      const frames = await evaluate('window.__navbarProbe.frames');
+      await until(
+        () => evaluate(`window.__navbarProbe.frames >= ${frames + 4}`),
+        'settled refresh frames',
+      );
+      const probe = await evaluate('window.__navbarProbe.stop()');
+      assert.deepEqual(
+        probe.failures,
+        [],
+        'Navbar and account menu must stay stable during revalidation',
+      );
+      assert.ok(probe.frames >= 12);
+    } finally {
+      release();
+      accountResponseGate = undefined;
+    }
+  }
   const rendered = `!!document.querySelector('[data-account-id]')`;
   for (const locale of ['de', 'sq', 'en']) {
     const path = `${locale === 'de' ? '' : '/' + locale}/profile`;
@@ -267,8 +355,7 @@ try {
       assert.equal(await evaluate("document.querySelector('[data-account-details]').open"), true);
       await key('Enter', 13);
       assert.equal(await evaluate("document.querySelector('[data-account-details]').open"), false);
-      await evaluate(`document.querySelector('button[aria-controls="account-menu"]').focus()`);
-      await key('Enter', 13);
+      await openStableAccountMenu();
       await until(
         () => evaluate(`!!document.querySelector('[data-account-name]')`),
         'keyboard account menu opening',
@@ -295,6 +382,13 @@ try {
           `document.activeElement.matches(':focus-visible') && parseFloat(getComputedStyle(document.activeElement).outlineWidth) >= 2`,
         ),
       );
+      // Reopening must be equally stable; the first opening must not merely warm a cache.
+      await openStableAccountMenu();
+      await key('Escape', 27);
+      await until(
+        () => evaluate(`!document.querySelector('#account-menu')`),
+        'reopened menu dismissal',
+      );
       await evaluate(`window.scrollTo(0, document.body.scrollHeight)`);
       await delay(80);
       await evaluate(`window.scrollTo(0, 0)`);
@@ -309,7 +403,7 @@ try {
         Buffer.from(image.data, 'base64'),
       );
       console.log(
-        `Account browser layout/keyboard passed: ${locale}, ${width}px (fictional API fixture)`,
+        `Account browser stable-refresh/layout/keyboard passed: ${locale}, ${width}px (fictional API fixture)`,
       );
     }
   }

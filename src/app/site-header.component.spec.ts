@@ -248,3 +248,62 @@ it.each(['', 'sq', 'en'])(
     }
   },
 );
+
+it('keeps the real session and account menu intact throughout a delayed refresh', async () => {
+  const identity = {
+    userId: 'fictional-menu-user',
+    displayName: 'Fiktives stabiles Konto',
+    email: 'fixture@example.invalid',
+    roles: ['customer'],
+    garageMemberships: [],
+    expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+  };
+  const request = vi.fn().mockImplementation(async () => new Response(JSON.stringify(identity)));
+  vi.stubGlobal('fetch', request);
+  await TestBed.configureTestingModule({
+    imports: [SiteHeaderComponent],
+    providers: [provideRouter([])],
+  }).compileComponents();
+  const fixture = TestBed.createComponent(SiteHeaderComponent);
+  await fixture.whenStable();
+  const session = TestBed.inject(AccountSessionService);
+  await session.refresh();
+  await fixture.whenStable();
+  const page = fixture.nativeElement as HTMLElement;
+  const header = page.querySelector('header')!;
+  const button = page.querySelector<HTMLButtonElement>('button[aria-controls="account-menu"]')!;
+  const name = button.querySelector('span.truncate');
+  expect(name).not.toBeNull();
+  const language = page.querySelector('app-language-switcher');
+  const navigation = page.querySelector('#desktop-navigation');
+  for (let repeat = 0; repeat < 2; repeat++) {
+    let finish!: (value: Response) => void;
+    request.mockImplementationOnce(() => new Promise<Response>((resolve) => (finish = resolve)));
+    button.click();
+    await fixture.whenStable();
+    expect(session.signedIn()).toBe(true);
+    expect(session.state()).toBe('ready');
+    expect(header.classList.contains('is-authenticated')).toBe(true);
+    expect(button.querySelector('span.truncate')).toBe(name);
+    expect(button.textContent).toContain(identity.displayName);
+    expect(page.querySelector('app-language-switcher')).toBe(language);
+    expect(page.querySelector('#desktop-navigation')).toBe(navigation);
+    const menu = page.querySelector('#account-menu')!;
+    const menuName = menu.querySelector('[data-account-name]');
+    const inquiries = menu.querySelector('[data-account-inquiries]');
+    expect(menuName?.textContent).toContain(identity.displayName);
+    expect(inquiries).not.toBeNull();
+    expect(menu.querySelector('[role="status"]')).toBeNull();
+    const refresh = session.refresh();
+    finish(new Response(JSON.stringify(identity)));
+    await refresh;
+    await fixture.whenStable();
+    expect(page.querySelector('#account-menu')).toBe(menu);
+    expect(menu.querySelector('[data-account-name]')).toBe(menuName);
+    expect(menu.querySelector('[data-account-inquiries]')).toBe(inquiries);
+    expect(button.querySelector('span.truncate')).toBe(name);
+    button.click();
+    await fixture.whenStable();
+    expect(page.querySelector('#account-menu')).toBeNull();
+  }
+});
