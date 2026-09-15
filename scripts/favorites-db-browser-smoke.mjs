@@ -339,6 +339,15 @@ try {
   }
   const profileReady = `!!document.querySelector('app-garage-profile button[aria-pressed]:not(:disabled)')`;
   await browser.navigate('/garages/' + primary, profileReady);
+  // Enabled profile controls do not prove that the asynchronous favorites read has rendered.
+  // Wait for the required persisted state; keep the exact assertion below unchanged.
+  await until(
+    () =>
+      evaluate(
+        `document.querySelector('app-garage-profile button[aria-pressed]')?.getAttribute('aria-pressed') === 'true'`,
+      ),
+    'operator stored profile favorite has rendered',
+  );
   assert.equal(
     await evaluate(
       `document.querySelector('app-garage-profile button[aria-pressed]').getAttribute('aria-pressed')`,

@@ -1,0 +1,60 @@
+name: E2E acceptance
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-acceptance-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  e2e-acceptance:
+    name: e2e-acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_DB: autokosova
+          POSTGRES_PASSWORD: autokosova
+          POSTGRES_USER: autokosova
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U autokosova -d autokosova"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      AUTOKOSOVA_E2E_DATABASE_URL: postgresql://autokosova:autokosova@127.0.0.1:5432/autokosova
+    steps:
+      # Default PR checkout is refs/pull/<n>/merge, not just the head branch.
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm install --global npm@11.19.0
+      - run: npm ci
+      - run: npm run typecheck:e2e
+      - run: npm run test:e2e:policy
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Upload sanitized synthetic application evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-acceptance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            test-results/e2e/acceptance.json
+            test-results/e2e/browser/**/*.png
+          if-no-files-found: error
+          retention-days: 7

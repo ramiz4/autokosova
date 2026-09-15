@@ -53,3 +53,8 @@ Thumbs.db
 *.key
 __pycache__/
 .venv/
+
+# Isolated E2E evidence and browser reports (never commit sessions)
+/test-results/
+/playwright-report/
+/blob-report/
