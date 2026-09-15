@@ -1,8 +1,10 @@
 import type { AppLanguage } from './i18n';
 
 const de = {
+  'account.moreDetails': 'Weitere Kontodetails',
+  'account.typeLabel': 'Kontotyp',
   'account.profileTitle': 'Profil & Einstellungen',
-  'account.description': 'Dein Konto, deine wirksamen Rollen und deine Einstellungen.',
+  'account.description': 'Dein Konto und deine Einstellungen.',
   'account.signedInAs': 'Angemeldet als',
   'account.loading': 'Konto wird geladen …',
   'account.loadError': 'Dein Kontostatus konnte nicht geladen werden. Bitte versuche es erneut.',
@@ -41,8 +43,10 @@ export const accountCopy: Readonly<Record<AppLanguage, Readonly<Record<keyof typ
   {
     de,
     sq: {
+      'account.moreDetails': 'Më shumë detaje të llogarisë',
+      'account.typeLabel': 'Lloji i llogarisë',
       'account.profileTitle': 'Profili & cilësimet',
-      'account.description': 'Llogaria jote, rolet aktive dhe cilësimet e tua.',
+      'account.description': 'Llogaria jote dhe cilësimet e tua.',
       'account.signedInAs': 'I identifikuar si',
       'account.loading': 'Llogaria po ngarkohet …',
       'account.loadError': 'Gjendja e llogarisë nuk mund të ngarkohej. Provo përsëri.',
@@ -77,8 +81,10 @@ export const accountCopy: Readonly<Record<AppLanguage, Readonly<Record<keyof typ
         'Zgjedhja e gjuhës vlen për navigimin aktual përmes URL-së. Ajo nuk ruhet për gjithë llogarinë dhe nuk sinkronizohet me pajisje të tjera.',
     },
     en: {
+      'account.moreDetails': 'More account details',
+      'account.typeLabel': 'Account type',
       'account.profileTitle': 'Profile & settings',
-      'account.description': 'Your account, effective roles and settings.',
+      'account.description': 'Your account and settings.',
       'account.signedInAs': 'Signed in as',
       'account.loading': 'Loading account …',
       'account.loadError': 'Your account status could not be loaded. Please try again.',

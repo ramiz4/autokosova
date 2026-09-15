@@ -211,6 +211,8 @@ try {
     ],
   });
   await command('Page.enable');
+  await command('Page.bringToFront');
+  await command('Emulation.setFocusEmulationEnabled', { enabled: true });
   await mkdir(screenshots, { recursive: true });
   const rendered = `!!document.querySelector('[data-account-id]')`;
   for (const locale of ['de', 'sq', 'en']) {
@@ -255,6 +257,16 @@ try {
         smallTargets: 0,
         clipped: 0,
       });
+      assert.equal(await evaluate("document.querySelector('[data-account-details]').open"), false);
+      assert.equal(
+        await evaluate("!!document.querySelector('[aria-controls=account-notifications]')"),
+        false,
+      );
+      await evaluate("document.querySelector('[data-account-details] summary').focus()");
+      await key('Enter', 13);
+      assert.equal(await evaluate("document.querySelector('[data-account-details]').open"), true);
+      await key('Enter', 13);
+      assert.equal(await evaluate("document.querySelector('[data-account-details]').open"), false);
       await evaluate(`document.querySelector('button[aria-controls="account-menu"]').focus()`);
       await key('Enter', 13);
       await until(
@@ -263,7 +275,7 @@ try {
       );
       assert.equal(
         await evaluate(`document.querySelectorAll('[data-account-menu-roles] li').length`),
-        3,
+        1,
       );
       assert.equal(
         await evaluate(`document.querySelector('[data-account-profile]').getAttribute('href')`),
@@ -332,7 +344,7 @@ try {
     );
     assert.equal(
       await evaluate(
-        `document.querySelector('[data-account-memberships]').textContent.includes('FIKTIVE TESTGARAGE')`,
+        `!!document.querySelector('[data-account-memberships]')?.textContent.includes('FIKTIVE TESTGARAGE')`,
       ),
       kind === 'member',
     );

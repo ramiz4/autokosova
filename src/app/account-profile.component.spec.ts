@@ -47,15 +47,23 @@ it.each(['de', 'sq', 'en'] as const)(
       accountCopy[locale]['account.profileTitle'],
     );
     expect(page.querySelector('[data-account-id]')?.textContent).toContain(identity.userId);
+    const details = page.querySelector<HTMLDetailsElement>('[data-account-details]')!;
+    expect(details.open).toBe(false);
+    expect(details.querySelector('[data-account-id]')).not.toBeNull();
+    expect(page.querySelector('[data-account-type]')?.textContent).toContain(
+      accountCopy[locale]['account.type.garage'],
+    );
+    details.querySelector('summary')!.click();
+    expect(details.open).toBe(true);
+    details.querySelector('summary')!.click();
+    expect(details.open).toBe(false);
     expect(page.querySelector('[data-account-display-name] b')).toBeNull();
     expect(page.querySelector('[data-account-display-name]')?.textContent).toContain(
       '<b>Fiktives Konto</b>',
     );
     for (const role of identity.roles) {
       expect(page.querySelector('[data-account-roles]')?.textContent).toContain(
-        accountCopy[locale][
-          role === 'customer' ? 'account.type.garage' : (`account.role.${role}` as const)
-        ],
+        accountCopy[locale][`account.role.${role}` as const],
       );
     }
     expect(page.querySelector('[data-account-memberships]')?.textContent).toContain(
@@ -69,7 +77,7 @@ it.each(['de', 'sq', 'en'] as const)(
     await vi.waitFor(() => expect(TestBed.inject(AccountSessionService).state()).toBe('ready'));
     await fixture.whenStable();
     expect(page.querySelector('[data-account-name]')?.textContent).toContain(identity.displayName);
-    expect(page.querySelector('[data-account-menu-roles]')?.children).toHaveLength(3);
+    expect(page.querySelector('[data-account-menu-roles]')?.children).toHaveLength(1);
     expect(page.querySelector('[data-account-profile]')?.getAttribute('href')).toBe(path);
     toggle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await fixture.whenStable();
@@ -91,9 +99,7 @@ it('provides an ID fallback, honest missing fields, no invented membership and c
   );
   const { page } = await render();
   expect(page.textContent).toContain(accountCopy.de['account.missing']);
-  expect(page.querySelector('[data-account-memberships]')?.textContent).toContain(
-    accountCopy.de['account.noMemberships'],
-  );
+  expect(page.querySelector('[data-account-memberships]')).toBeNull();
   expect(accountName(minimal as OwnAccount)).toBe(identity.userId);
   for (const locale of ['sq', 'en'] as const) {
     expect(Object.keys(accountCopy[locale]).sort()).toEqual(Object.keys(accountCopy.de).sort());

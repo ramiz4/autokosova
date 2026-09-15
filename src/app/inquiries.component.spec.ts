@@ -154,7 +154,8 @@ it('links only the signed-in account menu, marks the active route, preserves pro
   expect(link.getAttribute('aria-current')).toBe('page');
   expect(link.classList.contains('bg-blue-50')).toBe(true);
   expect(page.querySelector('[data-account-profile]')?.getAttribute('href')).toBe('/profile');
-  expect(page.querySelector('[data-account-menu-roles]')?.children).toHaveLength(2);
+  expect(page.querySelector('[data-account-menu-roles]')?.children).toHaveLength(1);
+  expect(page.querySelector('[data-account-menu-roles]')?.textContent).toContain('Privatkunde');
   expect(page.querySelector('nav [data-account-inquiries]')).toBeNull();
   link.click();
   await fixture.whenStable();

@@ -119,7 +119,7 @@ it('dismisses the floating menu with an outside pointer action', async () => {
   expect(page.querySelector<HTMLElement>('#mobile-navigation')!.hidden).toBe(true);
 });
 
-it('shows notification and account controls instead of login buttons for an authenticated session', async () => {
+it('shows the account control without unavailable notifications or login buttons for an authenticated session', async () => {
   const account = {
     signedIn: signal(true),
     state: signal('ready'),
@@ -144,11 +144,9 @@ it('shows notification and account controls instead of login buttons for an auth
     'button[aria-controls="account-notifications"]',
   )!;
   const profile = page.querySelector<HTMLButtonElement>('button[aria-controls="account-menu"]')!;
-  expect(notification).toBeTruthy();
+  expect(notification).toBeNull();
   expect(profile).toBeTruthy();
-  notification.click();
-  await fixture.whenStable();
-  expect(page.textContent).toContain('Benachrichtigungen sind noch nicht verfügbar.');
+  expect(page.textContent).not.toContain('Benachrichtigungen sind noch nicht verfügbar.');
   profile.click();
   await fixture.whenStable();
   expect(page.querySelector('#account-notifications')).toBeNull();
