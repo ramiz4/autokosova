@@ -61,6 +61,33 @@ Ein neuer erfolgreicher OIDC-Login ersetzt zuvor im Prozess gespeicherte erhöht
 Subjekts durch die im frisch verifizierten Token enthaltenen Rollen. Damit kann ein entferntes
 Projektrecht nicht durch einen alten lokalen Rolleneintrag weiterwirken.
 
+### Namen und Umbenennung von Werkstatt-Testkonten
+
+Werkstatt-Testkonten verwenden `garage` im Namen (Schema `ak-test-garage-<YYYYMMDD>`).
+Die konkreten Anmeldenamen und zugehörigen Subjects bleiben im freigegebenen
+1Password-Eintrag, nicht in Git. `garage` im Kontonamen ist keine Projektrolle und
+vergibt keine Werkstatt-Membership.
+
+Eine reine Umbenennung desselben Kontos benötigt keine Code-, OIDC-Konfigurations-
+oder Datenbankänderung, solange das verifizierte OIDC-Subject (`sub`) unverändert
+bleibt. AutoKosova verwendet dieses Subject als Identität; `name` und
+`preferred_username` sind nur Profildaten. Rollen und Memberships werden nicht über
+den Kontonamen zugeordnet.
+
+Nach einer Umbenennung im Testprojekt:
+
+1. Den Anmeldenamen im freigegebenen 1Password-Eintrag nachziehen und die unveränderte
+   Subject-Zuordnung prüfen; keine Zugangsdaten oder Subjects in Git, Issues oder Logs kopieren.
+2. Abmelden und über den regulären ZITADEL-Login erneut anmelden, damit die Sitzung die
+   frisch verifizierten Profildaten erhält. Login-/Logout-Callbacks und Client-ID bleiben unverändert.
+3. Mit dem Werkstatt-Testkonto den Zugriff auf die eigene Membership prüfen; fremde
+   Werkstattbereiche müssen weiterhin gesperrt bleiben.
+
+Ein neu erstelltes Konto mit anderem `sub` ist keine reine Umbenennung. Seine
+Rollen-/Membership-Zuordnung muss separat über die bestehenden autorisierten Abläufe
+geprüft und eingerichtet werden. Diese Anleitung ersetzt keinen echten Login-/Logout-
+und Berechtigungsnachweis mit der freigegebenen Testinstanz.
+
 ## Was die Tests beweisen
 
 Die Berechtigungstests erzeugen ausschließlich im Speicher Sitzungen mit zufälligen Test-IDs. Dieser Test-Store ist kein Login-Endpoint und keine lokale Ersatz-Authentifizierung. Er prüft Cookie-/CSRF-Grenzen, Ablauf, Abmeldung, Besitz, Membership, Rolleneskalation und private Dateifreigaben ohne Konto oder Token eines echten Menschen.
