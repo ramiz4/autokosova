@@ -29,3 +29,42 @@ jobs:
           path: test-results/inquiries
           if-no-files-found: warn
           retention-days: 7
+
+  inquiries-db-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_DB: autokosova
+          POSTGRES_PASSWORD: autokosova
+          POSTGRES_USER: autokosova
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U autokosova -d autokosova"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://autokosova:autokosova@127.0.0.1:5432/autokosova
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm install --global npm@11.19.0
+      - run: npm ci
+      - run: npm run db:migrate
+      - run: npm run db:seed
+      - run: npm run build
+      - run: node scripts/inquiries-db-browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: inquiries-real-db-browser
+          path: test-results/inquiries-db
+          if-no-files-found: warn
+          retention-days: 7
