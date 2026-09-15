@@ -314,6 +314,21 @@ test(
         }),
       ]);
       assert.equal(results.filter((r) => r.status === 'fulfilled').length, 1);
+      // A report assignee may read the same review proof without inheriting its submission assignment.
+      await seed.query(
+        'UPDATE review_moderator_assignment SET moderator_user_id=$2 WHERE review_id=$1',
+        ['demo-staff-review-reported', other.userId],
+      );
+      await reviews.issueEvidenceDownloadGrant(mod, 'demo-staff-review-reported');
+      const reportProof = await files.issue(mod, 'demo-staff-review-reported-file');
+      await store.createAppeal(author, {
+        caseId: report,
+        message: 'DEMO – Diese Inhaltsentscheidung bitte unabhängig nochmals prüfen.',
+      });
+      await assert.rejects(reviews.issueEvidenceDownloadGrant(mod, 'demo-staff-review-reported'));
+      await assert.rejects(
+        files.consume(mod, 'demo-staff-review-reported-file', reportProof.grantId),
+      );
       const saved = await get(assigned);
       await seedDatabase(seed, 'demo-workflows', env);
       assert.deepEqual(await get(assigned), saved);
@@ -335,6 +350,49 @@ test(
         localDemoFiles: files,
       });
       try {
+        const legacy = '/api/admin/reviews/demo-staff-review-blocked/decision';
+        const legacyInput = {
+          decision: 'rejected',
+          checklist,
+          rejectionReason: 'evidence_not_sufficient',
+        };
+        assert.equal(
+          (await app.inject({ method: 'POST', url: legacy, payload: legacyInput })).statusCode,
+          401,
+        );
+        assert.equal(
+          (
+            await app.inject({
+              method: 'POST',
+              url: legacy,
+              payload: legacyInput,
+              headers: headers(c),
+            })
+          ).statusCode,
+          403,
+        );
+        assert.equal(
+          (
+            await app.inject({
+              method: 'POST',
+              url: legacy,
+              payload: legacyInput,
+              headers: headers(m),
+            })
+          ).statusCode,
+          422,
+        );
+        assert.equal(
+          (
+            await app.inject({
+              method: 'POST',
+              url: legacy,
+              payload: { ...legacyInput, caseRevision: blocked.revision - 1 },
+              headers: headers(m),
+            })
+          ).statusCode,
+          409,
+        );
         const path = '/api/staff/cases/' + encodeURIComponent(blocked.id) + '/decide';
         const payload = {
           action: 'reject_review',

@@ -379,8 +379,15 @@ export class PostgresReviewStore implements ReviewStore {
       await client.query('BEGIN');
       await this.setPrincipal(client, principal);
       const review = await this.getReviewAccess(client, reviewId);
-      const isAssignedModerator =
-        principal.roles.has('moderator') && review.moderator_user_id === principal.userId;
+      // REVIEW-1: use the existing current case predicate for both submitted reviews and
+      // assigned reports about that review. The role alone never grants file access.
+      const assignment = principal.roles.has('moderator')
+        ? await client.query<{ allowed: boolean }>(
+            "SELECT staff_assigned_subject('review',$1) AS allowed",
+            [reviewId],
+          )
+        : undefined;
+      const isAssignedModerator = assignment?.rows[0]?.allowed === true;
       if (
         review.author_user_id !== principal.userId &&
         !principal.roles.has('admin') &&
