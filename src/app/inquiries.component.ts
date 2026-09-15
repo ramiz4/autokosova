@@ -1,5 +1,7 @@
+import { DOCUMENT } from '@angular/common';
 import {
   Component,
+  Injector,
   afterNextRender,
   effect,
   inject,
@@ -55,6 +57,8 @@ export class InquiriesComponent {
   protected readonly deleting = signal<RepairRequestSummary | null>(null);
   private readonly editor = viewChild(InquiryEditorComponent);
   private actionTrigger?: HTMLElement;
+  private readonly document = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
 
   constructor() {
     effect(() => {
@@ -95,9 +99,18 @@ export class InquiriesComponent {
     if (event.target instanceof Element && !event.target.closest('[data-inquiry-actions]'))
       this.closeActions();
   }
-  protected deactivate(request: RepairRequestSummary): void {
+  protected async deactivate(request: RepairRequestSummary, event?: Event): Promise<void> {
+    const trigger = (event?.currentTarget as HTMLElement | undefined) ?? this.actionTrigger;
     this.closeActions(true);
-    void this.saved.mutate(request, { kind: 'activity', active: !request.active });
+    if (await this.saved.mutate(request, { kind: 'activity', active: !request.active })) {
+      afterNextRender(
+        () => {
+          if (trigger?.isConnected) trigger.focus();
+          else this.document.querySelector<HTMLElement>('#inquiries-title')?.focus();
+        },
+        { injector: this.injector },
+      );
+    }
   }
   protected confirmDelete(request: RepairRequestSummary): void {
     this.closeActions(true);
