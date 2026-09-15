@@ -228,6 +228,17 @@
                           />
                         </button>
                       </div>
+                      @if (request.active) {
+                        <button
+                          type="button"
+                          class="text-action"
+                          [disabled]="saved.writeState() === 'saving'"
+                          (click)="deactivate(request, $event)"
+                          data-deactivate-inquiry
+                        >
+                          <app-icon name="pause" class="size-4" />{{ text('deactivate') }}
+                        </button>
+                      }
                       @if (searchQuery(request); as query) {
                         <a
                           appButton
@@ -244,7 +255,7 @@
                           appButton="outline"
                           size="compact"
                           [disabled]="saved.writeState() === 'saving'"
-                          (click)="deactivate(request)"
+                          (click)="deactivate(request, $event)"
                           data-reactivate-inquiry
                         >
                           {{ text('reactivate') }}<app-icon name="check" class="size-4" />
@@ -289,6 +300,14 @@
                               <h3 class="text-lg font-bold">{{ text('savedDetails') }}</h3>
                               <p class="mt-2 text-sm text-muted">{{ text('original') }}</p>
                               <dl data-inquiry-detail class="mt-5 grid gap-5 sm:grid-cols-2">
+                                <div>
+                                  <dt class="text-sm font-semibold text-muted">
+                                    {{ text('statusLabel') }}
+                                  </dt>
+                                  <dd class="mt-1" data-inquiry-detail-status>
+                                    {{ text(detail.active ? 'active' : 'inactive') }}
+                                  </dd>
+                                </div>
                                 <div>
                                   <dt class="text-sm font-semibold text-muted">
                                     {{ requestText('service') }}

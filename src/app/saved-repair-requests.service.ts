@@ -16,6 +16,7 @@ import {
 } from '../shared/saved-repair-request-validation';
 import {
   REPAIR_REQUEST_PAGE_LIMIT,
+  repairRequestSummary,
   type RepairRequestMutation,
   type RepairRequestSummary,
   type SavedRepairRequest,
@@ -88,26 +89,31 @@ export class SavedRepairRequestsService {
   }
 
   reload(): void {
+    if (this.writeState() === 'saving') return;
     this.clear();
     void this.loadPage();
   }
 
   retry(): void {
+    if (this.writeState() === 'saving') return;
     if (this.cursorUnavailable()) this.reload();
     else void this.loadPage(this.nextCursor() ?? undefined);
   }
 
   loadMore(): void {
+    if (this.writeState() === 'saving') return;
     const cursor = this.nextCursor();
     if (this.state() !== 'loading' && cursor) void this.loadPage(cursor);
   }
 
   toggleDetail(id: string): void {
+    if (this.writeState() === 'saving') return;
     if (this.selectedId() === id) this.closeDetail();
     else void this.openDetail(id);
   }
 
   async openDetail(id: string): Promise<void> {
+    if (this.writeState() === 'saving') return;
     const identity = this.account.identity();
     if (!this.browser || !identity || this.account.state() !== 'ready' || this.account.busy())
       return;
@@ -143,6 +149,7 @@ export class SavedRepairRequestsService {
   }
 
   private async loadPage(cursor?: string): Promise<void> {
+    if (this.writeState() === 'saving') return;
     const identity = this.account.identity();
     if (!this.browser || !identity || this.account.state() !== 'ready' || this.account.busy())
       return;
@@ -202,6 +209,9 @@ export class SavedRepairRequestsService {
     this.writeController = controller;
     const generation = this.generation;
     this.writeState.set('saving');
+    // Aborted reads must not leave an endless loading state after a failed write.
+    if (this.state() === 'loading') this.state.set('ready');
+    if (this.detailState() === 'loading') this.closeDetail();
     this.notice.set(null);
     try {
       const csrf =
@@ -244,6 +254,7 @@ export class SavedRepairRequestsService {
         return false;
       }
       if (!response.ok) throw new Error('Private change not confirmed');
+      let updated: SavedRepairRequest | null = null;
       if (mutation.kind === 'delete') {
         if (response.status !== 204) throw new Error('Deletion not confirmed');
       } else {
@@ -252,15 +263,34 @@ export class SavedRepairRequestsService {
         if (
           !isSavedRepairRequest(result) ||
           result.id !== request.id ||
-          result.revision !== request.revision + 1
+          result.revision !== request.revision + 1 ||
+          (mutation.kind === 'activity' && result.active !== mutation.active)
         )
           throw new Error('Invalid private change response');
+        updated = result;
       }
+      // Apply only the server-confirmed result. Keep unrelated objects, DOM nodes and pages.
+      const matches =
+        updated !== null &&
+        (this.activity() === 'all' || updated.active === (this.activity() === 'active'));
+      this.storedRequests.update((requests) =>
+        requests.flatMap((item) =>
+          item.id !== request.id ? [item] : matches ? [repairRequestSummary(updated!)] : [],
+        ),
+      );
+      if (this.selectedId() === request.id) {
+        if (matches) {
+          this.storedDetail.set(updated);
+          this.detailState.set('ready');
+        } else this.closeDetail();
+      }
+      // A deleted cursor cannot be resolved by the owner-only API. Resume after the
+      // last remaining row (deduplication handles overlap); refill only an empty page.
+      const deletedAnchor = mutation.kind === 'delete' && this.nextCursor() === request.id;
+      if (deletedAnchor) this.nextCursor.set(this.storedRequests().at(-1)?.id ?? null);
       this.writeState.set('idle');
-      this.closeDetail();
-      this.storedRequests.set([]);
-      this.nextCursor.set(null);
-      void this.loadPage();
+      if (!this.storedRequests().length && (deletedAnchor || this.nextCursor()))
+        void this.loadPage(this.nextCursor() ?? undefined);
       this.notice.set(
         mutation.kind === 'update'
           ? 'updated'

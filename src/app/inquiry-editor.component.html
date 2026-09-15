@@ -23,6 +23,9 @@
   <form [formGroup]="form" (ngSubmit)="save()" novalidate>
     <div class="dialog-body">
       <p id="inquiry-edit-help" class="help">{{ text('editHelp') }}</p>
+      <p class="help mt-4" data-inquiry-editor-status>
+        {{ text('statusLabel') }}: {{ text(request().active ? 'active' : 'inactive') }}
+      </p>
       <fieldset [disabled]="saved.writeState() === 'saving'" class="edit-section">
         <legend>{{ field('repair') }}</legend>
         <label for="edit-service">{{ field('service') }}</label>

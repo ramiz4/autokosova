@@ -9,6 +9,7 @@ import {
   output,
   viewChild,
 } from '@angular/core';
+import { VEHICLE_MAKE_LABELS } from '../shared/catalog';
 import type { RepairRequestSummary } from '../shared/saved-repair-request';
 import { inquiriesCopy, type InquiriesCopyKey } from '../shared/inquiries-copy';
 import { LanguageService } from './language.service';
@@ -23,7 +24,7 @@ import { IconComponent } from './ui/icon.component';
   template: ` <dialog
     #dialog
     aria-labelledby="inquiry-delete-title"
-    aria-describedby="inquiry-delete-help"
+    aria-describedby="inquiry-delete-summary inquiry-delete-help inquiry-delete-alternative"
     (cancel)="cancel($event)"
     data-delete-dialog
   >
@@ -35,7 +36,17 @@ import { IconComponent } from './ui/icon.component';
       <app-icon name="trash" class="size-6 text-rose-700" />
     </header>
     <div class="dialog-body">
+      <div id="inquiry-delete-summary" class="mb-4" data-delete-summary>
+        <p>{{ vehicleLabel() }}</p>
+        @if (request().symptomPreview) {
+          <p>{{ request().symptomPreview }}</p>
+        }
+        <p class="help">
+          {{ text('savedOn') }} <time [attr.datetime]="request().createdAt">{{ createdAt() }}</time>
+        </p>
+      </div>
       <p id="inquiry-delete-help">{{ text('deleteBody') }}</p>
+      <p id="inquiry-delete-alternative" class="help mt-4">{{ text('deactivateInstead') }}</p>
       <p class="help mt-4">{{ text('fileRetention') }}</p>
       @if (saved.writeErrorKey(); as errorKey) {
         <p role="alert" class="error">{{ text(errorKey) }}</p>
@@ -61,7 +72,7 @@ import { IconComponent } from './ui/icon.component';
         (click)="remove()"
         data-confirm-delete
       >
-        {{ text(saved.writeState() === 'saving' ? 'saving' : 'delete') }}
+        {{ text(saved.writeState() === 'saving' ? 'deleting' : 'deleteConfirm') }}
       </button>
     </footer>
   </dialog>`,
@@ -84,6 +95,22 @@ export class InquiryDeleteDialogComponent {
       if (previousFocus?.isConnected) previousFocus.focus();
       else this.document.querySelector<HTMLElement>('#inquiries-title')?.focus();
     });
+  }
+  protected vehicleLabel(): string {
+    const vehicle = this.request().vehicle;
+    return [
+      vehicle?.makeId ? VEHICLE_MAKE_LABELS[vehicle.makeId] : '',
+      vehicle?.model,
+      vehicle?.year,
+    ]
+      .filter((value) => value !== undefined && value !== '')
+      .join(' · ');
+  }
+  protected createdAt(): string {
+    return new Intl.DateTimeFormat(this.language.language, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(this.request().createdAt));
   }
   protected text(key: InquiriesCopyKey): string {
     return inquiriesCopy[this.language.language][key];

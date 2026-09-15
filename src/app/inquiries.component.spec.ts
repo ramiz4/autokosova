@@ -368,3 +368,67 @@ it('does not save an unchanged or reverted inquiry and cancels without a discard
   expect(page.querySelector('[data-inquiry-editor]')).toBeNull();
   expect(mutation).not.toHaveBeenCalled();
 });
+
+it.each(['de', 'sq', 'en'] as const)(
+  'keeps cards and details stable through both status directions in %s',
+  async (locale) => {
+    const { page, fixture, service } = await render(routePath(locale, 'inquiries'));
+    const originalCard = page.querySelector('[data-inquiry-card]');
+    page.querySelector<HTMLButtonElement>('[data-inquiry-view]')!.click();
+    await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
+    await fixture.whenStable();
+    const calls = vi
+      .mocked(fetch)
+      .mock.calls.filter(([url]) => String(url).includes('?limit')).length;
+    for (const [active, revision, selector] of [
+      [false, 2, '[data-deactivate-inquiry]'],
+      [true, 3, '[data-reactivate-inquiry]'],
+    ] as const) {
+      detailResponse = () => json({ ...detail, active, revision });
+      page.querySelector<HTMLButtonElement>(selector)!.click();
+      await vi.waitFor(() => expect(service.requests()[0].revision).toBe(revision));
+      await fixture.whenStable();
+      expect(page.querySelector('[data-inquiry-card]')).toBe(originalCard);
+      expect(page.querySelector('.status-badge')?.textContent?.trim()).toBe(
+        inquiriesCopy[locale][active ? 'active' : 'inactive'],
+      );
+      expect(page.querySelector('[data-inquiry-detail-status]')?.textContent?.trim()).toBe(
+        inquiriesCopy[locale][active ? 'active' : 'inactive'],
+      );
+      expect(service.detail()?.symptom).toBe(detail.symptom);
+      expect(page.querySelector('[data-inquiry-search]') !== null).toBe(active);
+    }
+    expect(
+      vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('?limit')).length,
+    ).toBe(calls);
+  },
+);
+
+it.each(['de', 'sq', 'en'] as const)(
+  'identifies the selected inquiry, explains deactivation and labels the destructive confirmation in %s',
+  async (locale) => {
+    supportTestDialog();
+    const { page, fixture, service } = await render(routePath(locale, 'inquiries'));
+    const mutate = vi.spyOn(service, 'mutate').mockResolvedValue(false);
+    page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
+    await fixture.whenStable();
+    page.querySelector<HTMLButtonElement>('[data-delete-inquiry]')!.click();
+    await fixture.whenStable();
+    const dialog = page.querySelector('[data-delete-dialog]')!;
+    expect(dialog.querySelector('[data-delete-summary]')?.textContent).toContain('Fixture');
+    expect(dialog.querySelector('[data-delete-summary]')?.textContent).toContain(detail.symptom);
+    expect(dialog.querySelector('[data-delete-summary] b')).toBeNull();
+    expect(dialog.textContent).toContain(inquiriesCopy[locale].deactivateInstead);
+    expect(dialog.querySelector('[data-confirm-delete]')?.textContent?.trim()).toBe(
+      inquiriesCopy[locale].deleteConfirm,
+    );
+    expect(mutate).not.toHaveBeenCalled();
+    service.writeState.set('saving');
+    await fixture.whenStable();
+    expect(dialog.querySelector<HTMLButtonElement>('[data-confirm-delete]')!.disabled).toBe(true);
+    expect(dialog.querySelector<HTMLButtonElement>('[data-cancel-delete]')!.disabled).toBe(true);
+    expect(dialog.querySelector('[data-confirm-delete]')?.textContent).toContain(
+      inquiriesCopy[locale].deleting,
+    );
+  },
+);

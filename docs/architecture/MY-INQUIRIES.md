@@ -22,9 +22,13 @@ Der Runtime-Server verwendet ausschließlich `PostgresRepairRequestStore` für d
 Daten. Ohne `DATABASE_URL` antwortet `UnavailableRepairRequestStore` mit 503 statt
 flüchtige Speicherung als dauerhaft zu bestätigen. `AccessStore` bleibt ein
 isolierter Test-Adapter von `createServer`, keine Runtime-Alternative. Es gibt keine
-Beispielanfragen oder lokalen Gastentwürfe in der Kontoliste. Nach jedem erfolgreichen
-Schreibvorgang wird die Liste erneut vom Server geladen. Eine Fehlermeldung beim
-anschließenden Laden unterscheidet sich von einer fehlgeschlagenen Speicherung.
+Beispielanfragen oder lokalen Gastentwürfe in der Kontoliste. Seit #107 wird nur die betroffene Karte aus der validierten Schreibantwort
+aktualisiert oder entfernt. Andere Karten, geladene Seiten und offene Details bleiben
+erhalten. Aktivierungsziel und neue Revision werden vor der Erfolgsanzeige geprüft.
+Ein gelöschter Cursor wird auf den letzten verbleibenden Eintrag gesetzt; eine leere
+Seite mit weiteren Treffern wird nachgeladen. Ältere Antworten können geänderte oder
+gelöschte Daten nicht wiederherstellen. Reload, Filter und neue Detailabfragen dürfen
+laufende Schreibvorgänge nicht abbrechen.
 
 ## Private API
 
@@ -117,3 +121,13 @@ Keine produktive Anbieter-Konfiguration, Geheimnisse oder Runtime-Login-Bypässe
 Screenshots und `verification.json` des DB-Browserjobs liegen unter
 `test-results/inquiries-db`; sie decken DE/SQ/EN bei 360/390/430/1280 CSS-Pixeln ab.
 Die tatsächlichen Ergebnisse je Commit und nicht ausgeführte Prüfungen stehen im PR.
+
+## Bedienung seit #107
+
+Der Standardfilter ist Alle; weitere Filter heissen Aktiv und Inaktiv. Deaktivieren
+ist direkt auf aktiven Karten erreichbar, Aktivieren auf inaktiven Karten.
+Detailansicht und Editor zeigen den gespeicherten Status ebenfalls als Text.
+Der Löschdialog identifiziert die Anfrage mit Fahrzeug, Problemvorschau und Datum,
+nennt Deaktivieren als Alternative und verwendet die eindeutige Aktion Anfrage löschen.
+Der Browsernachweis prüft zusätzlich den DOM-Erhalt während eines Statuswechsels,
+das Entfernen aus dem aktuellen Filter und die anschliessende Tastaturfokusführung.
