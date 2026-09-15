@@ -72,6 +72,21 @@ Abfragen verworfen. Read- und Write-Antworten werden gegen die konkrete Identit�
 Generation geprüft, auch nach dem JSON-Lesen. Herzsignale blenden einen alten Bestand schon
 synchron aus, bevor die Effektbereinigung läuft.
 
+Bei einer unveränderten Sitzungsprüfung bleiben Favoriten-IDs, aufgelöste Karten und der
+bereits geladene Seitenumfang erhalten. Beide Services verwenden den invalidierungssicheren
+`dataContext` aus [ACCOUNT-PROFILE.md](ACCOUNT-PROFILE.md), nicht `OwnAccount`-Objektreferenzen.
+Ein neuer Anzeigename oder eine aktualisierte Ablaufzeit verursacht keinen neuen ID-Index-
+oder Profilabruf. Konto-/Rechtewechsel und Logout blenden alte Zuordnungen dagegen auch vor
+der asynchronen Effektbereinigung aus; spätere Antworten dürfen sie nicht wiederherstellen.
+
+Ein ausdrückliches `FavoritesService.load()` (Seiteneinstieg, Retry, Cross-Tab-Änderung)
+liest den Serverbestand weiterhin neu und dedupliziert parallele Abrufe. Während einer
+solchen Hintergrundaktualisierung bleiben bestätigte Karten statt Skeletons sichtbar.
+Tatsächliche Änderungen aktualisieren nur den betroffenen Bestand. Ein durch eine bestätigte
+lokale Schreiboperation oder ein weiteres Cross-Tab-Signal überholter Snapshot wird erneut
+gelesen, statt eine gerade entfernte Zuordnung wiederherzustellen. Fehler und 401 behalten
+ihre bisherigen expliziten Fehler-/Invalidierungszustände. Keine zusätzliche Persistenz.
+
 Die API prüft die Sitzung nach asynchronen Reads erneut; PostgreSQL-Schreibtransaktionen
 prüfen sie vor dem Commit und rollen bei abgelaufener Sitzung zurück. Unbekannte
 Listenparameter werden abgewiesen. Unerwartete Storage-Fehler geben keine DB-Werte aus.

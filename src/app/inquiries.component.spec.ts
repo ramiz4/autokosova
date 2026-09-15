@@ -369,6 +369,23 @@ it('does not save an unchanged or reverted inquiry and cancels without a discard
   expect(mutation).not.toHaveBeenCalled();
 });
 
+it('preserves the editor and unsaved text across real session revalidation', async () => {
+  supportTestDialog();
+  const { page, fixture, service } = await render();
+  page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
+  await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
+  await fixture.whenStable();
+  const editor = page.querySelector('app-inquiry-editor')!;
+  const input = editor.querySelector<HTMLTextAreaElement>('textarea[formControlName="symptom"]')!;
+  input.value = 'Ungespeicherte fiktive Bearbeitung';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  current = { ...identity, displayName: 'Aktualisiertes fiktives Konto' };
+  await TestBed.inject(AccountSessionService).refresh();
+  await fixture.whenStable();
+  expect(page.querySelector('app-inquiry-editor')).toBe(editor);
+  expect(input.value).toBe('Ungespeicherte fiktive Bearbeitung');
+});
+
 it.each(['de', 'sq', 'en'] as const)(
   'keeps cards and details stable through both status directions in %s',
   async (locale) => {

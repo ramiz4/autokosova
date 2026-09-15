@@ -62,7 +62,7 @@ export class InquiriesComponent {
 
   constructor() {
     effect(() => {
-      this.account.identity();
+      this.account.dataContext();
       untracked(() => {
         this.editingId.set(null);
         this.deleting.set(null);

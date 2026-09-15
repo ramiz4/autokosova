@@ -22,11 +22,14 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: node scripts/inquiries-browser-smoke.mjs
+      - run: node scripts/private-list-browser-smoke.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: inquiries-browser-fictional-fixtures
-          path: test-results/inquiries
+          path: |
+            test-results/inquiries
+            test-results/private-lists
           if-no-files-found: warn
           retention-days: 7
 

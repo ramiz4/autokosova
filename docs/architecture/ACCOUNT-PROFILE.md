@@ -85,6 +85,30 @@ bis zur Antwort erhalten; auch der Gastzustand bleibt stabil. Das Öffnen des Ko
 validiert die Sitzung weiterhin, ohne Navbar oder Kontoinhalte vorübergehend zu entfernen.
 Initiales Laden und Wiederholung nach einem Fehler verwenden die neutrale Ladeansicht.
 
+Private Listen verwenden `AccountSessionService.dataContext` statt der Referenz des
+JSON-Identitätsobjekts. Der Kontext berücksichtigt Subject, wirksamen Kontozweck, Rollen,
+Membership-IDs/-Rechte und eine lokale Invalidierungsepoche. Anzeigename, E-Mail, Benutzername,
+Membership-Anzeigenamen und Ablaufzeit aktualisieren weiterhin die Kontoanzeige, lösen aber
+keinen Listen-/Editor-Reset aus. Reine Reihenfolgeänderungen von Rollen/Memberships sind
+keine Rechteänderung. Ein beobachteter Rechte-/Kontowechsel oder eine Invalidierung erzeugt
+eine neue Epoche; auch die Rückkehr zum selben Subject bzw. früheren Rechten darf keine
+alten Read-/Write-Antworten reaktivieren. Das ist nur eine UI-Lebensdauergrenze, keine neue
+Authentifizierungs- oder serverseitige Berechtigungsquelle; sie wird nicht persistiert.
+
+Menüöffnen und gewöhnlicher Fensterfokus prüfen weiterhin `/api/me`, ohne daraus komplette
+Anfragen-/Favoritenabrufe abzuleiten. Filter, Pagination, Details, Editor und laufende Writes
+bleiben bei unverändertem Kontext erhalten. Ein tatsächlich **verstecktes** Dokument
+(`visibilitychange: hidden`), `pagehide`, Logout, Ablauf und bestätigte Fehler entfernen
+private Daten weiterhin; nach Rückkehr werden Sitzung und Listen frisch geladen. Fokusverlust
+allein ist davon getrennt. Es wird kein privater History-/Browserstorage-Cache eingeführt.
+
+`node scripts/private-list-browser-smoke.mjs` prüft beide gefüllten Listen mit verzögerten
+synthetischen API-Antworten: DE/SQ/EN bei 390/620/1280 px, Menü und Fokus jeweils mehrfach,
+DOM-Identität, Inhalt, Geometrie, Scrollposition, Pagination und Request-Anzahlen. 620 px
+bildet eine durch angedockte DevTools verengte Inhaltsbreite nach, keine manuelle DevTools-
+Bedienung. Tatsächlicher Tabwechsel und 401 werden getrennt geprüft. Die Anfragen-Browser-CI
+führt den Test aus und archiviert `test-results/private-lists`; kein Live-OIDC-Nachweis.
+
 Der bestehende Ablauf-Timer bleibt während der Prüfung aktiv und wird erst nach einer
 erfolgreichen Antwort ersetzt. Eine bereits abgelaufene Identität wird auch bei verzögertem
 Browser-Timer nicht übernommen. 401 entfernt private Daten bereits vor dem Lesen optionaler

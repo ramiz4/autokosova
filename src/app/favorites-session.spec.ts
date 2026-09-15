@@ -14,6 +14,7 @@ function setup(platform = 'browser') {
   const identity = signal<OwnAccount | null>(owner('a'));
   const account = {
     identity,
+    dataContext: computed(() => identity()?.userId ?? null),
     signedIn: computed(() => !!identity()),
     state: computed(() => (identity() ? 'ready' : 'guest')),
     busy: signal(false),

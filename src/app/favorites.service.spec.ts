@@ -13,6 +13,7 @@ beforeEach(() => {
         provide: AccountSessionService,
         useValue: {
           signedIn,
+          dataContext: computed(() => (signedIn() ? 'fixture-context' : null)),
           state: computed(() => (signedIn() ? 'ready' : 'guest')),
           identity: computed(() =>
             signedIn()
