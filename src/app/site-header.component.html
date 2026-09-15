@@ -171,16 +171,17 @@
               [class.bg-blue-50]="active() === 'inquiries'"
               class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
               ><app-icon name="wrench" class="size-4.5" />{{ language.t('nav.myRequests') }}</a
-            ><a
-              data-account-favorites
-              [routerLink]="language.link('favorites')"
-              [attr.aria-current]="active() === 'favorites' ? 'page' : null"
-              [class.bg-blue-50]="active() === 'favorites'"
-              (click)="closeMenu()"
-              class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
-              ><app-icon name="heart" class="size-4.5" />{{ language.t('nav.favorites') }}</a
             >
           }
+          <a
+            data-account-favorites
+            [routerLink]="language.link('favorites')"
+            [attr.aria-current]="active() === 'favorites' ? 'page' : null"
+            [class.bg-blue-50]="active() === 'favorites'"
+            (click)="closeMenu()"
+            class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
+            ><app-icon name="heart" class="size-4.5" />{{ language.t('nav.favorites') }}</a
+          >
         }
       </div>
       <div class="mt-2 grid gap-1 border-t border-slate-200 pt-2 sm:hidden">

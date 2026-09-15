@@ -29,6 +29,15 @@ try {
     "INSERT INTO garage (id,name,publication_state,place_id) VALUES ($1,'TEST · Werkstatt ohne Bild','published','xk-gjilan'),($2,'PRIVATE-HIDDEN-NAME','published','xk-peja')",
     [blank, hidden],
   );
+  // Existing operator favorites must be discoverable without saving them again.
+  await pool.query(
+    "INSERT INTO app_user (id,oidc_subject,status,account_type) VALUES ($1,$1,'active','garage')",
+    [owners[1]],
+  );
+  await pool.query('INSERT INTO garage_favorite (owner_user_id,garage_id) VALUES ($1,$2)', [
+    owners[1],
+    primary,
+  ]);
   browser = await startBrowser(port, provider.environment);
   const { command, evaluate, click } = browser;
   async function api(path, method = 'GET') {
@@ -69,10 +78,15 @@ try {
     );
   }
   async function keyboard(selector) {
-    await evaluate(`document.querySelector(${JSON.stringify(selector)}).focus()`);
     await until(
-      () => evaluate(`document.activeElement.matches(${JSON.stringify(selector)})`),
-      'focused control',
+      () =>
+        evaluate(`(() => {
+        const control = document.querySelector(${JSON.stringify(selector)});
+        if (!control || control.disabled || !control.getClientRects().length) return false;
+        control.focus();
+        return document.activeElement === control;
+      })()`),
+      'focusable control ' + selector,
     );
     await browser.key('Enter', 13);
   }
@@ -247,9 +261,118 @@ try {
     'profile/history navigation; remove unavailable profile; search heart reflects confirmed deletion',
   );
   await login(owners[1]);
+  assert.equal((await api('/api/me')).data.accountType, 'garage');
+  assert.deepEqual(await sqlIds(owners[1]), [primary]);
+  await count(1);
+  for (const locale of ['de', 'sq', 'en']) {
+    const prefix = locale === 'de' ? '' : '/' + locale;
+    for (const width of [390, 1280]) {
+      await command('Emulation.setDeviceMetricsOverride', {
+        width,
+        height: 900,
+        deviceScaleFactor: 1,
+        mobile: width < 640,
+      });
+      await browser.navigate(
+        prefix + '/profile',
+        `!!document.querySelector('main [data-account-favorites]')`,
+      );
+      assert.equal(
+        await evaluate(`document.querySelectorAll('main [data-account-favorites]').length`),
+        1,
+      );
+      assert.equal(
+        await evaluate(
+          `document.querySelector('main [data-account-favorites]').getAttribute('href')`,
+        ),
+        prefix + '/favorites',
+      );
+      assert.ok(await evaluate(`!!document.querySelector('main [data-account-garages]')`));
+      await keyboard('main [data-account-favorites]');
+      await until(
+        () =>
+          evaluate(`location.pathname === ${JSON.stringify(prefix + '/favorites')} && (${ready})`),
+        'operator profile to favorites',
+      );
+      await count(1);
+      await keyboard('button[aria-controls="account-menu"]');
+      await until(
+        () => evaluate(`!!document.querySelector('#account-menu [data-account-favorites]')`),
+        'operator favorites menu',
+      );
+      assert.deepEqual(
+        await evaluate(
+          `(()=>{const menu=document.querySelector('#account-menu');const link=menu.querySelector('[data-account-favorites]');return {count:menu.querySelectorAll('[data-account-favorites]').length,href:link.getAttribute('href'),active:link.getAttribute('aria-current'),business:!!menu.querySelector('[data-account-garages]'),inquiries:!!menu.querySelector('[data-account-inquiries]')};})()`,
+        ),
+        {
+          count: 1,
+          href: prefix + '/favorites',
+          active: 'page',
+          business: true,
+          inquiries: false,
+        },
+      );
+      await evaluate(`document.querySelector('#account-menu [data-account-favorites]').focus()`);
+      assert.ok(
+        await evaluate(
+          `document.activeElement.matches(':focus-visible') && parseFloat(getComputedStyle(document.activeElement).outlineWidth)>=2`,
+        ),
+      );
+      assert.ok(await evaluate(`document.documentElement.scrollWidth<=innerWidth+1`));
+      await browser.screenshot(`${output}/operator-${locale}-${width}.png`, width);
+      await browser.key('Escape', 27);
+      await until(
+        () =>
+          evaluate(
+            `!document.querySelector('#account-menu') && document.activeElement.matches('[aria-controls="account-menu"]')`,
+          ),
+        'operator Escape and focus return',
+      );
+      await keyboard('button[aria-controls="account-menu"]');
+      await keyboard('#account-menu [data-account-favorites]');
+      await until(
+        () => evaluate(`!document.querySelector('#account-menu') && (${ready})`),
+        'operator menu selection closes',
+      );
+      console.log(`Operator favorites navigation passed: ${locale} ${width}px`);
+    }
+  }
+  const profileReady = `!!document.querySelector('app-garage-profile button[aria-pressed]:not(:disabled)')`;
+  await browser.navigate('/garages/' + primary, profileReady);
+  assert.equal(
+    await evaluate(
+      `document.querySelector('app-garage-profile button[aria-pressed]').getAttribute('aria-pressed')`,
+    ),
+    'true',
+  );
+  await browser.navigate('/garages/' + second, profileReady);
+  assert.equal(
+    await evaluate(
+      `document.querySelector('app-garage-profile button[aria-pressed]').getAttribute('aria-pressed')`,
+    ),
+    'false',
+  );
+  await keyboard('app-garage-profile button[aria-pressed]');
+  await until(
+    async () => (await sqlIds(owners[1])).includes(second),
+    'operator profile heart persists',
+  );
+  await browser.navigate('/favorites', ready);
+  await count(2);
+  for (const id of [primary, second]) {
+    await keyboard(card(id) + ' [data-favorite-remove]');
+    await until(async () => !(await sqlIds(owners[1])).includes(id), 'operator removal persists');
+  }
+  await until(
+    () => evaluate(`!!document.querySelector('[data-favorites-empty]')`),
+    'operator empty state',
+  );
   assert.deepEqual(await sqlIds(owners[1]), []);
   assert.equal((await api('/api/me/favorites/' + second, 'DELETE')).status, 204);
   assert.ok((await sqlIds(owners[0])).includes(second));
+  checks.push(
+    'operator: existing favorites, profile and account navigation, DE/SQ/EN at 390/1280, keyboard, profile heart, persistent remove; customer list unchanged',
+  );
   await login(owners[0]);
   await count(2);
   assert.deepEqual((await api('/api/me/favorites')).data.garageIds.sort(), [blank, second].sort());
