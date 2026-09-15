@@ -9,7 +9,13 @@ import { IconComponent } from './ui/icon.component';
 
 @Component({
   selector: 'app-account-profile',
-  imports: [RouterLink, SiteHeaderComponent, LanguageSwitcherComponent, ButtonDirective, IconComponent],
+  imports: [
+    RouterLink,
+    SiteHeaderComponent,
+    LanguageSwitcherComponent,
+    ButtonDirective,
+    IconComponent,
+  ],
   templateUrl: './account-profile.component.html',
 })
 export class AccountProfileComponent {
