@@ -2,6 +2,23 @@
 
 Herzen in der öffentlichen Werkstattsuche speichern Favoriten im angemeldeten Konto. Gäste können weiterhin suchen und Kontakt auswählen; das Herz bietet ihnen die Anmeldung an. Login-Rücksprünge erlauben ausschließlich lokale bekannte Pfade und validierte öffentliche Suchfilter.
 
+## Gemeinsame persönliche Funktion (#102)
+
+Favoriten stehen jedem angemeldeten Benutzer mit gültigem, nicht gesperrtem Konto zur
+Verfügung, unabhängig vom Kontozweck `customer`/`garage` und zusätzlichen Rollen.
+Kontomenü und Kontoprofil verlinken dieselbe lokalisierte Übersicht ausserhalb der
+Unterscheidung zwischen Kunden- und Werkstattbereich. Suche, Profil und direkter
+Seitenaufruf verwenden unverändert dieselben sitzungs- und besitzergebundenen Verträge.
+
+Die Liste gehört zur Person, nicht zur Werkstatt: auch zwei Mitglieder desselben
+Betriebs haben getrennte Bestände. Weitere Rollen oder Zugehörigkeiten erzeugen keine
+zweite Liste; vorhandene Favoriten bleiben erhalten. Admin und Moderator erhalten
+keinen Zugriff auf fremde Favoriten. Geschäftsprozess-Berechtigungen ändern sich nicht.
+
+Ein Favorit ist keine Bewertung, öffentliche Empfehlung, Buchung oder Kontaktaufnahme.
+Er beeinflusst weder Ranking noch Benachrichtigungen. Es gibt keinen Rollenumschalter,
+keine gemeinsame Mitarbeiterliste, Gast-Browserspeicherung oder zusätzliche Migration.
+
 ## Vertrag und Berechtigungen
 
 - `GET /api/session` liefert nur den Anmeldestatus, keine Konto-ID.
@@ -17,7 +34,7 @@ Das Herz zeigt den bestätigten Serverzustand, sperrt parallele Änderungen ders
 
 Ein Neuladen oder eine weitere Sitzung desselben Kontos liest denselben Datenbestand.
 
-Die gemeinsame Navbar liest den echten Sitzungsstatus. Angemeldet erscheinen Glocke und Konto-Menü statt Login/Registrieren; Abmeldung erfolgt mit CSRF-Schutz. Die Glocke erklärt, dass Benachrichtigungen noch nicht verfügbar sind. Escape und Außenklick schließen die Menüs.
+Die gemeinsame Navbar liest den echten Sitzungsstatus. Angemeldet erscheint das Konto-Menü statt Login/Registrieren; Abmeldung erfolgt mit CSRF-Schutz. Nicht verfügbare Benachrichtigungen werden nicht als Bedienelement angeboten. Escape und Außenklick schließen die Menüs.
 
 ## Lokaler Nachweis
 
@@ -75,8 +92,10 @@ Login-Rücksprünge erlauben nur die drei kanonischen Pfade ohne freie Query/Fra
   tatsächliche Besitzer-RLS mit einer nicht privilegierten Testrolle, Export und Kontolöschung.
 - `node scripts/favorites-db-browser-smoke.mjs`: Produktionsbuild und echte lokale PostgreSQL-DB,
   bestehende Suchherzen, private Übersicht, Profilwechsel/History, Entfernen inklusive nicht
-  öffentlichem Profil, zwei getrennte Konten und erneute Anmeldung, viele Einträge, leere Liste,
+  öffentlichem Profil, getrennte Kunden-/Betreiberkonten und erneute Anmeldung, viele Einträge, leere Liste,
   Logout, DE/SQ/EN und 360/390/430/1280 px. Keine Anwendungs-API-Antworten werden ersetzt.
+  Betreiber haben bereits vor Anmeldung gespeicherte Favoriten; beide Kontonavigationen,
+  Profilherzen, Entfernen und unveränderter Kundenbestand werden ebenfalls geprüft.
   Fiktive Testdaten bleiben ausdrücklich fiktiv, sind aber wirklich in PostgreSQL gespeichert.
 
 Der Browsernachweis benötigt eine isolierte lokale DB mit Migrationen, Referenzkatalog und
