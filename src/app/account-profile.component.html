@@ -204,12 +204,14 @@
                     [routerLink]="language.link('inquiries')"
                     class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50"
                     ><app-icon name="wrench" class="size-4" />{{ language.t('nav.myRequests') }}</a
-                  ><a
-                    [routerLink]="language.link('favorites')"
-                    class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50"
-                    ><app-icon name="heart" class="size-4" />{{ language.t('nav.favorites') }}</a
                   >
                 }
+                <a
+                  data-account-favorites
+                  [routerLink]="language.link('favorites')"
+                  class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
+                  ><app-icon name="heart" class="size-4" />{{ language.t('nav.favorites') }}</a
+                >
               </nav>
               <section
                 class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
