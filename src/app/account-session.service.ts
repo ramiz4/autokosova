@@ -78,23 +78,35 @@ export class AccountSessionService {
   }
 
   private async readAccount(): Promise<void> {
-    this.clear('loading');
+    // Revalidation must not unmount a confirmed session's UI or cancel its expiry.
+    // Check the clock as well: background browsers can delay the expiry timer.
+    const current = this.identity();
+    if (current && Date.parse(current.expiresAt) <= Date.now()) this.invalidate();
+    if (this.state() === 'error') this.state.set('loading');
     const version = this.version;
-    this.controller = new AbortController();
+    const controller = new AbortController();
+    this.controller = controller;
     try {
       const response = await fetch('/api/me', {
         credentials: 'same-origin',
         cache: 'no-store',
-        signal: this.controller.signal,
+        signal: controller.signal,
       });
       if (version !== this.version) return;
       if (response.status === 401) {
-        const data = (await response.json().catch(() => ({}))) as { loginAvailable?: unknown };
+        // Remove private fields on the status, without aborting the optional response body.
+        this.clearIdentity('guest');
+        this.loginAvailable.set(null);
+        const data: unknown = await response.json().catch(() => null);
         if (version !== this.version) return;
         this.loginAvailable.set(
-          typeof data.loginAvailable === 'boolean' ? data.loginAvailable : null,
+          data !== null &&
+            typeof data === 'object' &&
+            'loginAvailable' in data &&
+            typeof data.loginAvailable === 'boolean'
+            ? data.loginAvailable
+            : null,
         );
-        this.state.set('guest');
         return;
       }
       if (!response.ok) throw new Error('Account unavailable');
@@ -110,9 +122,12 @@ export class AccountSessionService {
       this.signedIn.set(true);
       this.loginAvailable.set(true);
       this.state.set('ready');
+      clearTimeout(this.expiryTimer);
       this.expiryTimer = setTimeout(() => this.invalidate(), Math.min(remaining, 2_147_483_647));
     } catch {
-      if (version === this.version) this.state.set('error');
+      if (version === this.version) this.clear('error');
+    } finally {
+      if (this.controller === controller) this.controller = undefined;
     }
   }
 
@@ -121,6 +136,10 @@ export class AccountSessionService {
     this.controller?.abort();
     this.controller = undefined;
     this.refreshInFlight = undefined;
+    this.clearIdentity(state);
+  }
+
+  private clearIdentity(state: AccountState): void {
     clearTimeout(this.expiryTimer);
     this.expiryTimer = undefined;
     this.identity.set(null);
