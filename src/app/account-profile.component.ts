@@ -30,8 +30,9 @@ export class AccountProfileComponent {
 
   protected async logout(): Promise<void> {
     this.logoutError.set(false);
-    if (await this.account.logout()) {
+    const result = await this.account.logout(this.language.language);
+    if (result === true) {
       void this.router.navigateByUrl(this.language.link('home'));
-    } else this.logoutError.set(true);
+    } else if (result !== 'redirect') this.logoutError.set(true);
   }
 }

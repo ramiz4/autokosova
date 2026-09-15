@@ -22,6 +22,7 @@ test('signed OIDC callback exposes only own profile, replaces roles and invalida
   let includeProfile = true;
   let invalidToken = false;
   let challenge = '';
+  let nonce = '';
   let issuer = '';
   const provider = httpServer(async (request, response) => {
     response.setHeader('content-type', 'application/json');
@@ -45,6 +46,8 @@ test('signed OIDC callback exposes only own profile, replaces roles and invalida
       return;
     }
     const token = await new SignJWT({
+      nonce,
+      auth_time: Math.floor(Date.now() / 1000),
       'urn:zitadel:iam:org:project:roles': roles,
       ...(includeProfile
         ? {
@@ -88,9 +91,14 @@ test('signed OIDC callback exposes only own profile, replaces roles and invalida
     const start = await app.inject({ url: '/auth/login?returnTo=' + encodeURIComponent(returnTo) });
     const authorization = new URL(start.headers.location!);
     challenge = authorization.searchParams.get('code_challenge')!;
+    nonce = authorization.searchParams.get('nonce')!;
     const callback = await app.inject({
       url: '/auth/callback?code=fixture-code&state=' + authorization.searchParams.get('state'),
-      ...(previous ? { headers: { cookie: previous } } : {}),
+      headers: {
+        cookie: [previous, ...start.cookies.map((item) => `${item.name}=${item.value}`)]
+          .filter(Boolean)
+          .join('; '),
+      },
     });
     return callback;
   }

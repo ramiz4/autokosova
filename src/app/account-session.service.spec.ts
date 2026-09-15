@@ -149,3 +149,91 @@ it('does not fetch or serialize an account in server rendering', async () => {
   expect(session.identity()).toBeNull();
   expect(await session.logout()).toBe(false);
 });
+
+it('uses a full browser navigation for the trusted logout handoff without an extra router/read race', async () => {
+  const { AUTH_NAVIGATE } = await import('./account-session.service');
+  const navigate = vi.fn();
+  TestBed.configureTestingModule({ providers: [{ provide: AUTH_NAVIGATE, useValue: navigate }] });
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce(response())
+    .mockResolvedValueOnce(new Response('{"redirectTo":"/auth/logout/provider"}'));
+  vi.stubGlobal('fetch', request);
+  const session = TestBed.inject(AccountSessionService);
+  await session.refresh();
+  expect(await session.logout('sq')).toBe('redirect');
+  expect(navigate).toHaveBeenCalledExactlyOnceWith('/auth/logout/provider');
+  expect(request.mock.calls[1][0]).toBe('/auth/logout?locale=sq');
+  expect(request.mock.calls[1][1].headers.accept).toBe('application/json');
+  expect(session.identity()).toBeNull();
+  expect(session.busy()).toBe(true);
+  await session.refresh();
+  expect(request).toHaveBeenCalledTimes(2);
+});
+
+it('rejects attacker-controlled logout redirects and late JSON from a previous account', async () => {
+  const { AUTH_NAVIGATE } = await import('./account-session.service');
+  const navigate = vi.fn();
+  TestBed.configureTestingModule({ providers: [{ provide: AUTH_NAVIGATE, useValue: navigate }] });
+  const request = vi.fn().mockResolvedValue(new Response('{"redirectTo":"https://evil.invalid"}'));
+  vi.stubGlobal('fetch', request);
+  const session = TestBed.inject(AccountSessionService);
+  expect(await session.logout()).toBe(false);
+  expect(navigate).not.toHaveBeenCalled();
+  expect(session.busy()).toBe(false);
+  let finish!: (value: unknown) => void;
+  request.mockResolvedValue({
+    status: 200,
+    ok: true,
+    json: () => new Promise((resolve) => (finish = resolve)),
+  });
+  const task = session.logout();
+  await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+  session.invalidate();
+  finish({ redirectTo: '/auth/logout/provider' });
+  expect(await task).toBe(false);
+  expect(navigate).not.toHaveBeenCalled();
+  expect(session.identity()).toBeNull();
+});
+
+it('navigates to the explicit local-only logout notice without claiming provider logout', async () => {
+  const { AUTH_NAVIGATE } = await import('./account-session.service');
+  const navigate = vi.fn();
+  TestBed.configureTestingModule({ providers: [{ provide: AUTH_NAVIGATE, useValue: navigate }] });
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(new Response('{"redirectTo":"/auth/logged-out?locale=en"}')),
+  );
+  const session = TestBed.inject(AccountSessionService);
+  expect(await session.logout('en')).toBe('redirect');
+  expect(navigate).toHaveBeenCalledWith('/auth/logged-out?locale=en');
+  expect(session.state()).toBe('guest');
+});
+
+it('clears a second tab immediately when it receives the logout invalidation', async () => {
+  let receive!: () => void;
+  class Channel {
+    set onmessage(value: () => void) {
+      receive = value;
+    }
+    close() {
+      /* test channel has no resources */
+    }
+  }
+  vi.stubGlobal('BroadcastChannel', Channel);
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce(response())
+      .mockResolvedValueOnce(new Response('{}', { status: 401 })),
+  );
+  const session = TestBed.inject(AccountSessionService);
+  await session.refresh();
+  expect(session.signedIn()).toBe(true);
+  receive();
+  expect(session.identity()).toBeNull();
+  expect(session.signedIn()).toBe(false);
+  await session.refresh();
+  expect(session.state()).toBe('guest');
+});

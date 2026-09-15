@@ -265,7 +265,7 @@ try {
       { urlPattern: `${origin}/api/me`, requestStage: 'Request' },
       { urlPattern: `${origin}/api/me/favorites`, requestStage: 'Request' },
       { urlPattern: `${origin}/api/me/repair-requests*`, requestStage: 'Request' },
-      { urlPattern: `${origin}/auth/logout`, requestStage: 'Request' },
+      { urlPattern: `${origin}/auth/logout*`, requestStage: 'Request' },
     ],
   });
   await command('Page.addScriptToEvaluateOnNewDocument', {

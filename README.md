@@ -58,6 +58,16 @@ der öffentliche Demo-Seed enthält keine Bewertungen oder privaten Nachweise.
 Die Kontaktvorschau bleibt testbar, öffnet bei Demo-Profilen aber weder WhatsApp
 noch die Telefon-App. Workflowdaten erzeugen keinen Login-Bypass.
 
+### Login und vollständiger OIDC-Logout
+
+Ein Login-Klick fordert jetzt erneut aktive Authentifizierung beim Provider an.
+Für zusätzliches Beenden seiner Browser-SSO-Sitzung das optionale Paar
+`ZITADEL_END_SESSION_ENDPOINT` / `ZITADEL_POST_LOGOUT_URI` konfigurieren und
+`http://localhost:4200/auth/logout/callback` exakt beim Testprovider registrieren.
+Ohne dieses Paar wird ausschließlich lokal abgemeldet und diese Grenze sichtbar erklärt.
+Details, sichere Rücksprünge, andere Ports und Testgrenzen stehen in
+[AUTH-INTEGRATION.md](docs/architecture/AUTH-INTEGRATION.md#vollständige-abmeldung-und-bewusste-erneute-anmeldung-75).
+
 ### Konfiguration und getrennte Worktrees
 
 Die Reihenfolge ist: eingebaute Starter-Defaults → `.env` → `.env.local` → bereits

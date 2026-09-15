@@ -167,7 +167,7 @@ try {
     if (event.method === 'Runtime.exceptionThrown') errors.push('Browser runtime exception');
     if (event.method !== 'Fetch.requestPaused') return;
     const { requestId, request } = event.params;
-    const isLogout = request.url.endsWith('/auth/logout');
+    const isLogout = new URL(request.url).pathname === '/auth/logout';
     if (isLogout) {
       accountStatus = 401;
       accountPayload = { loginAvailable: true };
@@ -186,7 +186,7 @@ try {
   await command('Fetch.enable', {
     patterns: [
       { urlPattern: `${origin}/api/me`, requestStage: 'Request' },
-      { urlPattern: `${origin}/auth/logout`, requestStage: 'Request' },
+      { urlPattern: `${origin}/auth/logout*`, requestStage: 'Request' },
     ],
   });
   await command('Page.enable');

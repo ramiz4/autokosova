@@ -100,7 +100,11 @@ test('configured OIDC requires the exact localhost callback for the selected app
     AUTOKOSOVA_APP_PORT: '4200',
     ZITADEL_REDIRECT_URI: 'http://localhost:4200/auth/callback',
   });
-  assert.deepEqual(resolveConfig(root, env).notices, []);
+  assert.ok(
+    resolveConfig(root, env).notices.some((notice) =>
+      notice.includes('Provider-Logout nicht konfiguriert'),
+    ),
+  );
   for (const callback of [
     'http://localhost:4000/auth/callback',
     'https://external/auth/callback',
@@ -136,4 +140,28 @@ test('atomic worktree lock rejects concurrent starts and never steals a stale lo
   await release();
   const nextRelease = await acquireLock(root);
   await nextRelease();
+});
+
+test('provider logout is opt-in, paired, same-origin and uses the exact app-port callback', async (t) => {
+  const root = await workspace(t);
+  const env = {
+    ZITADEL_AUDIENCE: 'fixture',
+    ZITADEL_CLIENT_ID: 'fixture',
+    ZITADEL_ISSUER: 'https://issuer.invalid',
+    ZITADEL_AUTHORIZATION_ENDPOINT: 'https://issuer.invalid/authorize',
+    ZITADEL_TOKEN_ENDPOINT: 'https://issuer.invalid/token',
+    ZITADEL_JWKS_URI: 'https://issuer.invalid/jwks',
+    ZITADEL_REDIRECT_URI: 'http://localhost:4200/auth/callback',
+    ZITADEL_END_SESSION_ENDPOINT: 'https://issuer.invalid/end_session',
+    ZITADEL_POST_LOGOUT_URI: 'http://localhost:4200/auth/logout/callback',
+  };
+  assert.deepEqual(resolveConfig(root, env).notices, []);
+  for (const patch of [
+    { ZITADEL_END_SESSION_ENDPOINT: '' },
+    { ZITADEL_POST_LOGOUT_URI: '' },
+    { ZITADEL_END_SESSION_ENDPOINT: 'https://evil.invalid/end_session' },
+    { ZITADEL_POST_LOGOUT_URI: 'http://localhost:4000/auth/logout/callback' },
+    { ZITADEL_POST_LOGOUT_URI: 'http://localhost:4200/auth/logout/callback?next=evil' },
+  ])
+    assert.throws(() => resolveConfig(root, { ...env, ...patch }), /OIDC-Logout/);
 });

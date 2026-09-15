@@ -145,3 +145,22 @@ it('retains /profile and optional navigation context during language changes', a
     '/en/profile?view=settings#account-settings-title',
   );
 });
+
+it('does not race provider logout with client-side home navigation from either logout button', async () => {
+  const { fixture, page } = await render('/sq/profile');
+  const logout = vi
+    .spyOn(TestBed.inject(AccountSessionService), 'logout')
+    .mockResolvedValue('redirect');
+  const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+  page.querySelector<HTMLButtonElement>('[data-account-logout]')!.click();
+  await fixture.whenStable();
+  expect(logout).toHaveBeenCalledWith('sq');
+  expect(navigate).not.toHaveBeenCalled();
+  page.querySelector<HTMLButtonElement>('[aria-controls="account-menu"]')!.click();
+  await fixture.whenStable();
+  page.querySelector<HTMLButtonElement>('#account-menu button')!.click();
+  await fixture.whenStable();
+  expect(logout).toHaveBeenCalledTimes(2);
+  expect(navigate).not.toHaveBeenCalled();
+  expect(page.textContent).not.toContain(TestBed.inject(LanguageService).t('account.logoutError'));
+});

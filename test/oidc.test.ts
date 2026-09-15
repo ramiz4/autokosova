@@ -22,7 +22,8 @@ test('authorization URL binds state, PKCE challenge and local redirect', () => {
   assert.equal(url.searchParams.get('code_challenge'), 'pkce-challenge');
   assert.equal(url.searchParams.get('code_challenge_method'), 'S256');
   assert.equal(url.searchParams.get('redirect_uri'), config.redirectUri);
-  assert.equal(url.searchParams.has('prompt'), false);
+  assert.equal(url.searchParams.get('prompt'), 'login');
+  assert.equal(url.searchParams.get('max_age'), '0');
 });
 
 test('registration opens the hosted ZITADEL create screen with the same PKCE contract', () => {
