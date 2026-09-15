@@ -10,6 +10,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { CATALOG_PLACES, SERVICE_CATEGORY_LABELS, VEHICLE_MAKE_LABELS } from '../shared/catalog';
 import {
   GARAGE_LANGUAGES,
@@ -63,7 +64,7 @@ function blankForm(): Form {
 
 @Component({
   selector: 'app-garage-onboarding',
-  imports: [FormsModule, SiteHeaderComponent, IconComponent, MultiSelectComponent],
+  imports: [FormsModule, RouterLink, SiteHeaderComponent, IconComponent, MultiSelectComponent],
   templateUrl: './garage-onboarding.component.html',
   styleUrl: './garage-onboarding.component.scss',
   host: {
@@ -93,6 +94,26 @@ export class GarageOnboardingComponent {
   protected savedSnapshot = JSON.stringify(this.form);
   protected owned: OwnedGarage[] = [];
   protected ownedLoadFailed = false;
+  protected ownedLoading = false;
+  protected ownedLoaded = false;
+  protected editing = false;
+  private readonly workspaceTitle = viewChild<ElementRef<HTMLElement>>('workspaceTitle');
+  protected get managing(): boolean {
+    return this.account.signedIn() && accountType(this.account.identity()) === 'garage';
+  }
+  protected get showForm(): boolean {
+    return !this.managing || this.editing;
+  }
+  private focusTitle(): void {
+    this.cdr.detectChanges();
+    this.workspaceTitle()?.nativeElement.focus();
+  }
+  protected backToOverview(): void {
+    if (!this.canLeave()) return;
+    this.clearForm();
+    this.editing = false;
+    this.focusTitle();
+  }
   protected readonly places = CATALOG_PLACES;
   protected get copy() {
     return onboardingCopy[this.language.language];
@@ -158,6 +179,7 @@ export class GarageOnboardingComponent {
   }
   private async loadOwned(): Promise<void> {
     this.ownedLoadFailed = false;
+    this.ownedLoading = true;
     try {
       const response = await fetch('/api/me/garages', { cache: 'no-store' });
       if (!response.ok) throw new Error();
@@ -165,6 +187,10 @@ export class GarageOnboardingComponent {
     } catch {
       this.ownedLoadFailed = true;
       this.message = this.copy.loadError;
+    } finally {
+      this.ownedLoading = false;
+      this.ownedLoaded = true;
+      this.cdr.markForCheck();
     }
   }
   protected addressChanged(): void {
@@ -251,6 +277,7 @@ export class GarageOnboardingComponent {
       if (!this.garageId) {
         this.garageId = ((await response.json()) as { id: string }).id;
         this.canDelete = true;
+        this.editing = true;
         await this.account.refresh();
       }
       if (this.publicationState === 'pending_review') this.publicationState = 'draft';
@@ -283,6 +310,8 @@ export class GarageOnboardingComponent {
         !!garage.profile.locationPoint && garage.verification.location === 'verified';
       this.savedSnapshot = JSON.stringify(this.form);
       this.errors = {};
+      this.editing = true;
+      this.focusTitle();
     } catch {
       this.message = this.copy.loadError;
     } finally {
@@ -293,6 +322,8 @@ export class GarageOnboardingComponent {
   protected reset(): void {
     if (!this.canLeave()) return;
     this.clearForm();
+    this.editing = true;
+    this.focusTitle();
   }
   private clearForm(): void {
     this.canDelete = false;
@@ -332,9 +363,11 @@ export class GarageOnboardingComponent {
       }
       if (!response.ok) throw new Error();
       this.clearForm();
+      this.editing = false;
       this.message = this.management.deleted;
       await this.loadOwned();
       await this.account.refresh();
+      this.focusTitle();
     } catch {
       this.message = this.copy.error;
     } finally {

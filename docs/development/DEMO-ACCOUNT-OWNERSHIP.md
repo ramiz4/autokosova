@@ -106,3 +106,18 @@ Diese synthetischen Tests ersetzen nicht den Login mit den zwei bestehenden
 ZITADEL-Testkonten. Der Stand der tatsächlichen lokalen Zuordnung und der noch
 offenen manuellen Login-Abnahme steht in
 [`docs/validation/DEMO-ACCOUNT-OWNERSHIP.md`](../validation/DEMO-ACCOUNT-OWNERSHIP.md).
+
+## Übersicht statt dauerhaft geöffnetem Formular (#88)
+
+Angemeldete Werkstattbetreiber starten in der Übersicht ihrer eigenen Betriebe.
+„Bearbeiten“ lädt genau das ausgewählte Profil; „Neue Werkstatt anlegen“ öffnet
+dasselbe vorhandene Formular mit leeren Feldern. „Zur Übersicht“ schützt ungespeicherte
+Änderungen durch die vorhandene Bestätigung. Laden, Ladefehler und eine tatsächlich
+leere Liste werden getrennt angezeigt. Öffentliche Profillinks erscheinen ausschließlich
+für veröffentlichte Betriebe. Der öffentliche Registrierungseinstieg behält seine
+Erläuterungen; die tägliche Verwaltung zeigt keinen Werbekopf und keine Werbespalte.
+
+Regression: `garage-overview.component.spec.ts`, bestehende Navigations-/CRUD-Tests
+und `scripts/demo-accounts-browser-smoke.mjs` (signierter synthetischer OIDC-Provider,
+eigene PostgreSQL-Fixtures, DE/SQ/EN, 390/1280 px). Der echte Testkonto-Login bleibt
+als gesonderter Nachweis in #81/#92 offen.

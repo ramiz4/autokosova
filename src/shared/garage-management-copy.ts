@@ -1,5 +1,11 @@
 import type { AppLanguage } from './i18n';
 const de = {
+  edit: 'Bearbeiten',
+  back: 'Zur Übersicht',
+  viewPublic: 'Öffentliches Profil ansehen',
+  loading: 'Werkstätten werden geladen …',
+  retry: 'Erneut laden',
+
   intro: 'Verwalte deine Werkstätten, Kontaktdaten und angebotenen Dienstleistungen.',
   title: 'Meine Werkstätten',
   editTitle: 'Werkstatt bearbeiten',
@@ -13,6 +19,12 @@ const de = {
 export const garageManagementCopy: Readonly<Record<AppLanguage, typeof de>> = {
   de,
   sq: {
+    edit: 'Redakto',
+    back: 'Kthehu te përmbledhja',
+    viewPublic: 'Shiko profilin publik',
+    loading: 'Serviset po ngarkohen …',
+    retry: 'Ngarko përsëri',
+
     intro: 'Menaxho serviset e tua, të dhënat e kontaktit dhe shërbimet e ofruara.',
     title: 'Serviset e mia',
     editTitle: 'Redakto servisin',
@@ -24,6 +36,12 @@ export const garageManagementCopy: Readonly<Record<AppLanguage, typeof de>> = {
     deleted: 'Servisi u hoq nga kërkimi dhe administrimi yt.',
   },
   en: {
+    edit: 'Edit',
+    back: 'Back to overview',
+    viewPublic: 'View public profile',
+    loading: 'Loading garages …',
+    retry: 'Load again',
+
     intro: 'Manage your garages, contact details and offered services.',
     title: 'My garages',
     editTitle: 'Edit garage',
