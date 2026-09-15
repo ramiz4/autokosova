@@ -64,6 +64,9 @@ interface DataDeletionRequestRow {
 }
 
 interface RepairRequestRow {
+  readonly active: boolean;
+  readonly revision: number;
+  readonly updated_at: Date;
   readonly created_at: Date;
   readonly earliest_dropoff_on: Date | string;
   readonly id: string;
@@ -428,7 +431,7 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
       );
       const requests = await client.query<RepairRequestRow>(
         `SELECT id, service_category_id, symptom, earliest_dropoff_on, latest_pickup_on,
-                created_at
+                created_at, active, revision, updated_at
          FROM repair_request WHERE owner_user_id = $1 ORDER BY created_at, id`,
         [principal.userId],
       );
@@ -479,6 +482,9 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
         })),
         // Data-bearing request fields are intentionally returned only to their owner in this export.
         repairRequests: requests.rows.map((request) => ({
+          active: request.active,
+          revision: request.revision,
+          updatedAt: request.updated_at.toISOString(),
           areas: areas.rows
             .filter((area) => area.repair_request_id === request.id)
             .map((area) => ({

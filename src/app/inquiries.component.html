@@ -1,0 +1,451 @@
+<div class="inquiries-page bg-[#f5f7fb] min-h-screen font-sans text-ink">
+  <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
+    <app-site-header
+      [compact]="true"
+      active="inquiries"
+      [loginReturnTo]="language.link('inquiries')"
+    />
+  </div>
+  <main
+    class="inquiries-main mx-auto max-w-[1200px] px-8 pt-6 pb-14 max-[480px]:px-4 max-[480px]:pt-4 max-[480px]:pb-8"
+    aria-labelledby="inquiries-title"
+  >
+    <a
+      class="account-crumb inline-flex min-h-11 items-center gap-2 rounded-md text-xs text-muted"
+      [routerLink]="language.link('profile')"
+      ><app-icon name="user" class="size-4" />{{ language.t('account.title')
+      }}<app-icon name="chevron-right" class="size-4"
+    /></a>
+    <div class="page-heading my-8 mt-2 flex flex-wrap items-center justify-between gap-5">
+      <div>
+        <h1
+          class="text-[clamp(28px,4vw,36px)] font-bold tracking-[-.035em] leading-[1.2]"
+          id="inquiries-title"
+          tabindex="-1"
+        >
+          {{ text('title') }}
+        </h1>
+        <p class="page-subtitle mt-3 text-[15px] leading-relaxed text-muted">
+          {{ text('subtitle') }}
+        </p>
+      </div>
+      <a appButton data-new-inquiry [routerLink]="language.link('request')"
+        ><app-icon name="plus" class="size-5" />{{ language.t('nav.newRequest') }}</a
+      >
+    </div>
+    @switch (account.state()) {
+      @case ('loading') {
+        <p role="status" class="state-panel">{{ language.t('account.loading') }}</p>
+      }
+      @case ('guest') {
+        <section class="state-panel">
+          <app-icon name="shield" class="size-9 mb-5 text-brand" />
+          <h2>{{ language.t('account.guest') }}</h2>
+          <p data-inquiries-login-help>{{ text(saved.expired() ? 'expired' : 'login') }}</p>
+          @if (account.loginAvailable() === false) {
+            <p>{{ language.t('account.loginUnavailable') }}</p>
+          } @else {
+            <a appButton data-inquiries-login class="mt-5" [href]="loginUrl()">{{
+              language.t('nav.login')
+            }}</a>
+          }
+        </section>
+      }
+      @case ('error') {
+        <section class="state-panel">
+          <p role="alert">{{ language.t('account.loadError') }}</p>
+          <button
+            appButton="outline"
+            type="button"
+            class="mt-4"
+            [disabled]="account.busy()"
+            (click)="account.refresh()"
+          >
+            {{ language.t('common.retry') }}
+          </button>
+        </section>
+      }
+      @case ('ready') {
+        @if (saved.notice(); as notice) {
+          <p class="notice" role="status" data-inquiry-notice>
+            <app-icon name="check" class="size-5" />{{ text(notice) }}
+          </p>
+        }
+        @if (
+          !editingId() &&
+          !deleting() &&
+          ['error', 'conflict', 'missing'].includes(saved.writeState())
+        ) {
+          <div class="notice error" role="alert">
+            {{
+              text(
+                saved.writeState() === 'conflict'
+                  ? 'conflict'
+                  : saved.writeState() === 'missing'
+                    ? 'missing'
+                    : 'writeError'
+              )
+            }}<button class="text-action" type="button" (click)="saved.reload()">
+              {{ text('refresh') }}
+            </button>
+          </div>
+        }
+        <div class="workspace grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_250px]">
+          <section class="request-column min-w-0" [attr.aria-label]="text('title')">
+            <div class="list-toolbar">
+              <div class="filters" role="group" [attr.aria-label]="text('filterLabel')">
+                @for (filter of filters; track filter) {
+                  <button
+                    type="button"
+                    [attr.data-inquiry-filter]="filter"
+                    [attr.aria-pressed]="saved.activity() === filter"
+                    [disabled]="saved.writeState() === 'saving'"
+                    (click)="saved.filter(filter)"
+                  >
+                    {{ text(filter) }}
+                  </button>
+                }
+              </div>
+              <span class="sort-label flex gap-1.5 text-xs text-muted"
+                ><app-icon name="clock" class="size-4" />{{ text('sort') }}</span
+              >
+            </div>
+            <ul
+              data-inquiries-list
+              class="request-list grid gap-4"
+              [attr.aria-busy]="saved.state() === 'loading' || saved.writeState() === 'saving'"
+            >
+              @for (request of saved.requests(); track request.id) {
+                <li>
+                  <article
+                    [attr.data-inquiry-id]="request.id"
+                    data-inquiry-card
+                    class="request-card"
+                    [class.inactive]="!request.active"
+                  >
+                    <div class="card-heading flex items-start gap-3">
+                      <span class="service-icon"><app-icon name="wrench" class="size-6" /></span>
+                      <div class="card-title min-w-0 flex-1">
+                        <div class="card-title-line flex flex-wrap items-center gap-2.5">
+                          <h2 class="text-lg font-bold leading-[1.35] tracking-[-.02em]">
+                            {{ language.serviceLabel(request.serviceCategoryId) }}
+                          </h2>
+                          <span class="status-badge" [class.is-inactive]="!request.active">{{
+                            text(request.active ? 'active' : 'inactive')
+                          }}</span>
+                        </div>
+                        <p class="saved-date mt-1.5 text-xs leading-relaxed text-muted">
+                          {{ text(request.revision > 1 ? 'updatedOn' : 'savedOn') }}
+                          <time
+                            [attr.datetime]="
+                              request.revision > 1 ? request.updatedAt : request.createdAt
+                            "
+                            >{{
+                              date(request.revision > 1 ? request.updatedAt : request.createdAt)
+                            }}</time
+                          >
+                        </p>
+                      </div>
+                      <div class="actions relative shrink-0" data-inquiry-actions>
+                        <button
+                          type="button"
+                          class="icon-action"
+                          [attr.aria-label]="
+                            text('actions') +
+                            ': ' +
+                            language.serviceLabel(request.serviceCategoryId)
+                          "
+                          [attr.aria-expanded]="actionsId() === request.id"
+                          [attr.aria-controls]="'actions-' + request.id"
+                          [disabled]="saved.writeState() === 'saving'"
+                          (click)="toggleActions(request.id, $event)"
+                          data-inquiry-menu
+                        >
+                          <app-icon name="more" class="size-6" />
+                        </button>
+                        @if (actionsId() === request.id) {
+                          <div class="actions-popup" [id]="'actions-' + request.id">
+                            <button type="button" (click)="deactivate(request)" data-toggle-inquiry>
+                              <app-icon
+                                [name]="request.active ? 'pause' : 'check'"
+                                class="size-4"
+                              />{{ text(request.active ? 'deactivate' : 'reactivate') }}
+                            </button>
+                            <button
+                              type="button"
+                              class="delete-action"
+                              (click)="confirmDelete(request)"
+                              data-delete-inquiry
+                            >
+                              <app-icon name="trash" class="size-4" />{{ text('delete') }}
+                            </button>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                    @if (request.symptomPreview) {
+                      <p class="problem-preview">{{ request.symptomPreview }}</p>
+                    }
+                    <div class="request-meta mt-3.5 mb-4.5 grid gap-3">
+                      <p
+                        class="vehicle flex items-center gap-2 text-[13px] font-medium text-[#435675]"
+                      >
+                        <app-icon name="car" class="size-4" /><span>{{
+                          vehicleLabel(request.vehicle) || requestText('noVehicle')
+                        }}</span>
+                      </p>
+                      <ul
+                        class="place-chips flex flex-wrap gap-[7px]"
+                        [attr.aria-label]="text('areas')"
+                      >
+                        @for (area of request.areas; track area.placeId) {
+                          <li>
+                            <app-icon name="pin" class="size-3.5" />{{ placeLabel(area.placeId)
+                            }}<span>{{ area.radiusKm }} km</span>
+                          </li>
+                        } @empty {
+                          <li><app-icon name="globe" class="size-3.5" />{{ text('allKosovo') }}</li>
+                        }
+                      </ul>
+                    </div>
+                    <div class="card-footer">
+                      <div class="secondary-actions flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          class="text-action"
+                          [disabled]="saved.writeState() === 'saving'"
+                          (click)="edit(request)"
+                          data-edit-inquiry
+                        >
+                          <app-icon name="pencil" class="size-4" />{{ text('edit') }}
+                        </button>
+                        <button
+                          type="button"
+                          class="text-action"
+                          data-inquiry-view
+                          [attr.aria-label]="
+                            text('view') + ': ' + language.serviceLabel(request.serviceCategoryId)
+                          "
+                          [attr.aria-expanded]="saved.selectedId() === request.id"
+                          [attr.aria-controls]="'inquiry-detail-' + request.id"
+                          [disabled]="saved.writeState() === 'saving'"
+                          (click)="saved.toggleDetail(request.id)"
+                        >
+                          {{ text(saved.selectedId() === request.id ? 'close' : 'viewShort')
+                          }}<app-icon
+                            name="chevron-down"
+                            class="size-4"
+                            [class.rotate-180]="saved.selectedId() === request.id"
+                          />
+                        </button>
+                      </div>
+                      @if (searchQuery(request); as query) {
+                        <a
+                          appButton
+                          size="compact"
+                          data-inquiry-search
+                          [attr.aria-label]="text('find')"
+                          [routerLink]="language.link('search')"
+                          [queryParams]="query"
+                          >{{ text('findShort') }}<app-icon name="arrow" class="size-4"
+                        /></a>
+                      } @else {
+                        <button
+                          type="button"
+                          appButton="outline"
+                          size="compact"
+                          [disabled]="saved.writeState() === 'saving'"
+                          (click)="deactivate(request)"
+                          data-reactivate-inquiry
+                        >
+                          {{ text('reactivate') }}<app-icon name="check" class="size-4" />
+                        </button>
+                      }
+                    </div>
+                    @if (saved.selectedId() === request.id) {
+                      <section
+                        [id]="'inquiry-detail-' + request.id"
+                        [attr.aria-label]="text('savedDetails')"
+                        class="mt-6 border-t border-slate-200 pt-5"
+                      >
+                        @switch (saved.detailState()) {
+                          @case ('loading') {
+                            <p role="status">{{ language.t('common.loading') }}</p>
+                          }
+                          @case ('missing') {
+                            <p role="alert">{{ text('missing') }}</p>
+                            <button
+                              appButton="outline"
+                              type="button"
+                              class="mt-3"
+                              (click)="saved.reload()"
+                            >
+                              {{ text('refresh') }}
+                            </button>
+                          }
+                          @case ('error') {
+                            <p role="alert">{{ text('detailError') }}</p>
+                            <button
+                              appButton="outline"
+                              data-detail-retry
+                              type="button"
+                              class="mt-3"
+                              (click)="saved.openDetail(request.id)"
+                            >
+                              {{ language.t('common.retry') }}
+                            </button>
+                          }
+                          @case ('ready') {
+                            @if (saved.detail(); as detail) {
+                              <h3 class="text-lg font-bold">{{ text('savedDetails') }}</h3>
+                              <p class="mt-2 text-sm text-muted">{{ text('original') }}</p>
+                              <dl data-inquiry-detail class="mt-5 grid gap-5 sm:grid-cols-2">
+                                <div>
+                                  <dt class="text-sm font-semibold text-muted">
+                                    {{ requestText('service') }}
+                                  </dt>
+                                  <dd class="mt-1">
+                                    {{ language.serviceLabel(detail.serviceCategoryId) }}
+                                  </dd>
+                                </div>
+                                @if (detail.symptom) {
+                                  <div class="sm:col-span-2">
+                                    <dt class="text-sm font-semibold text-muted">
+                                      {{ requestText('problem') }}
+                                    </dt>
+                                    <dd class="mt-1 whitespace-pre-wrap">{{ detail.symptom }}</dd>
+                                  </div>
+                                }
+                                @for (field of vehicleEntries(detail.vehicle); track field.label) {
+                                  <div class="min-w-0">
+                                    <dt class="text-sm font-semibold text-muted">
+                                      {{ field.label }}
+                                    </dt>
+                                    <dd class="mt-1 whitespace-pre-wrap">{{ field.value }}</dd>
+                                  </div>
+                                } @empty {
+                                  <div>
+                                    <dt class="text-sm font-semibold text-muted">
+                                      {{ requestText('vehicle') }}
+                                    </dt>
+                                    <dd class="mt-1">{{ requestText('noVehicle') }}</dd>
+                                  </div>
+                                }
+                                <div>
+                                  <dt class="text-sm font-semibold text-muted">
+                                    {{ requestText('dropoff') }}
+                                  </dt>
+                                  <dd class="mt-1">
+                                    <time [attr.datetime]="detail.earliestDropoffOn">{{
+                                      date(detail.earliestDropoffOn, true)
+                                    }}</time>
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt class="text-sm font-semibold text-muted">
+                                    {{ requestText('pickup') }}
+                                  </dt>
+                                  <dd class="mt-1">
+                                    <time [attr.datetime]="detail.latestPickupOn">{{
+                                      date(detail.latestPickupOn, true)
+                                    }}</time>
+                                  </dd>
+                                </div>
+                                <div class="sm:col-span-2">
+                                  <dt class="text-sm font-semibold text-muted">
+                                    {{ text('areas') }}
+                                  </dt>
+                                  <dd class="mt-1">
+                                    @for (area of detail.areas; track area.placeId) {
+                                      <p>{{ placeLabel(area.placeId) }} · {{ area.radiusKm }} km</p>
+                                    } @empty {
+                                      {{ text('allKosovo') }}
+                                    }
+                                  </dd>
+                                </div>
+                                <div class="sm:col-span-2">
+                                  <dt class="text-sm font-semibold text-muted">
+                                    {{ text('attachments') }}
+                                  </dt>
+                                  <dd class="mt-1">
+                                    {{ detail.attachmentIds.length || text('noAttachments') }}
+                                  </dd>
+                                </div>
+                              </dl>
+                              <p class="mt-4 text-sm text-muted">{{ text('attachmentsHelp') }}</p>
+                            }
+                          }
+                        }
+                      </section>
+                    }
+                  </article>
+                </li>
+              }
+            </ul>
+            @if (saved.state() === 'loading') {
+              <p role="status" class="state-panel">{{ language.t('common.loading') }}</p>
+            } @else if (saved.state() === 'error') {
+              <section class="state-panel">
+                <p role="alert">{{ text(saved.cursorUnavailable() ? 'missing' : 'loadError') }}</p>
+                <button
+                  appButton="outline"
+                  data-inquiries-retry
+                  type="button"
+                  class="mt-4"
+                  (click)="saved.retry()"
+                >
+                  {{ saved.cursorUnavailable() ? text('refresh') : language.t('common.retry') }}
+                </button>
+              </section>
+            } @else if (!saved.requests().length) {
+              <section data-inquiries-empty class="state-panel empty-state">
+                <span class="empty-icon"><app-icon name="document" class="size-8" /></span>
+                <h2>{{ text(saved.activity() === 'all' ? 'emptyTitle' : 'noMatches') }}</h2>
+                <p>{{ text(saved.activity() === 'all' ? 'empty' : 'noMatchesHelp') }}</p>
+                <a appButton class="mt-5" [routerLink]="language.link('request')">{{
+                  language.t('nav.newRequest')
+                }}</a>
+              </section>
+            }
+            @if (saved.state() === 'ready' && saved.nextCursor()) {
+              <button
+                appButton="outline"
+                data-inquiries-more
+                type="button"
+                class="mt-6 w-full"
+                [disabled]="saved.writeState() === 'saving'"
+                (click)="saved.loadMore()"
+              >
+                {{ text('more') }}
+              </button>
+            }
+            <p class="search-note">
+              <app-icon name="shield" class="size-4" />{{ text('searchHelp') }}
+            </p>
+          </section>
+          <aside class="help-column hidden pt-[70px] lg:block">
+            <div class="privacy-card">
+              <span class="privacy-icon"><app-icon name="shield" class="size-6" /></span>
+              <h2>{{ text('privacyTitle') }}</h2>
+              <p>{{ text('privacyBody') }}</p>
+              <div class="privacy-divider my-6 border-t border-[#d6e3f7]"></div>
+              <h3>{{ text('nextTitle') }}</h3>
+              <p>{{ text('nextBody') }}</p>
+            </div>
+            <p class="status-help px-2">
+              <app-icon name="info" class="size-4" />{{ text('statusHelp') }}
+            </p>
+          </aside>
+        </div>
+        @if (editingId() === saved.detail()?.id) {
+          @if (saved.detail(); as detail) {
+            <app-inquiry-editor [request]="detail" (closed)="editingId.set(null)" />
+          }
+        }
+        @if (deleting(); as request) {
+          <app-inquiry-delete-dialog [request]="request" (closed)="deleting.set(null)" />
+        }
+      }
+    }
+  </main>
+</div>

@@ -11,7 +11,10 @@ import { createServer, isNoIndexPath } from './server/app';
 import { AccessStore } from './server/access';
 import { isAccountPagePath } from './server/account-profile';
 import { readZitadelOidcConfig } from './server/oidc';
-import { PostgresRepairRequestStore } from './server/repair-request-store';
+import {
+  PostgresRepairRequestStore,
+  UnavailableRepairRequestStore,
+} from './server/repair-request-store';
 import { PostgresReviewStore } from './server/review-store';
 import { PostgresModerationStore } from './server/moderation-store';
 import { PostgresGarageSearchStore } from './server/garage-search-store';
@@ -31,7 +34,9 @@ const app = createServer({
   ...(databaseUrl ? { garageStore: new PostgresGarageOnboardingStore(databaseUrl) } : {}),
   ...(databaseUrl ? { favoriteStore: new PostgresFavoriteStore(databaseUrl) } : {}),
   oidcConfig: readZitadelOidcConfig(process.env),
-  ...(databaseUrl ? { repairRequestStore: new PostgresRepairRequestStore(databaseUrl) } : {}),
+  repairRequestStore: databaseUrl
+    ? new PostgresRepairRequestStore(databaseUrl)
+    : new UnavailableRepairRequestStore(),
   ...(databaseUrl ? { reviewStore: new PostgresReviewStore(databaseUrl) } : {}),
   ...(databaseUrl ? { moderationStore: new PostgresModerationStore(databaseUrl) } : {}),
   ...(databaseUrl ? { searchStore: new PostgresGarageSearchStore(databaseUrl) } : {}),

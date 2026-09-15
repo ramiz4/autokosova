@@ -155,7 +155,12 @@ it('shows notification and account controls instead of login buttons for an auth
   expect(menu.textContent).toContain('Abmelden');
   expect(menu.textContent).toContain('Meine Anfragen');
   expect(menu.textContent).toContain('Favoriten');
-  expect(menu.querySelectorAll('button:disabled')).toHaveLength(2);
+  const inquiries = menu.querySelector<HTMLAnchorElement>('a[data-account-inquiries]')!;
+  expect(inquiries.getAttribute('href')).toBe('/inquiries');
+  expect(inquiries.hasAttribute('disabled')).toBe(false);
+  expect(inquiries.getAttribute('aria-current')).toBeNull();
+  expect(menu.querySelectorAll('button:disabled')).toHaveLength(1);
+  expect(menu.querySelector('button:disabled')?.textContent).toContain('Favoriten');
   expect(
     Array.from(menu.querySelectorAll('a.nav-link')).map((link) => link.getAttribute('href')),
   ).toEqual(

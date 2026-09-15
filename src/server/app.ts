@@ -1,3 +1,5 @@
+import type { RepairRequestMutation } from '../shared/saved-repair-request';
+import { parseRepairRequestPage } from './repair-request-list';
 import type { FavoriteStore } from './favorites';
 import { isAccountPagePath } from './account-profile';
 import type { GarageOnboardingStore } from './garage-onboarding-store';
@@ -156,7 +158,7 @@ const repairRequestBodySchema = {
 function safeReturnTo(value: unknown): string {
   if (typeof value !== 'string' || value.length > 2000) return '/';
   const match = value.match(
-    /^(\/(?:(?:sq|en)\/)?(?:profile|inquiry|anfrage|garages(?:\/[A-Za-z0-9_-]{1,128})?))(?:\?([^#]*))?$/,
+    /^(\/(?:(?:sq|en)\/)?(?:profile|inquiries|inquiry|anfrage|garages(?:\/[A-Za-z0-9_-]{1,128})?))(?:\?([^#]*))?$/,
   );
   if (!match) return '/';
   const path = match[1].replace(/\/anfrage$/, '/inquiry');
@@ -351,7 +353,7 @@ export function createServer(options: ServerOptions = {}) {
       serializers: {
         req: (request) => ({
           method: request.method,
-          url: request.url.split('?')[0],
+          url: request.url.split('?')[0].replace(/(\/api\/me\/repair-requests)\/[^/]+$/, '$1/:id'),
         }),
       },
     },
@@ -454,7 +456,7 @@ export function createServer(options: ServerOptions = {}) {
     const sitemap = options.publicSiteUrl
       ? `\nSitemap: ${siteUrl(options.publicSiteUrl, '/sitemap.xml')}`
       : '';
-    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /profile\nDisallow: /sq/profile\nDisallow: /en/profile\nDisallow: /inquiry\nDisallow: /sq/inquiry\nDisallow: /en/inquiry\nDisallow: /garages/new\nDisallow: /sq/garages/new\nDisallow: /en/garages/new\nDisallow: /garages$\nDisallow: /garages?\nDisallow: /sq/garages$\nDisallow: /sq/garages?\nDisallow: /en/garages$\nDisallow: /en/garages?\nDisallow: /suche\nDisallow: /werkstaetten${sitemap}\n`;
+    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /profile\nDisallow: /sq/profile\nDisallow: /en/profile\nDisallow: /inquiries\nDisallow: /sq/inquiries\nDisallow: /en/inquiries\nDisallow: /inquiry\nDisallow: /sq/inquiry\nDisallow: /en/inquiry\nDisallow: /garages/new\nDisallow: /sq/garages/new\nDisallow: /en/garages/new\nDisallow: /garages$\nDisallow: /garages?\nDisallow: /sq/garages$\nDisallow: /sq/garages?\nDisallow: /en/garages$\nDisallow: /en/garages?\nDisallow: /suche\nDisallow: /werkstaetten${sitemap}\n`;
   });
   app.get('/sitemap.xml', async (_request, reply) => {
     if (!options.publicSiteUrl) {
@@ -769,20 +771,111 @@ export function createServer(options: ServerOptions = {}) {
           state: 'draft',
         });
       } catch (error) {
-        return errorResponse(error, reply);
+        if (error instanceof AccessError) return errorResponse(error, reply);
+        return reply.code(503).send({ error: 'Private request storage unavailable' });
       }
     },
   );
+
+  app.get('/api/me/repair-requests', async (request, reply) => {
+    try {
+      const principal = requirePrincipal(request);
+      const page = await repairRequestStore.listRepairRequests(
+        principal.userId,
+        parseRepairRequestPage(request.query),
+      );
+      // Expiry/revocation during an asynchronous store read must not release private data.
+      accessStore.getOwnAccount(principal);
+      return page;
+    } catch (error) {
+      if (error instanceof AccessError) return errorResponse(error, reply);
+      return reply.code(503).send({ error: 'Private repair requests unavailable' });
+    }
+  });
 
   app.get('/api/me/repair-requests/:repairRequestId', async (request, reply) => {
     try {
       const principal = requirePrincipal(request);
       const params = request.params as { repairRequestId: string };
-      return await repairRequestStore.getRepairRequest(principal.userId, params.repairRequestId);
+      if (!/^[A-Za-z0-9_-]{1,128}$/.test(params.repairRequestId))
+        throw new AccessError(404, 'Private repair request not found');
+      const detail = await repairRequestStore.getRepairRequest(
+        principal.userId,
+        params.repairRequestId,
+      );
+      accessStore.getOwnAccount(principal);
+      return reply.header('etag', `"${detail.revision}"`).send(detail);
     } catch (error) {
-      return errorResponse(error, reply);
+      if (error instanceof AccessError) return errorResponse(error, reply);
+      return reply.code(503).send({ error: 'Private repair request unavailable' });
     }
   });
+
+  for (const method of ['PUT', 'PATCH', 'DELETE'] as const) {
+    app.route({
+      method,
+      url: '/api/me/repair-requests/:repairRequestId',
+      // Validate before Fastify's schema coercion can remove a supplied owner or unknown field.
+      preValidation: async (request, reply) => {
+        const allowed =
+          method === 'PUT' ? Object.keys(repairRequestBodySchema.properties) : ['active'];
+        if (
+          method !== 'DELETE' &&
+          (!request.body ||
+            typeof request.body !== 'object' ||
+            Array.isArray(request.body) ||
+            Object.keys(request.body).some((key) => !allowed.includes(key)))
+        )
+          return reply.code(400).send({ error: 'Invalid private request' });
+        if (
+          method === 'PATCH' &&
+          typeof (request.body as { active?: unknown })?.active !== 'boolean'
+        )
+          return reply.code(400).send({ error: 'Invalid private request' });
+      },
+      ...(method === 'PUT' ? { schema: { body: repairRequestBodySchema } } : {}),
+      handler: async (request, reply) => {
+        try {
+          const principal = requirePrincipal(request, true);
+          const match = request.headers['if-match'];
+          if (match === undefined) throw new AccessError(428, 'A request revision is required');
+          if (typeof match !== 'string' || !/^"[1-9]\d{0,9}"$/.test(match))
+            throw new AccessError(400, 'Invalid request revision');
+          const revision = Number(match.slice(1, -1));
+          if (revision > 2_147_483_647) throw new AccessError(400, 'Invalid request revision');
+          const id = (request.params as { repairRequestId: string }).repairRequestId;
+          if (!/^[A-Za-z0-9_-]{1,128}$/.test(id))
+            throw new AccessError(404, 'Private repair request not found');
+          const mutation: RepairRequestMutation =
+            method === 'DELETE'
+              ? { kind: 'delete' }
+              : method === 'PATCH'
+                ? { kind: 'activity', active: (request.body as { active: boolean }).active }
+                : { kind: 'update', input: request.body as RepairRequestInput };
+          if (mutation.kind === 'update') {
+            const error = validateRepairRequest(mutation.input);
+            if (error) throw new AccessError(400, error);
+          }
+          const result = await repairRequestStore.mutateRepairRequest(
+            principal.userId,
+            id,
+            revision,
+            mutation,
+            () => {
+              accessStore.getOwnAccount(principal);
+            },
+          );
+          accessStore.getOwnAccount(principal);
+          return result
+            ? reply.header('etag', `"${result.revision}"`).send(result)
+            : reply.code(204).send();
+        } catch (error) {
+          if (error instanceof AccessError) return errorResponse(error, reply);
+          return reply.code(503).send({ error: 'Private request could not be changed' });
+        }
+      },
+    });
+  }
 
   app.get('/api/me/garages', async (request, reply) => {
     reply.header('cache-control', 'private, no-store');

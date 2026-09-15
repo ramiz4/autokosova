@@ -189,6 +189,10 @@ Orts-/Radiusfilter; es wird nichts automatisch an Werkstätten gesendet. Fotos u
 bleiben optional und privat; ohne einen konfigurierten Objektspeicher werden sie in der lokalen
 Entwicklungsoberfläche nicht hochgeladen.
 
+## Eigene Anfragen verwalten
+
+`/inquiries`, `/sq/inquiries` und `/en/inquiries` zeigen die tatsächlich in PostgreSQL gespeicherten eigenen Anfragen. Bearbeiten, Deaktivieren/Reaktivieren und bestätigtes Löschen verwenden die private API mit CSRF- und Versionsschutz. Ohne konfigurierte DB wird keine dauerhafte Speicherung bestätigt. Der lokale Erstellungsentwurf bleibt unabhängig. Verträge, Löschgrenze und DB-Browsernachweis: [MY-INQUIRIES.md](docs/architecture/MY-INQUIRIES.md).
+
 ## Öffentliche Suche lokal prüfen
 
 `/garages` zeigt ohne Filter alle veröffentlichten Werkstattprofile. `/garages?places=xk-pristina%3A20&service=bremsen` verwendet nur veröffentlichte Werkstattprofile,
