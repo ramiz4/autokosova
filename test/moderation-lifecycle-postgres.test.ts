@@ -92,6 +92,10 @@ test(
         `INSERT INTO repair_request_attachment (repair_request_id, file_id) VALUES ($1, $2)`,
         [requestId, evidenceFileId],
       );
+      await client.query(
+        "INSERT INTO staff_identity(user_id,display_name,verified_roles) VALUES($1,'DEMO Admin',ARRAY['admin']),($2,'DEMO Moderator',ARRAY['moderator'])",
+        [adminId, moderatorId],
+      );
       await client.query('COMMIT');
 
       const review = await reviews.createReview(principal(authorId, ['customer']), {
@@ -225,6 +229,10 @@ test(
          )`,
         [garageId],
       );
+      await client.query(
+        "DELETE FROM moderation_case WHERE kind='review_submission' AND subject_id IN (SELECT id FROM garage_review WHERE garage_id=$1)",
+        [garageId],
+      );
       await client.query('DELETE FROM garage_review WHERE garage_id = $1', [garageId]);
       if (reportId) await client.query('DELETE FROM content_report WHERE case_id = $1', [reportId]);
       await client.query('DELETE FROM data_deletion_request WHERE user_id = $1', [authorId]);
@@ -237,6 +245,10 @@ test(
       ]);
       await client.query('DELETE FROM garage_service_category WHERE garage_id = $1', [garageId]);
       await client.query('DELETE FROM garage_verification WHERE garage_id = $1', [garageId]);
+      await client.query(
+        "DELETE FROM moderation_case WHERE kind='garage_submission' AND subject_id=$1",
+        [garageId],
+      );
       await client.query('DELETE FROM garage WHERE id = $1', [garageId]);
       await client.query('DELETE FROM file_object WHERE id = $1', [evidenceFileId]);
       await client.query('DELETE FROM app_user WHERE id = ANY($1::text[])', [

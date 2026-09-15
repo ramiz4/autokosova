@@ -1,5 +1,7 @@
 # Werkstattaufnahme und Unternehmensdatenprüfung
 
+Übergreifende Aktions- und Zugriffsgrenzen: [Rollen und Berechtigungen](ROLES-AND-PERMISSIONS.md). Diese gemeinsame Referenz unterscheidet Implementierungsstand, fachliche Erlaubnis und externe Freigaben.
+
 Die Oberfläche unter `/garages/new`, die manuelle Betriebsadresse, Such-/Mehrfachauswahl und
 der dauerhafte PostgreSQL-Aufnahmeablauf sind in [Abnahme #61](../design/ONBOARDING-61.md) beschrieben.
 Migration 021 ergänzt `garage.business_address`; der bestehende Werkstattpunkt aus #59 bleibt

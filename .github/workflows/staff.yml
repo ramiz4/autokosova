@@ -1,0 +1,45 @@
+name: Staff foundation
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  staff-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_DB: autokosova
+          POSTGRES_PASSWORD: autokosova
+          POSTGRES_USER: autokosova
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U autokosova -d autokosova"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://autokosova:autokosova@127.0.0.1:5432/autokosova
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm install --global npm@11.19.0
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:staff:browser
+      - name: Upload synthetic staff viewport evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staff-foundation-evidence
+          path: test-results/staff-foundation
+          if-no-files-found: ignore
+          retention-days: 7

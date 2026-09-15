@@ -1,0 +1,94 @@
+# Rollen und Berechtigungen
+
+Diese Datei ist die gemeinsame fachliche Referenz für AutoKosova. Rollen werden serverseitig geprüft; ein Menüeintrag, eine Tabellenzeile oder ein Demo-Seed vergibt keine Rechte. Die bestätigte Verteilung stammt aus den Produktentscheidungen zu #94/#95; die gemeinsame technische Grundlage entsteht in #113. Implementierungsstatus und Testnachweise sind getrennt von der fachlichen Erlaubnis.
+
+## Begriffe und Identitätsquelle
+
+| Begriff                          | Bedeutung                                                                                                                    |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Kontozweck `customer` / `garage` | Darstellung des privaten Kunden- beziehungsweise Betreiberbereichs; keine zusätzliche Objektberechtigung.                    |
+| Basisrolle `customer`            | Regulär verifiziertes Konto. Zugriff auf eigene Daten, nicht auf fremde.                                                     |
+| Anwendungsrolle `moderator`      | Zugang zu ausdrücklich zugewiesenen Inhalts- und Bewertungsfällen.                                                           |
+| Anwendungsrolle `admin`          | Administrative Aufgaben sowie dieselben fachlich zulässigen Moderationsaktionen. Kein uneingeschränkter Datenbank-Superuser. |
+| Membership `owner` / `editor`    | Aktive Zugehörigkeit zu genau einer Werkstatt. Weder Rolle noch Namenskonvention ersetzt sie.                                |
+| Fallzuweisung                    | Objektbezogene Beauftragung; kann entzogen oder an eine andere berechtigte Person übergeben werden.                          |
+| ZITADEL-Verwaltungsrecht         | Externes Recht zur Identitätsverwaltung, das nicht automatisch aus der AutoKosova-Adminrolle folgt.                          |
+
+`AUTH-1`: Erhöhte Rollen stammen ausschliesslich aus dem nach Signatur-, Issuer-, Audience-, State-/Nonce- und PKCE-Prüfung übernommenen Projektrollen-Claim. Der Server ersetzt bei einem neuen verifizierten Login die vorherigen Rollen des Subjekts. Die Tabelle `staff_identity` enthält eine begrenzte Spiegelung verifizierter Rollen und einen Anzeigenamen für sichere Zuweisungen. Sie wird nicht durch einen Seed oder einen Verwaltungs-Request zur Rollenvergabe benutzt.
+
+Die Spiegelung ist **kein Echtzeit-Webhook aus ZITADEL**: Extern entzogene Rechte werden erst mit dem vorhandenen verifizierten Abgleich bekannt. Ein solcher Abgleich entzieht alte erhöhte Rechte auch bei nachfolgenden Requests mit zuvor erstellten Principals. Anbieterweite Sofortwiderrufe und Mehrinstanz-Sitzungen benötigen ihren getrennten Betriebsvertrag; die Oberfläche behauptet keine bereits wirksame externe Sperre.
+
+`AUTH-2`: Allgemeiner Login führt bei `admin` nach `/admin`, sonst bei `moderator` nach `/moderation`, sonst nach dem vorhandenen Kontozweck. `/sq` und `/en` bleiben erhalten. Ein ausdrücklich erlaubtes internes Rücksprungziel hat Vorrang; dessen Berechtigung wird am Ziel erneut geprüft. Ansichtswechsel verändern keine Rolle. Ohne persistente Grundlage bleiben Mitarbeitenden-APIs geschlossen statt einen flüchtigen Erfolg vorzutäuschen.
+
+## Aktionsmatrix
+
+„Zugewiesen“ bedeutet immer: aktuelle Rolle, aktuelle Fallzuweisung und zulässiger Gegenstand/Zustand. „Bedingt“ ist keine allgemeine Freigabe. Nicht aufgeführte privilegierte Aktionen sind nicht automatisch erlaubt.
+
+### Moderation, Erfahrungen und Nachweise
+
+| Regel     | Aktion                                           | Moderator                             | Admin                     | Bedingungen / Wirkung                                                                                                                              |
+| --------- | ------------------------------------------------ | ------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CASE-1    | Fälle, notwendige Details und Verlauf lesen      | Zugewiesen                            | Gesamte Warteschlange     | Keine fremden Zähler, privaten Reporttexte oder Dateien über einen indirekten Listen-/Filterweg.                                                   |
+| CASE-2    | Fall zuweisen / neu zuweisen                     | Nein                                  | Ja                        | Nur tatsächlich verifizierte, geeignete Moderatoren; keine eigene Beteiligung. Aktuelle Revision erforderlich.                                     |
+| CASE-3    | Fall zur Administration zurückgeben              | Zugewiesen                            | Bei eigener Zuweisung     | Strukturierter Grund; Zuweisung und gegebenenfalls Review-Assignment werden aufgehoben. Eskalation wird gespeichert, keine Nachricht behauptet.    |
+| REVIEW-1  | Besuchsnachweis öffnen                           | Im zugewiesenen Bewertungsfall        | Für die Fallprüfung       | Private, verfügbare Datei; keine Unternehmensnachweise durch blosse Profilfall-Zuweisung.                                                          |
+| REVIEW-2  | Bewertung freigeben / ablehnen                   | Zugewiesen                            | Ja                        | Verfügbarer zulässiger Nachweis und drei positive Prüfpunkte bei Veröffentlichung: Werkstatt, Arbeit und Besuchsmonat. Ablehnung mit festem Grund. |
+| REPORT-1  | Meldung ohne Verstoss abschliessen               | Zugewiesen                            | Ja                        | Keine Erstveröffentlichung durch generisches `approve`; Einreichungen haben ihren eigenen Prüfvertrag.                                             |
+| REPORT-2  | Informationen anfordern                          | Zugewiesen                            | Ja                        | Fall bleibt `waiting_for_subject`; keine versendete E-Mail/Push-Nachricht behaupten.                                                               |
+| REPORT-3  | Öffentlichen Inhalt vorläufig ausblenden         | Zugewiesen                            | Ja                        | Nur zulässiger öffentlicher Gegenstand. Original und Nachweise bleiben erhalten.                                                                   |
+| REPORT-4  | Moderativ ausgeblendeten Inhalt wiederherstellen | Zugewiesen                            | Ja                        | Passender Ausblendungsfall, gültige ursprüngliche Freigabe, keine Löschung oder separate Admin-Sperre; erforderliche Prüfung weiterhin gültig.     |
+| APPEAL-1  | Widerspruch entscheiden                          | Zugewiesen, nicht eigene Entscheidung | Nicht eigene Entscheidung | Andere berechtigte Person; Ausgangsentscheidung und Verlauf nicht überschreiben.                                                                   |
+| CONTENT-1 | Sterne / Kundentext umschreiben                  | Nein                                  | Nein                      | Eine belegte negative Erfahrung benötigt keine Werkstattbestätigung. Zahlung und Werkstattinteresse ändern keine Moderationsentscheidung.          |
+
+### Werkstätten und Administration
+
+| Regel     | Aktion                                                                          | Moderator | Admin                         | Bedingungen / Wirkung                                                                                                                 |
+| --------- | ------------------------------------------------------------------------------- | --------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| GARAGE-1  | Gesamten privaten Werkstattbestand verwalten                                    | Nein      | Ja                            | Nur erforderliche Daten für die administrative Aufgabe; keine Eigentümer-Impersonation.                                               |
+| GARAGE-2  | Unternehmen, Telefon, Kontaktperson und Standort prüfen                         | Nein      | Ja                            | Vier getrennte Prüfpunkte; Unternehmensprüfung ist keine Reparaturqualitätsgarantie.                                                  |
+| GARAGE-3  | Werkstatt erstmals veröffentlichen / Aufnahmeantrag ablehnen                    | Nein      | Ja                            | Eingereichter Antrag; Veröffentlichung erst bei vollständiger gültiger Prüfung.                                                       |
+| GARAGE-4  | Administrative Sperre setzen / zulässige Rücknahme entscheiden                  | Nein      | Ja                            | Begründet und dokumentiert; moderatives `restore` darf sie nicht aufheben. Gelöschte Profile nicht reaktivieren.                      |
+| GARAGE-5  | Profilfotos erstmals freigeben                                                  | Nein      | Ja                            | Bestehender Foto-/Privatheitsvertrag; Speichern allein veröffentlicht kein Foto. Moderator prüft gemeldete Bilder nur im Fallkontext. |
+| GARAGE-6  | Unterstützte Aufnahme / notwendige Profilkorrektur                              | Nein      | Ja                            | Dokumentierter Auftrag und Zustimmungsgrund; keine erfundene Einwilligung oder automatische Ansprache.                                |
+| USER-1    | Benutzer suchen, notwendige Kontodaten/Rollen ansehen                           | Nein      | Ja                            | Begrenzte Listen, keine vollständigen Claim-Dumps oder pauschalen Exporte.                                                            |
+| MEMBER-1  | Membership anlegen, ändern, widerrufen                                          | Nein      | Ja                            | Zielkonto und Werkstatt eindeutig; aktive Eigentümer-/Editorrechte getrennt.                                                          |
+| MEMBER-2  | Eigentum übertragen                                                             | Nein      | Ja                            | Dokumentiert; veröffentlichtes Profil nicht ohne Eigentümer hinterlassen.                                                             |
+| IDP-1     | Globale Rollen / Identitätssperre / Passwort / MFA verwalten                    | Nein      | Externer autorisierter Weg    | ZITADEL bleibt zuständig; kein lokaler Schein-Rollenschalter und keine Provider-Secrets im Browser.                                   |
+| DATA-1    | Löschauftrag bearbeiten / zulässig anonymisieren oder löschen                   | Nein      | Ja                            | Nur freigegebene versionierte Aufbewahrungsregel; Blocker und Eigentumsentscheidung beachten.                                         |
+| DATA-2    | Aufbewahrungsregel konfigurieren                                                | Nein      | Bedingt                       | Tatsächliche fachliche/rechtliche Betreiberfreigabe; Demo-Policy ist keine Produktivfreigabe.                                         |
+| AUDIT-1   | Globales administratives Ereignisprotokoll lesen                                | Nein      | Ja                            | Datensparsam und lesend; Moderator erhält ausschliesslich den erforderlichen Fallverlauf.                                             |
+| AUDIT-2   | Entscheidungshistorie ändern / löschen                                          | Nein      | Nein                          | Neue begründete Entscheidung statt Überschreiben.                                                                                     |
+| CATALOG-1 | Kategorien, Marken und Orte pflegen                                             | Nein      | Bestehender versionierter Weg | Stabile IDs, Stilllegung statt Löschen referenzierter Werte; kein zweiter Laufzeit-Editor.                                            |
+| PRIVATE-1 | Fremde private Anfragen, Fahrzeuge, Reisezeiten, Favoriten pauschal durchsuchen | Nein      | Nein                          | Konkreter autorisierter Vorgang oder eigene Besitzerrechte sind notwendig.                                                            |
+| SELF-1    | Eigene Bewertung, eigene Werkstatt oder eigenen Widerspruch freigeben           | Nein      | Nein                          | Eine erhöhte Rolle hebt Interessenkonflikte nicht auf.                                                                                |
+| OPS-1     | Deployment, Secret-/DB-Reset, Anbieterbestellung aus der Weboberfläche          | Nein      | Nein                          | Nicht Bestandteil dieser Rollenoberflächen.                                                                                           |
+
+## Zustände und technische Durchsetzung
+
+Die generischen Moderationsaktionen ändern den Berichtfall, nicht automatisch eine eingereichte Bewertung oder eine ungeprüfte Werkstatt. Die kanonischen Einreichungsfälle `review:<id>` und `garage:<id>` verweisen auf den bestehenden Gegenstand; Reportfälle bleiben unabhängig. Es wird kein zweites Bewertungsmodell eingeführt.
+
+`CASE-4`: Jede Änderung am Fall erhöht `revision`. Die neue Zuweisung/Eskalation verlangt die gelesene Revision. Eine veraltete Änderung erhält einen Konflikt; UI lädt bewusst neu statt still zu überschreiben. Zuweisung und Review-Assignment werden in derselben Transaktion abgeglichen. Eskalation entfernt beide Zugriffswege.
+
+`FILE-1`: Der lokale Adapter liefert ausschliesslich versionierte fiktive Textnachweise aus einer festen Allowlist. Ein Download-Grant ist an Sitzung und Datei gebunden, eine Minute gültig und einmal verwendbar. Er wird als Header übermittelt, nicht in URL/Logs/Browserstorage. Bei Einlösung werden Rolle, Datei-/Fallzugriff, Scan- und Aufbewahrungszustand erneut geprüft. Vorher autorisierte Grants erhalten keine entzogene Zuweisung.
+
+`SQL-1`: Tabellen-RLS bleibt aktiv. Eng begrenzte SQL-Helfer vermeiden rekursive Fall-/Gegenstandspolicies und projizieren ausschliesslich zulässigen Fallverlauf. Der Runtime-Benutzer darf nicht Tabellenbesitzer sein. Die Foundation-Regression verwendet ausdrücklich einen Nichtbesitzer ohne `BYPASSRLS`. Der Zuweisungsverzicht hebt innerhalb seiner bereits autorisierten Transaktion gezielt die eigene Zuweisung auf; dabei entsteht keine Adminrolle oder neue Sitzung.
+
+`PRIVACY-1`: Privilegierte Antworten sind `private, no-store`, ohne Referrer und nicht indexierbar. Kein privater SSR-/Transfer-Cache. UI verwirft Fall- und Nachweisinhalte bei Kontextwechsel/Logout; verspätete Antworten sind an den ursprünglichen Datenkontext gebunden. Alle Schreibaktionen bleiben CSRF-geschützt. Audit enthält feste Aktion/Grundcodes statt privater Berichttexte oder Nachweise.
+
+## Implementierung und Prüfverweise
+
+| Bereich                                                  | Stand und reale Einstiege                                                                                            | Prüfungen                                                                                                                                     |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Basis-Einstieg, Fallliste, Zuweisung, Eskalation         | `src/app/staff-workspace.component.*`; `src/server/staff-routes.ts`; `staff-workspace-store.ts`; `staff-identity.ts` | `test/staff-foundation-postgres.test.ts`, `scripts/staff-foundation-browser-smoke.mjs`; tatsächliche Ausführung/CI siehe Implementierungs-PR. |
+| Status-/Nachweis-/Interessengrenzen                      | `src/server/moderation-store.ts`, `review-store.ts`, `garage-onboarding-store.ts`, Memory-Gegenstück `access.ts`     | Bestehende Moderations-/Review-API-/PostgreSQL-Tests und ergänzte Foundation-Regression.                                                      |
+| Lokale Fixture-Dateien und Seeds                         | `src/server/local-demo-files.ts`, `scripts/db/staff-demo.mjs`, `db/staff-demo-data.mjs`                              | Foundation-Test mit RLS, Grant-Replay/Entzug und tatsächlichen Bytes; Browsernachweis mit Wiederholungs-Seed/Serverneustart.                  |
+| Vollständiger operativer Moderationsarbeitsplatz         | Fachregeln verbindlich; UI-Erweiterung in #95                                                                        | Nicht allein durch die Basis-Fallliste als umgesetzt behaupten.                                                                               |
+| Kundenbewertung, eigener Status, Antwort und Update      | Vorhandene Serververträge; vollständiger UI-Ablauf in #99                                                            | Integrierte Abnahme mit Moderation bleibt Bestandteil von #99.                                                                                |
+| Weitere Adminverwaltung                                  | Vorhandene Domain-/API-Grundlagen; vollständige Oberfläche/Demos in #94                                              | Nicht als bereits fertige Verwaltungsoberfläche ausgeben.                                                                                     |
+| Externe Identitäts-/Upload-/Scan-/Aufbewahrungsfreigaben | Separater Betreiber-/Providerprozess                                                                                 | Synthetische Browser-/Dateitests ersetzen weder echten ZITADEL-Abgleich noch Produktivfreigaben.                                              |
+
+Reale Testkonten, Subjects, Zugangsdaten und Freigabelinks gehören nicht in diese Datei. Der kontrolliert signierende Testprovider benutzt regulären OIDC/PKCE; er ist kein neuer Runtime-Login-Endpunkt. Nicht ausgeführte externe Nachweise bleiben ausdrücklich offen.
+
+## Pflege
+
+Jede spätere Berechtigungsänderung aktualisiert diese Matrix, betroffene Fachbeschreibung, Serverprüfung und Positiv-/Negativtests im selben PR. Neue Regeln erhalten eine eindeutige Referenz. Fachliche Detailverträge bleiben in [Auth](AUTH-INTEGRATION.md), [Werkstattaufnahme](GARAGE-ONBOARDING.md), [Bewertungen](REVIEWS.md) und [Moderation/Lebenszyklus](MODERATION-LIFECYCLE.md); keine unabhängig gepflegten Rollentabellen oder vollständigen Issue-Kopien anlegen.

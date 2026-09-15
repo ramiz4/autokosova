@@ -1,16 +1,18 @@
 # ZITADEL-Integration und lokale Testgrenze
 
+Übergreifende Aktions- und Zugriffsgrenzen: [Rollen und Berechtigungen](ROLES-AND-PERMISSIONS.md). Diese gemeinsame Referenz unterscheidet Implementierungsstand, fachliche Erlaubnis und externe Freigaben.
+
 AutoKosova verwaltet keine Passwörter. Eine produktive Sitzung darf erst entstehen, nachdem ZITADEL einen OIDC-Token verifiziert hat. `src/server/oidc.ts` prüft dazu Signatur, Issuer, Audience und Subject gegen die konfigurierte JWKS-URL.
 
 ## Erforderliche Konfiguration vor einem echten Login
 
-| Variable | Zweck |
-|---|---|
-| `ZITADEL_ISSUER` | Exakter Issuer der EU-Instanz. |
-| `ZITADEL_CLIENT_ID` und `ZITADEL_AUDIENCE` | Client-ID der registrierten PKCE-Webanwendung; sie ist zugleich die erwartete ID-Token-Audience. |
-| `ZITADEL_JWKS_URI` | JWKS-Endpunkt derselben Instanz. |
-| `ZITADEL_AUTHORIZATION_ENDPOINT` und `ZITADEL_TOKEN_ENDPOINT` | OIDC-Endpunkte aus der Discovery-Dokumentation derselben Instanz. |
-| `ZITADEL_REDIRECT_URI` | Genau eine in ZITADEL registrierte Callback-URL. |
+| Variable                                                      | Zweck                                                                                            |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `ZITADEL_ISSUER`                                              | Exakter Issuer der EU-Instanz.                                                                   |
+| `ZITADEL_CLIENT_ID` und `ZITADEL_AUDIENCE`                    | Client-ID der registrierten PKCE-Webanwendung; sie ist zugleich die erwartete ID-Token-Audience. |
+| `ZITADEL_JWKS_URI`                                            | JWKS-Endpunkt derselben Instanz.                                                                 |
+| `ZITADEL_AUTHORIZATION_ENDPOINT` und `ZITADEL_TOKEN_ENDPOINT` | OIDC-Endpunkte aus der Discovery-Dokumentation derselben Instanz.                                |
+| `ZITADEL_REDIRECT_URI`                                        | Genau eine in ZITADEL registrierte Callback-URL.                                                 |
 
 Die ZITADEL-Anwendung benötigt einen Authorization-Code-Flow mit PKCE, eine registrierte lokale Redirect-URL für Entwicklung und später eine separat freigegebene Produktions-Redirect-URL. Secrets, Client-IDs und echte Domains gehören nicht in Git.
 
@@ -51,7 +53,7 @@ Der vorhandene Callback mit PKCE, State, Nonce und Logout-Abbruchprüfung bleibt
 
 `/auth/landing` ist nur eine serverseitige Weiterleitung, keine zusätzliche Seite.
 Nach erfolgreichem Callback liest sie den Kontotyp über die authentifizierte Sitzung:
-Privatkunden zu `/inquiries`, Betreiber zu `/garages/new`, jeweils mit `/sq` oder `/en`
+Admins zu `/admin`, sonst Moderatoren zu `/moderation`, sonst Privatkunden zu `/inquiries` und Betreiber zu `/garages/new`, jeweils mit `/sq` oder `/en`
 bei entsprechender Sprache. Die Sitzung wird nach der asynchronen Kontoabfrage erneut
 geprüft. Ohne gültige Sitzung oder bei fehlgeschlagener Kontoauflösung geht es zur
 bestehenden lokalisierten `/profile`-Seite; keine geratenen Rollen und keine Login-Schleife.
@@ -201,7 +203,6 @@ Eigene Werkstätten brauchen weiterhin aktive Memberships; Löschen verlangt die
 Owner-Rolle. Die Zuordnung lokaler Workflow-Fixtures verwendet ausdrücklich
 konfigurierte tatsächliche OIDC-Subjects plus Issuer, nie eine E-Mail-Übereinstimmung.
 Einzelheiten: [Demo-Konten und Datenbesitz](../development/DEMO-ACCOUNT-OWNERSHIP.md).
-
 
 ## Profilangaben aus UserInfo (#100)
 

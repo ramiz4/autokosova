@@ -23,6 +23,8 @@ export type AppRoute =
   | 'profile'
   | 'inquiries'
   | 'favorites'
+  | 'admin'
+  | 'moderation'
   | PublicPageId;
 
 @Injectable({ providedIn: 'root' })
@@ -120,6 +122,8 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
     profile: '/profile',
     inquiries: '/inquiries',
     favorites: '/favorites',
+    admin: '/admin',
+    moderation: '/moderation',
     onboarding: '/garages/new',
     request: '/inquiry',
     search: '/garages',
@@ -131,6 +135,8 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
 function identifyRoute(path: string): { readonly parameter?: string; readonly route: AppRoute } {
   const normalized = path.replace(/^\/(?:sq|en)(?=\/|$)/, '') || '/';
   if (normalized === '/') return { route: 'home' };
+  if (normalized === '/admin') return { route: 'admin' };
+  if (normalized === '/moderation') return { route: 'moderation' };
   if (normalized === '/profile') return { route: 'profile' };
   if (normalized === '/favorites') return { route: 'favorites' };
   if (normalized === '/inquiries') return { route: 'inquiries' };
