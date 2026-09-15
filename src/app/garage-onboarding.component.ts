@@ -63,6 +63,9 @@ function blankForm(): Form {
   imports: [FormsModule, SiteHeaderComponent, IconComponent, MultiSelectComponent],
   templateUrl: './garage-onboarding.component.html',
   styleUrl: './garage-onboarding.component.scss',
+  host: {
+    '(window:beforeunload)': 'onBeforeUnload($event)',
+  },
 })
 export class GarageOnboardingComponent {
   protected readonly language = inject(LanguageService);
@@ -79,7 +82,7 @@ export class GarageOnboardingComponent {
   protected garageId?: string;
   protected publicationState: GaragePublicationState = 'draft';
   protected locationVerified = false;
-  protected savedSnapshot = '';
+  protected savedSnapshot = JSON.stringify(this.form);
   protected owned: OwnedGarage[] = [];
   protected readonly places = CATALOG_PLACES;
   protected get copy() {
@@ -107,6 +110,21 @@ export class GarageOnboardingComponent {
   }
   protected get unchanged(): boolean {
     return JSON.stringify(this.form) === this.savedSnapshot;
+  }
+  private get hasUnsavedChanges(): boolean {
+    return !this.unchanged || (!this.garageId && this.consentAccepted);
+  }
+  canLeave(): boolean {
+    if (this.sending || this.loading) return false;
+    return (
+      !this.hasUnsavedChanges ||
+      (typeof window !== 'undefined' && window.confirm(this.copy.discard))
+    );
+  }
+  protected onBeforeUnload(event: BeforeUnloadEvent): void {
+    if (!this.hasUnsavedChanges && !this.sending && !this.loading) return;
+    event.preventDefault();
+    event.returnValue = '';
   }
   protected get stateLabel(): string {
     const labels = {
@@ -234,13 +252,7 @@ export class GarageOnboardingComponent {
     }
   }
   protected async open(id: string): Promise<void> {
-    if (this.sending || this.loading) return;
-    if (
-      !this.unchanged &&
-      (this.form.name || this.form.address) &&
-      !window.confirm(this.copy.discard)
-    )
-      return;
+    if (!this.canLeave()) return;
     this.loading = true;
     this.message = '';
     try {
@@ -263,7 +275,7 @@ export class GarageOnboardingComponent {
     }
   }
   protected reset(): void {
-    if (!this.unchanged && this.form.name && !window.confirm(this.copy.discard)) return;
+    if (!this.canLeave()) return;
     this.form = blankForm();
     this.garageId = undefined;
     this.consentAccepted = false;
@@ -271,11 +283,19 @@ export class GarageOnboardingComponent {
     this.publicationState = 'draft';
     this.message = '';
     this.errors = {};
-    this.savedSnapshot = '';
+    this.savedSnapshot = JSON.stringify(this.form);
   }
   protected async submitForReview(): Promise<void> {
-    if (!this.garageId || !this.unchanged || this.sending) return;
+    if (
+      !this.garageId ||
+      !this.unchanged ||
+      this.sending ||
+      this.loading ||
+      (this.publicationState !== 'draft' && this.publicationState !== 'rejected')
+    )
+      return;
     this.sending = true;
+    this.message = '';
     try {
       const csrf =
         document.cookie
@@ -286,7 +306,13 @@ export class GarageOnboardingComponent {
         '/api/garages/' + encodeURIComponent(this.garageId) + '/submit-for-review',
         { method: 'POST', headers: { 'x-csrf-token': csrf } },
       );
+      if (response.status === 401 || response.status === 403) {
+        this.needsLogin = true;
+        this.message = this.copy.signIn;
+        return;
+      }
       if (!response.ok) throw new Error();
+      this.needsLogin = false;
       this.publicationState = 'pending_review';
       this.message = this.copy.submitted;
     } catch {
