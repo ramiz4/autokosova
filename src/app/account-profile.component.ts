@@ -5,10 +5,11 @@ import { LanguageService } from './language.service';
 import { LanguageSwitcherComponent } from './language-switcher.component';
 import { SiteHeaderComponent } from './site-header.component';
 import { ButtonDirective } from './ui/button.directive';
+import { IconComponent } from './ui/icon.component';
 
 @Component({
   selector: 'app-account-profile',
-  imports: [RouterLink, SiteHeaderComponent, LanguageSwitcherComponent, ButtonDirective],
+  imports: [RouterLink, SiteHeaderComponent, LanguageSwitcherComponent, ButtonDirective, IconComponent],
   templateUrl: './account-profile.component.html',
 })
 export class AccountProfileComponent {
