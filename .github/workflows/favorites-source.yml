@@ -1,0 +1,20 @@
+name: Favorites source snapshot
+on:
+  push:
+    branches: [feat/72-favorites-page]
+    paths: [.github/workflows/favorites-source.yml]
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - run: git archive HEAD -o /tmp/favorites-source.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: favorites-source
+          path: /tmp/favorites-source.tar
+          retention-days: 1
