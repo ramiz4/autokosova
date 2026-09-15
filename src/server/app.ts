@@ -391,6 +391,19 @@ export function createServer(options: ServerOptions = {}) {
   });
 
   app.register(cookie);
+  // A role revoked by a newly verified login cannot survive through a different legacy endpoint.
+  app.addHook('preHandler', async (request, reply) => {
+    if (!/^\/api\/(?!public(?:[/?]|$))/.test(request.url)) return;
+    const principal = accessStore.getPrincipal(request.cookies['autokosova_session']);
+    if (!principal || (!principal.roles.has('admin') && !principal.roles.has('moderator'))) return;
+    try {
+      await moderationStore.validateStaffPrincipal?.(principal);
+      requirePrincipal(request);
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+
   app.addContentTypeParser(
     ['image/jpeg', 'image/png', 'image/webp'],
     { parseAs: 'buffer' },

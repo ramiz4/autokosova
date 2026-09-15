@@ -20,6 +20,7 @@ import type {
 export * from '../shared/moderation';
 
 export interface ModerationLifecycleStore {
+  validateStaffPrincipal?(principal: Principal): Promise<void> | void;
   recordVerifiedIdentity?(
     userId: string,
     roles: readonly ('admin' | 'moderator')[],

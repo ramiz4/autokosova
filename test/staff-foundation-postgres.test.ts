@@ -156,6 +156,44 @@ test(
         checklist: { garageMatches: true, serviceMatches: true, visitMonthMatches: true },
       });
       assert.equal((await store.getStaffCase(admin, id)).status, 'resolved');
+      // Synthetic content deleted deliberately is not resurrected by subsequent demo starts.
+      await seed.query(
+        "DELETE FROM review_moderator_assignment WHERE review_id='demo-staff-review-mismatch'",
+      );
+      await seed.query("DELETE FROM visit_evidence WHERE review_id='demo-staff-review-mismatch'");
+      await seed.query("DELETE FROM moderation_case WHERE id='review:demo-staff-review-mismatch'");
+      await seed.query("DELETE FROM garage_review WHERE id='demo-staff-review-mismatch'");
+      await seed.query("DELETE FROM file_object WHERE id='demo-staff-review-mismatch-file'");
+      await seedDatabase(seed, 'demo-workflows', env);
+      assert.equal(
+        (await seed.query("SELECT 1 FROM garage_review WHERE id='demo-staff-review-mismatch'"))
+          .rowCount,
+        0,
+      );
+      assert.equal(
+        (await seed.query("SELECT 1 FROM file_object WHERE id='demo-staff-review-mismatch-file'"))
+          .rowCount,
+        0,
+      );
+      // The proof/identity lock policies must not allow role escalation or proof mutation.
+      const runtime = new pg.Client({ connectionString: source.toString() });
+      await runtime.connect();
+      try {
+        await runtime.query('BEGIN');
+        await runtime.query(
+          "SELECT set_config('app.user_id',$1,true),set_config('app.system_role','moderator',true)",
+          [moderator.userId],
+        );
+        await assert.rejects(
+          runtime.query(
+            "UPDATE staff_identity SET verified_roles=ARRAY['admin'] WHERE user_id=$1",
+            [moderator.userId],
+          ),
+        );
+        await runtime.query('ROLLBACK');
+      } finally {
+        await runtime.end();
+      }
       // Request schemas, CSRF and nonstaff rejection use actual Fastify routes and this database.
       const access = new AccessStore();
       access.addRole(admin.userId, 'admin');

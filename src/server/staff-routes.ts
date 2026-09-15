@@ -38,6 +38,26 @@ export function registerStaffRoutes(
     available();
     return principal;
   }
+  async function privateRead<T>(
+    request: FastifyRequest,
+    read: (principal: Principal) => Promise<T> | T,
+  ): Promise<T> {
+    const principal = staff(request);
+    const signature = JSON.stringify([
+      principal.userId,
+      principal.sessionId,
+      [...principal.roles].sort(),
+    ]);
+    const value = await read(principal);
+    const current = staff(request);
+    if (
+      JSON.stringify([current.userId, current.sessionId, [...current.roles].sort()]) !== signature
+    )
+      throw new AccessError(403, 'Staff permission changed while loading');
+    await store.validateStaffPrincipal?.(current);
+    requirePrincipal(request);
+    return value;
+  }
   app.get(
     '/api/staff/cases',
     {
@@ -59,7 +79,9 @@ export function registerStaffRoutes(
     },
     async (request, reply) => {
       try {
-        return await store.listStaffCases!(staff(request), request.query as StaffQueueFilter);
+        return await privateRead(request, (principal) =>
+          store.listStaffCases!(principal, request.query as StaffQueueFilter),
+        );
       } catch (error) {
         return respond(error, reply);
       }
@@ -67,16 +89,19 @@ export function registerStaffRoutes(
   );
   app.get('/api/staff/moderators', async (request, reply) => {
     try {
-      return { moderators: await store.listStaffModerators!(staff(request)) };
+      return {
+        moderators: await privateRead(request, (principal) =>
+          store.listStaffModerators!(principal),
+        ),
+      };
     } catch (error) {
       return respond(error, reply);
     }
   });
   app.get('/api/staff/cases/:caseId', { schema: { params } }, async (request, reply) => {
     try {
-      return await store.getStaffCase!(
-        staff(request),
-        (request.params as { caseId: string }).caseId,
+      return await privateRead(request, (principal) =>
+        store.getStaffCase!(principal, (request.params as { caseId: string }).caseId),
       );
     } catch (error) {
       return respond(error, reply);

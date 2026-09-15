@@ -50,6 +50,10 @@ const activeStatuses = ['submitted', 'assigned', 'waiting_for_subject'];
 export class PostgresStaffWorkspace {
   constructor(private readonly pool: pg.Pool) {}
 
+  async validate(principal: Principal): Promise<void> {
+    await this.transaction(principal, async () => undefined);
+  }
+
   async recordVerifiedIdentity(
     userId: string,
     roles: readonly ('admin' | 'moderator')[],

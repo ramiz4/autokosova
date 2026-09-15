@@ -10,7 +10,7 @@ Beratung und ersetzt weder die Betreiberentscheidung noch geprüfte Pflichttexte
 
 Eine Meldung erzeugt einen eigenen, zugriffsbeschränkten Fall mit Priorität, Status und festem
 Grundcode. Sie verändert das gemeldete Profil oder die gemeldete Bewertung nicht automatisch.
-Erst ein zugewiesener Moderator oder ein Admin kann eine begründete Aktion ausführen:
+Erst ein zugewiesener Moderator oder ein Admin kann eine begründete Aktion ausführen. Reportfälle und kanonische Einreichungsfälle bleiben dabei getrennt; generisches Freigeben schliesst eine Meldung ab, ersetzt jedoch weder Besuchsnachweisprüfung noch Admin-Erstfreigabe einer Werkstatt:
 
 - freigeben oder ablehnen;
 - Rückfrage stellen;

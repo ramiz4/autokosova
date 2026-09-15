@@ -53,7 +53,7 @@ Der vorhandene Callback mit PKCE, State, Nonce und Logout-Abbruchprüfung bleibt
 
 `/auth/landing` ist nur eine serverseitige Weiterleitung, keine zusätzliche Seite.
 Nach erfolgreichem Callback liest sie den Kontotyp über die authentifizierte Sitzung:
-Privatkunden zu `/inquiries`, Betreiber zu `/garages/new`, jeweils mit `/sq` oder `/en`
+Admins zu `/admin`, sonst Moderatoren zu `/moderation`, sonst Privatkunden zu `/inquiries` und Betreiber zu `/garages/new`, jeweils mit `/sq` oder `/en`
 bei entsprechender Sprache. Die Sitzung wird nach der asynchronen Kontoabfrage erneut
 geprüft. Ohne gültige Sitzung oder bei fehlgeschlagener Kontoauflösung geht es zur
 bestehenden lokalisierten `/profile`-Seite; keine geratenen Rollen und keine Login-Schleife.

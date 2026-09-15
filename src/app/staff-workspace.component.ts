@@ -291,6 +291,10 @@ export class StaffWorkspaceComponent {
       return;
     }
     if (error === 403 || error === 404) {
+      if (error === 403) {
+        this.cases.set([]);
+        this.moderators.set([]);
+      }
       this.detail.set(null);
       this.evidenceText.set(null);
       this.error.set(error === 403 ? this.copy().denied : this.copy().unavailable);

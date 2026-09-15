@@ -8,7 +8,7 @@ const cookies = (session: { sessionId: string }) => ({
   cookie: `autokosova_session=${session.sessionId}`,
 });
 
-test('landing uses account purpose, preserves locale and ignores client-provided roles and destinations', async () => {
+test('landing prioritizes verified staff roles, then account purpose, and ignores client-provided roles and destinations', async () => {
   const store = new AccessStore();
   const customer = store.createSession('landing-customer', undefined, {
     email: 'garage@example.test',
@@ -16,6 +16,11 @@ test('landing uses account purpose, preserves locale and ignores client-provided
   const owner = store.createSession('landing-owner');
   const admin = store.createSession('landing-admin');
   store.addRole('landing-admin', 'admin');
+  const moderator = store.createSession('landing-moderator');
+  store.addRole('landing-moderator', 'moderator');
+  const both = store.createSession('landing-both');
+  store.addRole('landing-both', 'moderator');
+  store.addRole('landing-both', 'admin');
   store.addMembership('landing-owner', 'fictional-garage', 'owner');
   store.addMembership('landing-owner', 'fictional-garage', 'owner', 'revoked');
   const app = createServer({ accessStore: store });
@@ -25,7 +30,9 @@ test('landing uses account purpose, preserves locale and ignores client-provided
       for (const [session, path] of [
         [customer, '/inquiries'],
         [owner, '/garages/new'],
-        [admin, '/inquiries'],
+        [admin, '/admin'],
+        [moderator, '/moderation'],
+        [both, '/admin'],
       ] as const) {
         const result = await app.inject({
           url: `/auth/landing?locale=${locale}&role=garage&accountType=garage&returnTo=https://evil.invalid&userId=other`,

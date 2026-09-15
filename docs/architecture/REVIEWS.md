@@ -83,7 +83,7 @@ autorisierten Fristlöschung wird die private Datei unzugänglich und der Nachwe
 `deleted_after_retention`. Die veröffentlichte Bewertung behält **„Besuch belegt“**, weil dies den
 historischen Prüfstatus erklärt, aber nie den entfernten Beleg preisgibt.
 
-Die lokale Entwicklung verwendet nur fiktive IDs und Testdateimetadaten. Ein echter Upload braucht
+Die lokale Entwicklung verwendet nur fiktive IDs und Testdaten. Die ausdrücklich aktivierte lokale Workflow-Demo kann zusätzlich harmlose versionierte Fixture-Dateien über den geschützten Dateivertrag öffnen; sie ist kein echter Upload-/Scan-Nachweis. Ein echter Upload braucht
 weiterhin die in ADR-001 beschriebene private Quarantäne, Malware-Prüfung, Objektablage und
 rechtlich freigegebene Löschfrist. Ohne diese externen Produktivgates dürfen keine realen
 Rechnungen oder Leistungsnachweise verarbeitet werden.

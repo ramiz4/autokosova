@@ -100,6 +100,10 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
     this.workspace = new PostgresStaffWorkspace(this.pool);
   }
 
+  validateStaffPrincipal(principal: Principal) {
+    return this.workspace.validate(principal);
+  }
+
   recordVerifiedIdentity(
     userId: string,
     roles: readonly ('admin' | 'moderator')[],

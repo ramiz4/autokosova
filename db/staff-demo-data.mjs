@@ -6,7 +6,7 @@ export const staffDemoForeign = 'demo-staff-foreign-moderator';
 export const staffDemoOperator = 'demo-staff-history-operator';
 export const staffDemoFixtures = Object.freeze({
   'visit-valid':
-    'DEMO – kein echter Nachweis\nDEMO – not a real document\n\nDEMO · Bremsen Prishtina (markenoffen)\nWerkstatt-ID: demo-prishtina-bremsen-offen\nBesuch: 2026-08\nLeistung: Bremsenprüfung und Bremsbelagwechsel\nNur fiktive Testdaten. Keine Zahlung, Buchung oder echte Reparatur.\n',
+    'DEMO – kein echter Nachweis\nDEMO – not a real document\n\nDEMO · Bremsen Nord Prishtina\nWerkstatt-ID: demo-prishtina-bremsen-offen\nBesuch: 2026-08\nLeistung: Bremsenprüfung und Bremsbelagwechsel\nNur fiktive Testdaten. Keine Zahlung, Buchung oder echte Reparatur.\n',
   'visit-mismatch':
     'DEMO – kein echter Nachweis\nDEMO – not a real document\n\nDEMO · Anderer Betrieb\nBesuch: 2025-01\nLeistung: Klimaanlagenprüfung\nAbsichtlich unpassender Besuchsnachweis für einen negativen Test.\n',
   'company-valid':
