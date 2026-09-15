@@ -79,13 +79,14 @@ try {
   }
   async function keyboard(selector) {
     await until(
-      () => evaluate(`!!document.querySelector(${JSON.stringify(selector)})`),
-      'keyboard target ' + selector,
-    );
-    await evaluate(`document.querySelector(${JSON.stringify(selector)}).focus()`);
-    await until(
-      () => evaluate(`document.activeElement.matches(${JSON.stringify(selector)})`),
-      'focused control',
+      () =>
+        evaluate(`(() => {
+        const control = document.querySelector(${JSON.stringify(selector)});
+        if (!control || control.disabled || !control.getClientRects().length) return false;
+        control.focus();
+        return document.activeElement === control;
+      })()`),
+      'focusable control ' + selector,
     );
     await browser.key('Enter', 13);
   }
