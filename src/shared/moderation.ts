@@ -134,6 +134,12 @@ export interface StaffCaseDetail extends StaffCaseSummary {
     readonly publicationState: string;
     readonly evidenceStatus: string;
     readonly evidenceKind: string;
+    readonly garageResponse?: { readonly text: string; readonly createdAt: string };
+    readonly updates?: readonly {
+      readonly text: string;
+      readonly kind: string;
+      readonly createdAt: string;
+    }[];
     readonly ratings: {
       readonly workQuality: number;
       readonly communication: number;
@@ -144,6 +150,8 @@ export interface StaffCaseDetail extends StaffCaseSummary {
   readonly garage?: {
     readonly name: string;
     readonly placeId: string;
+    readonly description?: string;
+    readonly photoUrls?: readonly string[];
     readonly publicationState: string;
   };
   readonly history: readonly {

@@ -296,7 +296,7 @@ Die tatsächlichen Test-Subjects werden ausschließlich lokal konfiguriert, niem
 über E-Mail-Claims als Berechtigung verwendet. Einrichtung, Fixture-IDs und die
 bewusste Löschgrenze: [Demo-Konten und Datenbesitz](docs/development/DEMO-ACCOUNT-OWNERSHIP.md).
 
-## Admin-/Moderator-Basis lokal prüfen
+## Administration und Moderation lokal prüfen
 
 `npm run dev:demo-workflows` ist der vollständige lokale Demo-Einstieg. `dev:demo` bleibt das öffentliche Werkstattprofil, `dev` der Referenzdatenstart. Für den manuellen Mitarbeitendenablauf sind die bestehende freigegebene OIDC-Konfiguration und tatsächliche Projektrollen notwendig. Die ignorierte lokale Konfiguration kann `AUTOKOSOVA_DEMO_ADMIN_SUBJECT` und `AUTOKOSOVA_DEMO_MODERATOR_SUBJECT` aus der freigegebenen Subject-Zuordnung enthalten. Keine Werte aus E-Mail/Kontonamen ableiten und keine Rolle durch den Seed erzeugen.
 
@@ -305,16 +305,30 @@ Ein Moderator ohne konfigurierte Zuordnung bekommt keine fremden Fälle. Sein re
 | Fiktiver Szenarioschlüssel     | Rolle und Ausgang                  | Aktion / erwartetes Ergebnis                                                         |
 | ------------------------------ | ---------------------------------- | ------------------------------------------------------------------------------------ |
 | `demo-staff-review-unassigned` | Admin, unzugewiesen                | Fall ansehen, verifizierten Moderator wählen und zuweisen.                           |
-| `demo-staff-review-assigned`   | Zugeordneter Moderator, in Prüfung | Fall ansehen und privaten fiktiven Nachweis tatsächlich öffnen.                      |
+| `demo-staff-review-assigned`   | Zugeordneter Moderator, in Prüfung | Fall ansehen, privaten fiktiven Nachweis öffnen, drei Prüfpunkte bearbeiten und begründet entscheiden.                      |
 | `demo-staff-review-mismatch`   | Zugeordneter Moderator             | Lesbarer, aber absichtlich unpassender Nachweis; keine positive Prüfung vortäuschen. |
 | `demo-staff-review-blocked`    | Zugeordneter Moderator             | Gesperrter synthetischer Scanstatus; kein Dateiinhalt und keine Veröffentlichung.    |
 | `demo-staff-review-foreign`    | Andere fiktive Identität           | Für den regulären Moderator weder Liste noch Detail/Datei zugänglich.                |
 | `demo-staff-review-escalated`  | Admin                              | Gespeicherte Eskalation in der Gesamtübersicht sehen.                                |
 
-Durchlauf: **Admin zuweisen → regulär abmelden → Moderator Fall ansehen / Nachweis öffnen → begründet zur Adminprüfung geben → Admin findet Eskalation.** Nach Rückgabe verliert der Moderator diesen Fallzugriff. Der Basisarbeitsplatz umfasst diese Strecke; vollständige Entscheidungsformulare und weitere Adminbereiche werden in den jeweiligen Folgeissues ergänzt.
+Zusätzliche, eindeutig fiktive Moderationsfälle werden nur bei der erstmaligen Anlage ergänzt:
+
+| Szenario-ID | Vorbereiteter Zustand | Erwartetes Ergebnis |
+| --- | --- | --- |
+| `demo-staff-review-waiting` | Rückfrage offen | Nachweisprüfung oder begründete Ablehnung; kein behaupteter Nachrichtenversand. |
+| `demo-staff-review-appeal` | Widerspruch gegen frühere Ablehnung einer anderen fiktiven Person | Unabhängige Prüfung und neue Entscheidung, alte Historie bleibt. |
+| `demo-staff-review-own-appeal` | Widerspruch gegen Entscheidung desselben Moderators | Keine Entscheidung; begründet an Admin übergeben. |
+| `demo-staff-review-reported-report` | Gemeldete veröffentlichte Bewertung | Inhaltsprüfung, vorläufig ausblenden und zulässig wiederherstellen. |
+| `demo-staff-review-restore-report` | Im selben Fall ausgeblendete Bewertung | Wiederherstellung nur bei weiterhin gültiger Freigabe. |
+| `demo-staff-review-removed-report` | Zurückgezogene Bewertung | Keine Wiederherstellung. |
+| `demo-staff-profile-report` | Separates fiktives veröffentlichtes Profil | Text und öffentliche Demo-Bilder prüfen; Ausblenden ist keine Unternehmensprüfung. |
+
+Listen sind nach Priorität und Eingangszeit geordnet und paginiert; Status, Fallart und Priorität sind filterbar. Admins können zusätzlich eskalierte Fälle filtern. Ein leeres Moderatorkonto erhält niemals die globale Liste. Nicht verfügbare Bilder oder einzeln zu entfernende Antworten ohne eigenen abgesicherten Bearbeitungsvertrag werden an Admin eskaliert, nicht durch Löschen unbeteiligter Bewertungen ersetzt.
+
+Durchlauf: **Admin zuweisen → regulär abmelden → Moderator Fall ansehen / Nachweis öffnen → begründet zur Adminprüfung geben → Admin findet Eskalation.** Nach Rückgabe verliert der Moderator diesen Fallzugriff. Der gemeinsame Arbeitsbereich umfasst Zuweisung, Fallkontext, Nachweischeckliste, Entscheidungen, Rückfragen, Wiederherstellung und unabhängige Widersprüche. Der Kunden-Einreichungsweg wird in #99, die übrige Administration in #94 ergänzt. Die erhöhten Rollen vergeben keine Eigentümer- oder Providerrechte.
 
 Alle Nachweise sind klar markierte synthetische Textdateien, keine echten Rechnungen. Der Starter aktiviert `AUTOKOSOVA_LOCAL_DEMO_FILES=1` ausschliesslich für seinen lokalen Workflow-Demoprozess. Bei direktem Test-SSR-Start ist diese explizite Freigabe ebenfalls erforderlich. Der Adapter bleibt in Produktion und bei nichtlokaler Datenbank gesperrt und akzeptiert keine beliebigen Dateien, Speicherpfade oder Uploads. Er ist kein Malware-Scanner. Downloads sind kurzlebig, einmalig, sitzungs-/objektgebunden und werden bei jeder Einlösung erneut autorisiert.
 
 Normales Neuladen, App-Neustart und erneuter Seed erhalten Zuweisungen, Entscheidungen, Eskalationen, vorhandene Kunden-/Werkstattdaten und Löschungen. Ausgangszustand nur mit einer frischen isolierten Worktree-DB oder einer ausdrücklich gewählten vorhandenen Reset-Funktion herstellen; der Start führt keinen Reset aus.
 
-Automatisierter Nachweis: `npm run test:staff:browser` nach dem Build, mit lokaler isolierter `DATABASE_URL` und Chrome/Chromium (`CHROME_BIN` bei abweichendem Installationspfad). Der Test erstellt nur seine eigene flüchtige Test-Schema-/Browserumgebung, nutzt den signierenden OIDC-Testprovider und löscht anschliessend ausschliesslich diese Testressourcen. `test/staff-foundation-postgres.test.ts` prüft zusätzlich einen Runtime-Benutzer ohne Tabellenbesitz/RLS-Bypass. Tatsächliche externe Testkonto-Anmeldung wird nicht aus diesen synthetischen Ergebnissen abgeleitet.
+Automatisierter Nachweis: `npm run test:staff:browser` nach dem Build, mit lokaler isolierter `DATABASE_URL` und Chrome/Chromium (`CHROME_BIN` bei abweichendem Installationspfad). Der Test erstellt nur seine eigene flüchtige Test-Schema-/Browserumgebung, nutzt den signierenden OIDC-Testprovider und löscht anschliessend ausschliesslich diese Testressourcen. `test/staff-foundation-postgres.test.ts` und `test/moderation-workspace-postgres.test.ts` prüfen zusätzlich einen Runtime-Benutzer ohne Tabellenbesitz/RLS-Bypass. Die Moderator-Formulare werden in DE/SQ/EN bei 390/1280 px mit tatsächlichen Browseraktionen geprüft; `staff-decision-form.component.spec.ts` ergänzt Pflichtfelder, Abbruch und Eingabeerhalt. Tatsächliche externe Testkonto-Anmeldung wird nicht aus diesen synthetischen Ergebnissen abgeleitet.

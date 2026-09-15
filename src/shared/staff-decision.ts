@@ -43,7 +43,9 @@ export interface StaffDecisionContext {
 }
 
 /** Affordances only: each write must repeat authorization and state checks in its transaction. */
-export function staffDecisionActions(context: StaffDecisionContext): readonly StaffDecisionAction[] {
+export function staffDecisionActions(
+  context: StaffDecisionContext,
+): readonly StaffDecisionAction[] {
   if (context.conflictOfInterest) return [];
   const open = ['submitted', 'assigned', 'waiting_for_subject'].includes(context.status);
   if (context.kind === 'review_submission') {
@@ -104,5 +106,7 @@ function record(value: unknown): value is Record<string, unknown> {
 }
 
 function exactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
-  return Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
+  return (
+    Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key))
+  );
 }

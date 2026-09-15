@@ -77,7 +77,8 @@ export class PostgresReviewStore implements ReviewStore {
 
   constructor(database: string | pg.Pool) {
     this.ownsPool = typeof database === 'string';
-    this.pool = typeof database === 'string' ? new pg.Pool({ connectionString: database }) : database;
+    this.pool =
+      typeof database === 'string' ? new pg.Pool({ connectionString: database }) : database;
   }
 
   async close(): Promise<void> {
@@ -249,16 +250,17 @@ export class PostgresReviewStore implements ReviewStore {
         (record.assigned_moderator_user_id !== principal.userId || record.escalation_reason)
       )
         throw new AccessError(403, 'Moderator access denied for this case');
-      const open = record && ['submitted', 'assigned', 'waiting_for_subject'].includes(record.status);
+      const open =
+        record && ['submitted', 'assigned', 'waiting_for_subject'].includes(record.status);
       const reconsideration =
         open &&
         record.appeal_against_user_id !== null &&
         ['published', 'rejected'].includes(review.publication_state);
-      if (
-        (record && !open) ||
-        (review.publication_state !== 'under_review' && !reconsideration)
-      )
-        throw new AccessError(409, 'Only an open review or independent appeal can receive a decision');
+      if ((record && !open) || (review.publication_state !== 'under_review' && !reconsideration))
+        throw new AccessError(
+          409,
+          'Only an open review or independent appeal can receive a decision',
+        );
       this.validateDecision(decision);
       if (decision.decision === 'published') {
         if (

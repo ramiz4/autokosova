@@ -1,6 +1,9 @@
+import { StaffDecisionFormComponent } from './staff-decision-form.component';
+import type { StaffCaseDecision } from '../shared/staff-decision';
 import { DOCUMENT, DatePipe } from '@angular/common';
 import {
   Component,
+  Injector,
   DestroyRef,
   afterNextRender,
   computed,
@@ -27,13 +30,22 @@ import {
 
 @Component({
   selector: 'app-staff-workspace',
-  imports: [SiteHeaderComponent, RouterLink, FormsModule, DatePipe, ButtonDirective],
+  imports: [
+    StaffDecisionFormComponent,
+    SiteHeaderComponent,
+    RouterLink,
+    FormsModule,
+    DatePipe,
+    ButtonDirective,
+  ],
   templateUrl: './staff-workspace.component.html',
 })
 export class StaffWorkspaceComponent {
   readonly account = inject(AccountSessionService);
   readonly language = inject(LanguageService);
   private readonly document = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
+  private previousCase = '';
   readonly adminOnly = inject(ActivatedRoute).snapshot.data['adminOnly'] === true;
   readonly copy = computed(() => staffCopy(this.language.language));
   readonly isAdmin = computed(() => this.account.identity()?.roles.includes('admin') ?? false);
@@ -56,6 +68,8 @@ export class StaffWorkspaceComponent {
   readonly evidenceText = signal<string | null>(null);
   filterStatus = '';
   filterKind = '';
+  filterPriority = '';
+  onlyEscalated = false;
   moderatorId = '';
   escalationReason: StaffEscalationReason = 'requires_admin';
   private generation = 0;
@@ -116,6 +130,8 @@ export class StaffWorkspaceComponent {
     const query = new URLSearchParams({ page: String(page) });
     if (this.filterStatus) query.set('status', this.filterStatus);
     if (this.filterKind) query.set('kind', this.filterKind);
+    if (this.filterPriority) query.set('priority', this.filterPriority);
+    if (this.onlyEscalated && this.isAdmin()) query.set('escalated', 'true');
     try {
       const response = await fetch('/api/staff/cases?' + query, {
         credentials: 'same-origin',
@@ -173,6 +189,8 @@ export class StaffWorkspaceComponent {
         context === this.account.dataContext()
       ) {
         this.detail.set(data);
+        this.previousCase = id;
+        this.focus('[data-case-heading]');
         this.moderatorId = data.assignedModeratorUserId ?? '';
       }
     } catch (error) {
@@ -186,7 +204,23 @@ export class StaffWorkspaceComponent {
     this.detailVersion++;
     this.detail.set(null);
     this.evidenceText.set(null);
-    void this.load(this.page());
+    void this.load(this.page()).then(() => this.focusList());
+  }
+  async decide(input: StaffCaseDecision): Promise<void> {
+    if (input.revision !== this.detail()?.revision) return;
+    await this.mutate('decide', input);
+  }
+  private focus(selector: string): void {
+    afterNextRender(() => this.document.querySelector<HTMLElement>(selector)?.focus(), {
+      injector: this.injector,
+    });
+  }
+  private focusList(): void {
+    this.focus(
+      this.document.querySelector('[data-case-id=' + JSON.stringify(this.previousCase) + ']')
+        ? '[data-case-id=' + JSON.stringify(this.previousCase) + '] [data-open-case]'
+        : 'h1',
+    );
   }
   async assign(): Promise<void> {
     if (this.moderatorId) await this.mutate('assign', { moderatorUserId: this.moderatorId });
@@ -243,7 +277,7 @@ export class StaffWorkspaceComponent {
   }
 
   private async mutate(
-    action: 'assign' | 'escalate',
+    action: 'assign' | 'escalate' | 'decide',
     body: Record<string, unknown>,
   ): Promise<void> {
     const detail = this.detail();
@@ -274,6 +308,7 @@ export class StaffWorkspaceComponent {
       this.success.set(this.copy().success);
       this.busy.set(false);
       await this.load(this.page());
+      this.focusList();
     } catch (error) {
       if (generation === this.generation && context === this.account.dataContext())
         this.failure(error);
@@ -300,6 +335,12 @@ export class StaffWorkspaceComponent {
       this.error.set(error === 403 ? this.copy().denied : this.copy().unavailable);
       return;
     }
-    this.error.set(error === 409 ? this.copy().conflict : this.copy().error);
+    this.error.set(
+      error === 409
+        ? this.copy().conflict
+        : error === 422
+          ? this.label('invalidDecision')
+          : this.copy().error,
+    );
   }
 }

@@ -1,3 +1,4 @@
+import { checkModerationWorkspace } from './moderation-workspace-browser-checks.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readdir, readFile, mkdir, writeFile } from 'node:fs/promises';
@@ -142,6 +143,7 @@ try {
     snapshot.rows,
   );
   await mkdir(output, { recursive: true });
+  await checkModerationWorkspace({ browser, client, login, output });
   for (const locale of ['de', 'sq', 'en']) {
     for (const role of ['admin', 'moderator']) {
       await login(role, locale);

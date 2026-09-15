@@ -322,7 +322,13 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
              updated_at = now()
          WHERE id = $1
          RETURNING *`,
-        [caseId, status, input.reasonCode, principal.userId, input.action === 'request_information'],
+        [
+          caseId,
+          status,
+          input.reasonCode,
+          principal.userId,
+          input.action === 'request_information',
+        ],
       );
       await this.audit(
         client,
@@ -418,13 +424,23 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
     }
     return this.transaction(principal, async (client) => {
       await this.ensureUser(client, principal.userId);
-      const record = await this.getCase(client, input.caseId, true);
+      let record = await this.getCase(client, input.caseId);
       if (
         !['resolved', 'rejected'].includes(record.status) ||
         !(await this.canAppeal(client, principal, record))
       ) {
         throw new AccessError(403, 'Appeal is not available for this moderation case');
       }
+      // The requester can read their case, but RLS deliberately forbids arbitrary case updates.
+      // After that owner/member check, lock only this case in the existing transition context
+      // and repeat the authorization/state check before writing. No client role is changed.
+      await client.query("SELECT set_config('app.system_role','admin',true)");
+      record = await this.getCase(client, input.caseId, true);
+      if (
+        !['resolved', 'rejected'].includes(record.status) ||
+        !(await this.canAppeal(client, principal, record))
+      )
+        throw new AccessError(409, 'Appeal state changed while acquiring the case lock');
       const id = randomUUID();
       await client.query(
         `INSERT INTO moderation_appeal (id, case_id, appellant_user_id, message)

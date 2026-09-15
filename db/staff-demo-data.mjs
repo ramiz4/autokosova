@@ -19,4 +19,40 @@ export const staffDemoReviews = [
   { id: 'demo-staff-review-blocked', file: 'visit-valid', assignment: 'moderator', blocked: true },
   { id: 'demo-staff-review-foreign', file: 'visit-valid', assignment: 'foreign' },
   { id: 'demo-staff-review-escalated', file: 'visit-valid', assignment: 'escalated' },
+  {
+    id: 'demo-staff-review-waiting',
+    file: 'visit-valid',
+    assignment: 'moderator',
+    scenario: 'waiting',
+  },
+  {
+    id: 'demo-staff-review-appeal',
+    file: 'visit-valid',
+    assignment: 'moderator',
+    scenario: 'appeal',
+  },
+  {
+    id: 'demo-staff-review-own-appeal',
+    file: 'visit-valid',
+    assignment: 'moderator',
+    scenario: 'own-appeal',
+  },
+  {
+    id: 'demo-staff-review-reported',
+    file: 'visit-valid',
+    assignment: 'moderator',
+    scenario: 'reported',
+  },
+  {
+    id: 'demo-staff-review-restore',
+    file: 'visit-valid',
+    assignment: 'moderator',
+    scenario: 'restore',
+  },
+  {
+    id: 'demo-staff-review-removed',
+    file: 'visit-valid',
+    assignment: 'moderator',
+    scenario: 'removed',
+  },
 ];

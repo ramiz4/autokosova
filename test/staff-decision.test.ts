@@ -29,10 +29,7 @@ test('staff decisions require an explicit revision, exact fields and three boole
     isStaffCaseDecision({ ...valid, checklist: { ...checklist, serviceMatches: 'true' } }),
     false,
   );
-  assert.equal(
-    isStaffCaseDecision({ ...valid, checklist: { ...checklist, extra: true } }),
-    false,
-  );
+  assert.equal(isStaffCaseDecision({ ...valid, checklist: { ...checklist, extra: true } }), false);
   assert.equal(isStaffCaseDecision(null), false);
   assert.equal(isStaffCaseDecision([]), false);
   // Negative checkboxes are valid input; publication still requires a positive domain decision.
@@ -58,7 +55,11 @@ test('rejection and report decisions accept only matching fixed reason codes', (
     assert.equal(isStaffCaseDecision({ action, revision: 1, reasonCode: 'abuse' }), false);
   }
   assert.equal(
-    isStaffCaseDecision({ action: 'request_information', revision: 1, reasonCode: 'missing_information' }),
+    isStaffCaseDecision({
+      action: 'request_information',
+      revision: 1,
+      reasonCode: 'missing_information',
+    }),
     true,
   );
   assert.equal(
@@ -66,7 +67,11 @@ test('rejection and report decisions accept only matching fixed reason codes', (
     false,
   );
   assert.equal(
-    isStaffCaseDecision({ action: 'temporarily_hide', revision: 1, reasonCode: 'private_data_exposure' }),
+    isStaffCaseDecision({
+      action: 'temporarily_hide',
+      revision: 1,
+      reasonCode: 'private_data_exposure',
+    }),
     true,
   );
   assert.equal(
@@ -101,7 +106,9 @@ test('only reopened independent appeals permit reconsidering a prior review deci
   for (const reviewState of ['published', 'rejected']) {
     assert.deepEqual(staffDecisionActions({ ...context, reviewState }), []);
     assert.ok(
-      staffDecisionActions({ ...context, reviewState, openAppeal: true }).includes('publish_review'),
+      staffDecisionActions({ ...context, reviewState, openAppeal: true }).includes(
+        'publish_review',
+      ),
     );
     assert.deepEqual(
       staffDecisionActions({ ...context, reviewState, openAppeal: true, conflictOfInterest: true }),
@@ -127,11 +134,18 @@ test('report actions cannot first-publish a garage or restore an unrelated admin
     [],
   );
   assert.deepEqual(
-    staffDecisionActions({ ...report, status: 'resolved', subjectState: 'suspended', restorable: true }),
+    staffDecisionActions({
+      ...report,
+      status: 'resolved',
+      subjectState: 'suspended',
+      restorable: true,
+    }),
     ['restore'],
   );
   assert.ok(!staffDecisionActions(report).includes('publish_review'));
-  assert.ok(!staffDecisionActions({ ...report, subjectState: 'draft' }).includes('temporarily_hide'));
+  assert.ok(
+    !staffDecisionActions({ ...report, subjectState: 'draft' }).includes('temporarily_hide'),
+  );
   assert.deepEqual(
     staffDecisionActions({ ...report, restorable: true, conflictOfInterest: true }),
     [],
