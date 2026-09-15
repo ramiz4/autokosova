@@ -209,6 +209,7 @@ try {
   await screenshot('customer', 390);
   // Test the seeded requests themselves, not replacement rows created by the test.
   for (const [index, id] of demoAccountRequestIds.entries()) {
+    await click(`[data-inquiry-id="${id}"] [data-inquiry-menu]`);
     await click(`[data-inquiry-id="${id}"] [data-edit-inquiry]`);
     await until(
       () => evaluate("!!document.querySelector('[data-inquiry-editor][open]')"),

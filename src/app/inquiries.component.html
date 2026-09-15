@@ -139,6 +139,9 @@
                         <button
                           type="button"
                           class="icon-action"
+                          [id]="'actions-trigger-' + request.id"
+                          [attr.title]="text('actions')"
+                          aria-haspopup="menu"
                           [attr.aria-label]="
                             text('actions') +
                             ': ' +
@@ -148,25 +151,55 @@
                           [attr.aria-controls]="'actions-' + request.id"
                           [disabled]="saved.writeState() === 'saving'"
                           (click)="toggleActions(request.id, $event)"
+                          (keydown)="onActionTriggerKeydown(request.id, $event)"
                           data-inquiry-menu
                         >
                           <app-icon name="more" class="size-6" />
                         </button>
                         @if (actionsId() === request.id) {
-                          <div class="actions-popup" [id]="'actions-' + request.id">
-                            <button type="button" (click)="deactivate(request)" data-toggle-inquiry>
+                          <div
+                            class="actions-popup"
+                            [id]="'actions-' + request.id"
+                            role="menu"
+                            [attr.aria-labelledby]="'actions-trigger-' + request.id"
+                            (keydown)="onActionsKeydown($event)"
+                          >
+                            <button
+                              type="button"
+                              role="menuitem"
+                              class="hover:bg-[#f1f5fb]"
+                              tabindex="-1"
+                              [disabled]="saved.writeState() === 'saving'"
+                              (click)="edit(request)"
+                              data-edit-inquiry
+                            >
+                              <app-icon name="pencil" class="size-4" />{{ text('edit') }}
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              class="hover:bg-[#f1f5fb]"
+                              tabindex="-1"
+                              [disabled]="saved.writeState() === 'saving'"
+                              (click)="deactivate(request)"
+                              data-toggle-inquiry
+                            >
                               <app-icon
                                 [name]="request.active ? 'pause' : 'check'"
                                 class="size-4"
                               />{{ text(request.active ? 'deactivate' : 'reactivate') }}
                             </button>
+                            <div role="separator" class="mx-1 my-1.5 h-px bg-[#dbe4f0]"></div>
                             <button
                               type="button"
-                              class="delete-action"
+                              role="menuitem"
+                              class="delete-action text-[#b02443] hover:bg-[#f1f5fb]"
+                              tabindex="-1"
+                              [disabled]="saved.writeState() === 'saving'"
                               (click)="confirmDelete(request)"
                               data-delete-inquiry
                             >
-                              <app-icon name="trash" class="size-4" />{{ text('delete') }}
+                              <app-icon name="trash" class="size-4" />{{ text('deleteConfirm') }}
                             </button>
                           </div>
                         }
@@ -197,70 +230,68 @@
                         }
                       </ul>
                     </div>
-                    <div class="card-footer">
-                      <div class="secondary-actions flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          class="text-action"
-                          [disabled]="saved.writeState() === 'saving'"
-                          (click)="edit(request)"
-                          data-edit-inquiry
-                        >
-                          <app-icon name="pencil" class="size-4" />{{ text('edit') }}
-                        </button>
-                        <button
-                          type="button"
-                          class="text-action"
-                          data-inquiry-view
-                          [attr.aria-label]="
-                            text('view') + ': ' + language.serviceLabel(request.serviceCategoryId)
-                          "
-                          [attr.aria-expanded]="saved.selectedId() === request.id"
-                          [attr.aria-controls]="'inquiry-detail-' + request.id"
-                          [disabled]="saved.writeState() === 'saving'"
-                          (click)="saved.toggleDetail(request.id)"
-                        >
-                          {{ text(saved.selectedId() === request.id ? 'close' : 'viewShort')
-                          }}<app-icon
-                            name="chevron-down"
-                            class="size-4"
-                            [class.rotate-180]="saved.selectedId() === request.id"
-                          />
-                        </button>
+                    <div
+                      class="card-footer grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2.5 border-t border-[#eef1f6] pt-3.5"
+                    >
+                      <button
+                        type="button"
+                        class="text-action"
+                        data-inquiry-view
+                        [attr.aria-label]="
+                          text(saved.selectedId() === request.id ? 'close' : 'view') +
+                          ': ' +
+                          language.serviceLabel(request.serviceCategoryId)
+                        "
+                        [attr.aria-expanded]="saved.selectedId() === request.id"
+                        [attr.aria-controls]="'inquiry-detail-' + request.id"
+                        [disabled]="saved.writeState() === 'saving'"
+                        (click)="saved.toggleDetail(request.id)"
+                      >
+                        {{ text('viewShort')
+                        }}<app-icon
+                          name="chevron-down"
+                          class="size-4"
+                          [class.rotate-180]="saved.selectedId() === request.id"
+                        />
+                      </button>
+                      <div class="search-action grid min-w-0 justify-items-end gap-1.5">
+                        @if (searchQuery(request); as query) {
+                          <a
+                            appButton
+                            size="compact"
+                            class="max-w-full"
+                            data-inquiry-search
+                            [attr.aria-label]="text('find')"
+                            [routerLink]="language.link('search')"
+                            [queryParams]="query"
+                            >{{ text('findShort') }}<app-icon name="arrow" class="size-4"
+                          /></a>
+                        } @else {
+                          <button
+                            type="button"
+                            appButton="outline"
+                            size="compact"
+                            disabled
+                            class="max-w-full"
+                            data-inquiry-search-disabled
+                            [attr.aria-label]="text('find')"
+                            [attr.aria-describedby]="
+                              !request.active ? 'search-help-' + request.id : null
+                            "
+                          >
+                            {{ text('findShort') }}<app-icon name="arrow" class="size-4" />
+                          </button>
+                          @if (!request.active) {
+                            <p
+                              class="max-w-[220px] text-right text-xs leading-normal text-[#526483]"
+                              [id]="'search-help-' + request.id"
+                              data-inquiry-search-help
+                            >
+                              {{ text('activateToSearch') }}
+                            </p>
+                          }
+                        }
                       </div>
-                      @if (request.active) {
-                        <button
-                          type="button"
-                          class="text-action"
-                          [disabled]="saved.writeState() === 'saving'"
-                          (click)="deactivate(request, $event)"
-                          data-deactivate-inquiry
-                        >
-                          <app-icon name="pause" class="size-4" />{{ text('deactivate') }}
-                        </button>
-                      }
-                      @if (searchQuery(request); as query) {
-                        <a
-                          appButton
-                          size="compact"
-                          data-inquiry-search
-                          [attr.aria-label]="text('find')"
-                          [routerLink]="language.link('search')"
-                          [queryParams]="query"
-                          >{{ text('findShort') }}<app-icon name="arrow" class="size-4"
-                        /></a>
-                      } @else {
-                        <button
-                          type="button"
-                          appButton="outline"
-                          size="compact"
-                          [disabled]="saved.writeState() === 'saving'"
-                          (click)="deactivate(request, $event)"
-                          data-reactivate-inquiry
-                        >
-                          {{ text('reactivate') }}<app-icon name="check" class="size-4" />
-                        </button>
-                      }
                     </div>
                     @if (saved.selectedId() === request.id) {
                       <section

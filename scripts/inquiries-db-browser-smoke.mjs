@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import pg from 'pg';
+import { checkInquiryActions } from './inquiries-actions-browser-checks.mjs';
 import { freePort, startBrowser, until } from './inquiries-test-browser.mjs';
 import { startTestOidc } from './inquiries-test-oidc.mjs';
 
@@ -150,6 +151,7 @@ try {
   assert.equal(third.status, 201);
   await reload();
   // Actual edit dialog -> PUT -> PostgreSQL -> reload. No response interception.
+  await click(card(id) + ' [data-inquiry-menu]');
   await click(card(id) + ' [data-edit-inquiry]');
   await until(
     () => evaluate(`!!document.querySelector('[data-inquiry-editor][open]')`),
@@ -190,7 +192,8 @@ try {
           window.lifecycleRemoved = true;
     });
     window.lifecycleObserver.observe(document.querySelector('[data-inquiries-list]'), {childList: true, subtree: true});`);
-  await click(card(second.data.id) + ' [data-deactivate-inquiry]');
+  await click(card(second.data.id) + ' [data-inquiry-menu]');
+  await click(card(second.data.id) + ' [data-toggle-inquiry]');
   await ready(3);
   assert.equal(
     await evaluate(
@@ -212,7 +215,8 @@ try {
   await ready(2);
   await click('[data-inquiry-filter="inactive"]');
   await ready(1);
-  await click(card(second.data.id) + ' [data-reactivate-inquiry]');
+  await click(card(second.data.id) + ' [data-inquiry-menu]');
+  await click(card(second.data.id) + ' [data-toggle-inquiry]');
   await ready(0);
   assert.equal((await dbRow(second.data.id)).active, true);
   await until(
@@ -221,7 +225,8 @@ try {
   );
   await click('[data-inquiry-filter="active"]');
   await ready(3);
-  await click(card(second.data.id) + ' [data-deactivate-inquiry]');
+  await click(card(second.data.id) + ' [data-inquiry-menu]');
+  await click(card(second.data.id) + ' [data-toggle-inquiry]');
   await ready(2);
   assert.equal((await dbRow(second.data.id)).active, false);
   await click('[data-inquiry-filter="inactive"]');
@@ -251,23 +256,19 @@ try {
         { overflow: false, clipped: false, small: false },
         `${locale}/${width} layout`,
       );
-      await evaluate(
-        `document.querySelector(${JSON.stringify(card(id) + ' [data-inquiry-menu]')}).focus()`,
+      await checkInquiryActions(browser, {
+        locale,
+        width,
+        activeId: id,
+        inactiveId: second.data.id,
+        output,
+      });
+      await click(card(id) + ' [data-inquiry-menu]');
+      await until(
+        () => evaluate("document.activeElement?.matches('[data-edit-inquiry]')"),
+        'edit menu focus',
       );
       await browser.key('Enter', 13);
-      await until(
-        () => evaluate(`!!document.querySelector('[data-toggle-inquiry]')`),
-        'keyboard actions',
-      );
-      await browser.key('Escape', 27);
-      assert.ok(
-        await evaluate(
-          `document.activeElement.matches('[data-inquiry-menu]:focus-visible') && parseFloat(getComputedStyle(document.activeElement).outlineWidth)>=2`,
-        ),
-      );
-      await evaluate('window.scrollTo(0,0)');
-      await browser.screenshot(`${output}/${locale}-${width}.png`, width);
-      await click(card(id) + ' [data-edit-inquiry]');
       await until(
         () => evaluate(`!!document.querySelector('[data-inquiry-editor][open]')`),
         'localized edit',
@@ -288,6 +289,10 @@ try {
         () => evaluate(`!document.querySelector('[data-inquiry-editor]')`),
         'escape clean editor',
       );
+      await until(
+        () => evaluate("document.activeElement?.matches('[data-inquiry-menu]')"),
+        'editor returns focus to menu trigger',
+      );
       const search = new URL(
         await evaluate(
           `document.querySelector(${JSON.stringify(card(id) + ' [data-inquiry-search]')}).href`,
@@ -303,6 +308,7 @@ try {
   await browser.navigate('/inquiries', hasCards);
   await ready(3);
   // Concurrent client change: UI keeps the unsaved edit, shows a conflict, never overwrites.
+  await click(card(id) + ' [data-inquiry-menu]');
   await click(card(id) + ' [data-edit-inquiry]');
   await until(
     () => evaluate(`!!document.querySelector('[data-inquiry-editor][open]')`),
@@ -327,7 +333,8 @@ try {
   );
   await click('[data-discard-edit]');
   await reload();
-  await click(card(id) + ' [data-reactivate-inquiry]');
+  await click(card(id) + ' [data-inquiry-menu]');
+  await click(card(id) + ' [data-toggle-inquiry]');
   await ready(3);
   assert.equal((await dbRow(id)).active, true);
   await reload();

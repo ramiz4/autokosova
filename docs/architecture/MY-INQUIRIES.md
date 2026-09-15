@@ -124,10 +124,21 @@ Die tatsächlichen Ergebnisse je Commit und nicht ausgeführte Prüfungen stehen
 
 ## Bedienung seit #107
 
-Der Standardfilter ist Alle; weitere Filter heissen Aktiv und Inaktiv. Deaktivieren
-ist direkt auf aktiven Karten erreichbar, Aktivieren auf inaktiven Karten.
+Der Standardfilter ist Alle; weitere Filter heissen Aktiv und Inaktiv. Seit #114 bündelt ein dauerhaft sichtbarer Drei-Punkte-Button die Verwaltungsaktionen
+Bearbeiten, Deaktivieren/Aktivieren und – durch eine Trennlinie abgesetzt – Anfrage löschen.
+Der Footer enthält nur Details links und Werkstätten finden rechts. Bei inaktiven Anfragen
+ist die Suche deaktiviert; ein lokalisierter Hinweis verweist zum Aktivieren ins Menü.
 Detailansicht und Editor zeigen den gespeicherten Status ebenfalls als Text.
 Der Löschdialog identifiziert die Anfrage mit Fahrzeug, Problemvorschau und Datum,
 nennt Deaktivieren als Alternative und verwendet die eindeutige Aktion Anfrage löschen.
 Der Browsernachweis prüft zusätzlich den DOM-Erhalt während eines Statuswechsels,
 das Entfernen aus dem aktuellen Filter und die anschliessende Tastaturfokusführung.
+
+Das Aktionsmenü verwendet den [WAI-ARIA-Menübutton-Ablauf](https://www.w3.org/WAI/ARIA/apg/patterns/menu-button/):
+Enter/Leertaste oder Pfeil abwärts öffnen mit Fokus auf dem ersten Eintrag, Pfeil aufwärts
+auf dem letzten. Pfeile, Home/End, Escape und Tab/Shift+Tab sind unterstützt. Nach Dialogen
+und Statuswechseln kehrt der Fokus zum dauerhaft vorhandenen Menübutton zurück; beim
+Entfernen aus der Ansicht zum Listentitel. Aussenklick und Fokus ausserhalb schliessen das Menü.
+Der DB-Browsernachweis prüft die drei Sprachen und vier Breiten zusätzlich mit echten
+Chrome-Tasten-/Zeigerereignissen, Standardzustand ohne Hover/Fokus, Symbolkontrast,
+Zwei-Aktionen-Footer und geöffneten aktiven/inaktiven Menüs.

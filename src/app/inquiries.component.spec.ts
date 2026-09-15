@@ -254,6 +254,8 @@ afterEach(() => {
 it('edits the stored detail, keeps private attachments and the separate creation draft, and only confirms an API success', async () => {
   supportTestDialog();
   const { page, fixture, service } = await render();
+  page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
+  await fixture.whenStable();
   page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
   await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
   await fixture.whenStable();
@@ -286,6 +288,8 @@ it('edits the stored detail, keeps private attachments and the separate creation
 it('validates local dates and guards unsaved edits on Escape and navigation', async () => {
   supportTestDialog();
   const { page, fixture, service } = await render();
+  page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
+  await fixture.whenStable();
   page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
   await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
   await fixture.whenStable();
@@ -344,6 +348,8 @@ it('requires confirmation before deletion, supports cancellation and discards th
 it('does not save an unchanged or reverted inquiry and cancels without a discard prompt', async () => {
   supportTestDialog();
   const { page, fixture, service } = await render();
+  page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
+  await fixture.whenStable();
   page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
   await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
   await fixture.whenStable();
@@ -372,6 +378,8 @@ it('does not save an unchanged or reverted inquiry and cancels without a discard
 it('preserves the editor and unsaved text across real session revalidation', async () => {
   supportTestDialog();
   const { page, fixture, service } = await render();
+  page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
+  await fixture.whenStable();
   page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
   await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
   await fixture.whenStable();
@@ -397,12 +405,14 @@ it.each(['de', 'sq', 'en'] as const)(
     const calls = vi
       .mocked(fetch)
       .mock.calls.filter(([url]) => String(url).includes('?limit')).length;
-    for (const [active, revision, selector] of [
-      [false, 2, '[data-deactivate-inquiry]'],
-      [true, 3, '[data-reactivate-inquiry]'],
+    for (const [active, revision] of [
+      [false, 2],
+      [true, 3],
     ] as const) {
       detailResponse = () => json({ ...detail, active, revision });
-      page.querySelector<HTMLButtonElement>(selector)!.click();
+      page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
+      await fixture.whenStable();
+      page.querySelector<HTMLButtonElement>('[data-toggle-inquiry]')!.click();
       await vi.waitFor(() => expect(service.requests()[0].revision).toBe(revision));
       await fixture.whenStable();
       expect(page.querySelector('[data-inquiry-card]')).toBe(originalCard);
@@ -449,3 +459,186 @@ it.each(['de', 'sq', 'en'] as const)(
     );
   },
 );
+
+it.each(['de', 'sq', 'en'] as const)(
+  'groups management in a named menu and keeps a two-action footer in %s',
+  async (locale) => {
+    listResponse = () =>
+      json({
+        ...pageData,
+        requests: [
+          pageData.requests[0],
+          {
+            ...pageData.requests[0],
+            id: 'inactive-fixture',
+            active: false,
+          },
+        ],
+      });
+    const { page, fixture } = await render(routePath(locale, 'inquiries'));
+    const copy = inquiriesCopy[locale];
+    const cards = page.querySelectorAll<HTMLElement>('[data-inquiry-card]');
+    for (const [index, card] of Array.from(cards).entries()) {
+      const footer = card.querySelector('.card-footer')!;
+      expect(footer.querySelectorAll('button, a')).toHaveLength(2);
+      expect(
+        footer.querySelector('[data-edit-inquiry], [data-toggle-inquiry], [data-delete-inquiry]'),
+      ).toBeNull();
+      expect(footer.querySelector('[data-inquiry-view]')?.textContent?.trim()).toBe(copy.viewShort);
+      if (index === 1) {
+        const search = footer.querySelector<HTMLButtonElement>('[data-inquiry-search-disabled]')!;
+        expect(search.disabled).toBe(true);
+        expect(search.textContent?.trim()).toBe(copy.findShort);
+        expect(footer.querySelector('[data-inquiry-search]')).toBeNull();
+        const help = footer.querySelector('[data-inquiry-search-help]')!;
+        expect(help.textContent?.trim()).toBe(copy.activateToSearch);
+        expect(search.getAttribute('aria-describedby')).toBe(help.id);
+      }
+      const trigger = card.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!;
+      expect(trigger.getAttribute('aria-haspopup')).toBe('menu');
+      expect(trigger.getAttribute('aria-label')).toContain(copy.actions);
+      expect(trigger.querySelector('svg')?.getAttribute('stroke-width')).toBe('4');
+      trigger.click();
+      await fixture.whenStable();
+      const menu = card.querySelector('[role="menu"]')!;
+      expect(menu.getAttribute('aria-labelledby')).toBe(trigger.id);
+      expect(trigger.getAttribute('aria-controls')).toBe(menu.id);
+      expect(trigger.getAttribute('aria-expanded')).toBe('true');
+      const items = menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+      expect(Array.from(items, (item) => item.textContent?.trim())).toEqual([
+        copy.edit,
+        index === 0 ? copy.deactivate : copy.reactivate,
+        copy.deleteConfirm,
+      ]);
+      expect(menu.querySelector('[role="separator"]')?.nextElementSibling).toBe(items[2]);
+      expect(document.activeElement).toBe(items[0]);
+      trigger.click();
+      await fixture.whenStable();
+      expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    }
+  },
+);
+
+it('navigates the action menu with arrows, Home and End and restores focus on Escape', async () => {
+  const { page, fixture } = await render();
+  const trigger = page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!;
+  trigger.click();
+  await fixture.whenStable();
+  const items = page.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+  for (const [key, index] of [
+    ['ArrowDown', 1],
+    ['End', 2],
+    ['ArrowDown', 0],
+    ['ArrowUp', 2],
+    ['Home', 0],
+  ] as const) {
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
+    );
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(items[index]);
+  }
+  document.activeElement!.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+  );
+  await fixture.whenStable();
+  expect(page.querySelector('[role="menu"]')).toBeNull();
+  expect(document.activeElement).toBe(trigger);
+  for (const [key, selector] of [
+    ['ArrowUp', '[data-delete-inquiry]'],
+    ['ArrowDown', '[data-edit-inquiry]'],
+  ] as const) {
+    trigger.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(page.querySelector(selector));
+  }
+});
+
+it('opens only one card menu and dismisses on outside pointer or focus without writing', async () => {
+  listResponse = () =>
+    json({
+      ...pageData,
+      requests: [pageData.requests[0], { ...pageData.requests[0], id: 'second-fixture' }],
+    });
+  const { page, fixture, service } = await render();
+  const mutate = vi.spyOn(service, 'mutate');
+  const triggers = page.querySelectorAll<HTMLButtonElement>('[data-inquiry-menu]');
+  for (const trigger of triggers) {
+    trigger.click();
+    await fixture.whenStable();
+    expect(page.querySelectorAll('[role="menu"]')).toHaveLength(1);
+    expect(page.querySelector('[role="menu"]')?.getAttribute('aria-labelledby')).toBe(trigger.id);
+  }
+  page.querySelector('h1')!.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+  await fixture.whenStable();
+  expect(page.querySelector('[role="menu"]')).toBeNull();
+  expect(document.activeElement).toBe(triggers[1]);
+  triggers[0].click();
+  await fixture.whenStable();
+  const filter = page.querySelector<HTMLButtonElement>('[data-inquiry-filter="all"]')!;
+  filter.focus();
+  await fixture.whenStable();
+  expect(page.querySelector('[role="menu"]')).toBeNull();
+  expect(document.activeElement).toBe(filter);
+  expect(mutate).not.toHaveBeenCalled();
+});
+
+it('blocks management and details while a write is pending', async () => {
+  const { page, fixture, service } = await render();
+  const mutate = vi.spyOn(service, 'mutate');
+  const trigger = page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!;
+  trigger.click();
+  await fixture.whenStable();
+  service.writeState.set('saving');
+  await fixture.whenStable();
+  for (const button of page.querySelectorAll<HTMLButtonElement>(
+    '[role="menuitem"], [data-inquiry-menu], [data-inquiry-view]',
+  )) {
+    expect(button.disabled).toBe(true);
+    button.click();
+  }
+  await fixture.whenStable();
+  expect(mutate).not.toHaveBeenCalled();
+  expect(page.querySelector('[data-inquiry-editor], [data-delete-dialog]')).toBeNull();
+});
+
+it('returns from the editor and delete cancellation to the persistent menu trigger', async () => {
+  supportTestDialog();
+  const { page, fixture, service } = await render();
+  const trigger = page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!;
+  trigger.click();
+  await fixture.whenStable();
+  page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
+  await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
+  await fixture.whenStable();
+  page
+    .querySelector('[data-inquiry-editor]')!
+    .dispatchEvent(new Event('cancel', { cancelable: true }));
+  await fixture.whenStable();
+  expect(page.querySelector('[data-inquiry-editor]')).toBeNull();
+  expect(document.activeElement).toBe(trigger);
+  trigger.click();
+  await fixture.whenStable();
+  page.querySelector<HTMLButtonElement>('[data-delete-inquiry]')!.click();
+  await fixture.whenStable();
+  page.querySelector<HTMLButtonElement>('[data-cancel-delete]')!.click();
+  await fixture.whenStable();
+  expect(document.activeElement).toBe(trigger);
+});
+
+it('keeps the card and restores menu focus after a failed status change', async () => {
+  const { page, fixture, service } = await render();
+  const card = page.querySelector('[data-inquiry-card]');
+  const trigger = page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!;
+  trigger.click();
+  await fixture.whenStable();
+  detailResponse = () => json({}, 503);
+  page.querySelector<HTMLButtonElement>('[data-toggle-inquiry]')!.click();
+  await vi.waitFor(() => expect(service.writeState()).not.toBe('saving'));
+  await fixture.whenStable();
+  expect(page.querySelector('[data-inquiry-card]')).toBe(card);
+  expect(service.requests()[0].active).toBe(true);
+  expect(page.querySelector('[role="menu"]')).toBeNull();
+  expect(page.querySelector('[role="alert"]')).not.toBeNull();
+  expect(document.activeElement).toBe(trigger);
+});
