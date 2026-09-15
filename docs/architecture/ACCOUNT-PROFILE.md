@@ -54,7 +54,16 @@ nicht in der Sitemap. Seitentitel und Beschreibungen bleiben allgemein. Es gibt 
 Analytics-Ereignisse, öffentlichen Kontodaten, Kontaktaktionen oder Log-Ausgaben mit Profilen.
 
 Der Dienst unterscheidet Laden, Gast, Fehler und bestätigtes Konto. Er hält Identität nur im
-Speicher, entfernt sie vor Neuladen/Abmeldung und verwirft verspätete Antworten. Ablauf,
+Speicher. Bei erneuter Prüfung einer bestätigten Sitzung bleiben Identität und Darstellung
+bis zur Antwort erhalten; auch der Gastzustand bleibt stabil. Das Öffnen des Kontomenüs
+validiert die Sitzung weiterhin, ohne Navbar oder Kontoinhalte vorübergehend zu entfernen.
+Initiales Laden und Wiederholung nach einem Fehler verwenden die neutrale Ladeansicht.
+
+Der bestehende Ablauf-Timer bleibt während der Prüfung aktiv und wird erst nach einer
+erfolgreichen Antwort ersetzt. Eine bereits abgelaufene Identität wird auch bei verzögertem
+Browser-Timer nicht übernommen. 401 entfernt private Daten bereits vor dem Lesen optionaler
+Login-Metadaten; Netzwerkfehler, ungültige Antworten, Abmeldung und Invalidierung entfernen
+sie ebenfalls. Verspätete Antworten dürfen keine vorherige Identität wiederherstellen. Ablauf,
 Seitenverlassen und Wiederherstellung aus Browser-History werden berücksichtigt. Fokus und
 Sichtbarkeitswechsel validieren die Sitzung neu. Andere Tabs erhalten bei Abmeldung nur ein
 Invalidierungssignal, keine Kontodaten. Fehlgeschlagene Abmeldung wird nicht als Erfolg
@@ -79,6 +88,8 @@ Profilpfade. Profil-Rücksprünge akzeptieren keine beliebigen Query-Parameter o
 - `node scripts/account-browser-smoke.mjs` nach `npm run build`: Chrome mit ausdrücklich fiktiven,
   ausschließlich im Testtreiber abgefangenen API-Antworten. DE/SQ/EN bei 360/390/430/1280/1448 px,
   Tastatur/Fokus, Touch-Ziele, Überläufe, Neuladen, Sprachwechsel, Kontowechsel und Fehlerszenarien.
+  Zweimaliges Menüöffnen je Sprache/Viewport hält die Antwort gezielt zurück und prüft während
+  jedes Animationsframes DOM-Identität, Inhalte und Geometrie von Navbar und Kontomenü.
   Der CI-Check `Account browser` behält Screenshots sieben Tage als Artefakt.
 
 ## Echte lokale Test-OIDC-Abnahme – noch offen
