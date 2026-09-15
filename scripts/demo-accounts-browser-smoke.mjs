@@ -74,6 +74,28 @@ try {
     });
     await writeFile(`${output}/${name}-${width}.png`, Buffer.from(image.data, 'base64'));
   }
+  // General sign-in follows the server-owned account type, preserving all supported locales.
+  for (const locale of ['de', 'sq', 'en']) {
+    const prefix = locale === 'de' ? '' : '/' + locale;
+    for (const [subject, path, selector] of [
+      [garageSubject, '/garages/new', '[data-owned-garage]'],
+      [customerSubject, '/inquiries', '[data-inquiry-card]'],
+    ]) {
+      provider.setSubject(subject);
+      await command('Page.navigate', {
+        url: browser.origin + '/auth/login?locale=' + locale,
+      });
+      await until(
+        () =>
+          evaluate(
+            `location.pathname === ${JSON.stringify(prefix + path)} && document.querySelectorAll(${JSON.stringify(selector)}).length === 2`,
+          ),
+        'localized general OIDC landing',
+      );
+    }
+  }
+  // An explicit customer workflow remains usable by an operator, without a role switch.
+  await login(garageSubject, '/sq/inquiries', '[data-inquiries-empty]', 1);
   await login(garageSubject, '/garages/new', '[data-owned-garage]', 2);
   await click('button[aria-controls="account-menu"]');
   await until(
@@ -199,7 +221,7 @@ try {
   );
   assert.deepEqual(browser.errors, []);
   console.log(
-    'PASS: signed OIDC garage/customer switching, assigned records, private navigation, garage and seeded inquiry edit/delete/reseed, new form and desktop/mobile layout.',
+    'PASS: localized general login, explicit target precedence, signed OIDC garage/customer switching, assigned records, private navigation, garage and seeded inquiry edit/delete/reseed, new form and desktop/mobile layout.',
   );
 } finally {
   await browser?.close();

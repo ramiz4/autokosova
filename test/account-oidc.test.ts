@@ -87,8 +87,11 @@ test('signed OIDC callback exposes only own profile, replaces roles and invalida
     },
   });
   let previous = '';
-  async function login(returnTo = '/sq/profile') {
-    const start = await app.inject({ url: '/auth/login?returnTo=' + encodeURIComponent(returnTo) });
+  async function login(returnTo: string | null = '/sq/profile', locale?: string) {
+    const query = new URLSearchParams();
+    if (returnTo !== null) query.set('returnTo', returnTo);
+    if (locale !== undefined) query.set('locale', locale);
+    const start = await app.inject({ url: '/auth/login?' + query });
     const authorization = new URL(start.headers.location!);
     challenge = authorization.searchParams.get('code_challenge')!;
     nonce = authorization.searchParams.get('nonce')!;
@@ -152,12 +155,43 @@ test('signed OIDC callback exposes only own profile, replaces roles and invalida
     assert.deepEqual(reduced.roles, ['customer']);
     assert.equal(reduced.displayName, undefined);
     assert.equal(reduced.email, undefined);
+    // General login uses only server-side account purpose, never the token's role labels.
+    for (const locale of ['de', 'sq', 'en']) {
+      const prefix = locale === 'de' ? '' : '/' + locale;
+      for (const member of [false, true]) {
+        subject = member ? 'fixture-member' : 'fixture-customer';
+        roles = member ? {} : { garage: { fixture: 'example.invalid' } };
+        const general = await login(null, locale);
+        assert.equal(general.statusCode, 302);
+        assert.equal(general.headers.location, `/auth/landing?locale=${locale}`);
+        previous = general.cookies.map((item) => `${item.name}=${item.value}`).join('; ');
+        const landing = await app.inject({
+          url: general.headers.location!,
+          headers: { cookie: previous },
+        });
+        assert.equal(landing.statusCode, 302);
+        assert.equal(landing.headers.location, prefix + (member ? '/garages/new' : '/inquiries'));
+        assert.equal(landing.headers['cache-control'], 'private, no-store');
+        assert.equal(landing.cookies.length, 0);
+      }
+      // A garage operator explicitly starting a request must return to the request, not the garage.
+      for (const path of ['/inquiry', '/inquiries', '/favorites', '/profile', '/garages/new']) {
+        const explicit = await login(prefix + path, locale);
+        assert.equal(explicit.headers.location, prefix + path);
+        previous = explicit.cookies.map((item) => `${item.name}=${item.value}`).join('; ');
+      }
+    }
+    const missingLocale = await login(null);
+    assert.equal(missingLocale.headers.location, '/auth/landing?locale=de');
     invalidToken = true;
     const rejected = await login();
     assert.equal(rejected.statusCode, 401);
     assert.equal(rejected.cookies.length, 0);
     for (const returnTo of [
       '//evil.invalid',
+      '/auth/landing?locale=en',
+      '/auth/login',
+      'https://evil.invalid',
       '/profile?userId=someone',
       '/sq/profile#secret',
       '/profile/../../admin',

@@ -29,11 +29,12 @@ describe('Header account actions', () => {
       const page = fixture.nativeElement as HTMLElement;
       const links = Array.from(page.querySelectorAll<HTMLAnchorElement>('a[href^="/auth/login"]'));
       expect(links).toHaveLength(4);
-      const returnTo = locale ? '/' + locale + '/inquiry' : '/inquiry';
+      const expectedLocale = locale || 'de';
       for (const [index, link] of links.entries()) {
         const url = new URL(link.href);
         expect(url.pathname).toBe('/auth/login');
-        expect(url.searchParams.get('returnTo')).toBe(returnTo);
+        expect(url.searchParams.get('returnTo')).toBeNull();
+        expect(url.searchParams.get('locale')).toBe(expectedLocale);
         expect(url.searchParams.get('prompt')).toBe(index % 2 ? 'create' : null);
       }
       expect(page.querySelector('[aria-live]')).toBeNull();
@@ -221,3 +222,31 @@ it('keeps a garage operator in the business menu even after deleting the last ga
   expect(menu.querySelector('[data-account-inquiries]')).toBeNull();
   expect(menu.querySelector('[data-account-favorites]')).toBeNull();
 });
+
+it.each(['', 'sq', 'en'])(
+  'keeps explicit login destinations for /%s ahead of general landing',
+  async (locale) => {
+    await TestBed.configureTestingModule({
+      imports: [SiteHeaderComponent],
+      providers: [provideRouter([{ path: locale, component: SiteHeaderComponent }])],
+    }).compileComponents();
+    await TestBed.inject(Router).navigateByUrl('/' + locale);
+    const fixture = TestBed.createComponent(SiteHeaderComponent);
+    const prefix = locale ? '/' + locale : '';
+    for (const path of ['/inquiry', '/inquiries', '/favorites', '/profile', '/garages/new']) {
+      fixture.componentRef.setInput('loginReturnTo', prefix + path);
+      await fixture.whenStable();
+      await vi.waitFor(() => expect(TestBed.inject(AccountSessionService).state()).toBe('guest'));
+      await fixture.whenStable();
+      const links = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLAnchorElement>(
+        'a[href^="/auth/login"]',
+      );
+      expect(links).toHaveLength(4);
+      for (const link of links) {
+        const url = new URL(link.href);
+        expect(url.searchParams.get('returnTo')).toBe(prefix + path);
+        expect(url.searchParams.has('locale')).toBe(false);
+      }
+    }
+  },
+);

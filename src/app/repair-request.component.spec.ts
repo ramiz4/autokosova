@@ -1,3 +1,4 @@
+import { SiteHeaderComponent } from './site-header.component';
 import { By } from '@angular/platform-browser';
 import { SearchAreasComponent } from './ui/search-areas.component';
 import { TestBed } from '@angular/core/testing';
@@ -311,3 +312,13 @@ it('explains date errors separately from optional location errors', async () => 
   component['next']();
   expect(component['step']).toBe(4);
 });
+
+it.each(['', 'sq', 'en'])(
+  'preserves the started request as the header login target for /%s',
+  async (locale) => {
+    const { fixture } = await setup(undefined, locale);
+    const header = fixture.debugElement.query(By.directive(SiteHeaderComponent))
+      .componentInstance as SiteHeaderComponent;
+    expect(header.loginReturnTo()).toBe(`/${locale ? locale + '/' : ''}inquiry`);
+  },
+);

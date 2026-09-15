@@ -586,7 +586,8 @@ export function createServer(options: ServerOptions = {}) {
       return reply.code(503).send({ error: 'OIDC is not configured' });
     }
     const transaction = createPkceTransaction();
-    const query = request.query as { returnTo?: string; prompt?: string };
+    const query = request.query as { returnTo?: unknown; prompt?: unknown; locale?: unknown };
+    const locale = query.locale === 'sq' || query.locale === 'en' ? query.locale : 'de';
     const prompt =
       query.prompt === 'create'
         ? 'create'
@@ -607,7 +608,9 @@ export function createServer(options: ServerOptions = {}) {
     accessStore.createOidcTransaction(
       transaction.state,
       transaction.codeVerifier,
-      safeReturnTo(query.returnTo),
+      query.returnTo === undefined
+        ? `/auth/landing?locale=${locale}`
+        : safeReturnTo(query.returnTo),
       {
         browserId,
         nonce: transaction.nonce,
@@ -675,6 +678,30 @@ export function createServer(options: ServerOptions = {}) {
       accessStore.finishOidcTransaction(query.state, transaction);
       return reply.code(401).send({ error: 'OIDC authentication failed' });
     }
+  });
+
+  // Resolve the general login destination only after the existing OIDC callback has completed.
+  // Explicit returnTo paths never visit this endpoint; account lookup cannot race session creation.
+  app.get('/auth/landing', async (request, reply) => {
+    const { locale } = request.query as { locale?: unknown };
+    const prefix = locale === 'sq' || locale === 'en' ? `/${locale}` : '';
+    let destination = `${prefix}/profile`;
+    const principal = accessStore.getPrincipal(request.cookies['autokosova_session']);
+    if (principal) {
+      try {
+        const type = await garageStore.getAccountType(principal);
+        // Logout or expiry during the store read must not produce an account-specific redirect.
+        const current = accessStore.getPrincipal(principal.sessionId);
+        if (current?.userId === principal.userId) {
+          if (type === 'garage') destination = `${prefix}/garages/new`;
+          else if (type === 'customer') destination = `${prefix}/inquiries`;
+        }
+      } catch {
+        // The existing profile page handles unavailable account data without another login loop.
+        // Never log account/store errors or turn failed lookup into a guessed customer type.
+      }
+    }
+    return reply.redirect(destination);
   });
 
   app.get('/api/session', async (request, reply) => {

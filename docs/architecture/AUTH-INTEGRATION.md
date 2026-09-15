@@ -42,6 +42,28 @@ von Git ignorierte `.env.local` bereitgestellt; weder Node noch der Starter frag
 und werden nicht als App-Konfiguration hinterlegt. Keine Tokens, Passwörter oder
 vollständigen DB-Verbindungsadressen in Terminalausgaben, Issues oder PRs ausgeben.
 
+## Einstieg nach der Anmeldung (#87)
+
+Allgemeine Header-Anmeldungen geben nur `locale=de|sq|en` an, nicht mehr pauschal
+`returnTo=/inquiry`. Ohne explizites Rücksprungziel speichert die bestehende
+OIDC-Transaktion einen festen internen Zielpfad `/auth/landing?locale=...`.
+Der vorhandene Callback mit PKCE, State, Nonce und Logout-Abbruchprüfung bleibt unverändert.
+
+`/auth/landing` ist nur eine serverseitige Weiterleitung, keine zusätzliche Seite.
+Nach erfolgreichem Callback liest sie den Kontotyp über die authentifizierte Sitzung:
+Privatkunden zu `/inquiries`, Betreiber zu `/garages/new`, jeweils mit `/sq` oder `/en`
+bei entsprechender Sprache. Die Sitzung wird nach der asynchronen Kontoabfrage erneut
+geprüft. Ohne gültige Sitzung oder bei fehlgeschlagener Kontoauflösung geht es zur
+bestehenden lokalisierten `/profile`-Seite; keine geratenen Rollen und keine Login-Schleife.
+
+Ein ausdrücklich angegebenes, erlaubtes `returnTo` hat unverändert Vorrang und
+überspringt diese Kontoabfrage. Der Anfrageassistent setzt sein Ziel nun ausdrücklich,
+wie bereits Anfragenliste, Favoriten, Profil und Werkstattaufnahme. Ein Betreiber kann
+so weiterhin seine eigene private Anfrage fortsetzen. Ungültige Rücksprünge fallen wie
+bisher auf `/` zurück; externe URLs, beliebige Auth-Endpunkte und private Querydaten
+werden nicht zugelassen. Die Sprache ist ausschließlich eine erlaubte Anzeigepräferenz,
+keine Quelle für Rechte. Auth-Antworten bleiben `private, no-store` und `noindex`.
+
 ## Testrollen ohne lokalen Bypass
 
 Alle verifizierten ZITADEL-Subjekte erhalten in AutoKosova mindestens die Rolle `customer`. Die
