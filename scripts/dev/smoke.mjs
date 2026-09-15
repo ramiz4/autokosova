@@ -47,6 +47,9 @@ async function start(root, profile = 'demo', viaNpm = false) {
   const child = startProcess(command, args, {
     cwd: root,
     env,
+    // The starter first waits for its own Angular process group (up to 3 seconds),
+    // then releases the worktree lock. Its parent must not kill it at the same deadline.
+    shutdownTimeout: 10000,
   });
   running.add(child);
   const end = Date.now() + 180000;

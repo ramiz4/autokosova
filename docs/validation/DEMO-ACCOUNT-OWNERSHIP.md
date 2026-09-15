@@ -116,6 +116,27 @@ API-/Browserprüfungen bleiben davon getrennt.
 Die tatsächliche Datenzuordnung ist abgeschlossen. Für die vollständige Abnahme
 müssen beide Konten noch manuell angemeldet und ihre eigenen Verwaltungsabläufe
 bestätigt werden. Der Entwicklungsstand läuft dafür im isolierten Worktree unter
-Port 4200. Ein Merge, produktives Deployment und Änderungen an der Provider-
-Konfiguration wurden nicht vorgenommen. Der PR bleibt für diese offene Abnahme
-als Entwurf gekennzeichnet.
+Port 4200. Die Merge-Freigabe wurde am 15.09.2026 vom Nutzer ausdrücklich erteilt. Der Merge
+erfolgt erst nach erfolgreicher CI und Prüfung. Die manuelle Provider-/Login-Abnahme
+bleibt davon getrennt in #81 offen; sie wird durch den Merge nicht als erledigt
+markiert. Es gab kein produktives Deployment und keine Provider-Konfigurationsänderung.
+
+## Abschließende CI-Prüfung und Shutdown-Korrektur
+
+Im CI-Lauf für `bc708a5` bestanden sieben von acht Checks nach einer einmaligen
+Wiederholung des Browser-Fixture-Jobs. Dieser meldete im ersten Lauf nach den
+bestandenen DE/SQ/EN-Ansichten einen Fehler beim Erfüllen einer abgefangenen
+Testantwort (`Fixture response failed`); der unveränderte Wiederholungslauf bestand.
+Es wurden keine Assertions abgeschwächt oder Tests entfernt.
+
+Der echte Zwei-Worktree-Entwicklungsstart zeigte außerdem eine zurückbleibende
+Startsperre beim Stoppen. Der äußere Testprozess und der innere Starter hatten
+beide dieselbe 3-Sekunden-Abbruchfrist: Der äußere Prozess konnte den Starter
+beenden, bevor dieser nach dem Stoppen von Angular seine Sperre entfernt hatte.
+Die Smoke-Runner räumen dem Starter nun ein begrenztes 10-Sekunden-Fenster ein;
+die innere Angular-Frist bleibt 3 Sekunden. Die Prüfungen auf verschwundene Sperren,
+beendete eigene Prozesse und erhaltene DB-Daten bleiben unverändert.
+
+Ein Regressionstest mit einer absichtlich über 3 Sekunden dauernden Bereinigung
+bestätigte das vollständige Aufräumen. Alle 10 Entwicklungsruntime-Tests bestanden
+lokal. Der vollständige CI-Lauf des abschließenden Commits ist separat maßgeblich.

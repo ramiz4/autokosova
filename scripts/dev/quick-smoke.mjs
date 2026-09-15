@@ -61,7 +61,11 @@ try {
   await symlink(join(source, 'node_modules'), join(root, 'node_modules'));
   await writeFile(join(root, '.env.local'), `AUTOKOSOVA_APP_PORT=${await freePort()}\n`);
 
-  app = startProcess('npm', ['run', 'dev:demo'], { cwd: root, env });
+  app = startProcess('npm', ['run', 'dev:demo'], {
+    cwd: root,
+    env,
+    shutdownTimeout: 10000,
+  });
   const deadline = Date.now() + 90000;
   while (!app.output.includes('Bereit:') && !app.finished && Date.now() < deadline)
     await delay(100);

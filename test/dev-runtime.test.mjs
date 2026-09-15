@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import test from 'node:test';
 import { assertContainer, assertFreePort, inspectDocker } from '../scripts/dev/docker.mjs';
@@ -226,4 +229,41 @@ test('development diagnostics redact locally configured demo subjects', () => {
   );
   log('fictional-garage-subject fictional-customer-subject\n');
   assert.equal(output, '[redacted] [redacted]\n');
+});
+
+test('an outer shutdown deadline allows nested process cleanup to finish', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'autokosova-stop-deadline-'));
+  const marker = join(directory, 'cleanup-completed');
+  const child = startProcess(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      `
+    import { writeFileSync } from 'node:fs';
+    let stopping = false;
+    process.on('SIGTERM', () => {
+      if (stopping) return;
+      stopping = true;
+      setTimeout(() => {
+        writeFileSync(${JSON.stringify(marker)}, 'clean');
+        process.exit(0);
+      }, 3200);
+    });
+    setInterval(() => {}, 1000);
+    console.log('ready');
+  `,
+    ],
+    { shutdownTimeout: 10000 },
+  );
+  t.after(async () => {
+    await child.stop();
+    await rm(directory, { recursive: true, force: true });
+  });
+  const deadline = Date.now() + 5000;
+  while (!child.output.includes('ready') && Date.now() < deadline) await delay(25);
+  assert.ok(child.output.includes('ready'));
+  await child.stop();
+  assert.equal(await child.done, 0);
+  assert.equal(await readFile(marker, 'utf8'), 'clean');
 });

@@ -27,7 +27,11 @@ export function safeLogger(environment, write = (line) => process.stdout.write(l
 
 // One process group per command: npm/ng descendants must not survive Ctrl+C.
 // Only groups created by this instance are signalled; Docker DBs stay intact.
-export function startProcess(command, args, { cwd, env, log = () => {} } = {}) {
+export function startProcess(
+  command,
+  args,
+  { cwd, env, log = () => {}, shutdownTimeout = 3000 } = {},
+) {
   const child = spawn(command, args, {
     cwd,
     env,
@@ -62,14 +66,14 @@ export function startProcess(command, args, { cwd, env, log = () => {} } = {}) {
   }
   async function stop() {
     signal('SIGTERM');
-    await Promise.race([done, delay(3000, undefined, { ref: false })]);
+    await Promise.race([done, delay(shutdownTimeout, undefined, { ref: false })]);
     // Also kill remaining grandchildren after the group leader has exited.
     signal('SIGKILL');
     await done;
   }
   async function interrupt() {
     signal('SIGINT');
-    await Promise.race([done, delay(3000, undefined, { ref: false })]);
+    await Promise.race([done, delay(shutdownTimeout, undefined, { ref: false })]);
     if (!finished) await stop();
   }
   return {
