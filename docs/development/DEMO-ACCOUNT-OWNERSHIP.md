@@ -121,3 +121,17 @@ Regression: `garage-overview.component.spec.ts`, bestehende Navigations-/CRUD-Te
 und `scripts/demo-accounts-browser-smoke.mjs` (signierter synthetischer OIDC-Provider,
 eigene PostgreSQL-Fixtures, DE/SQ/EN, 390/1280 px). Der echte Testkonto-Login bleibt
 als gesonderter Nachweis in #81/#92 offen.
+
+## Vereinfachtes Konto (#89)
+
+Das Kontomenü enthält keine funktionslose Benachrichtigungsglocke mehr und zeigt
+als Kennzeichnung den Kontozweck. Name, E-Mail, Kontotyp und die vorhandenen
+Verwaltungs-/Sprachaktionen bleiben unmittelbar erreichbar. Technische Konto-ID,
+Benutzername und tatsächliche Systemrollen/Mitgliedschaften stehen unter dem
+standardmäßig geschlossenen nativen Abschnitt „Weitere Kontodetails“. Kontozweck
+und tatsächliche Systemrollen werden dort nicht miteinander verwechselt.
+Privatkunden ohne Werkstatt-Membership sehen keine leere Werkstattsektion.
+
+Die Darstellung ändert keine Berechtigungen oder Providerdaten. Der Browsernachweis
+prüft das native Auf-/Zuklappen per Tastatur, Sprachen, Mobil/Desktop und weiterhin
+Ablauf, Kontowechsel sowie Entfernung privater Daten aus der Oberfläche nach Logout.

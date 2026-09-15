@@ -31,12 +31,10 @@ export class SiteHeaderComponent {
   >();
   protected readonly account = inject(AccountSessionService);
   protected readonly accountType = accountType;
-  protected readonly accountPanel = signal<'account' | 'notifications' | null>(null);
+  protected readonly accountPanel = signal<'account' | null>(null);
   protected readonly logoutError = signal(false);
   private readonly router = inject(Router);
   private readonly accountButton = viewChild<ElementRef<HTMLButtonElement>>('accountButton');
-  private readonly notificationButton =
-    viewChild<ElementRef<HTMLButtonElement>>('notificationButton');
   protected readonly language = inject(LanguageService);
   private readonly element = inject(ElementRef<HTMLElement>);
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
@@ -47,7 +45,7 @@ export class SiteHeaderComponent {
       void this.account.refresh();
     });
   }
-  protected togglePanel(panel: 'account' | 'notifications'): void {
+  protected togglePanel(panel: 'account'): void {
     this.menuOpen.set(false);
     this.accountPanel.set(this.accountPanel() === panel ? null : panel);
     if (this.accountPanel() === 'account') void this.account.refresh();
@@ -70,12 +68,7 @@ export class SiteHeaderComponent {
     this.menuOpen.set(false);
     this.accountPanel.set(null);
     if (restoreFocus)
-      (panel === 'account'
-        ? this.accountButton()
-        : panel === 'notifications'
-          ? this.notificationButton()
-          : this.menuButton()
-      )?.nativeElement.focus();
+      (panel === 'account' ? this.accountButton() : this.menuButton())?.nativeElement.focus();
   }
 
   protected dismissOutside(event: PointerEvent): void {
