@@ -64,16 +64,58 @@ auf der unveränderten Hauptarbeitskopie bei `252b92d` ausgeführt und scheitert
 Die Installations-Schutzrichtlinie wurde in diesem Branch weder entfernt noch gelockert.
 Das ist kein vollständig grüner `test:dev`-Lauf und keine bestätigte CI-Ausführung.
 
-## Noch nicht bestätigt
+## Nachtrag: tatsächliche Konto-Zuordnung am 15.09.2026
 
-Die bestehenden ZITADEL-Konten `ak-test-garage-20260913@example.test` und
-`ak-test-customer-20260913@example.test` wurden **nicht** als tatsächlich verbunden
-oder erfolgreich angemeldet bestätigt. Das Lesen des freigegebenen 1Password-Eintrags
-scheiterte an einer Autorisierungs-Zeitüberschreitung; in der bestehenden lokalen
-Projektkonfiguration waren keine Demo-Subject-Schlüssel vorhanden. Es wurden weder
-Subjects geraten noch E-Mail-basierte Rechte oder ein Login-Bypass eingebaut.
+Die vom Nutzer freigegebenen 1Password-Einträge für die zwei fiktiven Testkonten
+wurden gelesen. Die dort dokumentierten Subjects wurden ausschließlich in der
+ignorierten, zugriffsbeschränkten `.env.local` des isolierten Worktrees konfiguriert.
+Passwörter und Freigabelinks wurden nicht in Dateien, Git oder Prüfprotokolle übernommen.
+Die bestehende Hauptarbeitskopie und ihre Datenbank bleiben unverändert.
 
-Nach Freigabe des Secret-Store-Zugriffs bleiben die tatsächlichen Subjects lokal zu
-konfigurieren und der abschließende Login-Test mit beiden bestehenden Konten auszuführen.
-Ein Merge, ein produktives Deployment und eine Änderung der Provider-Konfiguration
-wurden nicht vorgenommen. Der PR bleibt bis zur offenen Kontoverknüpfung ein Entwurf.
+Der normale `dev:demo-workflows`-Seed hat die tatsächlichen Konten gebunden.
+Die lokale Datenbankprüfung bestätigt die Übereinstimmung von Subject und
+konfiguriertem Issuer sowie folgende getrennte Zuordnung:
+
+| Konto | Aktive eigene Werkstätten | Eigene Anfragen |
+|---|---:|---:|
+| `ak-test-garage-20260913@example.test` | 2, jeweils Owner | 0 |
+| `ak-test-customer-20260913@example.test` | 0 | 2 |
+
+Die zugewiesenen IDs entsprechen der Einrichtungsanleitung. Ein erneuter Seed
+bewahrte die zugewiesenen Werkstatt- und Anfragezeilen unverändert; die Besitzanzahlen
+blieben ebenfalls stabil. Es wurde kein Reset ausgeführt.
+
+### Behobener Fehler im tatsächlichen Entwicklungsstart
+
+Die bisherige Bereitschaftsprüfung verlangte `demo-prishtina-bremsen` in einer
+5-km-Suche. Die Konto-Zuordnung ergänzt eine Demo-Adresse; der bestehende DB-Trigger
+setzt dabei korrekt die Standortbestätigung zurück. Das Profil erscheint danach
+nicht als bestätigter Radius-Treffer. Trotz erfolgreicher HTTP-/DB-Antworten brach
+der Starter deshalb nach seinem Timeout ab. Eine spätere legitime Bearbeitung oder
+Löschung dieser eigenen Werkstatt hätte denselben Fehler verursacht.
+
+Die Prüfung verwendet nun `demo-prishtina-bremsen-offen`, die keinem interaktiven
+Demokonto zugewiesen wird. Datenbankzugriff, konkrete Demo-Fixture und App-Instanz
+werden weiterhin geprüft. Ein Regressionstest sichert die Unabhängigkeit vom
+bearbeitbaren Demo-Set ab; ein weiterer schützt die neuen lokalen Subject-Variablen
+vor Ausgabe in Entwicklungsdiagnosen. Alle 9 Tests in `test/dev-runtime.test.mjs`
+wurden erfolgreich ausgeführt. Der korrigierte normale Starter meldete anschließend
+`Bereit` auf `http://localhost:4200/`; die tatsächliche Suchantwort enthielt die neue
+Prüf-Fixture.
+
+### Weiterhin offene echte Login-Abnahme
+
+Der Browser erreichte über den regulären `/auth/login`-Ablauf die echte
+ZITADEL-Anmeldemaske. Der Anmeldename des Garage-Kontos wurde akzeptiert und führte
+zur Passwortmaske. Die automatisierte Passworteingabe wurde jedoch vom Werkzeug
+blockiert und nicht über einen anderen Ausführungspfad umgangen. Daher ist weder
+eine erfolgreiche authentifizierte Sitzung noch ein echter CRUD-Durchlauf mit
+einem der zwei bestehenden Konten behauptet. Die oben dokumentierten synthetischen
+API-/Browserprüfungen bleiben davon getrennt.
+
+Die tatsächliche Datenzuordnung ist abgeschlossen. Für die vollständige Abnahme
+müssen beide Konten noch manuell angemeldet und ihre eigenen Verwaltungsabläufe
+bestätigt werden. Der Entwicklungsstand läuft dafür im isolierten Worktree unter
+Port 4200. Ein Merge, produktives Deployment und Änderungen an der Provider-
+Konfiguration wurden nicht vorgenommen. Der PR bleibt für diese offene Abnahme
+als Entwurf gekennzeichnet.

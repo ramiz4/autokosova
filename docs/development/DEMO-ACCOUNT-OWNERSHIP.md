@@ -66,6 +66,12 @@ erhalten. Auch ein tatsächlicher Löschvorgang einer Anfrage hinterlässt nur e
 lokalen Provenienzmarker, sodass kein späterer Seed die Anfrage wiederherstellt.
 Andere, nicht zugewiesene öffentliche Demo-Fixtures behalten ihr bisheriges Seedverhalten.
 
+Die Bereitschaftsprüfung des Starters verwendet deshalb die nicht zugewiesene
+`demo-prishtina-bremsen-offen`. Änderungen der Adresse oder Löschungen einer eigenen
+Demo-Werkstatt dürfen den Entwicklungsstart nicht von deren Suchsichtbarkeit abhängig
+machen. Die Prüfung verlangt weiterhin eine erfolgreiche DB-gestützte Suchantwort
+und die richtige lokale App-Instanz; ein bloßes HTTP 200 reicht nicht.
+
 Ein expliziter geschützter lokaler Reset kann die Fixtures neu aufbauen; er ist kein
 Teil des normalen Starts und darf nicht zum vermeintlichen Beheben von Authfehlern
 verwendet werden. Eine separate Worktree-Datenbank ist der sichere Weg für andere Testsubjects.
@@ -97,5 +103,6 @@ Es prüft beide CRUD-Abläufe, transaktionalen Konfliktabbruch, Identitätsbindu
 Die vorhandenen Anfrage-Revisionstests bleiben unverändert fachlich maßgeblich.
 
 Diese synthetischen Tests ersetzen nicht den Login mit den zwei bestehenden
-ZITADEL-Testkonten. Solange deren Subjects nicht aus dem Secret-Store verfügbar sind,
-ist die tatsächliche Zuordnung dieser beiden Konten ausdrücklich noch offen.
+ZITADEL-Testkonten. Der Stand der tatsächlichen lokalen Zuordnung und der noch
+offenen manuellen Login-Abnahme steht in
+[`docs/validation/DEMO-ACCOUNT-OWNERSHIP.md`](../validation/DEMO-ACCOUNT-OWNERSHIP.md).

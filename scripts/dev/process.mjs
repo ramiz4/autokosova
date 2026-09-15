@@ -1,11 +1,15 @@
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 
+// This fixture is not assigned to an interactive account. Owned profiles may legitimately
+// leave radius search after address edits or deletion; that must not break app startup.
+export const DEMO_READINESS_GARAGE_ID = 'demo-prishtina-bremsen-offen';
+
 export function safeLogger(environment, write = (line) => process.stdout.write(line)) {
   const privateValues = Object.entries(environment)
     .filter(
       ([key, value]) =>
-        value && /SECRET|TOKEN|PASSWORD|DATABASE_URL|ZITADEL|PRIVATE_KEY/i.test(key),
+        value && /SECRET|TOKEN|PASSWORD|DATABASE_URL|ZITADEL|PRIVATE_KEY|_SUBJECT/i.test(key),
     )
     .map(([, value]) => value)
     .sort((a, b) => b.length - a.length);
@@ -128,7 +132,7 @@ export async function waitForApplication(
         (!instance || response.headers.get('x-autokosova-dev-instance') === instance) &&
         Array.isArray(body.results) &&
         (profile === 'reference' ||
-          body.results.some((item) => item.id === 'demo-prishtina-bremsen'))
+          body.results.some((item) => item.id === DEMO_READINESS_GARAGE_ID))
       )
         return;
     } catch {
