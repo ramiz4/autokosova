@@ -150,3 +150,24 @@ erraten: Die Oberfläche erklärt die bestätigte Änderung und den noch unbekan
 aktuellen Status. Weitere Einreichung bleibt bis zum Neuladen gesperrt. Tests prüfen
 auch einen unerwarteten, aber bestätigten Serverstatus sowie fehlgeschlagene Mutationen
 und fehlgeschlagenes Nachladen. Neue Datenbankwerte oder Freigabeschritte entstehen nicht.
+
+## Speichern, Abbrechen und Fehler (#91)
+
+Werkstatt- und Anfrageeditor bieten „Änderungen speichern“ und „Abbrechen“.
+Unveränderte und auf ihre Ausgangswerte zurückgesetzte Formulare lösen keinen Save
+und keine unnötige Verwerfen-Abfrage aus. Die Aktionsleiste bleibt im normalen
+Dokumentfluss; die Werkstattlöschung steht getrennt darunter. Bestehende Warnungen
+bei Navigation, laufenden Aktionen und ungespeicherten Änderungen bleiben erhalten.
+
+Ein HTTP 401 bedeutet eine fehlende/abgelaufene Sitzung. Ein 403 mit dem expliziten
+Servercode `csrf_invalid` bezeichnet die fehlgeschlagene CSRF-Prüfung; ein sonstiger
+403 wird als fehlende Berechtigung angezeigt und nicht als allgemeiner Loginfehler.
+Die serverseitigen Prüfungen selbst werden nicht gelockert. Anfrage-Mutationen
+melden Konflikt, fehlenden Datensatz, Berechtigung, CSRF und sonstige Fehler zentral
+in den bestehenden Editor-/Lösch-/Übersichtsansichten. Gescheiterte Mutationen erzeugen
+keine Erfolgsmeldung. Werkstattkonflikte bei Bearbeitung/Einreichen werden nicht mehr
+als Neuanlage-Dublette bezeichnet.
+
+Fehler erscheinen als zugängliche Alerts; bestätigte Aktionen als Statusmeldungen.
+Kein Autosave, neues Formularframework, neuer Browserstorage oder zusätzlicher
+Berechtigungsmechanismus. Echte Testkonto-Abnahme bleibt in #81/#92 separat.

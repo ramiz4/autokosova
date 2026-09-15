@@ -89,6 +89,7 @@ export class GarageOnboardingComponent {
   protected sending = false;
   protected loading = false;
   protected message = '';
+  protected messageRole: 'status' | 'alert' = 'status';
   protected needsLogin = false;
   protected errors: Record<string, string> = {};
   protected garageId?: string;
@@ -148,6 +149,38 @@ export class GarageOnboardingComponent {
   }
   protected get unchanged(): boolean {
     return JSON.stringify(this.form) === this.savedSnapshot;
+  }
+  protected get saveDisabled(): boolean {
+    return (
+      this.sending ||
+      this.loading ||
+      this.publicationState === 'suspended' ||
+      (!!this.garageId && (this.unchanged || !this.statusKnown))
+    );
+  }
+  protected cancelEditing(): void {
+    if (this.managing) this.backToOverview();
+    else this.reset();
+  }
+  private async rejectResponse(
+    response: Response,
+    fallback = this.copy.error,
+    creating = false,
+  ): Promise<boolean> {
+    if (response.ok) return false;
+    this.messageRole = 'alert';
+    this.needsLogin = response.status === 401;
+    if (response.status === 401) this.message = this.copy.signIn;
+    else if (response.status === 403) {
+      const body = (await response.json().catch(() => null)) as { code?: unknown } | null;
+      this.needsLogin = body?.code === 'csrf_invalid';
+      this.message = this.needsLogin ? this.management.csrfError : this.management.forbidden;
+    } else if (response.status === 409) {
+      this.message = creating ? this.copy.duplicate : this.management.writeConflict;
+    } else if (response.status === 404) this.message = this.management.missing;
+    else if (response.status === 422 || response.status === 400) this.message = this.copy.invalid;
+    else this.message = fallback;
+    return true;
   }
   private get hasUnsavedChanges(): boolean {
     return !this.unchanged || (!this.garageId && this.consentAccepted);
@@ -213,10 +246,14 @@ export class GarageOnboardingComponent {
     this.ownedLoading = true;
     try {
       const response = await fetch('/api/me/garages', { cache: 'no-store' });
-      if (!response.ok) throw new Error();
+      if (await this.rejectResponse(response, this.copy.loadError)) {
+        this.ownedLoadFailed = true;
+        return;
+      }
       this.owned = ((await response.json()) as { garages: OwnedGarage[] }).garages;
     } catch {
       this.ownedLoadFailed = true;
+      this.messageRole = 'alert';
       this.message = this.copy.loadError;
     } finally {
       this.ownedLoading = false;
@@ -247,6 +284,7 @@ export class GarageOnboardingComponent {
     if (!this.garageId && !this.consentAccepted) errors['consent'] = this.copy.required;
     this.errors = errors;
     if (Object.keys(errors).length) {
+      this.messageRole = 'alert';
       this.message = this.copy.invalid;
       this.cdr.detectChanges();
       this.formElement()
@@ -269,13 +307,14 @@ export class GarageOnboardingComponent {
     };
   }
   protected async submit(): Promise<void> {
-    if (this.sending || this.loading || !this.validate()) return;
+    if (this.saveDisabled || !this.validate()) return;
     const csrf = document.cookie
       .split('; ')
       .find((cookie) => cookie.startsWith('autokosova_csrf='))
       ?.split('=')[1];
     if (!csrf) {
       this.needsLogin = true;
+      this.messageRole = 'alert';
       this.message = this.copy.signIn;
       return;
     }
@@ -294,17 +333,9 @@ export class GarageOnboardingComponent {
           ),
         },
       );
-      if (response.status === 401 || response.status === 403) {
-        this.needsLogin = true;
-        this.message = this.copy.signIn;
-        return;
-      }
-      if (response.status === 409) {
-        this.message = this.copy.duplicate;
-        await this.loadOwned();
-        return;
-      }
-      if (!response.ok) throw new Error();
+      if (await this.rejectResponse(response, this.copy.error, !this.garageId)) return;
+      this.needsLogin = false;
+      this.messageRole = 'status';
       if (!this.garageId) {
         this.garageId = ((await response.json()) as { id: string }).id;
         this.canDelete = true;
@@ -320,6 +351,7 @@ export class GarageOnboardingComponent {
           ? this.copy.publicSaved
           : this.copy.saved;
     } catch {
+      this.messageRole = 'alert';
       this.message = this.copy.error;
     } finally {
       this.sending = false;
@@ -332,7 +364,8 @@ export class GarageOnboardingComponent {
     this.message = '';
     try {
       const response = await fetch('/api/garages/' + encodeURIComponent(id), { cache: 'no-store' });
-      if (!response.ok) throw new Error();
+      if (await this.rejectResponse(response, this.copy.loadError)) return;
+      this.needsLogin = false;
       const garage = (await response.json()) as PrivateGarage;
       this.form = { ...garage.profile, address: garage.profile.address ?? blankForm().address };
       this.garageId = garage.id;
@@ -347,6 +380,7 @@ export class GarageOnboardingComponent {
       this.editing = true;
       this.focusTitle();
     } catch {
+      this.messageRole = 'alert';
       this.message = this.copy.loadError;
     } finally {
       this.loading = false;
@@ -368,6 +402,7 @@ export class GarageOnboardingComponent {
     this.publicationState = 'draft';
     this.statusKnown = true;
     this.message = '';
+    this.messageRole = 'status';
     this.errors = {};
     this.savedSnapshot = JSON.stringify(this.form);
   }
@@ -380,6 +415,7 @@ export class GarageOnboardingComponent {
       ?.split('=')[1];
     if (!csrf) {
       this.needsLogin = true;
+      this.messageRole = 'alert';
       this.message = this.copy.signIn;
       return;
     }
@@ -391,12 +427,9 @@ export class GarageOnboardingComponent {
         credentials: 'same-origin',
         headers: { 'x-csrf-token': csrf },
       });
-      if (response.status === 401 || response.status === 403) {
-        this.needsLogin = true;
-        this.message = this.copy.signIn;
-        return;
-      }
-      if (!response.ok) throw new Error();
+      if (await this.rejectResponse(response)) return;
+      this.needsLogin = false;
+      this.messageRole = 'status';
       this.clearForm();
       this.editing = false;
       this.message = this.management.deleted;
@@ -404,6 +437,7 @@ export class GarageOnboardingComponent {
       await this.account.refresh();
       this.focusTitle();
     } catch {
+      this.messageRole = 'alert';
       this.message = this.copy.error;
     } finally {
       this.sending = false;
@@ -432,16 +466,14 @@ export class GarageOnboardingComponent {
         '/api/garages/' + encodeURIComponent(this.garageId) + '/submit-for-review',
         { method: 'POST', headers: { 'x-csrf-token': csrf } },
       );
-      if (response.status === 401 || response.status === 403) {
-        this.needsLogin = true;
-        this.message = this.copy.signIn;
-        return;
-      }
-      if (!response.ok) throw new Error();
+      if (await this.rejectResponse(response)) return;
+      this.needsLogin = false;
+      this.messageRole = 'status';
       this.needsLogin = false;
       await this.refreshStatus();
       this.message = this.statusKnown ? this.copy.submitted : this.management.statusUnavailable;
     } catch {
+      this.messageRole = 'alert';
       this.message = this.copy.error;
     } finally {
       this.sending = false;

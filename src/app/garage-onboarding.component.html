@@ -93,7 +93,7 @@
           @if (ownedLoading || !ownedLoaded) {
             <p role="status" data-garages-loading>{{ management.loading }}</p>
           } @else if (ownedLoadFailed) {
-            <p role="alert">{{ copy.loadError }}</p>
+            <p role="alert">{{ message || copy.loadError }}</p>
             <button
               data-garages-retry
               type="button"
@@ -151,7 +151,9 @@
         </button>
       }
       @if (message && !showForm && !ownedLoadFailed) {
-        <p class="mt-4 rounded-xl bg-blue-50 p-4 text-sm" role="status">{{ message }}</p>
+        <p class="mt-4 rounded-xl bg-blue-50 p-4 text-sm" [attr.role]="messageRole">
+          {{ message }}
+        </p>
       }
       @if (showForm) {
         <form #formElement class="mt-6 space-y-6" (ngSubmit)="submit()" novalidate>
@@ -378,7 +380,6 @@
           }
           @if (needsLogin) {
             <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm">
-              <p>{{ copy.signIn }}</p>
               <div class="mt-2 flex flex-wrap gap-3">
                 <a
                   [href]="loginUrl"
@@ -397,32 +398,43 @@
             </div>
           }
           @if (message) {
-            <p class="rounded-xl bg-blue-50 p-4 text-sm leading-relaxed" role="status">
+            <p
+              class="rounded-xl p-4 text-sm leading-relaxed"
+              [class.bg-blue-50]="messageRole === 'status'"
+              [class.bg-rose-50]="messageRole === 'alert'"
+              [attr.role]="messageRole"
+            >
               {{ message }}
             </p>
           }
-          <button
-            type="submit"
-            class="flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white shadow-md shadow-blue-600/20 transition hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-50"
-            [disabled]="sending || loading || publicationState === 'suspended'"
+          <div
+            data-garage-actions
+            class="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-5"
           >
-            <app-icon name="pencil" class="size-4" />{{
-              sending ? copy.saving : garageId ? copy.update : copy.save
-            }}<app-icon name="arrow" class="size-5" />
-          </button>
+            <button
+              data-cancel-garage
+              type="button"
+              class="min-h-12 rounded-lg border border-blue-200 px-5 text-sm font-semibold text-brand disabled:opacity-50"
+              [disabled]="sending || loading"
+              (click)="cancelEditing()"
+            >
+              {{ management.cancel }}
+            </button>
+            <div class="min-w-0 flex-1">
+              <button
+                data-save-garage
+                type="submit"
+                class="flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white shadow-md shadow-blue-600/20 transition hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-50"
+                [disabled]="saveDisabled"
+              >
+                <app-icon name="pencil" class="size-4" />{{
+                  sending ? copy.saving : garageId ? management.saveChanges : copy.save
+                }}<app-icon name="arrow" class="size-5" />
+              </button>
+            </div>
+          </div>
           @if (garageId) {
             <div class="flex flex-wrap gap-3 text-sm">
-              @if (canDelete) {
-                <button
-                  data-delete-garage
-                  type="button"
-                  class="min-h-11 rounded-lg border border-rose-300 px-3 text-rose-800 disabled:opacity-50"
-                  [disabled]="sending || loading"
-                  (click)="remove()"
-                >
-                  {{ management.remove }}
-                </button>
-              }
               <button
                 type="button"
                 class="min-h-11 rounded-lg border border-blue-200 px-3 text-brand"
@@ -441,6 +453,19 @@
                   {{ copy.submit }}
                 </button>
               }
+            </div>
+          }
+          @if (canDelete) {
+            <div data-garage-danger class="border-t border-rose-100 pt-4">
+              <button
+                data-delete-garage
+                type="button"
+                class="min-h-11 rounded-lg border border-rose-300 px-3 text-rose-800 disabled:opacity-50"
+                [disabled]="sending || loading"
+                (click)="remove()"
+              >
+                {{ management.remove }}
+              </button>
             </div>
           }
           @if (publicationState !== 'published') {

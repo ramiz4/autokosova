@@ -250,3 +250,94 @@ it('marks status unavailable after a confirmed write with failed readback, and d
     'pending_review',
   );
 });
+
+it.each(['de', 'sq', 'en'] as const)(
+  'disables an unchanged save, enables real edits and separates danger actions in %s',
+  async (locale) => {
+    const { fixture, component, page } = await setup();
+    vi.spyOn(TestBed.inject(LanguageService), 'language', 'get').mockReturnValue(locale);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: 'owned',
+            profile,
+            canDelete: true,
+            publicationState: 'published',
+            verification: { location: 'not_checked' },
+          }),
+        ),
+      ),
+    );
+    await component['open']('owned');
+    fixture.detectChanges();
+    const save = page.querySelector<HTMLButtonElement>('[data-save-garage]')!;
+    expect(save.disabled).toBe(true);
+    expect(page.querySelector('[data-garage-actions] [data-delete-garage]')).toBeNull();
+    expect(page.querySelector('[data-garage-danger] [data-delete-garage]')).not.toBeNull();
+    expect(page.querySelector('[data-cancel-garage]')?.textContent).toContain(
+      component['management'].cancel,
+    );
+    const calls = vi.mocked(fetch).mock.calls.length;
+    await component['submit']();
+    expect(vi.mocked(fetch).mock.calls.length).toBe(calls);
+    await fixture.whenStable();
+    const name = page.querySelector<HTMLInputElement>('#garage-name')!;
+    name.value = 'Neue Angabe';
+    name.dispatchEvent(new Event('input', { bubbles: true }));
+    await fixture.whenStable();
+    expect(save.disabled).toBe(false);
+    name.value = profile.name;
+    name.dispatchEvent(new Event('input', { bubbles: true }));
+    await fixture.whenStable();
+    expect(save.disabled).toBe(true);
+    const confirm = vi.spyOn(window, 'confirm');
+    component['cancelEditing']();
+    fixture.detectChanges();
+    expect(confirm).not.toHaveBeenCalled();
+    expect(page.querySelector('form')).toBeNull();
+  },
+);
+
+it.each([
+  { status: 401, body: {}, key: 'signIn', login: true },
+  { status: 403, body: {}, key: 'forbidden', login: false },
+  { status: 403, body: { code: 'csrf_invalid' }, key: 'csrfError', login: true },
+  { status: 409, body: {}, key: 'writeConflict', login: false },
+  { status: 503, body: {}, key: 'error', login: false },
+])(
+  'keeps edits and gives a distinct alert for failed garage save $status/$key',
+  async ({ status, body, key, login }) => {
+    const { fixture, component, page } = await setup();
+    component['garageId'] = 'owned';
+    component['canDelete'] = true;
+    component['editing'] = true;
+    component['form'] = structuredClone(profile);
+    component['savedSnapshot'] = JSON.stringify(component['form']);
+    component['form'].name = 'Ungespeichert';
+    document.cookie = 'autokosova_csrf=fixture-token; path=/';
+    try {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status })),
+      );
+      await component['submit']();
+      fixture.detectChanges();
+      expect(component['form'].name).toBe('Ungespeichert');
+      expect(component['unchanged']).toBe(false);
+      expect(component['needsLogin']).toBe(login);
+      expect(component['messageRole']).toBe('alert');
+      const expected =
+        key === 'signIn'
+          ? component['copy'].signIn
+          : key === 'error'
+            ? component['copy'].error
+            : component['management'][key as 'forbidden' | 'csrfError' | 'writeConflict'];
+      expect(component['message']).toBe(expected);
+      expect(page.querySelector('form [role="alert"]')?.textContent).toContain(expected);
+    } finally {
+      document.cookie = 'autokosova_csrf=; Max-Age=0; path=/';
+    }
+  },
+);

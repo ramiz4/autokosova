@@ -73,6 +73,7 @@ for (const backend of ['memory', 'postgres'] as const) {
           headers: { cookie: headers(owner).cookie, 'if-match': '"1"' },
         });
         assert.equal(missingCsrf.statusCode, 403);
+        assert.equal(missingCsrf.json().code, 'csrf_invalid');
         assert.equal(
           (await app.inject({ method: 'PUT', url, payload: changed, headers: headers(owner) }))
             .statusCode,

@@ -271,6 +271,7 @@ export class AccessError extends Error {
   constructor(
     readonly statusCode: number,
     message: string,
+    readonly code?: 'csrf_invalid',
   ) {
     super(message);
   }

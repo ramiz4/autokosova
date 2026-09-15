@@ -1,5 +1,15 @@
 import type { AppLanguage } from './i18n';
 const de = {
+  saveChanges: 'Änderungen speichern',
+  cancel: 'Abbrechen',
+  forbidden:
+    'Du hast keine Berechtigung für diese Änderung. Prüfe den ausgewählten Betrieb oder wende dich an den Support.',
+  csrfError:
+    'Die Sicherheitsprüfung ist fehlgeschlagen. Prüfe deine Anmeldung und versuche es erneut.',
+  writeConflict:
+    'Die Werkstatt kann in ihrem aktuellen Zustand nicht geändert werden. Lade das aktuelle Profil erneut.',
+  missing: 'Dieses Profil ist nicht mehr verfügbar. Aktualisiere die Übersicht.',
+
   draftHelp: 'Noch nicht öffentlich sichtbar.',
   pendingHelp: 'Zur Prüfung eingereicht. Noch nicht öffentlich sichtbar.',
   publishedHelp: 'In der öffentlichen Suche sichtbar.',
@@ -28,6 +38,15 @@ const de = {
 export const garageManagementCopy: Readonly<Record<AppLanguage, typeof de>> = {
   de,
   sq: {
+    saveChanges: 'Ruaj ndryshimet',
+    cancel: 'Anulo',
+    forbidden:
+      'Nuk ke leje për këtë ndryshim. Kontrollo servisin e zgjedhur ose kontakto mbështetjen.',
+    csrfError: 'Kontrolli i sigurisë dështoi. Kontrollo identifikimin dhe provo përsëri.',
+    writeConflict:
+      'Servisi nuk mund të ndryshohet në gjendjen aktuale. Ngarko përsëri profilin aktual.',
+    missing: 'Ky profil nuk është më i disponueshëm. Rifresko përmbledhjen.',
+
     draftHelp: 'Ende nuk është i dukshëm publikisht.',
     pendingHelp: 'U dërgua për shqyrtim. Ende nuk është i dukshëm publikisht.',
     publishedHelp: 'I dukshëm në kërkimin publik.',
@@ -54,6 +73,14 @@ export const garageManagementCopy: Readonly<Record<AppLanguage, typeof de>> = {
     deleted: 'Servisi u hoq nga kërkimi dhe administrimi yt.',
   },
   en: {
+    saveChanges: 'Save changes',
+    cancel: 'Cancel',
+    forbidden:
+      'You do not have permission to make this change. Check the selected garage or contact support.',
+    csrfError: 'The security check failed. Check your sign-in and try again.',
+    writeConflict: 'The garage cannot be changed in its current state. Reload the current profile.',
+    missing: 'This profile is no longer available. Refresh the overview.',
+
     draftHelp: 'Not publicly visible yet.',
     pendingHelp: 'Submitted for review. Not publicly visible yet.',
     publishedHelp: 'Visible in public search.',

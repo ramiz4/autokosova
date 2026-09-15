@@ -155,22 +155,8 @@
       @if (validation()) {
         <p role="alert" class="error" data-edit-validation>{{ validation() }}</p>
       }
-      @if (
-        saved.writeState() === 'conflict' ||
-        saved.writeState() === 'error' ||
-        saved.writeState() === 'missing'
-      ) {
-        <p role="alert" class="error">
-          {{
-            text(
-              saved.writeState() === 'conflict'
-                ? 'conflict'
-                : saved.writeState() === 'missing'
-                  ? 'missing'
-                  : 'writeError'
-            )
-          }}
-        </p>
+      @if (saved.writeErrorKey(); as errorKey) {
+        <p role="alert" class="error">{{ text(errorKey) }}</p>
       }
       @if (discarding()) {
         <section role="alert" class="discard-box" aria-labelledby="discard-title">
@@ -200,7 +186,7 @@
         type="submit"
         appButton
         size="compact"
-        [disabled]="saved.writeState() === 'saving' || areasEditing() || discarding()"
+        [disabled]="saved.writeState() === 'saving' || unchanged || areasEditing() || discarding()"
         data-save-inquiry
       >
         <app-icon name="check" class="size-4" />{{

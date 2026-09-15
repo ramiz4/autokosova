@@ -97,6 +97,15 @@ test('garage CRUD keeps account purpose, requires active ownership for deletion 
         .statusCode,
       403,
     );
+    const csrfDenied = await app.inject({
+      method: 'DELETE',
+      url,
+      headers: { cookie: headers('owner').cookie },
+    });
+    assert.equal(csrfDenied.json().code, 'csrf_invalid');
+    const permissionDenied = await app.inject({ method: 'DELETE', url, headers: headers('other') });
+    assert.equal(permissionDenied.statusCode, 403);
+    assert.equal(permissionDenied.json().code, undefined);
     for (const user of ['other', 'editor', 'admin'])
       assert.equal(
         (await app.inject({ method: 'DELETE', url, headers: headers(user) })).statusCode,

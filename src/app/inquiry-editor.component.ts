@@ -60,6 +60,10 @@ export class InquiryEditorComponent implements OnInit {
   private readonly areasEditor = viewChild(SearchAreasComponent);
   private readonly document = inject(DOCUMENT);
   private readonly fb = inject(FormBuilder).nonNullable;
+  private savedSnapshot = '';
+  protected get unchanged(): boolean {
+    return JSON.stringify(this.form.getRawValue()) === this.savedSnapshot;
+  }
   private leavePromise?: Promise<boolean>;
   private resolveLeave?: (leave: boolean) => void;
   protected readonly form = this.fb.group({
@@ -107,6 +111,7 @@ export class InquiryEditorComponent implements OnInit {
       areas: request.areas.map((area) => ({ ...area })),
       vehicle: request.vehicle ?? {},
     });
+    this.savedSnapshot = JSON.stringify(this.form.getRawValue());
     this.saved.writeState.set('idle');
   }
   protected text(key: InquiriesCopyKey): string {
@@ -121,12 +126,12 @@ export class InquiryEditorComponent implements OnInit {
   protected cancel(event?: Event): void {
     event?.preventDefault();
     if (this.saved.writeState() === 'saving') return;
-    if (this.form.dirty || this.areasEditing()) this.discarding.set(true);
+    if (!this.unchanged || this.areasEditing()) this.discarding.set(true);
     else this.closed.emit();
   }
   canLeave(): boolean | Promise<boolean> {
     if (this.saved.writeState() === 'saving') return false;
-    if (!this.form.dirty && !this.areasEditing()) return true;
+    if (this.unchanged && !this.areasEditing()) return true;
     this.discarding.set(true);
     return (this.leavePromise ??= new Promise((resolve) => {
       this.resolveLeave = resolve;
@@ -146,13 +151,13 @@ export class InquiryEditorComponent implements OnInit {
     this.leavePromise = undefined;
   }
   protected beforeUnload(event: BeforeUnloadEvent): void {
-    if (this.form.dirty || this.areasEditing()) {
+    if (!this.unchanged || this.areasEditing() || this.saved.writeState() === 'saving') {
       event.preventDefault();
       event.returnValue = '';
     }
   }
   protected async save(): Promise<void> {
-    if (this.saved.writeState() === 'saving') return;
+    if (this.saved.writeState() === 'saving' || this.unchanged || this.discarding()) return;
     this.form.markAllAsTouched();
     const raw = this.form.getRawValue();
     const vehicle = Object.fromEntries(

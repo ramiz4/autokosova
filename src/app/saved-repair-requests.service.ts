@@ -31,7 +31,15 @@ export class SavedRepairRequestsService {
   readonly cursorUnavailable = signal(false);
   readonly expired = signal(false);
   readonly activity = signal<'all' | 'active' | 'inactive'>('all');
-  readonly writeState = signal<'idle' | 'saving' | 'conflict' | 'error' | 'missing'>('idle');
+  readonly writeState = signal<
+    'idle' | 'saving' | 'conflict' | 'error' | 'missing' | 'forbidden' | 'csrf'
+  >('idle');
+  readonly writeErrorKey = computed(() => {
+    const state = this.writeState();
+    if (state === 'conflict' || state === 'missing' || state === 'forbidden') return state;
+    if (state === 'csrf') return 'csrfError' as const;
+    return state === 'error' ? ('writeError' as const) : null;
+  });
   readonly notice = signal<'updated' | 'deactivated' | 'reactivated' | 'deleted' | null>(null);
   private readonly document = inject(DOCUMENT);
   private writeController?: AbortController;
@@ -223,6 +231,12 @@ export class SavedRepairRequestsService {
       if (!this.current(identity, generation, controller)) return false;
       if (response.status === 401) {
         this.expire();
+        return false;
+      }
+      if (response.status === 403) {
+        const body = (await response.json().catch(() => ({}))) as { code?: unknown } | null;
+        if (this.current(identity, generation, controller))
+          this.writeState.set(body?.code === 'csrf_invalid' ? 'csrf' : 'forbidden');
         return false;
       }
       if (response.status === 409 || response.status === 404) {
