@@ -4,17 +4,22 @@ const de = {
   csrfError:
     'Die Sicherheitsprüfung ist fehlgeschlagen. Prüfe deine Anmeldung und versuche es erneut.',
   subtitle: 'Gespeicherte Anfragen ansehen, anpassen und wiederverwenden.',
-  all: 'Alle Anfragen',
+  all: 'Alle',
   active: 'Aktiv',
-  inactive: 'Deaktiviert',
+  inactive: 'Inaktiv',
   sort: 'Neueste zuerst',
   filterLabel: 'Anfragen filtern',
   actions: 'Weitere Aktionen',
   edit: 'Bearbeiten',
   deactivate: 'Deaktivieren',
-  reactivate: 'Reaktivieren',
+  reactivate: 'Aktivieren',
   delete: 'Löschen',
   deleteTitle: 'Anfrage endgültig löschen?',
+  deleteConfirm: 'Anfrage löschen',
+  deleting: 'Wird gelöscht …',
+  deactivateInstead:
+    'Du kannst die Anfrage stattdessen deaktivieren, um sie später weiterzuverwenden.',
+  statusLabel: 'Status',
   deleteBody:
     'Die Anfrage, ihre Suchorte und zugehörigen Fahrzeugangaben werden gelöscht. Das lässt sich nicht rückgängig machen.',
   fileRetention:
@@ -31,7 +36,7 @@ const de = {
   discard: 'Änderungen verwerfen',
   keepEditing: 'Weiter bearbeiten',
   conflict:
-    'Diese Anfrage wurde inzwischen geändert. Deine Eingaben wurden nicht gespeichert. Schließe den Editor und lade die aktuelle Version, bevor du es erneut versuchst.',
+    'Diese Anfrage wurde inzwischen geändert. Deine Eingaben wurden nicht gespeichert. Schließe die geöffnete Ansicht und lade die aktuelle Version, bevor du es erneut versuchst.',
   writeError:
     'Die Änderung wurde nicht bestätigt. Prüfe die Übersicht oder versuche es erneut. Nicht gespeicherte Eingaben bleiben im geöffneten Editor erhalten.',
   updated: 'Änderungen gespeichert.',
@@ -40,14 +45,14 @@ const de = {
   deleted: 'Anfrage gelöscht.',
   updatedOn: 'Geändert am',
   noMatches: 'Keine Anfragen in dieser Ansicht',
-  noMatchesHelp: 'Wechsle zu „Alle Anfragen“ oder erstelle eine neue Anfrage.',
+  noMatchesHelp: 'Wechsle zu „Alle“ oder erstelle eine neue Anfrage.',
   privacyTitle: 'Nur für dich gespeichert',
   privacyBody: 'Deine Anfragen sind privat. Es wird nichts automatisch an eine Werkstatt gesendet.',
   nextTitle: 'Du entscheidest, wie es weitergeht',
   nextBody:
     'Finde passende Werkstätten und wähle selbst, wen du kontaktierst. Eine gespeicherte Anfrage ist noch kein Auftrag.',
   statusHelp:
-    'Deaktivierte Anfragen bleiben erhalten. Du kannst sie jederzeit reaktivieren und für eine neue Suche verwenden.',
+    'Deaktivierte Anfragen bleiben erhalten. Du kannst sie jederzeit wieder aktivieren und für eine neue Suche verwenden.',
   validation: 'Bitte prüfe Leistung, Orte, Fahrzeugangaben und Datumsreihenfolge.',
   attachmentsKept:
     'Vorhandene Anhänge bleiben unverändert. Neue Dateien werden hier nicht hochgeladen.',
@@ -96,15 +101,20 @@ export const inquiriesCopy: Readonly<
     subtitle: 'Shiko, ndrysho dhe ripërdor kërkesat e ruajtura.',
     all: 'Të gjitha',
     active: 'Aktive',
-    inactive: 'Çaktivizuar',
+    inactive: 'Joaktive',
     sort: 'Më të rejat së pari',
     filterLabel: 'Filtro kërkesat',
     actions: 'Veprime të tjera',
     edit: 'Ndrysho',
     deactivate: 'Çaktivizo',
-    reactivate: 'Riaktivizo',
+    reactivate: 'Aktivizo',
     delete: 'Fshi',
     deleteTitle: 'Ta fshish përfundimisht kërkesën?',
+    deleteConfirm: 'Fshi kërkesën',
+    deleting: 'Duke fshirë …',
+    deactivateInstead:
+      'Në vend që ta fshish, mund ta çaktivizosh kërkesën për ta përdorur përsëri më vonë.',
+    statusLabel: 'Statusi',
     deleteBody:
       'Kërkesa, vendet e kërkimit dhe të dhënat përkatëse të automjetit do të fshihen. Ky veprim nuk mund të zhbëhet.',
     fileRetention:
@@ -120,7 +130,7 @@ export const inquiriesCopy: Readonly<
     discard: 'Hidhi poshtë',
     keepEditing: 'Vazhdo ndryshimin',
     conflict:
-      'Kjo kërkesë është ndryshuar ndërkohë. Ndryshimet e tua nuk u ruajtën. Mbyll redaktorin dhe ngarko versionin aktual para se të provosh përsëri.',
+      'Kjo kërkesë është ndryshuar ndërkohë. Ndryshimet e tua nuk u ruajtën. Mbyll pamjen e hapur dhe ngarko versionin aktual para se të provosh përsëri.',
     writeError:
       'Ndryshimi nuk u konfirmua. Kontrollo përmbledhjen ose provo përsëri. Të dhënat e paruajtura mbeten në redaktorin e hapur.',
     updated: 'Ndryshimet u ruajtën.',
@@ -179,15 +189,19 @@ export const inquiriesCopy: Readonly<
     subtitle: 'View, update and reuse your saved inquiries.',
     all: 'All inquiries',
     active: 'Active',
-    inactive: 'Deactivated',
+    inactive: 'Inactive',
     sort: 'Newest first',
     filterLabel: 'Filter inquiries',
     actions: 'More actions',
     edit: 'Edit',
     deactivate: 'Deactivate',
-    reactivate: 'Reactivate',
+    reactivate: 'Activate',
     delete: 'Delete',
     deleteTitle: 'Permanently delete this inquiry?',
+    deleteConfirm: 'Delete inquiry',
+    deleting: 'Deleting …',
+    deactivateInstead: 'You can deactivate the inquiry instead to reuse it later.',
+    statusLabel: 'Status',
     deleteBody:
       'The inquiry, its search locations and associated vehicle details will be deleted. This cannot be undone.',
     fileRetention:
@@ -203,7 +217,7 @@ export const inquiriesCopy: Readonly<
     discard: 'Discard changes',
     keepEditing: 'Keep editing',
     conflict:
-      'This inquiry has changed since you opened it. Your changes were not saved. Close the editor and load the current version before trying again.',
+      'This inquiry has changed since you opened it. Your changes were not saved. Close the open view and load the current version before trying again.',
     writeError:
       'The change was not confirmed. Check the overview or try again. Unsaved input remains in the open editor.',
     updated: 'Changes saved.',

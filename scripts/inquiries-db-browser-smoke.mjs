@@ -181,10 +181,25 @@ try {
       `document.querySelector(${JSON.stringify(card(id))}).textContent.includes('Octavia Combi')`,
     ),
   );
-  // Deactivation persists and is a private organizational flag, not a message/order status.
-  await click(card(second.data.id) + ' [data-inquiry-menu]');
-  await click(card(second.data.id) + ' [data-toggle-inquiry]');
+  // Observe the rendered synthetic fixtures without intercepting application responses.
+  await evaluate(`window.lifecycleCards = [...document.querySelectorAll('[data-inquiry-card]')];
+    window.lifecycleRemoved = false;
+    window.lifecycleObserver = new MutationObserver(records => {
+      for (const record of records) for (const node of record.removedNodes)
+        if (node.nodeType === 1 && (node.matches('[data-inquiry-card]') || node.querySelector('[data-inquiry-card]')))
+          window.lifecycleRemoved = true;
+    });
+    window.lifecycleObserver.observe(document.querySelector('[data-inquiries-list]'), {childList: true, subtree: true});`);
+  await click(card(second.data.id) + ' [data-deactivate-inquiry]');
   await ready(3);
+  assert.equal(
+    await evaluate(
+      `window.lifecycleCards.every(card => card.isConnected) && !window.lifecycleRemoved`,
+    ),
+    true,
+    'Status changes must not unmount any cards',
+  );
+  await evaluate('window.lifecycleObserver.disconnect()');
   assert.equal((await dbRow(second.data.id)).active, false);
   await reload();
   assert.equal(
@@ -195,6 +210,20 @@ try {
   );
   await click('[data-inquiry-filter="active"]');
   await ready(2);
+  await click('[data-inquiry-filter="inactive"]');
+  await ready(1);
+  await click(card(second.data.id) + ' [data-reactivate-inquiry]');
+  await ready(0);
+  assert.equal((await dbRow(second.data.id)).active, true);
+  await until(
+    () => evaluate(`document.activeElement.id === 'inquiries-title'`),
+    'focus after filtered row removal',
+  );
+  await click('[data-inquiry-filter="active"]');
+  await ready(3);
+  await click(card(second.data.id) + ' [data-deactivate-inquiry]');
+  await ready(2);
+  assert.equal((await dbRow(second.data.id)).active, false);
   await click('[data-inquiry-filter="inactive"]');
   await ready(1);
   await click('[data-inquiry-filter="all"]');
@@ -310,6 +339,20 @@ try {
     'delete dialog',
   );
   assert.equal(await evaluate(`document.activeElement.hasAttribute('data-cancel-delete')`), true);
+  assert.ok(
+    await evaluate(
+      `document.querySelector('[data-delete-summary]').textContent.includes('Winterreifen')`,
+    ),
+  );
+  assert.ok(
+    await evaluate(
+      `document.querySelector('[data-delete-dialog]').textContent.includes('stattdessen deaktivieren')`,
+    ),
+  );
+  assert.equal(
+    await evaluate(`document.querySelector('[data-confirm-delete]').textContent.trim()`),
+    'Anfrage löschen',
+  );
   await browser.key('Escape', 27);
   await until(() => evaluate(`!document.querySelector('[data-delete-dialog]')`), 'cancel delete');
   assert.ok(await dbRow(third.data.id));
@@ -337,6 +380,31 @@ try {
     robots: 'noindex, nofollow',
     leak: false,
   });
+  // These are exclusively the random fixtures created above in the isolated test database.
+  // Check deletion of an inactive inquiry and then the final active inquiry in the UI.
+  for (const requestId of [second.data.id, id]) {
+    const revision = (await dbRow(requestId)).revision;
+    await click(card(requestId) + ' [data-inquiry-menu]');
+    await click(card(requestId) + ' [data-delete-inquiry]');
+    await until(
+      () => evaluate(`!!document.querySelector('[data-delete-dialog][open]')`),
+      'final fixture delete dialog',
+    );
+    await click('[data-confirm-delete]');
+    await ready(requestId === second.data.id ? 1 : 0);
+    await until(
+      () => evaluate(`document.activeElement.id === 'inquiries-title'`),
+      'focus after fixture deletion',
+    );
+    assert.equal((await api(`/api/me/repair-requests/${requestId}`)).status, 404);
+    assert.equal(
+      (await api(`/api/me/repair-requests/${requestId}`, 'PATCH', { active: true }, revision))
+        .status,
+      404,
+    );
+  }
+  await reload(0);
+  assert.equal(await evaluate(`!!document.querySelector('[data-inquiries-empty]')`), true);
   assert.equal((await api('/auth/logout', 'POST')).status, 204);
   await command('Page.reload', { ignoreCache: true });
   await until(

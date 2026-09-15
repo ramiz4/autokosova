@@ -228,7 +228,7 @@ it('distinguishes an unavailable cursor and rejects malformed payloads without d
   expect(service.requests()).toEqual([]);
 });
 
-it('sends only a confirmed, CSRF-protected revisioned write, then reloads from the API', async () => {
+it('sends only a confirmed, CSRF-protected revisioned write, then applies the confirmed result without reloading', async () => {
   const { service, signIn } = setup();
   signIn('owner');
   await vi.waitFor(() => expect(service.state()).toBe('ready'));
@@ -250,14 +250,13 @@ it('sends only a confirmed, CSRF-protected revisioned write, then reloads from t
       body: JSON.stringify({ active: false }),
     }),
   );
-  vi.mocked(fetch).mockResolvedValueOnce(
-    response({ requests: [{ ...page.requests[0], active: false, revision: 2 }], nextCursor: null }),
-  );
+  const callsBeforeConfirmation = vi.mocked(fetch).mock.calls.length;
   pending.resolve(response({ ...detail, active: false, revision: 2 }));
   expect(await task).toBe(true);
   await vi.waitFor(() => expect(service.state()).toBe('ready'));
   expect(service.requests()[0].active).toBe(false);
   expect(service.notice()).toBe('deactivated');
+  expect(fetch).toHaveBeenCalledTimes(callsBeforeConfirmation);
   document.cookie = 'autokosova_csrf=; max-age=0';
 });
 
@@ -342,3 +341,172 @@ it.each([
     expect(account.state()).toBe('ready');
   },
 );
+
+it('preserves unrelated objects, loaded pages and open detail through activation in both directions', async () => {
+  const { service, signIn } = setup();
+  const unrelated = { ...page.requests[0], id: 'unrelated' };
+  vi.mocked(fetch).mockResolvedValueOnce(
+    response({ requests: [...page.requests, unrelated], nextCursor: unrelated.id }),
+  );
+  signIn('owner');
+  await vi.waitFor(() => expect(service.state()).toBe('ready'));
+  const untouched = service.requests()[1];
+  vi.mocked(fetch).mockResolvedValueOnce(response(detail));
+  await service.openDetail(detail.id);
+  for (const [active, revision] of [
+    [false, 2],
+    [true, 3],
+  ] as const) {
+    const updated = { ...detail, active, revision };
+    vi.mocked(fetch).mockResolvedValueOnce(response(updated));
+    const calls = vi.mocked(fetch).mock.calls.length;
+    expect(
+      await service.mutate({ id: detail.id, revision: revision - 1 }, { kind: 'activity', active }),
+    ).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(calls + 1);
+    expect(service.requests()).toHaveLength(2);
+    expect(service.requests()[1]).toBe(untouched);
+    expect(service.requests()[0].active).toBe(active);
+    expect(service.requests()[0].revision).toBe(revision);
+    expect(service.requests()[0].vehicle).not.toHaveProperty('engineDetails');
+    expect(service.requests()[0]).not.toHaveProperty('attachmentIds');
+    expect(service.detail()).toEqual(updated);
+    expect(service.detailState()).toBe('ready');
+    expect(service.selectedId()).toBe(detail.id);
+    expect(service.nextCursor()).toBe(unrelated.id);
+    expect(service.state()).toBe('ready');
+  }
+});
+
+it.each([true, false])(
+  'deletes only the confirmed %s record, including the last entry and its detail',
+  async (active) => {
+    const { service, signIn } = setup();
+    vi.mocked(fetch).mockResolvedValueOnce(
+      response({ requests: [{ ...page.requests[0], active }], nextCursor: null }),
+    );
+    signIn('owner');
+    await vi.waitFor(() => expect(service.state()).toBe('ready'));
+    vi.mocked(fetch).mockResolvedValueOnce(response({ ...detail, active }));
+    await service.openDetail(detail.id);
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 204 }));
+    expect(await service.mutate(detail, { kind: 'delete' })).toBe(true);
+    expect(service.requests()).toEqual([]);
+    expect(service.detail()).toBeNull();
+    expect(service.selectedId()).toBeNull();
+    expect(service.state()).toBe('ready');
+    expect(service.nextCursor()).toBeNull();
+    expect(service.notice()).toBe('deleted');
+  },
+);
+
+it('repairs a deleted pagination anchor without dropping previously loaded rows or skipping older entries', async () => {
+  const { service, signIn } = setup();
+  const anchor = { ...page.requests[0], id: 'anchor' };
+  vi.mocked(fetch).mockResolvedValueOnce(
+    response({ requests: [...page.requests, anchor], nextCursor: anchor.id }),
+  );
+  signIn('owner');
+  await vi.waitFor(() => expect(service.state()).toBe('ready'));
+  const untouched = service.requests()[0];
+  vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 204 }));
+  expect(await service.mutate(anchor, { kind: 'delete' })).toBe(true);
+  expect(service.requests()[0]).toBe(untouched);
+  expect(service.nextCursor()).toBe(detail.id);
+  vi.mocked(fetch).mockResolvedValueOnce(
+    response({ requests: [{ ...anchor, id: 'older' }], nextCursor: null }),
+  );
+  service.loadMore();
+  await vi.waitFor(() => expect(service.state()).toBe('ready'));
+  expect(fetch).toHaveBeenLastCalledWith(
+    `/api/me/repair-requests?limit=20&cursor=${detail.id}`,
+    expect.anything(),
+  );
+  expect(service.requests().map((item) => item.id)).toEqual([detail.id, 'older']);
+});
+
+it.each(['delete', 'activity'] as const)(
+  'refills an emptied filtered page after %s while more rows exist',
+  async (kind) => {
+    const { service, signIn } = setup();
+    signIn('owner');
+    await vi.waitFor(() => expect(service.state()).toBe('ready'));
+    vi.mocked(fetch).mockResolvedValueOnce(response({ ...page, nextCursor: detail.id }));
+    service.filter('active');
+    await vi.waitFor(() => expect(service.state()).toBe('ready'));
+    vi.mocked(fetch).mockResolvedValueOnce(
+      kind === 'delete'
+        ? new Response(null, { status: 204 })
+        : response({ ...detail, revision: 2, active: false }),
+    );
+    vi.mocked(fetch).mockResolvedValueOnce(
+      response({ requests: [{ ...page.requests[0], id: 'older' }], nextCursor: null }),
+    );
+    expect(
+      await service.mutate(detail, kind === 'delete' ? { kind } : { kind, active: false }),
+    ).toBe(true);
+    await vi.waitFor(() => expect(service.state()).toBe('ready'));
+    expect(service.requests().map((item) => item.id)).toEqual(['older']);
+    expect(service.activity()).toBe('active');
+    expect(service.notice()).toBe(kind === 'delete' ? 'deleted' : 'deactivated');
+  },
+);
+
+it('blocks reload, retries, filters and new detail reads during a write rather than discarding its confirmation', async () => {
+  const { service, signIn } = setup();
+  signIn('owner');
+  await vi.waitFor(() => expect(service.state()).toBe('ready'));
+  const pending = deferred<Response>();
+  vi.mocked(fetch).mockReturnValueOnce(pending.promise);
+  const task = service.mutate(detail, { kind: 'activity', active: false });
+  const calls = vi.mocked(fetch).mock.calls.length;
+  const signal = vi.mocked(fetch).mock.calls.at(-1)![1]!.signal!;
+  service.reload();
+  service.retry();
+  service.filter('inactive');
+  service.loadMore();
+  service.toggleDetail(detail.id);
+  await service.openDetail(detail.id);
+  expect(fetch).toHaveBeenCalledTimes(calls);
+  expect(signal.aborted).toBe(false);
+  expect(service.activity()).toBe('all');
+  pending.resolve(response({ ...detail, revision: 2, active: false }));
+  expect(await task).toBe(true);
+  expect(service.notice()).toBe('deactivated');
+});
+
+it.each([true, false])(
+  'discards an aborted pagination response after a write (success=%s), without endless loading',
+  async (success) => {
+    const { service, signIn } = setup();
+    vi.mocked(fetch).mockResolvedValueOnce(response({ ...page, nextCursor: detail.id }));
+    signIn('owner');
+    await vi.waitFor(() => expect(service.state()).toBe('ready'));
+    const late = deferred<Response>();
+    vi.mocked(fetch).mockReturnValueOnce(late.promise);
+    service.loadMore();
+    expect(service.state()).toBe('loading');
+    vi.mocked(fetch).mockResolvedValueOnce(
+      success ? new Response(null, { status: 204 }) : response({}, 503),
+    );
+    if (success)
+      vi.mocked(fetch).mockResolvedValueOnce(response({ requests: [], nextCursor: null }));
+    expect(await service.mutate(detail, { kind: 'delete' })).toBe(success);
+    await vi.waitFor(() => expect(service.state()).toBe('ready'));
+    late.resolve(response({ requests: [{ ...page.requests[0], id: 'late' }], nextCursor: null }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(service.requests().map((item) => item.id)).toEqual(success ? [] : [detail.id]);
+    expect(service.writeState()).toBe(success ? 'idle' : 'error');
+  },
+);
+
+it('does not acknowledge an activity response with the wrong target state', async () => {
+  const { service, signIn } = setup();
+  signIn('owner');
+  await vi.waitFor(() => expect(service.state()).toBe('ready'));
+  vi.mocked(fetch).mockResolvedValueOnce(response({ ...detail, revision: 2, active: true }));
+  expect(await service.mutate(detail, { kind: 'activity', active: false })).toBe(false);
+  expect(service.requests()[0].active).toBe(true);
+  expect(service.writeState()).toBe('error');
+  expect(service.notice()).toBeNull();
+});
