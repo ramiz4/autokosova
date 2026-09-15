@@ -4,6 +4,7 @@ import type { RepairRequestMutation } from '../shared/saved-repair-request';
 import { parseRepairRequestPage } from './repair-request-list';
 import type { FavoriteStore } from './favorites';
 import { isAccountPagePath } from './account-profile';
+import { resolveOidcProfile } from './oidc-profile';
 import type { GarageOnboardingStore } from './garage-onboarding-store';
 import cookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
@@ -647,19 +648,20 @@ export function createServer(options: ServerOptions = {}) {
     }
 
     try {
-      const idToken = await exchangeAuthorizationCode(
+      const tokens = await exchangeAuthorizationCode(
         options.oidcConfig,
         query.code,
         transaction.codeVerifier,
       );
-      const identity = await verifyZitadelAccessToken(idToken, options.oidcConfig, {
+      const identity = await verifyZitadelAccessToken(tokens.idToken, options.oidcConfig, {
         nonce: transaction.nonce!,
         reauthenticateAfter: transaction.reauthenticateAfter,
       });
+      const profile = await resolveOidcProfile(options.oidcConfig, identity, tokens.accessToken);
       if (!accessStore.finishOidcTransaction(query.state, transaction))
         return reply.code(401).send({ error: 'OIDC login was cancelled or expired' });
       accessStore.setVerifiedRoles(identity.subject, identity.roles);
-      const session = accessStore.createSession(identity.subject, undefined, identity.profile);
+      const session = accessStore.createSession(identity.subject, undefined, profile);
       const previousSession = request.cookies['autokosova_session'];
       if (previousSession) accessStore.revokeSession(previousSession);
       const secure = process.env['NODE_ENV'] === 'production';

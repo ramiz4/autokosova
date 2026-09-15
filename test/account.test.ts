@@ -172,3 +172,24 @@ test('optional verified claims are trimmed and whitelisted, not dumped or interp
   }
   assert.equal(isAccountPagePath('/garages/profile'), false);
 });
+
+test('display names use only valid provider name parts, without fabricating usernames', () => {
+  assert.deepEqual(accountProfileFromClaims({ given_name: ' Ada ', family_name: ' Test ' }), {
+    displayName: 'Ada Test',
+  });
+  assert.deepEqual(accountProfileFromClaims({ name: 'Chosen name', given_name: 'Ignored' }), {
+    displayName: 'Chosen name',
+  });
+  assert.deepEqual(accountProfileFromClaims({ name: '', given_name: 'Ada', family_name: 5 }), {
+    displayName: 'Ada',
+  });
+  assert.deepEqual(
+    accountProfileFromClaims({
+      given_name: 'Bad\nName',
+      family_name: 'Safe',
+      email: 'mail@example.invalid',
+    }),
+    { displayName: 'Safe', email: 'mail@example.invalid' },
+  );
+  assert.deepEqual(accountProfileFromClaims({ given_name: 'a'.repeat(200), family_name: 'b' }), {});
+});

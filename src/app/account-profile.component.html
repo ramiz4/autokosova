@@ -69,12 +69,7 @@
                       {{ language.t('account.details') }}
                     </h2>
                     <p data-account-display-name class="mt-1 truncate text-lg font-semibold">
-                      {{
-                        identity.displayName ||
-                          identity.username ||
-                          identity.email ||
-                          identity.userId
-                      }}
+                      {{ account.displayName() }}
                     </p>
                     @if (identity.email) {
                       <p class="mt-1 break-all text-sm text-muted">{{ identity.email }}</p>
@@ -84,13 +79,32 @@
                     </p>
                   </div>
                 </div>
+                @if (identity.profileStatus === 'unavailable') {
+                  <div
+                    data-account-profile-error
+                    role="alert"
+                    class="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4"
+                  >
+                    <p class="text-sm leading-6">{{ language.t('account.profileError') }}</p>
+                    <a appButton="outline" class="mt-3" [href]="loginUrl()">{{
+                      language.t('account.signInAgain')
+                    }}</a>
+                  </div>
+                }
                 <dl class="mt-7 grid gap-x-8 gap-y-6 border-t border-slate-100 pt-6 sm:grid-cols-2">
                   <div class="min-w-0">
                     <dt class="text-sm font-semibold text-muted">
                       {{ language.t('account.displayName') }}
                     </dt>
-                    <dd class="mt-1 [overflow-wrap:anywhere]">
-                      {{ identity.displayName || language.t('account.missing') }}
+                    <dd data-account-display-name-field class="mt-1 [overflow-wrap:anywhere]">
+                      {{
+                        identity.displayName ||
+                          language.t(
+                            identity.profileStatus === 'unavailable'
+                              ? 'account.profileUnavailable'
+                              : 'account.missing'
+                          )
+                      }}
                     </dd>
                   </div>
                   <div class="min-w-0">
@@ -98,7 +112,14 @@
                       {{ language.t('account.email') }}
                     </dt>
                     <dd data-account-email class="mt-1 [overflow-wrap:anywhere]">
-                      {{ identity.email || language.t('account.missing') }}
+                      {{
+                        identity.email ||
+                          language.t(
+                            identity.profileStatus === 'unavailable'
+                              ? 'account.profileUnavailable'
+                              : 'account.missing'
+                          )
+                      }}
                     </dd>
                   </div>
                   <div class="min-w-0">
@@ -127,7 +148,14 @@
                         {{ language.t('account.username') }}
                       </dt>
                       <dd data-account-username class="mt-1 [overflow-wrap:anywhere]">
-                        {{ identity.username || language.t('account.missing') }}
+                        {{
+                          identity.username ||
+                            language.t(
+                              identity.profileStatus === 'unavailable'
+                                ? 'account.profileUnavailable'
+                                : 'account.missing'
+                            )
+                        }}
                       </dd>
                     </div>
                     <div class="min-w-0">

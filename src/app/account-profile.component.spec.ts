@@ -172,3 +172,65 @@ it('does not race provider logout with client-side home navigation from either l
   expect(navigate).not.toHaveBeenCalled();
   expect(page.textContent).not.toContain(TestBed.inject(LanguageService).t('account.logoutError'));
 });
+
+it.each(['de', 'sq', 'en'] as const)(
+  'distinguishes unavailable provider data from absent fields in %s',
+  async (locale) => {
+    const partial = {
+      ...identity,
+      displayName: 'Verified name',
+      email: undefined,
+      username: undefined,
+      profileStatus: 'unavailable',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async () => new Response(JSON.stringify(partial))),
+    );
+    const path = routePath(locale, 'profile');
+    const { fixture, page } = await render(path);
+    expect(page.querySelector('[data-account-profile-error]')?.textContent).toContain(
+      accountCopy[locale]['account.profileError'],
+    );
+    expect(page.querySelector('[data-account-email]')?.textContent).toContain(
+      accountCopy[locale]['account.profileUnavailable'],
+    );
+    expect(page.querySelector('[data-account-username]')?.textContent).toContain(
+      accountCopy[locale]['account.profileUnavailable'],
+    );
+    expect(page.querySelector('[data-account-display-name-field]')?.textContent).toContain(
+      'Verified name',
+    );
+    expect(page.textContent).not.toContain(accountCopy[locale]['account.missing']);
+    expect(page.querySelector('[data-account-profile-error] a')?.getAttribute('href')).toBe(
+      '/auth/login?returnTo=' + encodeURIComponent(path),
+    );
+    TestBed.inject(AccountSessionService).invalidate();
+    await fixture.whenStable();
+    expect(page.querySelector('[data-account-profile-error]')).toBeNull();
+    expect(page.textContent).not.toContain('Verified name');
+  },
+);
+
+it('shows a fallback only for the genuinely missing field after a successful lookup', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockImplementation(
+        async () =>
+          new Response(
+            JSON.stringify({ ...identity, username: undefined, profileStatus: 'ready' }),
+          ),
+      ),
+  );
+  const { page } = await render();
+  expect(page.querySelector('[data-account-username]')?.textContent).toContain(
+    accountCopy.de['account.missing'],
+  );
+  expect(page.querySelector('[data-account-email]')?.textContent).toContain(identity.email);
+  expect(page.querySelector('[data-account-display-name-field]')?.textContent).toContain(
+    identity.displayName,
+  );
+  expect(page.querySelector('[data-account-profile-error]')).toBeNull();
+});

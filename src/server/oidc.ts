@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { accountProfileFromClaims } from './account-profile';
+import { validateUserInfoEndpoint } from './oidc-profile';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const zitadelProjectRolesClaim = 'urn:zitadel:iam:org:project:roles';
@@ -16,6 +17,7 @@ export interface ZitadelOidcConfig extends ZitadelVerifierConfig {
   readonly clientId: string;
   readonly redirectUri: string;
   readonly tokenEndpoint: string;
+  readonly userInfoEndpoint?: string;
   readonly endSessionEndpoint?: string;
   readonly postLogoutRedirectUri?: string;
 }
@@ -35,11 +37,27 @@ export function readZitadelOidcConfig(
   const supplied = Object.values(values).filter(Boolean).length;
   const endSessionEndpoint = environment['ZITADEL_END_SESSION_ENDPOINT'];
   const postLogoutRedirectUri = environment['ZITADEL_POST_LOGOUT_URI'];
-  if (supplied === 0 && !endSessionEndpoint && !postLogoutRedirectUri) return undefined;
+  const userInfoEndpoint = environment['ZITADEL_USERINFO_ENDPOINT'];
+  if (supplied === 0 && !endSessionEndpoint && !postLogoutRedirectUri && !userInfoEndpoint)
+    return undefined;
   if (supplied !== Object.keys(values).length) {
     throw new Error('ZITADEL OIDC configuration is incomplete');
   }
-  const config = values as ZitadelOidcConfig;
+  const config = {
+    ...values,
+    ...(userInfoEndpoint ? { userInfoEndpoint } : {}),
+  } as ZitadelOidcConfig;
+  if (userInfoEndpoint) {
+    try {
+      validateUserInfoEndpoint(
+        userInfoEndpoint,
+        config.issuer,
+        environment['NODE_ENV'] === 'production',
+      );
+    } catch {
+      throw new Error('ZITADEL UserInfo configuration is invalid');
+    }
+  }
   if (!endSessionEndpoint && !postLogoutRedirectUri) return config;
   if (!endSessionEndpoint || !postLogoutRedirectUri)
     throw new Error('ZITADEL logout configuration is incomplete');
@@ -95,17 +113,33 @@ export async function exchangeAuthorizationCode(
     }),
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     method: 'POST',
+    redirect: 'error',
+    signal: AbortSignal.timeout(5000),
   });
 
   if (!response.ok) {
     throw new Error('OIDC authorization code exchange failed');
   }
 
-  const payload = (await response.json()) as { id_token?: unknown };
-  if (typeof payload.id_token !== 'string') {
+  const payload = (await response.json()) as {
+    id_token?: unknown;
+    access_token?: unknown;
+    token_type?: unknown;
+  } | null;
+  if (!payload || typeof payload.id_token !== 'string') {
     throw new Error('OIDC response has no ID token');
   }
-  return payload.id_token;
+  return {
+    idToken: payload.id_token,
+    // Keep the access token only for this callback's server-side UserInfo request.
+    accessToken:
+      typeof payload.access_token === 'string' &&
+      payload.access_token.length > 0 &&
+      typeof payload.token_type === 'string' &&
+      payload.token_type.toLowerCase() === 'bearer'
+        ? payload.access_token
+        : undefined,
+  };
 }
 
 export async function verifyZitadelAccessToken(

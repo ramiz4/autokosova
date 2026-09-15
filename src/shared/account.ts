@@ -2,6 +2,8 @@
 export const APPLICATION_ROLES = ['customer', 'moderator', 'admin'] as const;
 export type ApplicationRole = (typeof APPLICATION_ROLES)[number];
 export interface AccountProfile {
+  /** Unavailable is a provider lookup failure, not proof that optional fields are absent. */
+  readonly profileStatus?: 'ready' | 'unavailable';
   readonly displayName?: string;
   readonly username?: string;
   readonly email?: string;
@@ -25,6 +27,9 @@ export function isOwnAccount(value: unknown): value is OwnAccount {
   if (!value || typeof value !== 'object') return false;
   const account = value as Record<string, unknown>;
   return (
+    (account['profileStatus'] === undefined ||
+      account['profileStatus'] === 'ready' ||
+      account['profileStatus'] === 'unavailable') &&
     (account['accountType'] === undefined ||
       account['accountType'] === 'customer' ||
       account['accountType'] === 'garage') &&

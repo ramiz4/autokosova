@@ -19,6 +19,10 @@ const de = {
   'account.email': 'E-Mail',
   'account.userId': 'Konto-ID',
   'account.missing': 'Nicht vom Anmeldedienst bereitgestellt',
+  'account.profileUnavailable': 'Derzeit nicht abrufbar',
+  'account.profileError':
+    'Einige Profilangaben konnten nicht vom Anmeldedienst geladen werden. Du bist angemeldet. Melde dich erneut an, um die Angaben neu abzurufen.',
+  'account.signInAgain': 'Erneut anmelden',
   'account.rolesTitle': 'Rollen & Zugehörigkeit',
   'account.applicationRoles': 'Wirksame Anwendungsrollen',
   'account.type.customer': 'Privatkunde',
@@ -61,6 +65,10 @@ export const accountCopy: Readonly<Record<AppLanguage, Readonly<Record<keyof typ
       'account.email': 'E-mail',
       'account.userId': 'ID-ja e llogarisë',
       'account.missing': 'Nuk është dhënë nga shërbimi i identifikimit',
+      'account.profileUnavailable': 'Aktualisht nuk mund të merret',
+      'account.profileError':
+        'Disa të dhëna të profilit nuk mund të ngarkoheshin nga shërbimi i identifikimit. Je i identifikuar. Identifikohu përsëri për t’i marrë të dhënat sërish.',
+      'account.signInAgain': 'Identifikohu përsëri',
       'account.rolesTitle': 'Rolet & anëtarësimet',
       'account.applicationRoles': 'Rolet aktive në aplikacion',
       'account.type.customer': 'Klient privat',
@@ -99,6 +107,10 @@ export const accountCopy: Readonly<Record<AppLanguage, Readonly<Record<keyof typ
       'account.email': 'Email',
       'account.userId': 'Account ID',
       'account.missing': 'Not provided by the sign-in service',
+      'account.profileUnavailable': 'Currently unavailable',
+      'account.profileError':
+        'Some profile details could not be loaded from the sign-in service. You are signed in. Sign in again to retrieve the details.',
+      'account.signInAgain': 'Sign in again',
       'account.rolesTitle': 'Roles & membership',
       'account.applicationRoles': 'Effective application roles',
       'account.type.customer': 'Private customer',
