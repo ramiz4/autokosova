@@ -77,6 +77,11 @@ it.each(['de', 'sq', 'en'] as const)(
     await component['loadOwned']();
     fixture.detectChanges();
     expect(page.querySelectorAll('[data-owned-garage]')).toHaveLength(5);
+    expect(page.querySelectorAll('[data-garage-status]')).toHaveLength(5);
+    for (const state of states)
+      expect(
+        page.querySelector('[data-garage-status][data-state="' + state + '"]')?.textContent?.trim(),
+      ).toBeTruthy();
     expect(page.querySelectorAll('[data-public-garage]')).toHaveLength(1);
     expect(page.querySelector('[data-public-garage]')?.getAttribute('href')).toBe(
       (locale === 'de' ? '' : '/' + locale) + '/garages/fixture-0',
@@ -161,4 +166,87 @@ it('opens the selected profile without accidentally choosing the first and keeps
   expect(component['garageId']).toBe('second');
   expect(page.querySelector('form')).not.toBeNull();
   expect(page.querySelector('[data-delete-garage]')).toBeNull();
+});
+
+it('uses the server-confirmed publication state after submission instead of guessing a transition', async () => {
+  const { fixture, component, page } = await setup();
+  component['garageId'] = 'owned';
+  component['form'] = { ...profile, address: profile.address };
+  component['savedSnapshot'] = JSON.stringify(component['form']);
+  component['editing'] = true;
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            garages: [{ id: 'owned', name: profile.name, publicationState: 'published' }],
+          }),
+        ),
+      ),
+  );
+  await component['submitForReview']();
+  fixture.detectChanges();
+  expect(component['publicationState']).toBe('published');
+  expect(component['statusKnown']).toBe(true);
+  expect(page.querySelector('[data-garage-status]')?.getAttribute('data-state')).toBe('published');
+  expect(page.querySelector('[data-garage-status]')?.textContent).toContain(
+    'In der öffentlichen Suche sichtbar.',
+  );
+  expect(
+    page
+      .querySelector('[data-garage-status]')!
+      .compareDocumentPosition(page.querySelector('form')!) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+});
+
+it('does not announce a successful transition when submission fails', async () => {
+  const { fixture, component, page } = await setup();
+  component['garageId'] = 'owned';
+  component['editing'] = true;
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 503 })));
+  await component['submitForReview']();
+  fixture.detectChanges();
+  expect(component['publicationState']).toBe('draft');
+  expect(component['message']).toBe(component['copy'].error);
+  expect(page.querySelector('[data-garage-status]')?.textContent).toContain(
+    'Noch nicht öffentlich sichtbar.',
+  );
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+it('marks status unavailable after a confirmed write with failed readback, and disables further submission until reloaded', async () => {
+  const { fixture, component, page } = await setup();
+  component['garageId'] = 'owned';
+  component['editing'] = true;
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    .mockResolvedValueOnce(new Response('{}', { status: 503 }));
+  vi.stubGlobal('fetch', request);
+  await component['submitForReview']();
+  fixture.detectChanges();
+  expect(component['statusKnown']).toBe(false);
+  expect(page.querySelector('[data-garage-status]')).toBeNull();
+  expect(page.querySelector('[data-garage-status-unavailable]')).not.toBeNull();
+  await component['submitForReview']();
+  expect(request).toHaveBeenCalledTimes(2);
+  request.mockResolvedValueOnce(
+    new Response(
+      JSON.stringify({
+        id: 'owned',
+        profile,
+        publicationState: 'pending_review',
+        verification: { location: 'not_checked' },
+      }),
+    ),
+  );
+  await component['open']('owned');
+  fixture.detectChanges();
+  expect(component['statusKnown']).toBe(true);
+  expect(page.querySelector('[data-garage-status]')?.getAttribute('data-state')).toBe(
+    'pending_review',
+  );
 });

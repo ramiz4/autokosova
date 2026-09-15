@@ -92,6 +92,13 @@ try {
           ),
         'localized general OIDC landing',
       );
+      if (subject === garageSubject)
+        assert.equal(
+          await evaluate(
+            "document.querySelectorAll('[data-garage-status][data-state=published]').length",
+          ),
+          2,
+        );
     }
   }
   // An explicit customer workflow remains usable by an operator, without a role switch.

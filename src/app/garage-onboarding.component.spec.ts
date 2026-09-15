@@ -115,7 +115,14 @@ it('reopens the saved private profile including custom values and treats submiss
         }),
       ),
     )
-    .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          garages: [{ id: 'owned', name: profile.name, publicationState: 'pending_review' }],
+        }),
+      ),
+    );
   vi.stubGlobal('fetch', fetchMock);
   await component['open']('owned');
   expect(component['form']).toEqual(profile);

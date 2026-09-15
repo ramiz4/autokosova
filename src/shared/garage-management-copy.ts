@@ -1,5 +1,14 @@
 import type { AppLanguage } from './i18n';
 const de = {
+  draftHelp: 'Noch nicht öffentlich sichtbar.',
+  pendingHelp: 'Zur Prüfung eingereicht. Noch nicht öffentlich sichtbar.',
+  publishedHelp: 'In der öffentlichen Suche sichtbar.',
+  rejectedHelp: 'Nicht freigegeben. Prüfe deine Angaben und reiche das Profil erneut ein.',
+  suspendedHelp:
+    'Gesperrt und nicht öffentlich sichtbar. Die Bearbeitung ist derzeit nicht möglich.',
+  statusUnavailable:
+    'Die Änderung wurde bestätigt, aber der aktuelle Status konnte nicht geladen werden. Lade das Profil erneut.',
+
   edit: 'Bearbeiten',
   back: 'Zur Übersicht',
   viewPublic: 'Öffentliches Profil ansehen',
@@ -19,6 +28,15 @@ const de = {
 export const garageManagementCopy: Readonly<Record<AppLanguage, typeof de>> = {
   de,
   sq: {
+    draftHelp: 'Ende nuk është i dukshëm publikisht.',
+    pendingHelp: 'U dërgua për shqyrtim. Ende nuk është i dukshëm publikisht.',
+    publishedHelp: 'I dukshëm në kërkimin publik.',
+    rejectedHelp: 'Nuk u miratua. Kontrollo të dhënat dhe dërgoje profilin përsëri.',
+    suspendedHelp:
+      'I bllokuar dhe jo i dukshëm publikisht. Redaktimi aktualisht nuk është i mundur.',
+    statusUnavailable:
+      'Ndryshimi u konfirmua, por gjendja aktuale nuk mund të ngarkohej. Ngarko përsëri profilin.',
+
     edit: 'Redakto',
     back: 'Kthehu te përmbledhja',
     viewPublic: 'Shiko profilin publik',
@@ -36,6 +54,14 @@ export const garageManagementCopy: Readonly<Record<AppLanguage, typeof de>> = {
     deleted: 'Servisi u hoq nga kërkimi dhe administrimi yt.',
   },
   en: {
+    draftHelp: 'Not publicly visible yet.',
+    pendingHelp: 'Submitted for review. Not publicly visible yet.',
+    publishedHelp: 'Visible in public search.',
+    rejectedHelp: 'Not approved. Check your details and submit the profile again.',
+    suspendedHelp: 'Suspended and not publicly visible. Editing is currently unavailable.',
+    statusUnavailable:
+      'The change was confirmed, but the current status could not be loaded. Reload the profile.',
+
     edit: 'Edit',
     back: 'Back to overview',
     viewPublic: 'View public profile',
