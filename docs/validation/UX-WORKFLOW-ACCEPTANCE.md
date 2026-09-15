@@ -75,3 +75,20 @@ Erklärung versteht. Visuelle Kontrolle und automatisierte Bedienung sind kein
 Nutzerinterview und keine gemessene Erfolgsquote. Es wurden keine solchen Ergebnisse
 erfunden. #92 bleibt bis zu diesen Nachweisen offen; der technische Befund kann mit
 seinem geprüften Fix unabhängig davon gemergt werden.
+
+## Abschließender integrierter Stand
+
+Der parallel gemergte PR #104 (`a76df2c`, stabile Kontorevalidierung) wurde ohne
+Konflikte integriert. Eine weiterhin bestätigte Sitzung behält damit die ruhige
+Navbar und Kontodarstellung. Der Werkstattschutz greift, sobald der gemeinsame
+Kontozustand neutral wird oder ein anderes Konto/Logout bestätigt ist; er ersetzt
+nicht die zentrale Sitzungsauflösung.
+
+Danach erneut ausgeführt: **249 Angular-Tests** in 24 Dateien erfolgreich,
+107 Server-/DB-Tests erfolgreich (zwei profilgebundene Tests standardmäßig übersprungen),
+Format/Lint/Typecheck, Build, 45-Seiten-Smoke und signierter Demo-Account-Browser
+jeweils erfolgreich. Der aktualisierte Account-Browser mit stabiler Revalidierung
+bestand nochmals alle 15 Sprach-/Viewportkombinationen. Auch der normale schnelle
+isolierte Demo-Start mit Ctrl+C, Sperrbereinigung und Diagnose bestand.
+Die zusätzlichen Tests aus #104 sind Bestandteil dieser Gesamtzahl, keine hier
+neu erfundenen oder doppelt gezählten Nachweise. Die reale Abnahme oben bleibt offen.
