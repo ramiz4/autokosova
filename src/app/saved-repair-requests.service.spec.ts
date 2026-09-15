@@ -322,3 +322,23 @@ it('rejects an invalid mutation result instead of falsely acknowledging a save',
   expect(service.notice()).toBeNull();
   expect(service.writeState()).toBe('error');
 });
+
+it.each([
+  [{}, 'forbidden', 'forbidden'],
+  [{ code: 'csrf_invalid' }, 'csrf', 'csrfError'],
+  [null, 'forbidden', 'forbidden'],
+] as const)(
+  'distinguishes permission and CSRF failures without logging out or claiming success: %j',
+  async (body, state, key) => {
+    const { account, service, signIn } = setup();
+    signIn('owner');
+    await vi.waitFor(() => expect(service.state()).toBe('ready'));
+    vi.mocked(fetch).mockResolvedValueOnce(response(body, 403));
+    expect(await service.mutate(detail, { kind: 'delete' })).toBe(false);
+    expect(service.writeState()).toBe(state);
+    expect(service.writeErrorKey()).toBe(key);
+    expect(service.notice()).toBeNull();
+    expect(service.requests()).toEqual(page.requests);
+    expect(account.state()).toBe('ready');
+  },
+);

@@ -434,7 +434,7 @@ export function createServer(options: ServerOptions = {}) {
       (request.cookies['autokosova_csrf'] !== principal.csrfToken ||
         request.headers['x-csrf-token'] !== principal.csrfToken)
     ) {
-      throw new AccessError(403, 'CSRF validation failed');
+      throw new AccessError(403, 'CSRF validation failed', 'csrf_invalid');
     }
     return principal;
   }
@@ -447,7 +447,9 @@ export function createServer(options: ServerOptions = {}) {
       });
     }
     if (error instanceof AccessError) {
-      return reply.code(error.statusCode).send({ error: error.message });
+      return reply
+        .code(error.statusCode)
+        .send({ error: error.message, ...(error.code ? { code: error.code } : {}) });
     }
     if (error instanceof GarageSearchValidationError) {
       return reply.code(400).send({ error: error.message });

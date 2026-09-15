@@ -124,7 +124,16 @@ try {
     () => evaluate("!!document.querySelector('[data-delete-garage]')"),
     'owner deletion control',
   );
+  assert.equal(await evaluate("document.querySelector('[data-save-garage]').disabled"), true);
+  assert.equal(
+    await evaluate("!!document.querySelector('[data-garage-actions] [data-delete-garage]')"),
+    false,
+  );
   await fill('#garage-name', 'Browsergeprüfte fiktive Werkstatt');
+  await until(
+    () => evaluate("!document.querySelector('[data-save-garage]').disabled"),
+    'changed garage enables save',
+  );
   await click('form button[type="submit"]');
   await until(
     async () =>
@@ -153,6 +162,15 @@ try {
   );
   await screenshot('garage', 1280);
   await screenshot('garage', 390);
+  await evaluate(
+    "document.querySelector('[data-garage-actions]').scrollIntoView({block:'center'})",
+  );
+  await screenshot('garage-actions', 390);
+  assert.equal(
+    await evaluate("getComputedStyle(document.querySelector('[data-garage-actions]')).position"),
+    'static',
+  );
+
   // A native confirmation is required; no application response is intercepted.
   const deletion = click('[data-delete-garage]');
   await until(async () => {
@@ -196,6 +214,7 @@ try {
       () => evaluate("!!document.querySelector('[data-inquiry-editor][open]')"),
       'seeded inquiry opens in the actual editor',
     );
+    assert.equal(await evaluate("document.querySelector('[data-save-inquiry]').disabled"), true);
     const symptom = `Fiktive Demo-Anfrage ${index + 1}: im Browser bearbeitet.`;
     await fill('#edit-symptom', symptom);
     await click('[data-save-inquiry]');

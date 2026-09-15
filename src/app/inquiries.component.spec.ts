@@ -293,6 +293,7 @@ it('validates local dates and guards unsaved edits on Escape and navigation', as
   const pickup = dialog.querySelector<HTMLInputElement>('#edit-pickup')!;
   pickup.value = '2026-01-01';
   pickup.dispatchEvent(new Event('input', { bubbles: true }));
+  await fixture.whenStable();
   const mutation = vi.spyOn(service, 'mutate');
   dialog.querySelector<HTMLButtonElement>('[data-save-inquiry]')!.click();
   await fixture.whenStable();
@@ -338,4 +339,32 @@ it('requires confirmation before deletion, supports cancellation and discards th
   TestBed.inject(AccountSessionService).invalidate();
   await fixture.whenStable();
   expect(page.querySelector('[data-delete-dialog]')).toBeNull();
+});
+
+it('does not save an unchanged or reverted inquiry and cancels without a discard prompt', async () => {
+  supportTestDialog();
+  const { page, fixture, service } = await render();
+  page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
+  await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
+  await fixture.whenStable();
+  const dialog = page.querySelector<HTMLDialogElement>('[data-inquiry-editor]')!;
+  const save = dialog.querySelector<HTMLButtonElement>('[data-save-inquiry]')!;
+  expect(save.disabled).toBe(true);
+  const mutation = vi.spyOn(service, 'mutate');
+  save.click();
+  expect(mutation).not.toHaveBeenCalled();
+  const input = dialog.querySelector<HTMLTextAreaElement>('#edit-symptom')!;
+  const original = input.value;
+  input.value = 'Geändert';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  await fixture.whenStable();
+  expect(save.disabled).toBe(false);
+  input.value = original;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  await fixture.whenStable();
+  expect(save.disabled).toBe(true);
+  dialog.dispatchEvent(new Event('cancel', { cancelable: true }));
+  await fixture.whenStable();
+  expect(page.querySelector('[data-inquiry-editor]')).toBeNull();
+  expect(mutation).not.toHaveBeenCalled();
 });

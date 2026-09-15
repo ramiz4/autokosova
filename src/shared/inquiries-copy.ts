@@ -1,4 +1,8 @@
 const de = {
+  forbidden:
+    'Du hast keine Berechtigung für diese Änderung. Aktualisiere die Übersicht oder wende dich an den Support.',
+  csrfError:
+    'Die Sicherheitsprüfung ist fehlgeschlagen. Prüfe deine Anmeldung und versuche es erneut.',
   subtitle: 'Gespeicherte Anfragen ansehen, anpassen und wiederverwenden.',
   all: 'Alle Anfragen',
   active: 'Aktiv',
@@ -87,6 +91,8 @@ export const inquiriesCopy: Readonly<
 > = {
   de,
   sq: {
+    forbidden: 'Nuk ke leje për këtë ndryshim. Rifresko përmbledhjen ose kontakto mbështetjen.',
+    csrfError: 'Kontrolli i sigurisë dështoi. Kontrollo identifikimin dhe provo përsëri.',
     subtitle: 'Shiko, ndrysho dhe ripërdor kërkesat e ruajtura.',
     all: 'Të gjitha',
     active: 'Aktive',
@@ -167,6 +173,9 @@ export const inquiriesCopy: Readonly<
       'Kërkimi merr vetëm shërbimin, vendet dhe rrezet. Drafti yt në shfletues mbetet i pandryshuar.',
   },
   en: {
+    forbidden:
+      'You do not have permission to make this change. Refresh the overview or contact support.',
+    csrfError: 'The security check failed. Check your sign-in and try again.',
     subtitle: 'View, update and reuse your saved inquiries.',
     all: 'All inquiries',
     active: 'Active',

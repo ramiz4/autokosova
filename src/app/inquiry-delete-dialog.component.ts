@@ -37,22 +37,8 @@ import { IconComponent } from './ui/icon.component';
     <div class="dialog-body">
       <p id="inquiry-delete-help">{{ text('deleteBody') }}</p>
       <p class="help mt-4">{{ text('fileRetention') }}</p>
-      @if (
-        saved.writeState() === 'conflict' ||
-        saved.writeState() === 'error' ||
-        saved.writeState() === 'missing'
-      ) {
-        <p role="alert" class="error">
-          {{
-            text(
-              saved.writeState() === 'conflict'
-                ? 'conflict'
-                : saved.writeState() === 'missing'
-                  ? 'missing'
-                  : 'writeError'
-            )
-          }}
-        </p>
+      @if (saved.writeErrorKey(); as errorKey) {
+        <p role="alert" class="error">{{ text(errorKey) }}</p>
       }
     </div>
     <footer class="dialog-footer">

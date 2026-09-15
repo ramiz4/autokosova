@@ -71,20 +71,9 @@
             <app-icon name="check" class="size-5" />{{ text(notice) }}
           </p>
         }
-        @if (
-          !editingId() &&
-          !deleting() &&
-          ['error', 'conflict', 'missing'].includes(saved.writeState())
-        ) {
+        @if (!editingId() && !deleting() && saved.writeErrorKey()) {
           <div class="notice error" role="alert">
-            {{
-              text(
-                saved.writeState() === 'conflict'
-                  ? 'conflict'
-                  : saved.writeState() === 'missing'
-                    ? 'missing'
-                    : 'writeError'
-              )
+            {{ text(saved.writeErrorKey()!)
             }}<button class="text-action" type="button" (click)="saved.reload()">
               {{ text('refresh') }}
             </button>
