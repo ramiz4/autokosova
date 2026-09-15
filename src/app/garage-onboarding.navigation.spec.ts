@@ -192,17 +192,20 @@ it('clears the warning only after a successful save', async () => {
   expect(confirm).not.toHaveBeenCalled();
 });
 
-it.each([401, 403])('offers reauthentication after review returns %s without losing data', async (status) => {
-  const component = (await setup()).componentInstance;
-  savedGarage(component);
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status })));
-  await component['submitForReview']();
-  expect(component['needsLogin']).toBe(true);
-  expect(component['message']).toBe(component['copy'].signIn);
-  expect(component['publicationState']).toBe('draft');
-  expect(component['form']).toEqual(validForm);
-  expect(component['sending']).toBe(false);
-});
+it.each([401, 403])(
+  'offers reauthentication after review returns %s without losing data',
+  async (status) => {
+    const component = (await setup()).componentInstance;
+    savedGarage(component);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status })));
+    await component['submitForReview']();
+    expect(component['needsLogin']).toBe(true);
+    expect(component['message']).toBe(component['copy'].signIn);
+    expect(component['publicationState']).toBe('draft');
+    expect(component['form']).toEqual(validForm);
+    expect(component['sending']).toBe(false);
+  },
+);
 
 it.each(['published', 'pending_review', 'suspended'] as const)(
   'does not send an invalid review transition from %s',
