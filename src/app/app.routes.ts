@@ -77,6 +77,10 @@ function localizedRoutes(prefix: string): Routes {
     {
       loadComponent: () =>
         import('./garage-onboarding.component').then((module) => module.GarageOnboardingComponent),
+      canDeactivate: [
+        (component: import('./garage-onboarding.component').GarageOnboardingComponent | null) =>
+          component?.canLeave() ?? true,
+      ],
       path: `${childPrefix}garages/new`,
     },
     {
