@@ -19,6 +19,7 @@ export async function startTestOidc(redirectUri, initialSubject) {
   let userInfoRequests = 0;
   let userInfoPause;
   let subject = initialSubject;
+  let roles = [];
   let issuer;
   let exchanges = 0;
   const server = createServer(async (request, response) => {
@@ -58,6 +59,7 @@ export async function startTestOidc(redirectUri, initialSubject) {
         const code = randomUUID();
         codes.set(code, {
           subject,
+          roles: [...roles],
           profile: { ...profile },
           challenge: url.searchParams.get('code_challenge'),
           nonce: url.searchParams.get('nonce'),
@@ -91,6 +93,9 @@ export async function startTestOidc(redirectUri, initialSubject) {
           grant.challenge,
         );
         const token = await new SignJWT({
+          'urn:zitadel:iam:org:project:roles': Object.fromEntries(
+            grant.roles.map((role) => [role, { 'synthetic-test-org': 'example.invalid' }]),
+          ),
           nonce: grant.nonce,
           auth_time: grant.authTime,
         })
@@ -131,6 +136,12 @@ export async function startTestOidc(redirectUri, initialSubject) {
     },
     setSubject(value) {
       subject = value;
+    },
+    setRoles(value) {
+      assert.ok(
+        Array.isArray(value) && value.every((role) => ['admin', 'moderator'].includes(role)),
+      );
+      roles = [...value];
     },
     setProfile(value) {
       profile = { ...value };

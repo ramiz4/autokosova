@@ -42,5 +42,7 @@ export function accountProfileFromClaims(
   return profile;
 }
 export function isAccountPagePath(url: string): boolean {
-  return /^\/(?:sq\/|en\/)?(?:profile|inquiries|favorites)\/?$/.test(url.split(/[?#]/, 1)[0]);
+  return /^\/(?:sq\/|en\/)?(?:admin|moderation|profile|inquiries|favorites)\/?$/.test(
+    url.split(/[?#]/, 1)[0],
+  );
 }

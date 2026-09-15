@@ -1,3 +1,11 @@
+import { assertCurrentStaffIdentity, assertStaffCandidate } from './staff-identity';
+import { PostgresStaffWorkspace } from './staff-workspace-store';
+import type { AccountProfile } from '../shared/account';
+import type {
+  StaffQueueFilter,
+  StaffCaseAssignment,
+  StaffCaseEscalation,
+} from '../shared/moderation';
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
 import {
@@ -30,6 +38,10 @@ import {
 import { calculateOverallRating, type OwnReview } from './reviews';
 
 interface CaseRow {
+  readonly kind: string;
+  readonly escalation_reason: string | null;
+  readonly decided_by_user_id: string | null;
+  readonly appeal_against_user_id: string | null;
   readonly assigned_moderator_user_id: string | null;
   readonly created_at: Date;
   readonly id: string;
@@ -81,9 +93,34 @@ interface RepairRequestRow {
  */
 export class PostgresModerationStore implements ModerationLifecycleStore {
   private readonly pool: pg.Pool;
+  private readonly workspace: PostgresStaffWorkspace;
 
   constructor(databaseUrl: string) {
     this.pool = new pg.Pool({ connectionString: databaseUrl });
+    this.workspace = new PostgresStaffWorkspace(this.pool);
+  }
+
+  recordVerifiedIdentity(
+    userId: string,
+    roles: readonly ('admin' | 'moderator')[],
+    profile: AccountProfile,
+  ) {
+    return this.workspace.recordVerifiedIdentity(userId, roles, profile);
+  }
+  listStaffCases(principal: Principal, filter: StaffQueueFilter) {
+    return this.workspace.list(principal, filter);
+  }
+  getStaffCase(principal: Principal, caseId: string) {
+    return this.workspace.get(principal, caseId);
+  }
+  listStaffModerators(principal: Principal) {
+    return this.workspace.moderators(principal);
+  }
+  assignStaffCase(principal: Principal, caseId: string, input: StaffCaseAssignment) {
+    return this.workspace.assign(principal, caseId, input);
+  }
+  escalateStaffCase(principal: Principal, caseId: string, input: StaffCaseEscalation) {
+    return this.workspace.escalate(principal, caseId, input);
   }
 
   async close(): Promise<void> {
@@ -155,7 +192,11 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
     this.requireAdmin(admin);
     await this.transaction(admin, async (client) => {
       await this.ensureUser(client, admin.userId);
-      await this.ensureUser(client, moderatorUserId);
+      await assertStaffCandidate(client, moderatorUserId);
+      const existing = await this.getCase(client, caseId, true);
+      if (existing.kind !== 'report')
+        throw new AccessError(409, 'This case uses its dedicated workflow');
+      await this.requireNoConflict(client, existing, moderatorUserId);
       const result = await client.query<CaseRow>(
         `UPDATE moderation_case
          SET assigned_moderator_user_id = $2, status = 'assigned', updated_at = now()
@@ -178,7 +219,15 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
       throw new AccessError(422, 'Moderation action is invalid');
     }
     return this.transaction(principal, async (client) => {
-      const record = await this.requireCaseAccess(client, principal, caseId);
+      const record = await this.requireCaseAccess(client, principal, caseId, true);
+      await this.requireNoConflict(client, record, principal.userId);
+      if (record.kind !== 'report')
+        throw new AccessError(409, 'Submission decisions use their dedicated verified workflow');
+      if (
+        input.action !== 'restore' &&
+        !['submitted', 'assigned', 'waiting_for_subject'].includes(record.status)
+      )
+        throw new AccessError(409, 'The case already has a decision');
       if (record.subject_type === 'data_deletion') {
         throw new AccessError(409, 'Data deletion uses its dedicated workflow');
       }
@@ -193,10 +242,10 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
             : 'resolved';
       const result = await client.query<CaseRow>(
         `UPDATE moderation_case
-         SET status = $2, reason_code = $3, updated_at = now()
+         SET status = $2, reason_code = $3, decided_by_user_id = $4, updated_at = now()
          WHERE id = $1
          RETURNING *`,
-        [caseId, status, input.reasonCode],
+        [caseId, status, input.reasonCode, principal.userId],
       );
       await this.audit(
         client,
@@ -247,46 +296,7 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
          ORDER BY priority DESC, created_at, id`,
         [isAdmin, principal.userId],
       );
-      const reviews = await client.query<{
-        readonly id: string;
-        readonly moderator_user_id: string | null;
-        readonly publication_state: 'submitted' | 'under_review';
-      }>(
-        `SELECT review.id, assignment.moderator_user_id, review.publication_state
-         FROM garage_review AS review
-         LEFT JOIN review_moderator_assignment AS assignment ON assignment.review_id = review.id
-         WHERE review.publication_state IN ('submitted', 'under_review')
-           AND ($1::boolean OR assignment.moderator_user_id = $2)`,
-        [isAdmin, principal.userId],
-      );
-      const garages = isAdmin
-        ? await client.query<{ readonly id: string }>(
-            "SELECT id FROM garage WHERE publication_state = 'pending_review'",
-          )
-        : { rows: [] as { readonly id: string }[] };
-      return sortQueue([
-        ...cases.rows.map(toCaseSummary),
-        ...reviews.rows.map((review) => ({
-          ...(review.moderator_user_id
-            ? { assignedModeratorUserId: review.moderator_user_id }
-            : {}),
-          id: `review:${review.id}`,
-          priority: 'normal' as const,
-          status:
-            review.publication_state === 'under_review'
-              ? ('assigned' as const)
-              : ('submitted' as const),
-          subjectId: review.id,
-          subjectType: 'review' as const,
-        })),
-        ...garages.rows.map((garage) => ({
-          id: `garage:${garage.id}`,
-          priority: 'normal' as const,
-          status: 'submitted' as const,
-          subjectId: garage.id,
-          subjectType: 'garage_profile' as const,
-        })),
-      ]);
+      return sortQueue(cases.rows.map(toCaseSummary));
     });
   }
 
@@ -324,7 +334,7 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
     }
     return this.transaction(principal, async (client) => {
       await this.ensureUser(client, principal.userId);
-      const record = await this.getCase(client, input.caseId);
+      const record = await this.getCase(client, input.caseId, true);
       if (
         !['resolved', 'rejected'].includes(record.status) ||
         !(await this.canAppeal(client, principal, record))
@@ -342,10 +352,16 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
       await client.query(`SELECT set_config('app.system_role', 'admin', true)`);
       await client.query(
         `UPDATE moderation_case
-         SET status = 'submitted', reason_code = 'missing_information', updated_at = now()
+         SET status = 'submitted', reason_code = 'missing_information', updated_at = now(),
+              appeal_against_user_id=decided_by_user_id,assigned_moderator_user_id=NULL,
+              escalation_reason='requires_admin',escalated_at=now(),escalated_by_user_id=$2
          WHERE id = $1`,
-        [record.id],
+        [record.id, principal.userId],
       );
+      if (record.kind === 'review_submission')
+        await client.query('DELETE FROM review_moderator_assignment WHERE review_id=$1', [
+          record.subject_id,
+        ]);
       await this.audit(
         client,
         principal.userId,
@@ -732,6 +748,29 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
     return false;
   }
 
+  private async requireNoConflict(
+    client: pg.PoolClient,
+    record: CaseRow,
+    userId: string,
+  ): Promise<void> {
+    if (record.requester_user_id === userId || record.appeal_against_user_id === userId)
+      throw new AccessError(403, 'A person involved in a case cannot decide it');
+    const result = await client.query(
+      `SELECT 1 FROM membership WHERE user_id=$1 AND state='active' AND garage_id=
+      CASE WHEN $2='garage_profile' THEN $3 ELSE (SELECT garage_id FROM garage_review WHERE id=$3) END`,
+      [userId, record.subject_type, record.subject_id],
+    );
+    const author =
+      record.subject_type === 'review'
+        ? await client.query('SELECT 1 FROM garage_review WHERE id=$1 AND author_user_id=$2', [
+            record.subject_id,
+            userId,
+          ])
+        : undefined;
+    if (result.rowCount || author?.rowCount)
+      throw new AccessError(403, 'A person involved in a case cannot decide it');
+  }
+
   private async changeSubjectVisibility(
     client: pg.PoolClient,
     record: CaseRow,
@@ -741,27 +780,51 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
       const expected = action === 'temporarily_hide' ? 'published' : 'temporarily_hidden';
       const target = action === 'temporarily_hide' ? 'temporarily_hidden' : 'published';
       const updated = await client.query(
-        'UPDATE garage_review SET publication_state = $2 WHERE id = $1 AND publication_state = $3',
-        [record.subject_id, target, expected],
+        `UPDATE garage_review r SET publication_state=$2,moderation_hidden_case_id=$4
+        WHERE r.id=$1 AND r.publication_state=$3 AND r.published_at IS NOT NULL
+          AND ($5::boolean OR (r.moderation_hidden_case_id=$6 AND EXISTS (
+            SELECT 1 FROM visit_evidence e JOIN file_object f ON f.id=e.private_file_id
+            WHERE e.review_id=r.id AND ((e.verification_state='verified' AND e.service_matches IS TRUE
+              AND e.visit_month_matches IS TRUE AND e.garage_matches IS TRUE AND f.scan_state='clean' AND f.retention_state='active')
+              OR e.verification_state='deleted_after_retention'))))`,
+        [
+          record.subject_id,
+          target,
+          expected,
+          action === 'temporarily_hide' ? record.id : null,
+          action === 'temporarily_hide',
+          record.id,
+        ],
       );
       if (!updated.rowCount)
         throw new AccessError(409, 'This review cannot take the requested visibility action');
       return;
     }
-    const expected = action === 'temporarily_hide' ? 'published' : 'suspended';
-    const target = action === 'temporarily_hide' ? 'suspended' : 'published';
+    const hidden = action === 'temporarily_hide';
     const updated = await client.query(
-      'UPDATE garage SET publication_state = $2 WHERE id = $1 AND publication_state = $3',
-      [record.subject_id, target, expected],
+      `UPDATE garage g SET publication_state=$2,moderation_hidden_case_id=$4
+      WHERE g.id=$1 AND g.publication_state=$3 AND g.deleted_at IS NULL
+        AND ($5::boolean OR (g.moderation_hidden_case_id=$6 AND EXISTS (
+          SELECT 1 FROM garage_verification v WHERE v.garage_id=g.id AND v.phone_state='verified'
+            AND v.contact_person_state='verified' AND v.company_document_state='verified' AND v.location_state='verified')))`,
+      [
+        record.subject_id,
+        hidden ? 'suspended' : 'published',
+        hidden ? 'published' : 'suspended',
+        hidden ? record.id : null,
+        hidden,
+        record.id,
+      ],
     );
     if (!updated.rowCount)
       throw new AccessError(409, 'This garage cannot take the requested visibility action');
   }
 
-  private async getCase(client: pg.PoolClient, caseId: string): Promise<CaseRow> {
-    const result = await client.query<CaseRow>('SELECT * FROM moderation_case WHERE id = $1', [
-      caseId,
-    ]);
+  private async getCase(client: pg.PoolClient, caseId: string, lock = false): Promise<CaseRow> {
+    const result = await client.query<CaseRow>(
+      `SELECT * FROM moderation_case WHERE id = $1${lock ? ' FOR UPDATE' : ''}`,
+      [caseId],
+    );
     if (!result.rows[0]) throw new AccessError(404, 'Moderation case not found');
     return result.rows[0];
   }
@@ -770,10 +833,15 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
     client: pg.PoolClient,
     principal: Principal,
     caseId: string,
+    lock = false,
   ): Promise<CaseRow> {
-    const record = await this.getCase(client, caseId);
+    const record = await this.getCase(client, caseId, lock);
     if (principal.roles.has('admin')) return record;
-    if (principal.roles.has('moderator') && record.assigned_moderator_user_id === principal.userId)
+    if (
+      principal.roles.has('moderator') &&
+      !record.escalation_reason &&
+      record.assigned_moderator_user_id === principal.userId
+    )
       return record;
     throw new AccessError(403, 'Moderator access denied for this case');
   }
@@ -793,7 +861,7 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
   private async ensureUser(client: pg.PoolClient, userId: string): Promise<void> {
     await client.query(
       `INSERT INTO app_user (id, oidc_subject, status) VALUES ($1, $1, 'active')
-       ON CONFLICT (id) DO UPDATE SET status = 'active'`,
+       ON CONFLICT (id) DO NOTHING`,
       [userId],
     );
   }
@@ -830,6 +898,7 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
           ? 'moderator'
           : '';
       await client.query(`SELECT set_config('app.system_role', $1, true)`, [systemRole]);
+      await assertCurrentStaffIdentity(client, principal);
       const result = await callback(client);
       await client.query('COMMIT');
       return result;

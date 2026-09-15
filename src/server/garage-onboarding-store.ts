@@ -246,7 +246,23 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
           ['published', 'rejected'].includes(decision)) ||
         (garage.publicationState === 'published' && decision === 'suspended');
       if (!valid) throw new AccessError(409, 'Invalid garage state');
-      await client.query('UPDATE garage SET publication_state=$2 WHERE id=$1', [id, decision]);
+      const involved = await client.query(
+        "SELECT 1 FROM membership WHERE garage_id=$1 AND user_id=$2 AND state='active'",
+        [id, principal.userId],
+      );
+      if (involved.rowCount)
+        throw new AccessError(403, 'A garage member cannot approve their own garage');
+      if (
+        decision === 'published' &&
+        ['phone', 'contactPerson', 'companyDocument', 'location'].some(
+          (key) => verification[key as keyof VerificationChecklist] !== 'verified',
+        )
+      )
+        throw new AccessError(422, 'All company verification checks are required');
+      await client.query(
+        'UPDATE garage SET publication_state=$2,moderation_hidden_case_id=NULL WHERE id=$1',
+        [id, decision],
+      );
       await client.query(
         'UPDATE garage_verification SET phone_state=$2,contact_person_state=$3,company_document_state=$4,location_state=$5,checked_by_user_id=$6,checked_at=now() WHERE garage_id=$1',
         [

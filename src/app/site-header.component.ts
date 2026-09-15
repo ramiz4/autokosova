@@ -1,3 +1,4 @@
+import { staffCopy } from '../shared/staff-copy';
 import { accountType } from '../shared/account';
 import { NgTemplateOutlet } from '@angular/common';
 import { afterNextRender } from '@angular/core';
@@ -27,10 +28,11 @@ export class SiteHeaderComponent {
   readonly smallLogo = input(true);
   readonly loginReturnTo = input<string>();
   readonly active = input<
-    'garage' | 'search' | 'request' | 'inquiries' | 'favorites' | undefined
+    'admin' | 'moderation' | 'garage' | 'search' | 'request' | 'inquiries' | 'favorites' | undefined
   >();
   protected readonly account = inject(AccountSessionService);
   protected readonly accountType = accountType;
+  protected readonly staffCopy = staffCopy;
   protected readonly accountPanel = signal<'account' | null>(null);
   protected readonly logoutError = signal(false);
   private readonly router = inject(Router);

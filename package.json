@@ -33,7 +33,8 @@
     "dev:doctor": "node scripts/dev.mjs --doctor",
     "test:dev": "node --test test/dev-*.test.mjs",
     "test:dev:smoke": "node scripts/dev/quick-smoke.mjs",
-    "test:dev:smoke:full": "node scripts/dev/smoke.mjs"
+    "test:dev:smoke:full": "node scripts/dev/smoke.mjs",
+    "test:staff:browser": "node scripts/staff-foundation-browser-smoke.mjs"
   },
   "private": true,
   "dependencies": {

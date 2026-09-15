@@ -4,6 +4,8 @@
 
 Passende Werkstatt anhand nachvollziehbarer Erfahrungen, Spezialisierung und Standort finden und selbst direkt kontaktieren.
 
+[Rollen und Berechtigungen](docs/architecture/ROLES-AND-PERMISSIONS.md)
+
 ## Projektstand
 
 Privates Repository mit Produktplanung und technischer Grundlage. Der Stack ist in [ADR-001](docs/architecture/ADR-001.md) und [ADR-002](docs/architecture/ADR-002.md) festgelegt; Marke, Domain und Anbieterbestellungen sind weiterhin nicht freigegeben.
@@ -16,6 +18,7 @@ Privates Repository mit Produktplanung und technischer Grundlage. Der Stack ist 
 - [ZITADEL-Integration und offenes Login-Gate](docs/architecture/AUTH-INTEGRATION.md)
 
 Die eigene Kontoauskunft, Profilseite `/profile` und noch offene echte Test-OIDC-Abnahme sind in [ACCOUNT-PROFILE.md](docs/architecture/ACCOUNT-PROFILE.md) beschrieben.
+
 - [Werkstattaufnahme, Prüfung und Bildschutz](docs/architecture/GARAGE-ONBOARDING.md)
 - [Kontogebundene Favoriten und Sitzungsanzeige](docs/architecture/FAVORITES.md)
 - [Öffentliche Mehrortsuche und nachvollziehbares Matching](docs/architecture/SEARCH-MATCHING.md)
@@ -277,3 +280,26 @@ zwei eigene Datensätze zu; Änderungen und Löschungen bleiben bei Neustarts er
 Die tatsächlichen Test-Subjects werden ausschließlich lokal konfiguriert, niemals
 über E-Mail-Claims als Berechtigung verwendet. Einrichtung, Fixture-IDs und die
 bewusste Löschgrenze: [Demo-Konten und Datenbesitz](docs/development/DEMO-ACCOUNT-OWNERSHIP.md).
+
+## Admin-/Moderator-Basis lokal prüfen
+
+`npm run dev:demo-workflows` ist der vollständige lokale Demo-Einstieg. `dev:demo` bleibt das öffentliche Werkstattprofil, `dev` der Referenzdatenstart. Für den manuellen Mitarbeitendenablauf sind die bestehende freigegebene OIDC-Konfiguration und tatsächliche Projektrollen notwendig. Die ignorierte lokale Konfiguration kann `AUTOKOSOVA_DEMO_ADMIN_SUBJECT` und `AUTOKOSOVA_DEMO_MODERATOR_SUBJECT` aus der freigegebenen Subject-Zuordnung enthalten. Keine Werte aus E-Mail/Kontonamen ableiten und keine Rolle durch den Seed erzeugen.
+
+Ein Moderator ohne konfigurierte Zuordnung bekommt keine fremden Fälle. Sein regulärer erfolgreicher Login trägt die verifizierte Rolle in das eingeschränkte Zuweisungsverzeichnis ein; deshalb für die erste manuelle Demo zuerst Moderator anmelden, abmelden, danach Admin anmelden. Bei mehreren Konten werden die fremden Daten nach Logout nicht weiterverwendet. Eine geänderte bestehende Demo-Bindung wird abgewiesen statt Datensätze einem anderen Konto zuzuschreiben.
+
+| Fiktiver Szenarioschlüssel     | Rolle und Ausgang                  | Aktion / erwartetes Ergebnis                                                         |
+| ------------------------------ | ---------------------------------- | ------------------------------------------------------------------------------------ |
+| `demo-staff-review-unassigned` | Admin, unzugewiesen                | Fall ansehen, verifizierten Moderator wählen und zuweisen.                           |
+| `demo-staff-review-assigned`   | Zugeordneter Moderator, in Prüfung | Fall ansehen und privaten fiktiven Nachweis tatsächlich öffnen.                      |
+| `demo-staff-review-mismatch`   | Zugeordneter Moderator             | Lesbarer, aber absichtlich unpassender Nachweis; keine positive Prüfung vortäuschen. |
+| `demo-staff-review-blocked`    | Zugeordneter Moderator             | Gesperrter synthetischer Scanstatus; kein Dateiinhalt und keine Veröffentlichung.    |
+| `demo-staff-review-foreign`    | Andere fiktive Identität           | Für den regulären Moderator weder Liste noch Detail/Datei zugänglich.                |
+| `demo-staff-review-escalated`  | Admin                              | Gespeicherte Eskalation in der Gesamtübersicht sehen.                                |
+
+Durchlauf: **Admin zuweisen → regulär abmelden → Moderator Fall ansehen / Nachweis öffnen → begründet zur Adminprüfung geben → Admin findet Eskalation.** Nach Rückgabe verliert der Moderator diesen Fallzugriff. Der Basisarbeitsplatz umfasst diese Strecke; vollständige Entscheidungsformulare und weitere Adminbereiche werden in den jeweiligen Folgeissues ergänzt.
+
+Alle Nachweise sind klar markierte synthetische Textdateien, keine echten Rechnungen. Der Starter aktiviert `AUTOKOSOVA_LOCAL_DEMO_FILES=1` ausschliesslich für seinen lokalen Workflow-Demoprozess. Bei direktem Test-SSR-Start ist diese explizite Freigabe ebenfalls erforderlich. Der Adapter bleibt in Produktion und bei nichtlokaler Datenbank gesperrt und akzeptiert keine beliebigen Dateien, Speicherpfade oder Uploads. Er ist kein Malware-Scanner. Downloads sind kurzlebig, einmalig, sitzungs-/objektgebunden und werden bei jeder Einlösung erneut autorisiert.
+
+Normales Neuladen, App-Neustart und erneuter Seed erhalten Zuweisungen, Entscheidungen, Eskalationen, vorhandene Kunden-/Werkstattdaten und Löschungen. Ausgangszustand nur mit einer frischen isolierten Worktree-DB oder einer ausdrücklich gewählten vorhandenen Reset-Funktion herstellen; der Start führt keinen Reset aus.
+
+Automatisierter Nachweis: `npm run test:staff:browser` nach dem Build, mit lokaler isolierter `DATABASE_URL` und Chrome/Chromium (`CHROME_BIN` bei abweichendem Installationspfad). Der Test erstellt nur seine eigene flüchtige Test-Schema-/Browserumgebung, nutzt den signierenden OIDC-Testprovider und löscht anschliessend ausschliesslich diese Testressourcen. `test/staff-foundation-postgres.test.ts` prüft zusätzlich einen Runtime-Benutzer ohne Tabellenbesitz/RLS-Bypass. Tatsächliche externe Testkonto-Anmeldung wird nicht aus diesen synthetischen Ergebnissen abgeleitet.

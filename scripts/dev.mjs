@@ -79,6 +79,11 @@ try {
     controller.signal.throwIfAborted();
     console.log('Starte Angular; prüfe API mit DB-Zugriff …');
     config.env.AUTOKOSOVA_DEV_INSTANCE = randomUUID();
+    config.env.AUTOKOSOVA_LOCAL_DEMO_FILES = profile === 'demo-workflows' ? '1' : '0';
+    if (profile === 'demo-workflows')
+      console.log(
+        'Admin-/Moderator-Demo: regulärer OIDC-Login und verifizierte Rollen erforderlich. Fehlende Moderator-Zuordnung: AUTOKOSOVA_DEMO_MODERATOR_SUBJECT lokal einrichten.',
+      );
     app = startProcess(
       process.execPath,
       [

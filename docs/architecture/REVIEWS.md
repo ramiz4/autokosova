@@ -1,5 +1,7 @@
 # Auftragsbezogene Bewertungen und Besuchsnachweise
 
+Übergreifende Aktions- und Zugriffsgrenzen: [Rollen und Berechtigungen](ROLES-AND-PERMISSIONS.md). Diese gemeinsame Referenz unterscheidet Implementierungsstand, fachliche Erlaubnis und externe Freigaben.
+
 Stand: 13. September 2026. Dieser Ablauf setzt #14 um und ergänzt das
 [Datenmodell](DATA-MODEL.md), die [öffentliche Suche](SEARCH-MATCHING.md) und den Produktbrief.
 Er behauptet keine technische Reparaturgarantie und erzeugt keine echten Erfahrungen oder Belege.
@@ -36,8 +38,8 @@ personenbezogene Angaben vor dem Upload schwärzen. Die private Prüfliste fragt
 
 Der Ablauf trennt Bewertung und Nachweis ausdrücklich:
 
-| Bewertung | Nachweis |
-|---|---|
+| Bewertung                                              | Nachweis                                                  |
+| ------------------------------------------------------ | --------------------------------------------------------- |
 | `submitted → under_review → published` oder `rejected` | `submitted → under_review → verified` oder `not_verified` |
 
 Eine Moderation darf nur einem zugewiesenen Moderator oder einem Admin zugänglich sein. Eine

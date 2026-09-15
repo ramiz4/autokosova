@@ -37,6 +37,13 @@ function localizedRoutes(prefix: string): Routes {
           fragment: fragment ?? undefined,
         }),
     },
+    ...['admin', 'moderation'].map((path) => ({
+      path: `${childPrefix}${path}`,
+      pathMatch: 'full' as const,
+      data: { adminOnly: path === 'admin' },
+      loadComponent: () =>
+        import('./staff-workspace.component').then((m) => m.StaffWorkspaceComponent),
+    })),
     {
       path: `${childPrefix}profile`,
       pathMatch: 'full',

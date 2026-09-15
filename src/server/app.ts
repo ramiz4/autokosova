@@ -1,3 +1,5 @@
+import type { LocalDemoFileStore } from './local-demo-files';
+import { registerStaffRoutes } from './staff-routes';
 import { randomBytes } from 'node:crypto';
 import { AUTH_BROWSER_COOKIE, registerOidcLogout } from './oidc-logout';
 import type { RepairRequestMutation } from '../shared/saved-repair-request';
@@ -69,6 +71,7 @@ import {
 } from '../shared/repair-request';
 
 interface ServerOptions {
+  readonly localDemoFiles?: LocalDemoFileStore;
   readonly garageStore?: GarageOnboardingStore;
   readonly favoriteStore?: FavoriteStore;
   readonly accessStore?: AccessStore;
@@ -161,7 +164,7 @@ const repairRequestBodySchema = {
 function safeReturnTo(value: unknown): string {
   if (typeof value !== 'string' || value.length > 2000) return '/';
   const match = value.match(
-    /^(\/(?:(?:sq|en)\/)?(?:profile|inquiries|favorites|inquiry|anfrage|garages(?:\/[A-Za-z0-9_-]{1,128})?))(?:\?([^#]*))?$/,
+    /^(\/(?:(?:sq|en)\/)?(?:admin|moderation|profile|inquiries|favorites|inquiry|anfrage|garages(?:\/[A-Za-z0-9_-]{1,128})?))(?:\?([^#]*))?$/,
   );
   if (!match) return '/';
   const path = match[1].replace(/\/anfrage$/, '/inquiry');
@@ -356,7 +359,10 @@ export function createServer(options: ServerOptions = {}) {
       serializers: {
         req: (request) => ({
           method: request.method,
-          url: request.url.split('?')[0].replace(/(\/api\/me\/repair-requests)\/[^/]+$/, '$1/:id'),
+          url: request.url
+            .split('?')[0]
+            .replace(/(\/api\/me\/repair-requests)\/[^/]+$/, '$1/:id')
+            .replace(/(\/api\/(?:staff\/cases|local-demo\/files))\/[^/]+/, '$1/:id'),
         }),
       },
     },
@@ -375,7 +381,7 @@ export function createServer(options: ServerOptions = {}) {
     if (isNoIndexPath(request.url)) reply.header('x-robots-tag', 'noindex, nofollow');
     if (
       isAccountPagePath(request.url) ||
-      /^\/api\/me(?:[/?]|$)/.test(request.url) ||
+      /^\/api\/(?!public(?:[/?]|$))/.test(request.url) ||
       request.url.startsWith('/auth/')
     ) {
       reply.header('cache-control', 'private, no-store');
@@ -458,6 +464,31 @@ export function createServer(options: ServerOptions = {}) {
     throw error;
   }
 
+  registerStaffRoutes(app, moderationStore, requirePrincipal, errorResponse);
+  if (options.localDemoFiles) app.addHook('onClose', async () => options.localDemoFiles!.close());
+  app.get('/api/local-demo/files/:fileId/content', async (request, reply) => {
+    try {
+      const principal = requirePrincipal(request);
+      if (!options.localDemoFiles) throw new AccessError(404, 'Private demo file not found');
+      const grant = request.headers['x-file-grant'];
+      if (typeof grant !== 'string') throw new AccessError(404, 'Private demo file not found');
+      const content = await options.localDemoFiles.consume(
+        principal,
+        (request.params as { fileId: string }).fileId,
+        grant,
+      );
+      requirePrincipal(request);
+      return reply
+        .header('cache-control', 'private, no-store')
+        .header('x-content-type-options', 'nosniff')
+        .header('content-security-policy', "default-src 'none'; sandbox")
+        .type('text/plain; charset=utf-8')
+        .send(content);
+    } catch (error) {
+      return errorResponse(error, reply);
+    }
+  });
+
   app.get('/health', async () => ({ status: 'ok' }));
   app.get('/api/health', async () => ({ status: 'ok' }));
   app.get('/robots.txt', async (_request, reply) => {
@@ -465,7 +496,7 @@ export function createServer(options: ServerOptions = {}) {
     const sitemap = options.publicSiteUrl
       ? `\nSitemap: ${siteUrl(options.publicSiteUrl, '/sitemap.xml')}`
       : '';
-    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /profile\nDisallow: /sq/profile\nDisallow: /en/profile\nDisallow: /favorites\nDisallow: /sq/favorites\nDisallow: /en/favorites\nDisallow: /inquiries\nDisallow: /sq/inquiries\nDisallow: /en/inquiries\nDisallow: /inquiry\nDisallow: /sq/inquiry\nDisallow: /en/inquiry\nDisallow: /garages/new\nDisallow: /sq/garages/new\nDisallow: /en/garages/new\nDisallow: /garages$\nDisallow: /garages?\nDisallow: /sq/garages$\nDisallow: /sq/garages?\nDisallow: /en/garages$\nDisallow: /en/garages?\nDisallow: /suche\nDisallow: /werkstaetten${sitemap}\n`;
+    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /admin\nDisallow: /sq/admin\nDisallow: /en/admin\nDisallow: /moderation\nDisallow: /sq/moderation\nDisallow: /en/moderation\nDisallow: /profile\nDisallow: /sq/profile\nDisallow: /en/profile\nDisallow: /favorites\nDisallow: /sq/favorites\nDisallow: /en/favorites\nDisallow: /inquiries\nDisallow: /sq/inquiries\nDisallow: /en/inquiries\nDisallow: /inquiry\nDisallow: /sq/inquiry\nDisallow: /en/inquiry\nDisallow: /garages/new\nDisallow: /sq/garages/new\nDisallow: /en/garages/new\nDisallow: /garages$\nDisallow: /garages?\nDisallow: /sq/garages$\nDisallow: /sq/garages?\nDisallow: /en/garages$\nDisallow: /en/garages?\nDisallow: /suche\nDisallow: /werkstaetten${sitemap}\n`;
   });
   app.get('/sitemap.xml', async (_request, reply) => {
     if (!options.publicSiteUrl) {
@@ -658,6 +689,7 @@ export function createServer(options: ServerOptions = {}) {
         reauthenticateAfter: transaction.reauthenticateAfter,
       });
       const profile = await resolveOidcProfile(options.oidcConfig, identity, tokens.accessToken);
+      await moderationStore.recordVerifiedIdentity?.(identity.subject, identity.roles, profile);
       if (!accessStore.finishOidcTransaction(query.state, transaction))
         return reply.code(401).send({ error: 'OIDC login was cancelled or expired' });
       accessStore.setVerifiedRoles(identity.subject, identity.roles);
@@ -697,7 +729,9 @@ export function createServer(options: ServerOptions = {}) {
         // Logout or expiry during the store read must not produce an account-specific redirect.
         const current = accessStore.getPrincipal(principal.sessionId);
         if (current?.userId === principal.userId) {
-          if (type === 'garage') destination = `${prefix}/garages/new`;
+          if (current.roles.has('admin')) destination = `${prefix}/admin`;
+          else if (current.roles.has('moderator')) destination = `${prefix}/moderation`;
+          else if (type === 'garage') destination = `${prefix}/garages/new`;
           else if (type === 'customer') destination = `${prefix}/inquiries`;
         }
       } catch {
@@ -1035,10 +1069,13 @@ export function createServer(options: ServerOptions = {}) {
   app.get('/api/reviews/:reviewId/evidence/download-grant', async (request, reply) => {
     try {
       const params = request.params as { reviewId: string };
-      return await reviewStore.issueEvidenceDownloadGrant(
-        requirePrincipal(request),
-        params.reviewId,
-      );
+      const principal = requirePrincipal(request);
+      const grant = await reviewStore.issueEvidenceDownloadGrant(principal, params.reviewId);
+      const result = options.localDemoFiles
+        ? await options.localDemoFiles.issue(principal, grant.fileId)
+        : grant;
+      requirePrincipal(request);
+      return result;
     } catch (error) {
       return errorResponse(error, reply);
     }

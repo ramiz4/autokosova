@@ -1,5 +1,7 @@
 # Moderation, Meldungen und Datenlebenszyklus
 
+Übergreifende Aktions- und Zugriffsgrenzen: [Rollen und Berechtigungen](ROLES-AND-PERMISSIONS.md). Diese gemeinsame Referenz unterscheidet Implementierungsstand, fachliche Erlaubnis und externe Freigaben.
+
 Stand: 13. September 2026. Dieser Ablauf setzt #15 mit Testdaten um. Er ist keine rechtliche
 Beratung und ersetzt weder die Betreiberentscheidung noch geprüfte Pflichttexte vor einem
 öffentlichen Pilot.
@@ -43,13 +45,13 @@ Es gibt bewusst **keine** voreingestellten Produktivfristen. Bevor die Bearbeitu
 Löschanträgen aktiviert wird, muss ein Betreiber eine versionierte Regel mit einem Verweis auf die
 fachliche/rechtliche Freigabe hinterlegen. Die Regel enthält getrennt:
 
-| Bereich | Konfigurationswert |
-|---|---|
-| private Besuchsnachweise | Aufbewahrungstage |
-| gespeicherte Reparaturanfragen | Aufbewahrungstage |
-| Meldungsdetails | Aufbewahrungstage |
-| restriktive Audit-Ereignisse | Aufbewahrungstage |
-| veröffentlichte Erfahrungen | löschen oder anonymisiert erhalten |
+| Bereich                        | Konfigurationswert                 |
+| ------------------------------ | ---------------------------------- |
+| private Besuchsnachweise       | Aufbewahrungstage                  |
+| gespeicherte Reparaturanfragen | Aufbewahrungstage                  |
+| Meldungsdetails                | Aufbewahrungstage                  |
+| restriktive Audit-Ereignisse   | Aufbewahrungstage                  |
+| veröffentlichte Erfahrungen    | löschen oder anonymisiert erhalten |
 
 Ohne diese Regel bleibt ein Löschauftrag sichtbar als `blocked_by_policy`; er wird nicht
 irrtümlich oder stillschweigend ausgeführt. Bei einem aktiven, freigegebenen Ablauf werden private

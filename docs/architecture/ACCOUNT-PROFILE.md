@@ -1,5 +1,7 @@
 # Eigene Kontoauskunft und Profilseite
 
+Übergreifende Aktions- und Zugriffsgrenzen: [Rollen und Berechtigungen](ROLES-AND-PERMISSIONS.md). Diese gemeinsame Referenz unterscheidet Implementierungsstand, fachliche Erlaubnis und externe Freigaben.
+
 ## Vertrag und Datenherkunft
 
 `GET /api/session` bleibt unverändert `{ authenticated: boolean }`. Der bestehende
@@ -170,12 +172,12 @@ Testkonten nicht zugänglich. Keine Zugangsdaten wurden angefordert, kopiert ode
 Die Prüfung aus #38 ist daher **nicht erneut ausgeführt** und darf nicht durch die
 automatisierten Fixtures als erfüllt markiert werden.
 
-| Bestehender fiktiver Kontotyp | Erwartete Abnahme | Status |
-|---|---|---|
-| Kunde | Identität, `customer`, Profil, Reload, Logout | Nicht ausgeführt: Testzugang fehlt |
-| Garage-Mitglied | `customer` und tatsächliche lokale aktive Membership getrennt | Nicht ausgeführt: Testzugang und Subject/Membership-Zuordnung fehlen |
-| Moderator | `customer` + `moderator`, keine erfundene Membership | Nicht ausgeführt: Testzugang fehlt |
-| Admin | Alle tatsächlich erteilten Projektrollen, keine fremden Memberships | Nicht ausgeführt: Testzugang fehlt |
+| Bestehender fiktiver Kontotyp | Erwartete Abnahme                                                   | Status                                                               |
+| ----------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Kunde                         | Identität, `customer`, Profil, Reload, Logout                       | Nicht ausgeführt: Testzugang fehlt                                   |
+| Garage-Mitglied               | `customer` und tatsächliche lokale aktive Membership getrennt       | Nicht ausgeführt: Testzugang und Subject/Membership-Zuordnung fehlen |
+| Moderator                     | `customer` + `moderator`, keine erfundene Membership                | Nicht ausgeführt: Testzugang fehlt                                   |
+| Admin                         | Alle tatsächlich erteilten Projektrollen, keine fremden Memberships | Nicht ausgeführt: Testzugang fehlt                                   |
 
 Mit der bestehenden erlaubten lokalen Konfiguration gemäß `AUTH-INTEGRATION.md`:
 `npm run dev:demo`, dann `/profile` → Login → Kontomenü → Profil → Reload → Sprachwechsel →
