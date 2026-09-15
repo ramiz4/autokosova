@@ -68,6 +68,16 @@ Ohne dieses Paar wird ausschließlich lokal abgemeldet und diese Grenze sichtbar
 Details, sichere Rücksprünge, andere Ports und Testgrenzen stehen in
 [AUTH-INTEGRATION.md](docs/architecture/AUTH-INTEGRATION.md#vollständige-abmeldung-und-bewusste-erneute-anmeldung-75).
 
+### Profilangaben nach dem Login
+
+Anzeigename, E-Mail und Benutzername kommen aus verifizierten ID-Token-Claims beziehungsweise
+serverseitigem ZITADEL-UserInfo. Der bestehende Scope `openid profile email` genügt; der
+UserInfo-Endpunkt wird standardmäßig aus der vertrauenswürdigen Issuer-Discovery ermittelt.
+`ZITADEL_USERINFO_ENDPOINT` ist nur ein optionaler Same-Origin-Override, keine neue Pflichtvariable.
+Nach dem Update bestehende Sitzungen einmal ab- und wieder anmelden. Ein tatsächlicher
+Provider-Abruffehler wird auf `/profile` getrennt von fehlenden Angaben angezeigt.
+Details und der noch fehlende echte Testkonto-Nachweis: [ACCOUNT-PROFILE.md](docs/architecture/ACCOUNT-PROFILE.md).
+
 ### Konfiguration und getrennte Worktrees
 
 Die Reihenfolge ist: eingebaute Starter-Defaults → `.env` → `.env.local` → bereits

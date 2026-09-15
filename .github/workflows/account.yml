@@ -26,6 +26,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: node scripts/account-browser-smoke.mjs
+      - run: node scripts/profile-oidc-browser-smoke.mjs
       - name: Upload account viewport evidence (fictional fixtures only)
         if: always()
         uses: actions/upload-artifact@v4

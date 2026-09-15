@@ -1,6 +1,6 @@
 import type { AccountProfile } from '../shared/account';
 
-/** Called only after the existing OIDC signature/issuer/audience/subject verification. */
+/** Only verified ID-token claims or same-subject, trusted UserInfo may reach this mapper. */
 export function accountProfileFromClaims(
   claims: Readonly<Record<string, unknown>>,
 ): AccountProfile {
@@ -22,6 +22,22 @@ export function accountProfileFromClaims(
       )
     )
       profile[field] = text;
+  }
+  if (!profile.displayName) {
+    const parts = ['given_name', 'family_name']
+      .map((key) => claims[key])
+      .filter((value): value is string => typeof value === 'string')
+      .map((value) => value.trim())
+      .filter(
+        (value) =>
+          value &&
+          value.length <= 200 &&
+          ![...value].some(
+            (character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127,
+          ),
+      );
+    const name = parts.join(' ');
+    if (name && name.length <= 200) profile.displayName = name;
   }
   return profile;
 }

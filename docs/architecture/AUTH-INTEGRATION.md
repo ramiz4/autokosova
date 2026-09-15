@@ -201,3 +201,21 @@ Eigene Werkstätten brauchen weiterhin aktive Memberships; Löschen verlangt die
 Owner-Rolle. Die Zuordnung lokaler Workflow-Fixtures verwendet ausdrücklich
 konfigurierte tatsächliche OIDC-Subjects plus Issuer, nie eine E-Mail-Übereinstimmung.
 Einzelheiten: [Demo-Konten und Datenbesitz](../development/DEMO-ACCOUNT-OWNERSHIP.md).
+
+
+## Profilangaben aus UserInfo (#100)
+
+`openid profile email` bleibt der angeforderte Scope. Bei fehlenden Profilfeldern im verifizierten
+ID-Token liest der Callback UserInfo serverseitig mit dem kurzzeitig gehaltenen Access-Token.
+`ZITADEL_USERINFO_ENDPOINT` ist optional: Ohne Override wird der Endpunkt automatisch aus
+`<konfigurierter Issuer>/.well-known/openid-configuration` ermittelt und auf Issuer/Origin geprüft.
+Die vorhandene lokale Konfiguration muss dafür nicht geändert werden. Ein expliziter Override
+muss zum selben vertrauenswürdigen Issuer-Origin gehören; er wird beim Start validiert.
+
+Es sind keine Management-Zugangsdaten und keine Aktivierung von „User Info inside ID Token“
+beim Provider nötig. UserInfo muss exakt dasselbe `sub` bestätigen und erweitert keine Rollen
+oder Memberships. Kein Benutzer-/Passwort-Fallback, kein Client-Token, kein dauerhaft gespeicherter
+Access-Token. Ein Provider-Abruffehler wird als solcher auf `/profile` angezeigt; erneuter regulärer
+Login löst die Angaben neu auf. Alte Sitzungen nach dem Update einmal ab- und wieder anmelden.
+Sicherheitsgrenzen, Abnahmetests und der weiterhin offene echte Kunden-/Werkstatt-Login-Nachweis
+stehen in [ACCOUNT-PROFILE.md](ACCOUNT-PROFILE.md#ergänzender-nachweis-100-15092026).
