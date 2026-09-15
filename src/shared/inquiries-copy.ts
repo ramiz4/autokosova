@@ -60,6 +60,7 @@ const de = {
   privateLabel: 'Privat',
   viewShort: 'Details',
   findShort: 'Werkstätten finden',
+  activateToSearch: 'Zum Suchen im Menü aktivieren.',
   emptyIconLabel: 'Gespeicherte Anfragen',
   title: 'Meine Anfragen',
   description:
@@ -154,6 +155,7 @@ export const inquiriesCopy: Readonly<
     privateLabel: 'Private',
     viewShort: 'Detaje',
     findShort: 'Gjej servise',
+    activateToSearch: 'Aktivizoje në meny për të kërkuar.',
     emptyIconLabel: 'Kërkesat e ruajtura',
     title: 'Kërkesat e mia',
     description:
@@ -240,6 +242,7 @@ export const inquiriesCopy: Readonly<
     privateLabel: 'Private',
     viewShort: 'Details',
     findShort: 'Find garages',
+    activateToSearch: 'Activate in the menu to search.',
     emptyIconLabel: 'Saved inquiries',
     title: 'My inquiries',
     description:

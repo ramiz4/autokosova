@@ -97,15 +97,6 @@
   padding-left: 6px;
   color: #536d98;
 }
-.card-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding-top: 14px;
-  border-top: 1px solid #eef1f6;
-}
 .text-action {
   display: inline-flex;
   align-items: center;
@@ -118,8 +109,7 @@
   font-weight: 600;
   color: #435675;
 }
-.text-action:hover,
-.icon-action:hover {
+.text-action:hover {
   background: #f1f5fb;
   color: #0038c9;
 }
@@ -130,11 +120,19 @@
   width: 44px;
   height: 44px;
   border-radius: 9px;
-  color: #536d98;
+  border: 1px solid #a7bad9;
+  background: #edf3fc;
+  color: #173763;
+}
+.icon-action:hover,
+.icon-action[aria-expanded='true'] {
+  border-color: #7b9ccd;
+  background: #e2edff;
+  color: #0038c9;
 }
 .actions-popup {
   position: absolute;
-  top: 44px;
+  top: 50px;
   right: 0;
   z-index: 15;
   padding: 6px;
@@ -155,11 +153,12 @@
   text-align: left;
   font-size: 14px;
 }
-.actions-popup button:hover {
-  background: #f1f5fb;
-}
-.delete-action {
-  color: #b02443;
+.search-action button:disabled {
+  cursor: not-allowed;
+  opacity: 1;
+  background: #edf0f5;
+  border-color: #b7c3d4;
+  color: #526483;
 }
 .privacy-card {
   border: 1px solid #dce7f8;
@@ -273,13 +272,10 @@ button:disabled {
   .card-heading {
     gap: 10px;
   }
-  .card-footer > a,
-  .card-footer > button {
-    width: 100%;
-  }
-  .secondary-actions {
-    justify-content: space-between;
-    width: 100%;
+  .search-action > :is(a, button) {
+    padding-inline: 12px;
+    gap: 8px;
+    font-size: 13px;
   }
   .state-panel {
     padding: 24px;

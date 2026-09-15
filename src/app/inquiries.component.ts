@@ -1,6 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import {
   Component,
+  DestroyRef,
   Injector,
   afterNextRender,
   effect,
@@ -41,6 +42,7 @@ import { ButtonDirective } from './ui/button.directive';
   styleUrl: './inquiries.component.scss',
   host: {
     '(document:pointerdown)': 'dismissActions($event)',
+    '(document:focusin)': 'dismissActions($event)',
     '(keydown.escape)': 'closeActions(true)',
   },
   providers: [SavedRepairRequestsService],
@@ -59,6 +61,7 @@ export class InquiriesComponent {
   private actionTrigger?: HTMLElement;
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
 
   constructor() {
     effect(() => {
@@ -82,13 +85,72 @@ export class InquiriesComponent {
       : (this.editor()?.canLeave() ?? true);
   }
   protected async edit(request: RepairRequestSummary): Promise<void> {
-    this.closeActions();
+    if (this.saved.writeState() === 'saving') return;
+    // The editor must return to the persistent trigger, not the removed menu item.
+    this.closeActions(true);
     this.editingId.set(request.id);
     await this.saved.openDetail(request.id);
   }
   protected toggleActions(id: string, event: Event): void {
+    if (this.actionsId() === id) this.closeActions(true);
+    else this.openActions(id, event);
+  }
+  protected onActionTriggerKeydown(id: string, event: KeyboardEvent): void {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    this.openActions(id, event, event.key === 'ArrowUp');
+  }
+  private openActions(id: string, event: Event, last = false): void {
+    if (this.saved.writeState() === 'saving') return;
     this.actionTrigger = event.currentTarget as HTMLElement;
-    this.actionsId.set(this.actionsId() === id ? null : id);
+    this.actionsId.set(id);
+    afterNextRender(
+      () => {
+        // Ignore a pending focus callback if another card or a dialog has taken over.
+        if (this.actionsId() !== id) return;
+        const items = this.document
+          .getElementById('actions-' + id)
+          ?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+        items?.[last ? items.length - 1 : 0]?.focus();
+      },
+      { injector: this.injector },
+    );
+  }
+  protected onActionsKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      this.closeActions(true);
+      return;
+    }
+    if (event.key === 'Tab') {
+      // Resume the browser's normal Tab/Shift+Tab order from the persistent trigger.
+      this.closeActions(true);
+      return;
+    }
+    const items = Array.from(
+      (event.currentTarget as HTMLElement).querySelectorAll<HTMLButtonElement>('[role="menuitem"]'),
+    );
+    const index = items.indexOf(this.document.activeElement as HTMLButtonElement);
+    let next: number;
+    switch (event.key) {
+      case 'ArrowDown':
+        next = (index + 1) % items.length;
+        break;
+      case 'ArrowUp':
+        next = (index - 1 + items.length) % items.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = items.length - 1;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    items[next]?.focus();
   }
   protected closeActions(restore = false): void {
     if (!this.actionsId()) return;
@@ -96,23 +158,30 @@ export class InquiriesComponent {
     if (restore) this.actionTrigger?.focus();
   }
   protected dismissActions(event: Event): void {
-    if (event.target instanceof Element && !event.target.closest('[data-inquiry-actions]'))
-      this.closeActions();
-  }
-  protected async deactivate(request: RepairRequestSummary, event?: Event): Promise<void> {
-    const trigger = (event?.currentTarget as HTMLElement | undefined) ?? this.actionTrigger;
-    this.closeActions(true);
-    if (await this.saved.mutate(request, { kind: 'activity', active: !request.active })) {
-      afterNextRender(
-        () => {
-          if (trigger?.isConnected) trigger.focus();
-          else this.document.querySelector<HTMLElement>('#inquiries-title')?.focus();
-        },
-        { injector: this.injector },
-      );
+    if (
+      event.target instanceof Node &&
+      !this.actionTrigger?.closest('[data-inquiry-actions]')?.contains(event.target)
+    ) {
+      this.closeActions(event.type === 'pointerdown');
     }
   }
+  protected async deactivate(request: RepairRequestSummary): Promise<void> {
+    const trigger = this.actionTrigger;
+    const context = this.account.dataContext();
+    this.closeActions(true);
+    await this.saved.mutate(request, { kind: 'activity', active: !request.active });
+    if (this.destroyRef.destroyed || this.account.dataContext() !== context) return;
+    afterNextRender(
+      () => {
+        if (this.account.dataContext() !== context) return;
+        if (trigger?.isConnected) trigger.focus();
+        else this.document.querySelector<HTMLElement>('#inquiries-title')?.focus();
+      },
+      { injector: this.injector },
+    );
+  }
   protected confirmDelete(request: RepairRequestSummary): void {
+    if (this.saved.writeState() === 'saving') return;
     this.closeActions(true);
     this.deleting.set(request);
   }
