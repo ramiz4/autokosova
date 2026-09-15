@@ -97,6 +97,14 @@ try {
   // An explicit customer workflow remains usable by an operator, without a role switch.
   await login(garageSubject, '/sq/inquiries', '[data-inquiries-empty]', 1);
   await login(garageSubject, '/garages/new', '[data-owned-garage]', 2);
+  assert.equal(
+    await evaluate(
+      "!!document.querySelector('form, header[aria-labelledby=onboarding-hero-title]')",
+    ),
+    false,
+  );
+  await screenshot('garage-overview', 1280);
+  await screenshot('garage-overview', 390);
   await click('button[aria-controls="account-menu"]');
   await until(
     () => evaluate("!!document.querySelector('[data-account-garages]')"),
@@ -117,6 +125,24 @@ try {
         `fetch('/api/garages/${demoAccountGarageIds[0]}', {cache:'no-store'}).then(r=>r.json()).then(g=>g.profile.name === 'Browsergeprüfte fiktive Werkstatt')`,
       ),
     'persisted garage edit',
+  );
+  await click('[data-garages-back]');
+  await until(
+    () =>
+      evaluate(
+        "!!document.querySelector('[data-garages-overview]') && !document.querySelector('form')",
+      ),
+    'overview after saved edit',
+  );
+  assert.ok(
+    await evaluate(
+      "document.querySelector('[data-garages-overview]').textContent.includes('Browsergeprüfte fiktive Werkstatt')",
+    ),
+  );
+  await click('[data-owned-garage="' + demoAccountGarageIds[0] + '"]');
+  await until(
+    () => evaluate("!!document.querySelector('[data-delete-garage]')"),
+    'reopen same saved garage',
   );
   await screenshot('garage', 1280);
   await screenshot('garage', 390);
