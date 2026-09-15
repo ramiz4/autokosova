@@ -54,16 +54,26 @@ async function scenario(configured) {
       } else await click('[data-account-logout]');
       const target = configured ? (locale === 'de' ? '/' : '/' + locale) : '/auth/logged-out';
       await until(
-        () => evaluate(`location.pathname === ${JSON.stringify(target)}`),
+        () =>
+          evaluate(
+            `location.origin === ${JSON.stringify(browser.origin)} && location.pathname === ${JSON.stringify(target)} && document.readyState === 'complete'`,
+          ),
         'logout browser return',
       );
+      if (!configured) {
+        assert.ok(await evaluate('document.body.textContent.includes("local session has ended")'));
+        // The static notice intentionally forbids connect-src. Keep that CSP intact and
+        // verify the same browser's revoked session from the normal guest profile page.
+        await browser.navigate(
+          `${locale === 'de' ? '' : '/' + locale}/profile`,
+          '!!document.querySelector(\'main a[href^="/auth/login"]\')',
+        );
+      }
       assert.equal(
         await evaluate(`(async () => (await fetch('/api/me', {cache:'no-store'})).status)()`),
         401,
       );
       assert.equal(provider.sessionCount, configured ? 0 : 1);
-      if (!configured)
-        assert.ok(await evaluate('document.body.textContent.includes("local session has ended")'));
     }
     for (const locale of configured ? ['de', 'sq', 'en'] : ['en']) {
       for (const width of configured ? [360, 390, 430, 1280] : [390]) {
