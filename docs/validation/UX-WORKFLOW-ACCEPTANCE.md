@@ -34,6 +34,28 @@ die fail-closed CI-Logik, **nicht** eine eingerichtete GitHub-Branch-Protection.
 PR-Integrationslauf und der anschließende Lauf auf dem Merge-Commit werden im Implementierungs-PR
 mit ihren tatsächlichen Ergebnissen verlinkt. Keine manuelle funktionale Pflichtabnahme.
 
+### Nach Integration der parallel gemergten Mitarbeiterbasis #117
+
+Der PR wurde zusätzlich mit `main` auf `9a0274c` integriert. Der Package-Script-Konflikt wurde
+unter Erhalt sowohl der E2E-Commands als auch von `test:staff:browser` aufgelöst. Danach bestanden
+lokal erneut 16/16 Playwright-Pflichtfälle sowie `npm run verify`: 316 Angular-Tests,
+20 Startertests, 114 erfolgreiche Server-/DB-Tests und 45 SSR-Seiten. Die zwei profilgebundenen
+Tests wurden anschließend separat im jeweils passenden Profil erfolgreich ausgeführt.
+
+Der weiter bestehende Favoriten-Browsertest prüfte einen asynchron geladenen gespeicherten
+Favoriten unmittelbar nach dem Erscheinen eines aktivierten Profilbuttons. Der integrierte CI-Lauf
+zeigte dabei `aria-pressed=false` statt `true`. Der Test wartet nun begrenzt auf den erforderlichen
+gespeicherten Zustand; seine ursprüngliche exakte Assertion bleibt erhalten. Der gesamte
+Favoriten-DB-Browserablauf bestand danach lokal einschließlich DE/SQ/EN und Betreiber-Navigation.
+Keine pauschale Testwiederholung, keine entfernte Assertion und keine Änderung der Anwendungslogik.
+
+Eine bereits mit Workflowdaten befüllte Testdatenbank ist absichtlich kein leerer öffentlicher
+Demo-Ausgangszustand: deren Reviews werden beim Profilwechsel nicht gelöscht. Für den erneuten
+öffentlichen Profilnachweis wurde daher eine frische, ausschließlich eigene Compose-Testdatenbank
+verwendet, kein Reset und keine Löschung vorhandener Workflowdaten. Beide Profiltests und der
+Favoritenlauf bestanden in der vorgesehenen Reihenfolge; eigene Testcontainer wurden beendet,
+Volumes erhalten.
+
 Die nachfolgende Dokumentation hält die damaligen Befunde und tatsächlichen Ergebnisse fest.
 Ihre frühere manuelle Abschlussbedingung gilt nicht mehr als Gate für #112.
 
