@@ -135,3 +135,18 @@ Privatkunden ohne Werkstatt-Membership sehen keine leere Werkstattsektion.
 Die Darstellung ändert keine Berechtigungen oder Providerdaten. Der Browsernachweis
 prüft das native Auf-/Zuklappen per Tastatur, Sprachen, Mobil/Desktop und weiterhin
 Ablauf, Kontowechsel sowie Entfernung privater Daten aus der Oberfläche nach Logout.
+
+## Sichtbarer Veröffentlichungsstatus (#90)
+
+Übersicht und Editor zeigen denselben vorhandenen Veröffentlichungsstatus mit einer
+kurzen Erklärung in DE/SQ/EN. Entwurf, Prüfung, Veröffentlichung, Ablehnung und
+Sperre bleiben getrennt; weder Unternehmensprüfung noch Standortbestätigung werden
+mit der Veröffentlichung gleichgesetzt. Die Statusanzeige besteht aus lesbarem Text,
+nicht nur aus einer Farbe.
+
+Nach erfolgreichem Speichern oder Einreichen wird der tatsächliche Status aus der
+eigenen Serverliste erneut übernommen. Scheitert dieses Nachladen, wird kein Übergang
+erraten: Die Oberfläche erklärt die bestätigte Änderung und den noch unbekannten
+aktuellen Status. Weitere Einreichung bleibt bis zum Neuladen gesperrt. Tests prüfen
+auch einen unerwarteten, aber bestätigten Serverstatus sowie fehlgeschlagene Mutationen
+und fehlgeschlagenes Nachladen. Neue Datenbankwerte oder Freigabeschritte entstehen nicht.

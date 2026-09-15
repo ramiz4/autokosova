@@ -1,6 +1,6 @@
 import { garageManagementCopy } from '../shared/garage-management-copy';
 import { accountType } from '../shared/account';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectorRef,
   Component,
@@ -64,7 +64,14 @@ function blankForm(): Form {
 
 @Component({
   selector: 'app-garage-onboarding',
-  imports: [FormsModule, RouterLink, SiteHeaderComponent, IconComponent, MultiSelectComponent],
+  imports: [
+    FormsModule,
+    RouterLink,
+    NgTemplateOutlet,
+    SiteHeaderComponent,
+    IconComponent,
+    MultiSelectComponent,
+  ],
   templateUrl: './garage-onboarding.component.html',
   styleUrl: './garage-onboarding.component.scss',
   host: {
@@ -91,6 +98,7 @@ export class GarageOnboardingComponent {
   }
   protected publicationState: GaragePublicationState = 'draft';
   protected locationVerified = false;
+  protected statusKnown = true;
   protected savedSnapshot = JSON.stringify(this.form);
   protected owned: OwnedGarage[] = [];
   protected ownedLoadFailed = false;
@@ -157,6 +165,9 @@ export class GarageOnboardingComponent {
     event.returnValue = '';
   }
   protected get stateLabel(): string {
+    return this.stateLabelFor(this.publicationState);
+  }
+  protected stateLabelFor(state: GaragePublicationState): string {
     const labels = {
       draft: this.copy.stateDraft,
       pending_review: this.copy.statePending,
@@ -164,7 +175,27 @@ export class GarageOnboardingComponent {
       rejected: this.copy.stateRejected,
       suspended: this.copy.stateSuspended,
     };
-    return labels[this.publicationState];
+    return labels[state];
+  }
+  protected stateHelpFor(state: GaragePublicationState): string {
+    return {
+      draft: this.management.draftHelp,
+      pending_review: this.management.pendingHelp,
+      published: this.management.publishedHelp,
+      rejected: this.management.rejectedHelp,
+      suspended: this.management.suspendedHelp,
+    }[state];
+  }
+  private async refreshStatus(): Promise<void> {
+    this.statusKnown = false;
+    await this.loadOwned();
+    const current = this.ownedLoadFailed
+      ? undefined
+      : this.owned.find((g) => g.id === this.garageId);
+    if (current) {
+      this.publicationState = current.publicationState;
+      this.statusKnown = true;
+    }
   }
   constructor() {
     this.language.setPage('home.garageOnboarding', 'home.intro', true);
@@ -280,12 +311,14 @@ export class GarageOnboardingComponent {
         this.editing = true;
         await this.account.refresh();
       }
-      if (this.publicationState === 'pending_review') this.publicationState = 'draft';
       this.form = profile;
       this.savedSnapshot = JSON.stringify(this.form);
-      this.message =
-        this.publicationState === 'published' ? this.copy.publicSaved : this.copy.saved;
-      await this.loadOwned();
+      await this.refreshStatus();
+      this.message = !this.statusKnown
+        ? this.management.statusUnavailable
+        : this.publicationState === 'published'
+          ? this.copy.publicSaved
+          : this.copy.saved;
     } catch {
       this.message = this.copy.error;
     } finally {
@@ -305,6 +338,7 @@ export class GarageOnboardingComponent {
       this.garageId = garage.id;
       this.canDelete = garage.canDelete === true;
       this.publicationState = garage.publicationState;
+      this.statusKnown = true;
       this.consentAccepted = true;
       this.locationVerified =
         !!garage.profile.locationPoint && garage.verification.location === 'verified';
@@ -332,6 +366,7 @@ export class GarageOnboardingComponent {
     this.consentAccepted = false;
     this.locationVerified = false;
     this.publicationState = 'draft';
+    this.statusKnown = true;
     this.message = '';
     this.errors = {};
     this.savedSnapshot = JSON.stringify(this.form);
@@ -379,6 +414,7 @@ export class GarageOnboardingComponent {
     if (
       !this.garageId ||
       !this.unchanged ||
+      !this.statusKnown ||
       this.sending ||
       this.loading ||
       (this.publicationState !== 'draft' && this.publicationState !== 'rejected')
@@ -403,8 +439,8 @@ export class GarageOnboardingComponent {
       }
       if (!response.ok) throw new Error();
       this.needsLogin = false;
-      this.publicationState = 'pending_review';
-      this.message = this.copy.submitted;
+      await this.refreshStatus();
+      this.message = this.statusKnown ? this.copy.submitted : this.management.statusUnavailable;
     } catch {
       this.message = this.copy.error;
     } finally {
