@@ -17,7 +17,7 @@
           class="flex size-11 items-center justify-center rounded-lg hover:bg-white focus-visible:outline-2 focus-visible:outline-brand"
           [attr.aria-label]="ui('profile.ui.home')"
         >
-          <app-icon name="home" class="size-5" />
+          <lucide-icon [name]="HomeIcon" class="size-5" />
         </a>
         <span aria-hidden="true">/</span>
         <a
@@ -48,10 +48,13 @@
             [disabled]="favorites.pending().has(profile.id) || favorites.state() === 'loading'"
             (click)="favorites.toggle(profile.id)"
           >
-            <app-icon
-              [name]="favorites.garageIds().has(profile.id) ? 'heart-filled' : 'heart'"
+            <lucide-icon
+              [name]="HeartIcon"
               class="size-5"
               [class.text-brand]="favorites.garageIds().has(profile.id)"
+              [style.--lucide-fill]="
+                favorites.garageIds().has(profile.id) ? 'currentColor' : 'none'
+              "
             />
           </button>
           <button
@@ -59,7 +62,7 @@
             class="inline-flex min-h-11 items-center gap-2 rounded-xl border border-blue-200 bg-white px-4 font-semibold hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
             (click)="shareProfile()"
           >
-            <app-icon name="share" class="size-5" />{{ ui('profile.ui.share') }}
+            <lucide-icon [name]="ShareIcon" class="size-5" />{{ ui('profile.ui.share') }}
           </button>
         </div>
       }
@@ -120,11 +123,13 @@
                 class="absolute inset-x-0 bottom-0 hidden min-h-14 bg-slate-950/70 px-4 py-3 text-sm text-white backdrop-blur-sm lg:flex lg:flex-wrap lg:items-center lg:gap-x-6 lg:gap-y-2"
               >
                 <span class="inline-flex items-center gap-1.5"
-                  ><app-icon name="pin" class="size-4" />{{ placeLabel(profile.placeId) }}</span
+                  ><lucide-icon [name]="MapPinIcon" class="size-4" />{{
+                    placeLabel(profile.placeId)
+                  }}</span
                 >
                 @if (profile.languages.length) {
                   <span class="inline-flex items-center gap-1.5"
-                    ><app-icon name="globe" class="size-4" />{{
+                    ><lucide-icon [name]="GlobeIcon" class="size-4" />{{
                       profile.languages.join(', ')
                     }}</span
                   >
@@ -170,7 +175,7 @@
                   <span
                     class="absolute right-3 bottom-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950/80 px-4 text-sm font-semibold text-white backdrop-blur-sm"
                   >
-                    <app-icon name="images" class="size-5" />{{
+                    <lucide-icon [name]="ImagesIcon" class="size-5" />{{
                       ui('profile.ui.allPhotos', { count: profile.photoIds.length })
                     }}
                   </span>
@@ -185,7 +190,7 @@
             <div>
               <span
                 class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-white text-brand shadow-sm"
-                ><app-icon name="images" class="size-7"
+                ><lucide-icon [name]="ImagesIcon" class="size-7"
               /></span>
               <h2 class="mt-4 text-lg font-bold">{{ ui('profile.ui.noPhotosTitle') }}</h2>
               <p class="mt-2 text-sm text-muted">{{ ui('profile.ui.noPhotosBody') }}</p>
@@ -221,8 +226,8 @@
                   {{ profile.name }}
                 </h1>
                 @if (profile.verificationLabel) {
-                  <app-icon
-                    name="badge-check"
+                  <lucide-icon
+                    [name]="BadgeCheckIcon"
                     class="size-6 text-brand"
                     [title]="language.t('profile.trustAvailable')"
                   />
@@ -257,7 +262,7 @@
                 }
                 <span class="hidden h-4 w-px bg-blue-200 sm:block" aria-hidden="true"></span>
                 <span class="inline-flex items-center gap-1.5 text-muted">
-                  <app-icon name="pin" class="size-4 text-brand" />{{ locationLabel() }}
+                  <lucide-icon [name]="MapPinIcon" class="size-4 text-brand" />{{ locationLabel() }}
                 </span>
               </div>
               @if (isLocalDemoProfile()) {
@@ -275,9 +280,12 @@
               [disabled]="favorites.pending().has(profile.id) || favorites.state() === 'loading'"
               (click)="favorites.toggle(profile.id)"
             >
-              <app-icon
-                [name]="favorites.garageIds().has(profile.id) ? 'heart-filled' : 'heart'"
+              <lucide-icon
+                [name]="HeartIcon"
                 class="size-5"
+                [style.--lucide-fill]="
+                  favorites.garageIds().has(profile.id) ? 'currentColor' : 'none'
+                "
               />{{
                 ui(
                   favorites.garageIds().has(profile.id)
@@ -291,7 +299,7 @@
               class="inline-flex min-h-14 min-w-60 items-center justify-center gap-3 rounded-xl bg-gradient-to-br from-brand to-blue-800 px-6 text-left font-bold text-white shadow-lg shadow-blue-900/15 transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand motion-reduce:transform-none motion-reduce:transition-none"
               (click)="openContact($event)"
             >
-              <app-icon name="send" class="size-7" />
+              <lucide-icon [name]="SendIcon" class="size-7" />
               <span class="leading-tight">
                 <span class="block">{{ ui('profile.ui.contact') }}</span>
                 <span class="mt-1 block text-xs font-medium text-blue-100">{{
@@ -319,7 +327,9 @@
           <dl class="mt-5 grid gap-4 sm:grid-cols-2">
             <div class="py-3 sm:px-4 sm:first:pl-0">
               <dt class="flex items-center gap-2 font-semibold">
-                <app-icon name="globe" class="size-5 text-brand" />{{ ui('profile.ui.languages') }}
+                <lucide-icon [name]="GlobeIcon" class="size-5 text-brand" />{{
+                  ui('profile.ui.languages')
+                }}
               </dt>
               <dd class="mt-2 text-sm text-slate-700">
                 {{ profile.languages.length ? profile.languages.join(', ') : '–' }}
@@ -327,7 +337,7 @@
             </div>
             <div class="border-t border-blue-100 py-3 sm:border-t-0 sm:border-l sm:px-4">
               <dt class="flex items-center gap-2 font-semibold">
-                <app-icon name="info" class="size-5 text-brand" />{{
+                <lucide-icon [name]="InfoIcon" class="size-5 text-brand" />{{
                   ui('profile.ui.selfReported')
                 }}
               </dt>
@@ -349,7 +359,7 @@
             <h2 id="services-title" class="flex items-center gap-3 text-lg font-bold">
               <span
                 class="flex size-10 items-center justify-center rounded-xl bg-white text-brand shadow-sm"
-                ><app-icon name="wrench" class="size-5"
+                ><lucide-icon [name]="WrenchIcon" class="size-5"
               /></span>
               {{ ui('profile.ui.popularServices') }}
             </h2>
@@ -358,7 +368,7 @@
                 <li class="flex items-center gap-2 text-sm text-slate-700">
                   <span
                     class="flex size-5 items-center justify-center rounded-full bg-emerald-500 text-white"
-                    ><app-icon name="check" class="size-3.5" /></span
+                    ><lucide-icon [name]="CheckIcon" class="size-3.5" /></span
                   >{{ serviceLabel(service) }}
                 </li>
               }
@@ -369,7 +379,7 @@
             <h2 id="makes-title" class="flex items-center gap-3 text-lg font-bold">
               <span
                 class="flex size-10 items-center justify-center rounded-xl bg-white text-brand shadow-sm"
-                ><app-icon name="car" class="size-5"
+                ><lucide-icon [name]="CarIcon" class="size-5"
               /></span>
               {{ ui('profile.ui.makes') }}
             </h2>
@@ -397,7 +407,7 @@
             <h2 id="location-title" class="flex items-center gap-3 text-lg font-bold">
               <span
                 class="flex size-10 items-center justify-center rounded-xl bg-white text-brand shadow-sm"
-                ><app-icon name="pin" class="size-5"
+                ><lucide-icon [name]="MapPinIcon" class="size-5"
               /></span>
               {{ ui('profile.ui.location') }}
             </h2>
@@ -426,7 +436,7 @@
               <summary
                 class="flex min-h-11 items-center gap-2 rounded-lg border border-blue-200 px-3 text-sm font-semibold hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
               >
-                <app-icon name="filter" class="size-4" />{{ ui('profile.ui.filter') }}
+                <lucide-icon [name]="ListFilterIcon" class="size-4" />{{ ui('profile.ui.filter') }}
               </summary>
               <div
                 class="absolute right-0 z-20 mt-2 grid w-[min(20rem,calc(100vw-3rem))] gap-3 rounded-xl border border-blue-100 bg-white p-4 shadow-xl"
@@ -504,7 +514,7 @@
                     </div>
                     <span
                       class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800"
-                      ><app-icon name="check" class="size-4" />{{
+                      ><lucide-icon [name]="CheckIcon" class="size-4" />{{
                         ui('profile.ui.verifiedVisit')
                       }}</span
                     >
@@ -597,7 +607,7 @@
       class="fixed inset-x-0 bottom-0 z-40 border-t border-blue-100 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden"
     >
       <button type="button" appButton class="w-full" (click)="openContact($event)">
-        <app-icon name="message" class="size-5" />{{ ui('profile.ui.contact') }}
+        <lucide-icon [name]="MessageCircleIcon" class="size-5" />{{ ui('profile.ui.contact') }}
       </button>
     </div>
     <app-favorite-notice [loginUrl]="favoriteLoginUrl()" />
@@ -620,7 +630,7 @@
         [attr.aria-label]="ui('profile.ui.close')"
         (click)="closeGallery()"
       >
-        <app-icon name="close" class="size-6" />
+        <lucide-icon [name]="XIcon" class="size-6" />
       </button>
       <button
         type="button"
@@ -628,7 +638,7 @@
         [attr.aria-label]="ui('profile.ui.previousPhoto')"
         (click)="moveGallery(-1)"
       >
-        <app-icon name="chevron-left" class="size-6" />
+        <lucide-icon [name]="ChevronLeftIcon" class="size-6" />
       </button>
       <figure class="max-h-full max-w-6xl">
         <img
@@ -651,7 +661,7 @@
         [attr.aria-label]="ui('profile.ui.nextPhoto')"
         (click)="moveGallery(1)"
       >
-        <app-icon name="chevron-right" class="size-6" />
+        <lucide-icon [name]="ChevronRightIcon" class="size-6" />
       </button>
     </section>
   }
@@ -686,7 +696,7 @@
             [attr.aria-label]="ui('profile.ui.close')"
             (click)="closeContact()"
           >
-            <app-icon name="close" class="size-5" />
+            <lucide-icon [name]="XIcon" class="size-5" />
           </button>
         </div>
         <label
@@ -735,14 +745,16 @@
                 rel="noopener noreferrer"
                 appButton
                 (click)="blockLocalDemoContact($event); contactOpened()"
-                ><app-icon name="message" class="size-5" />{{ ui('profile.ui.whatsapp') }}</a
+                ><lucide-icon [name]="MessageCircleIcon" class="size-5" />{{
+                  ui('profile.ui.whatsapp')
+                }}</a
               >
             }
             <a
               [href]="telephoneHref()"
               appButton="outline-brand"
               (click)="blockLocalDemoContact($event); contactOpened()"
-              ><app-icon name="phone" class="size-5" />{{ ui('profile.ui.call') }}</a
+              ><lucide-icon [name]="PhoneIcon" class="size-5" />{{ ui('profile.ui.call') }}</a
             >
           </div>
           <p class="mt-3 text-xs leading-5 text-muted">
@@ -786,7 +798,7 @@
             [attr.aria-label]="ui('profile.ui.close')"
             (click)="shareOpen.set(false)"
           >
-            <app-icon name="close" class="size-5" />
+            <lucide-icon [name]="XIcon" class="size-5" />
           </button>
         </div>
         <div class="mt-5 flex flex-col gap-3 sm:flex-row">

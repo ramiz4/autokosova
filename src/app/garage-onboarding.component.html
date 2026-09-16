@@ -228,7 +228,7 @@
                 <p id="street-error" class="field-error">{{ errors['street'] }}</p>
               </div>
               <div class="mt-4 flex items-start gap-2 text-xs leading-relaxed text-slate-600">
-                <app-icon name="pin" class="mt-0.5 size-4 text-brand" />
+                <lucide-icon [name]="MapPinIcon" class="mt-0.5 size-4 text-brand" />
                 <p>
                   <strong class="font-semibold text-brand-dark">{{
                     locationVerified ? copy.locationChecked : copy.locationPending
@@ -435,9 +435,9 @@
                   class="flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white shadow-md shadow-blue-600/20 transition hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-50"
                   [disabled]="saveDisabled"
                 >
-                  <app-icon name="pencil" class="size-4" />{{
+                  <lucide-icon [name]="PencilIcon" class="size-4" />{{
                     sending ? copy.saving : garageId ? management.saveChanges : copy.save
-                  }}<app-icon name="arrow" class="size-5" />
+                  }}<lucide-icon [name]="ArrowRightIcon" class="size-5" />
                 </button>
               </div>
             </div>
@@ -480,7 +480,7 @@
               <p
                 class="flex items-center justify-center gap-1.5 text-center text-xs text-slate-500"
               >
-                <app-icon name="shield" class="size-3.5" />{{ copy.privateNote }}
+                <lucide-icon [name]="ShieldCheckIcon" class="size-3.5" />{{ copy.privateNote }}
               </p>
             }
           </form>
@@ -516,15 +516,15 @@
             <ul class="mt-6 space-y-6">
               @for (
                 benefit of [
-                  { icon: 'search', title: copy.why1, body: copy.why1Help },
-                  { icon: 'badge-check', title: copy.why2, body: copy.why2Help },
-                  { icon: 'info', title: copy.why3, body: copy.why3Help },
+                  { icon: SearchIcon, title: copy.why1, body: copy.why1Help },
+                  { icon: BadgeCheckIcon, title: copy.why2, body: copy.why2Help },
+                  { icon: InfoIcon, title: copy.why3, body: copy.why3Help },
                 ];
                 track $index
               ) {
                 <li class="flex gap-4">
                   <span class="step-number"
-                    ><app-icon [name]="$any(benefit.icon)" class="size-4"
+                    ><lucide-icon [name]="benefit.icon" class="size-4"
                   /></span>
                   <div>
                     <h3 class="text-sm font-bold">{{ benefit.title }}</h3>
@@ -537,7 +537,7 @@
           <section class="info-card flex items-start gap-3">
             <span
               class="flex size-12 shrink-0 items-center justify-center rounded-full bg-blue-50 text-brand"
-              ><app-icon name="shield" class="size-8"
+              ><lucide-icon [name]="ShieldCheckIcon" class="size-8"
             /></span>
             <div>
               <h2 class="text-sm font-bold text-brand">{{ copy.privacy }}</h2>

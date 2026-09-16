@@ -1,3 +1,12 @@
+import {
+  LucideArrowRight,
+  LucideBadgeCheck,
+  LucideHeart,
+  LucideInfo,
+  LucideMapPin,
+  LucideWrench,
+  type LucideIcon,
+} from '@lucide/angular';
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { getCatalogPlace } from '../shared/catalog';
@@ -5,16 +14,23 @@ import { favoritesCopy, type FavoritesCopyKey } from '../shared/favorites-copy';
 import type { FavoriteCard } from './favorite-profiles.service';
 import { LanguageService } from './language.service';
 import { ButtonDirective } from './ui/button.directive';
-import { IconComponent } from './ui/icon.component';
+import { LucideIconComponent } from './ui/lucide-icon.component';
 import { RatingStarsComponent } from './ui/rating-stars.component';
 
 @Component({
   selector: 'app-favorite-garage-card',
-  imports: [RouterLink, ButtonDirective, IconComponent, RatingStarsComponent],
+  imports: [RouterLink, ButtonDirective, LucideIconComponent, RatingStarsComponent],
   host: { class: 'block min-w-0' },
   templateUrl: './favorite-garage-card.component.html',
 })
 export class FavoriteGarageCardComponent {
+  readonly ArrowRightIcon: LucideIcon = LucideArrowRight;
+  readonly BadgeCheckIcon: LucideIcon = LucideBadgeCheck;
+  readonly HeartIcon: LucideIcon = LucideHeart;
+  readonly InfoIcon: LucideIcon = LucideInfo;
+  readonly MapPinIcon: LucideIcon = LucideMapPin;
+  readonly WrenchIcon: LucideIcon = LucideWrench;
+
   readonly card = input.required<FavoriteCard>();
   readonly pending = input(false);
   readonly failed = input(false);

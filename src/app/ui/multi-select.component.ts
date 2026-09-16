@@ -1,3 +1,4 @@
+import { LucideChevronDown, LucideSearch, LucideX, type LucideIcon } from '@lucide/angular';
 import {
   Component,
   ElementRef,
@@ -11,7 +12,7 @@ import {
 import { foldSelection } from '../../shared/garage-onboarding';
 import { onboardingCopy } from '../../shared/onboarding-copy';
 import { LanguageService } from '../language.service';
-import { IconComponent } from './icon.component';
+import { LucideIconComponent } from './lucide-icon.component';
 
 export interface SelectionOption {
   readonly id: string;
@@ -21,7 +22,7 @@ export interface SelectionOption {
 
 @Component({
   selector: 'app-multi-select',
-  imports: [IconComponent],
+  imports: [LucideIconComponent],
   host: {
     class: 'relative block min-w-0',
     '(document:pointerdown)': 'outside($event)',
@@ -52,7 +53,7 @@ export interface SelectionOption {
               [attr.aria-label]="copy.remove + ': ' + optionLabel(value)"
               (click)="remove(value)"
             >
-              <app-icon name="close" class="size-3" />
+              <lucide-icon [name]="XIcon" class="size-3" />
             </button>
           </span>
         }
@@ -72,7 +73,7 @@ export interface SelectionOption {
         [attr.aria-invalid]="invalid()"
         (click)="toggle()"
       >
-        <app-icon name="chevron-down" class="size-4" />
+        <lucide-icon [name]="ChevronDownIcon" class="size-4" />
       </button>
     </div>
     @if (opened()) {
@@ -82,7 +83,7 @@ export interface SelectionOption {
         class="absolute inset-x-0 top-full z-30 mt-2 rounded-xl border border-blue-200 bg-white p-2 shadow-xl shadow-blue-950/15"
       >
         <label class="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 px-3"
-          ><app-icon name="search" class="size-4 text-slate-500" /><input
+          ><lucide-icon [name]="SearchIcon" class="size-4 text-slate-500" /><input
             #search
             type="search"
             (keydown.enter)="$event.preventDefault()"
@@ -135,6 +136,10 @@ export interface SelectionOption {
   `,
 })
 export class MultiSelectComponent {
+  readonly ChevronDownIcon: LucideIcon = LucideChevronDown;
+  readonly SearchIcon: LucideIcon = LucideSearch;
+  readonly XIcon: LucideIcon = LucideX;
+
   readonly controlId = input.required<string>();
   readonly label = input.required<string>();
   readonly options = input<readonly SelectionOption[]>([]);

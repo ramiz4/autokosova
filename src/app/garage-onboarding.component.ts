@@ -1,3 +1,13 @@
+import {
+  LucideArrowRight,
+  LucideBadgeCheck,
+  LucideInfo,
+  LucideMapPin,
+  LucidePencil,
+  LucideSearch,
+  LucideShieldCheck,
+  type LucideIcon,
+} from '@lucide/angular';
 import { adminLabel } from '../shared/admin-copy';
 import type { AdminSupportContext } from '../shared/administration';
 import { garageManagementCopy } from '../shared/garage-management-copy';
@@ -34,7 +44,7 @@ import type {
 import { LanguageService } from './language.service';
 import { AccountSessionService } from './account-session.service';
 import { SiteHeaderComponent } from './site-header.component';
-import { IconComponent } from './ui/icon.component';
+import { LucideIconComponent } from './ui/lucide-icon.component';
 import { MultiSelectComponent, type SelectionOption } from './ui/multi-select.component';
 
 type Form = { -readonly [Key in keyof GarageProfileInput]: GarageProfileInput[Key] } & {
@@ -76,7 +86,7 @@ function blankForm(): Form {
     RouterLink,
     NgTemplateOutlet,
     SiteHeaderComponent,
-    IconComponent,
+    LucideIconComponent,
     MultiSelectComponent,
   ],
   templateUrl: './garage-onboarding.component.html',
@@ -86,6 +96,14 @@ function blankForm(): Form {
   },
 })
 export class GarageOnboardingComponent {
+  readonly ArrowRightIcon: LucideIcon = LucideArrowRight;
+  readonly BadgeCheckIcon: LucideIcon = LucideBadgeCheck;
+  readonly InfoIcon: LucideIcon = LucideInfo;
+  readonly MapPinIcon: LucideIcon = LucideMapPin;
+  readonly PencilIcon: LucideIcon = LucidePencil;
+  readonly SearchIcon: LucideIcon = LucideSearch;
+  readonly ShieldCheckIcon: LucideIcon = LucideShieldCheck;
+
   readonly supportContext = input<AdminSupportContext | null>(null);
   readonly supportSaved = output<string>();
   protected get supportMode(): boolean {
