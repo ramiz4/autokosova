@@ -299,6 +299,10 @@ export class StaffWorkspaceComponent {
     this.filterStatus = '';
     this.applyFilters();
   }
+  toggleReviews(): void {
+    this.filterKind = this.filterKind === 'review_submission' ? '' : 'review_submission';
+    this.applyFilters();
+  }
   toggleAppeals(): void {
     this.onlyAppeal = !this.onlyAppeal;
     this.applyFilters();

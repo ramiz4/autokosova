@@ -94,6 +94,22 @@ Der Fallarbeitsplatz aus #95 verbindet den eigenen Prüfzustand mit drei getrenn
 
 Der vollständige Kunden-Einreichungsweg und Werkstattantwort-Editor folgen in #99. Lokale Prüffälle, darunter eine belegte negative Erfahrung, fehlender/ungeeigneter Nachweis und unabhängige/eigene Widersprüche, stehen im gemeinsamen Workflow-Seed zur Verfügung. Wiederholung erhält Entscheidungen und Löschungen. Einzelheiten und Code-/Testverweise in der zentralen Rollenreferenz.
 
+## Verständliche Bewertungsfreigabe
+
+In `/admin` und `/moderation` führt der sichtbare Filter **„Bewertungen“** zu den
+Bewertungseinreichungen. Die Fallart heisst **„Bewertung prüfen und freigeben“**;
+**„Bewertung prüfen“** öffnet den Fall, ohne eine Entscheidung auszuführen. Abgeschlossene
+Fälle verwenden **„Bewertung ansehen“**. Der technische Falltyp `review_submission`,
+englische Routen und bestehende Filterparameter bleiben unverändert.
+
+Die Detailansicht unterscheidet Kundenbewertung, privaten Besuchsnachweis und
+**„Bewertung freigeben oder ablehnen“**. Hinweise erklären die drei einzeln zu bestätigenden
+Prüfpunkte, fehlende Nachweise und die Wirkung der Freigabe: Nur die Bewertung wird
+öffentlich, der Nachweis bleibt privat. **„Bewertung freigeben“** führt weiterhin durch
+die vorhandene Bestätigung; die begründete Ablehnung wird mit **„Ablehnung bestätigen“**
+ausgelöst. DE/SQ/EN verwenden denselben Ablauf. Rollen, Zuweisung, Interessenkonflikte,
+Revisionen und serverseitige Entscheidungsvoraussetzungen ändern sich nicht.
+
 ## Durchgängige Oberfläche (#99)
 
 Vom öffentlichen Werkstattprofil führt „Bewertung schreiben“ zur kanonischen Route `/garages/:garageId/reviews/new`. „Meine Bewertungen“ unter `/reviews` ist eine private, paginierte Autorenliste mit Detail-/Nachweiszugriff und tatsächlichem Prüfstatus. Beide Routen existieren in DE/SQ/EN und erhalten ein explizites sicheres Login-Ziel. Vier Kriterien, Mittelwert, Leistung, Besuchsmonat und optionale Marke verwenden denselben gemeinsamen Vertrag in `src/shared/reviews.ts`.

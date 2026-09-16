@@ -3,6 +3,7 @@ import { test, expect, type App } from '../support/application';
 import { api, layout, logout } from '../support/journeys';
 import { staffDemoGarage, staffDemoFixtures } from '../../db/staff-demo-data.mjs';
 import { reviewLabel } from '../../src/shared/review-copy';
+import { staffLabel } from '../../src/shared/staff-copy';
 import type { Page } from '@playwright/test';
 
 const text =
@@ -64,28 +65,67 @@ test('review-workflow submits evidence, assigns, verifies, publishes, replies an
     'aria-pressed',
     'true',
   );
-  await page
-    .locator('details')
-    .filter({ has: page.locator('select[name="kind"]') })
-    .locator('summary')
-    .click();
-  await page.locator('select[name="kind"]').selectOption('review_submission');
+  await expect(page.locator('[data-review-filter]')).toHaveText('Bewertungen');
+  await page.locator('[data-review-filter]').click();
+  await expect(page.locator('[data-review-filter]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page).toHaveURL(/kind=review_submission/);
   await expect(row()).toBeVisible();
-  await row().locator('[data-open-case]').click();
+  await expect(row()).toContainText('Bewertung prüfen und freigeben');
+  await expect(row().locator('[data-open-case]')).toHaveText('Bewertung prüfen');
+  await layout(page, info, 'review-approval-queue');
+  await row().getByRole('button', { name: 'Bewertung prüfen', exact: true }).click();
   await page.locator('#staff-assignee').selectOption(app.subjects.moderator);
   await page.locator('[data-assign]').click();
   await expect(page.locator('[data-case-assignee]')).toContainText('E2E moderator');
   await logout(page, app.origin);
   await app.login(page, 'moderator');
-  await row().locator('[data-open-case]').click();
+  await page.locator('[data-review-filter]').click();
+  await expect(page).toHaveURL(/kind=review_submission/);
+  await page.locator('[data-review-filter]').click();
+  await expect(page).not.toHaveURL(/kind=review_submission/);
+  await row().getByRole('button', { name: 'Bewertung prüfen', exact: true }).click();
+  await expect(page.locator('[data-review-guidance]')).toContainText(
+    'Freigabe oder begründete Ablehnung',
+  );
+  await expect(
+    page.getByRole('button', { name: 'Bewertung freigeben', exact: true }),
+  ).toBeDisabled();
+  await expect(page.locator('[data-review-publish-hint]')).toContainText('alle drei Angaben');
+  for (const locale of ['de', 'sq', 'en'] as const) {
+    const prefix = locale === 'de' ? '' : '/' + locale;
+    await page.goto(
+      app.origin + `${prefix}/moderation/cases/${encodeURIComponent('review:' + review.id)}`,
+    );
+    await expect(page.locator('[data-review-guidance]')).toHaveText(
+      staffLabel('reviewGuidance', locale),
+    );
+    await expect(
+      page.getByRole('button', { name: staffLabel('publish_review', locale), exact: true }),
+    ).toBeDisabled();
+    await expect(
+      page.getByRole('heading', { name: staffLabel('reviewContent', locale), exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: staffLabel('reviewEvidence', locale), exact: true }),
+    ).toBeVisible();
+    await layout(page, info, 'review-approval-' + locale);
+  }
+  await page.goto(app.origin + `/moderation/cases/${encodeURIComponent('review:' + review.id)}`);
+
   await page.locator('[data-evidence]').click();
   await expect(page.locator('[data-evidence-text]')).toContainText('DEMO – kein echter Nachweis');
   for (const field of ['garageMatches', 'serviceMatches', 'visitMonthMatches'])
     await page.locator(`input[name="${field}"]`).check();
+  await expect(page.locator('[data-review-publish-hint]')).toContainText(
+    'Besuchsnachweis bleibt privat',
+  );
+  await layout(page, info, 'review-approval-ready');
   page.once('dialog', (dialog) => dialog.accept());
-  await page.locator('[data-publish-review]').click();
+  await page.getByRole('button', { name: 'Bewertung freigeben', exact: true }).click();
   await expect(page.locator('[data-staff-case] [role="status"]')).toBeVisible();
+  await page.locator('[data-back-cases]').click();
+  await page.getByRole('button', { name: 'Erledigt', exact: true }).click();
+  await expect(row().locator('[data-open-case]')).toHaveText('Bewertung ansehen');
   await logout(page, app.origin);
   await app.login(page, 'customer');
   await page.goto(app.origin + '/reviews');
