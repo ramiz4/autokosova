@@ -108,18 +108,9 @@ function editorDialog(): HTMLElement | null {
   return document.querySelector<HTMLElement>('[data-inquiry-editor]');
 }
 
-function supportTestDialog() {
-  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
-    configurable: true,
-    value: function (this: HTMLDialogElement) {
-      this.open = true;
-    },
-  });
+function deleteDialog(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('[data-delete-dialog]');
 }
-
-afterEach(() => {
-  delete (HTMLDialogElement.prototype as unknown as { showModal?: unknown }).showModal;
-});
 
 it.each(['de', 'sq', 'en'] as const)(
   'uses the canonical %s overview, readonly details and only approved search filters',
@@ -326,7 +317,6 @@ it('validates local dates and guards unsaved edits on Escape and navigation', as
 });
 
 it('requires confirmation before deletion, supports cancellation and discards the dialog on account change', async () => {
-  supportTestDialog();
   const { page, fixture, service } = await render();
   const mutate = vi.spyOn(service, 'mutate').mockResolvedValue(true);
   page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
@@ -334,25 +324,38 @@ it('requires confirmation before deletion, supports cancellation and discards th
   page.querySelector<HTMLButtonElement>('[data-delete-inquiry]')!.click();
   await fixture.whenStable();
   expect(mutate).not.toHaveBeenCalled();
-  page.querySelector<HTMLButtonElement>('[data-cancel-delete]')!.click();
+  document.querySelector<HTMLButtonElement>('[data-cancel-delete]')!.click();
   await fixture.whenStable();
-  expect(page.querySelector('[data-delete-dialog]')).toBeNull();
+  expect(deleteDialog()).toBeNull();
   expect(mutate).not.toHaveBeenCalled();
   page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
   await fixture.whenStable();
   page.querySelector<HTMLButtonElement>('[data-delete-inquiry]')!.click();
   await fixture.whenStable();
-  page.querySelector<HTMLButtonElement>('[data-confirm-delete]')!.click();
+  document.querySelector<HTMLButtonElement>('[data-confirm-delete]')!.click();
   await fixture.whenStable();
   expect(mutate).toHaveBeenCalledWith(pageData.requests[0], { kind: 'delete' });
-  expect(page.querySelector('[data-delete-dialog]')).toBeNull();
+  expect(deleteDialog()).toBeNull();
   page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
   await fixture.whenStable();
   page.querySelector<HTMLButtonElement>('[data-delete-inquiry]')!.click();
   await fixture.whenStable();
   TestBed.inject(AccountSessionService).invalidate();
   await fixture.whenStable();
-  expect(page.querySelector('[data-delete-dialog]')).toBeNull();
+  expect(deleteDialog()).toBeNull();
+});
+
+it('falls back to the inquiries title after a confirmed delete removes its actions trigger', async () => {
+  const { page, fixture, service } = await render();
+  detailResponse = () => new Response(null, { status: 204 });
+  page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
+  await fixture.whenStable();
+  page.querySelector<HTMLButtonElement>('[data-delete-inquiry]')!.click();
+  await fixture.whenStable();
+  document.querySelector<HTMLButtonElement>('[data-confirm-delete]')!.click();
+  await vi.waitFor(() => expect(service.requests()).toHaveLength(0));
+  await vi.waitFor(() => expect(deleteDialog()).toBeNull());
+  expect(document.activeElement).toBe(page.querySelector('#inquiries-title'));
 });
 
 it('does not save an unchanged or reverted inquiry and cancels without a discard prompt', async () => {
@@ -510,14 +513,13 @@ it.each(['de', 'sq', 'en'] as const)(
 it.each(['de', 'sq', 'en'] as const)(
   'identifies the selected inquiry, explains deactivation and labels the destructive confirmation in %s',
   async (locale) => {
-    supportTestDialog();
     const { page, fixture, service } = await render(routePath(locale, 'inquiries'));
     const mutate = vi.spyOn(service, 'mutate').mockResolvedValue(false);
     page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
     await fixture.whenStable();
     page.querySelector<HTMLButtonElement>('[data-delete-inquiry]')!.click();
     await fixture.whenStable();
-    const dialog = page.querySelector('[data-delete-dialog]')!;
+    const dialog = deleteDialog()!;
     expect(dialog.querySelector('[data-delete-summary]')?.textContent).toContain('Fixture');
     expect(dialog.querySelector('[data-delete-summary]')?.textContent).toContain(detail.symptom);
     expect(dialog.querySelector('[data-delete-summary] b')).toBeNull();
@@ -675,7 +677,8 @@ it('blocks management and details while a write is pending', async () => {
   }
   await fixture.whenStable();
   expect(mutate).not.toHaveBeenCalled();
-  expect(page.querySelector('[data-inquiry-editor], [data-delete-dialog]')).toBeNull();
+  expect(page.querySelector('[data-inquiry-editor]')).toBeNull();
+  expect(deleteDialog()).toBeNull();
 });
 
 it('returns from the editor and delete cancellation to the persistent menu trigger', async () => {
@@ -696,7 +699,7 @@ it('returns from the editor and delete cancellation to the persistent menu trigg
   await fixture.whenStable();
   page.querySelector<HTMLButtonElement>('[data-delete-inquiry]')!.click();
   await fixture.whenStable();
-  page.querySelector<HTMLButtonElement>('[data-cancel-delete]')!.click();
+  document.querySelector<HTMLButtonElement>('[data-cancel-delete]')!.click();
   await fixture.whenStable();
   expect(document.activeElement).toBe(trigger);
 });

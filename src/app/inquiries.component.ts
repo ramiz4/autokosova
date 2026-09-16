@@ -236,6 +236,17 @@ export class InquiriesComponent {
     this.closeActions(true);
     this.deleting.set(request);
   }
+  protected deleteClosed(id: string): void {
+    this.deleting.set(null);
+    afterNextRender(
+      () => {
+        const trigger = this.document.getElementById(`actions-trigger-${id}`);
+        if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus();
+        else this.document.querySelector<HTMLElement>('#inquiries-title')?.focus();
+      },
+      { injector: this.injector },
+    );
+  }
 
   protected text(key: InquiriesCopyKey): string {
     return inquiriesCopy[this.language.language][key];

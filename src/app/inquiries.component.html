@@ -495,7 +495,7 @@
           }
         }
         @if (deleting(); as request) {
-          <app-inquiry-delete-dialog [request]="request" (closed)="deleting.set(null)" />
+          <app-inquiry-delete-dialog [request]="request" (closed)="deleteClosed(request.id)" />
         }
       }
     }
