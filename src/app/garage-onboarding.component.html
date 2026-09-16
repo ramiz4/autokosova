@@ -1,14 +1,16 @@
 <div class="min-h-screen bg-[#f2f7fc] text-ink">
-  <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
-    <app-site-header
-      [compact]="true"
-      [smallLogo]="true"
-      active="garage"
-      [loginReturnTo]="language.link('onboarding')"
-    />
-  </div>
+  @if (!supportMode) {
+    <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
+      <app-site-header
+        [compact]="true"
+        [smallLogo]="true"
+        active="garage"
+        [loginReturnTo]="language.link('onboarding')"
+      />
+    </div>
+  }
   @if (workspaceVisible) {
-    @if (!managing) {
+    @if (!managing && !supportMode) {
       <header
         class="relative isolate min-h-[272px] overflow-hidden px-5 pt-8 pb-20 sm:px-10 lg:h-[272px] lg:px-16"
         aria-labelledby="onboarding-hero-title"
@@ -39,7 +41,7 @@
     }
     <div
       [class]="
-        managing
+        managing || supportMode
           ? 'relative mx-auto grid max-w-[1200px] gap-4 px-4 py-8 sm:px-8'
           : 'relative mx-auto -mt-10 grid max-w-[1360px] gap-4 px-4 pb-16 lg:grid-cols-[minmax(0,2.15fr)_minmax(290px,1fr)] lg:px-5'
       "
@@ -70,7 +72,7 @@
             garageId || accountType(account.identity()) === 'garage' ? management.intro : copy.intro
           }}
         </p>
-        @if (garageId) {
+        @if (!supportMode && garageId) {
           @if (statusKnown) {
             <ng-container
               [ngTemplateOutlet]="publicationBadge"
@@ -379,7 +381,9 @@
                   type="checkbox"
                   [disabled]="sending"
                   [attr.aria-invalid]="!!errors['consent']"
-                /><span>{{ copy.consent }}</span></label
+                /><span>{{
+                  supportMode ? supportLabel('approvalSupport') : copy.consent
+                }}</span></label
               >
             }
             @if (needsLogin) {
@@ -437,7 +441,7 @@
                 </button>
               </div>
             </div>
-            @if (garageId) {
+            @if (!supportMode && garageId) {
               <div class="flex flex-wrap gap-3 text-sm">
                 <button
                   type="button"

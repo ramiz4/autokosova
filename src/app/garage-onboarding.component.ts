@@ -1,3 +1,5 @@
+import { adminLabel } from '../shared/admin-copy';
+import type { AdminSupportContext } from '../shared/administration';
 import { garageManagementCopy } from '../shared/garage-management-copy';
 import { accountType } from '../shared/account';
 import { isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
@@ -8,6 +10,8 @@ import {
   ElementRef,
   PLATFORM_ID,
   inject,
+  input,
+  output,
   viewChild,
   effect,
   untracked,
@@ -82,6 +86,16 @@ function blankForm(): Form {
   },
 })
 export class GarageOnboardingComponent {
+  readonly supportContext = input<AdminSupportContext | null>(null);
+  readonly supportSaved = output<string>();
+  protected get supportMode(): boolean {
+    return !!this.supportContext() && this.account.identity()?.roles.includes('admin') === true;
+  }
+  protected supportLabel(key: string): string {
+    return adminLabel(key, this.language.language);
+  }
+  private loadedSupport: AdminSupportContext | null = null;
+
   protected readonly language = inject(LanguageService);
   protected readonly account = inject(AccountSessionService);
   protected readonly accountType = accountType;
@@ -114,10 +128,14 @@ export class GarageOnboardingComponent {
   protected editing = false;
   private readonly workspaceTitle = viewChild<ElementRef<HTMLElement>>('workspaceTitle');
   protected get managing(): boolean {
-    return this.account.signedIn() && accountType(this.account.identity()) === 'garage';
+    return (
+      !this.supportMode &&
+      this.account.signedIn() &&
+      accountType(this.account.identity()) === 'garage'
+    );
   }
   protected get showForm(): boolean {
-    return !this.managing || this.editing;
+    return this.supportMode || !this.managing || this.editing;
   }
   protected get workspaceVisible(): boolean {
     return (
@@ -294,6 +312,17 @@ export class GarageOnboardingComponent {
       this.owned = [];
       this.dataOwnerId = undefined;
     });
+    effect(() => {
+      const context = this.supportContext(),
+        allowed = this.account.identity()?.roles.includes('admin') === true;
+      if (this.browser && context && allowed && context !== this.loadedSupport) {
+        this.loadedSupport = context;
+        untracked(() => {
+          this.clearForm();
+          if (context.garageId) void this.open(context.garageId);
+        });
+      }
+    });
     if (this.browser) void this.refreshSession();
   }
   protected async refreshSession(): Promise<void> {
@@ -304,6 +333,11 @@ export class GarageOnboardingComponent {
     this.cdr.markForCheck();
   }
   private async loadOwned(): Promise<void> {
+    if (this.supportMode) {
+      this.owned = [];
+      this.ownedLoaded = true;
+      return;
+    }
     if (this.ownedLoading) return;
     const context = this.captureContext();
     this.ownedLoadFailed = false;
@@ -393,14 +427,38 @@ export class GarageOnboardingComponent {
     this.message = '';
     try {
       const profile = this.profile();
+      const support = this.supportMode ? this.supportContext() : null;
       const response = await fetch(
-        this.garageId ? '/api/garages/' + encodeURIComponent(this.garageId) : '/api/garages',
+        support
+          ? this.garageId
+            ? '/api/admin/management/garages/' + encodeURIComponent(this.garageId) + '/profile'
+            : '/api/admin/garages/assisted-onboarding'
+          : this.garageId
+            ? '/api/garages/' + encodeURIComponent(this.garageId)
+            : '/api/garages',
         {
           method: this.garageId ? 'PUT' : 'POST',
           credentials: 'same-origin',
           headers: { 'content-type': 'application/json', 'x-csrf-token': csrf },
           body: JSON.stringify(
-            this.garageId ? profile : { consentVersion: 'garage-onboarding-v1', profile },
+            support
+              ? this.garageId
+                ? {
+                    profile,
+                    revision: support.revision,
+                    reason: 'documented_support',
+                    requestReference: support.requestReference,
+                  }
+                : {
+                    profile,
+                    applicantUserId: support.applicantUserId,
+                    consentVersion: 'garage-onboarding-v1',
+                    consentSource: 'documented_support_request',
+                    requestReference: support.requestReference,
+                  }
+              : this.garageId
+                ? profile
+                : { consentVersion: 'garage-onboarding-v1', profile },
           ),
         },
       );
@@ -412,13 +470,18 @@ export class GarageOnboardingComponent {
         const created = (await response.json()) as { id: string };
         if (!this.currentContext(context)) return;
         this.garageId = created.id;
-        this.canDelete = true;
+        this.canDelete = !support;
         this.editing = true;
         await this.account.refresh();
         if (!this.currentContext(context)) return;
       }
       this.form = profile;
       this.savedSnapshot = JSON.stringify(this.form);
+      if (support) {
+        this.sending = false;
+        this.supportSaved.emit(this.garageId!);
+        return;
+      }
       await this.refreshStatus();
       if (!this.currentContext(context)) return;
       this.message = !this.statusKnown
@@ -451,7 +514,7 @@ export class GarageOnboardingComponent {
       if (!this.currentContext(context)) return;
       this.form = { ...garage.profile, address: garage.profile.address ?? blankForm().address };
       this.garageId = garage.id;
-      this.canDelete = garage.canDelete === true;
+      this.canDelete = !this.supportMode && garage.canDelete === true;
       this.publicationState = garage.publicationState;
       this.statusKnown = true;
       this.consentAccepted = true;
@@ -538,6 +601,7 @@ export class GarageOnboardingComponent {
   }
   protected async submitForReview(): Promise<void> {
     if (
+      this.supportMode ||
       !this.workspaceVisible ||
       !this.garageId ||
       !this.unchanged ||

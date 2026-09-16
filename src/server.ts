@@ -1,3 +1,4 @@
+import { PostgresAdministrationStore } from './server/administration-store';
 import { LocalDemoFileStore } from './server/local-demo-files';
 import { PostgresFavoriteStore, UnavailableFavoriteStore } from './server/favorites';
 import { PostgresGarageOnboardingStore } from './server/garage-onboarding-store';
@@ -32,6 +33,10 @@ if (process.env['NODE_ENV'] === 'production' && !databaseUrl) {
 const accessStore = new AccessStore();
 const app = createServer({
   accessStore,
+  ...(databaseUrl ? { administrationStore: new PostgresAdministrationStore(databaseUrl) } : {}),
+  ...(process.env['ZITADEL_ADMIN_CONSOLE_URL']
+    ? { adminConsoleUrl: process.env['ZITADEL_ADMIN_CONSOLE_URL'] }
+    : {}),
   ...(databaseUrl && process.env['AUTOKOSOVA_LOCAL_DEMO_FILES'] === '1'
     ? { localDemoFiles: new LocalDemoFileStore(databaseUrl) }
     : {}),

@@ -37,6 +37,16 @@ function localizedRoutes(prefix: string): Routes {
           fragment: fragment ?? undefined,
         }),
     },
+    ...['garages', 'users', 'privacy', 'audit', 'catalog', 'support'].map((section) => ({
+      path: `${childPrefix}admin/${section}`,
+      pathMatch: 'full' as const,
+      data: { adminSection: section },
+      canDeactivate: [
+        (component: import('./admin-console.component').AdminConsoleComponent | null) =>
+          component?.canLeave() ?? true,
+      ],
+      loadComponent: () => import('./admin-console.component').then((m) => m.AdminConsoleComponent),
+    })),
     ...['admin', 'moderation'].map((path) => ({
       path: `${childPrefix}${path}`,
       pathMatch: 'full' as const,

@@ -1,3 +1,6 @@
+import { AdminNavigationComponent } from './admin-navigation.component';
+import { adminLabel } from '../shared/admin-copy';
+import type { AdminOverview } from '../shared/administration';
 import { StaffDecisionFormComponent } from './staff-decision-form.component';
 import type { StaffCaseDecision } from '../shared/staff-decision';
 import { DOCUMENT, DatePipe } from '@angular/common';
@@ -31,6 +34,7 @@ import {
 @Component({
   selector: 'app-staff-workspace',
   imports: [
+    AdminNavigationComponent,
     StaffDecisionFormComponent,
     SiteHeaderComponent,
     RouterLink,
@@ -54,6 +58,10 @@ export class StaffWorkspaceComponent {
       this.isAdmin() ||
       (!this.adminOnly && (this.account.identity()?.roles.includes('moderator') ?? false)),
   );
+  readonly adminOverview = signal<AdminOverview | null>(null);
+  adminLabel(key: string) {
+    return adminLabel(key, this.language.language);
+  }
   readonly ready = signal(false);
   readonly loading = signal(false);
   readonly busy = signal(false);
@@ -87,6 +95,7 @@ export class StaffWorkspaceComponent {
       this.generation++;
       this.controller?.abort();
       this.detailVersion++;
+      this.adminOverview.set(null);
       this.cases.set([]);
       this.detail.set(null);
       this.evidenceText.set(null);
@@ -155,6 +164,18 @@ export class StaffWorkspaceComponent {
       this.page.set(data.page);
       this.hasMore.set(data.hasMore);
       this.moderators.set(candidates?.moderators ?? []);
+      if (this.isAdmin()) {
+        const overview = await fetch('/api/admin/management/overview', {
+          credentials: 'same-origin',
+          cache: 'no-store',
+          signal: this.controller.signal,
+        });
+        if (overview.ok) {
+          const value = (await overview.json()) as AdminOverview;
+          if (generation === this.generation && context === this.account.dataContext())
+            this.adminOverview.set(value);
+        }
+      }
     } catch (error) {
       if (generation === this.generation && context === this.account.dataContext()) {
         this.cases.set([]);

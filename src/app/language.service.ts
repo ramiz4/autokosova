@@ -23,6 +23,7 @@ export type AppRoute =
   | 'profile'
   | 'inquiries'
   | 'favorites'
+  | 'admin-section'
   | 'admin'
   | 'moderation'
   | PublicPageId;
@@ -122,6 +123,11 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
     profile: '/profile',
     inquiries: '/inquiries',
     favorites: '/favorites',
+    'admin-section':
+      '/admin/' +
+      (['garages', 'users', 'privacy', 'audit', 'catalog', 'support'].includes(parameter ?? '')
+        ? parameter
+        : 'garages'),
     admin: '/admin',
     moderation: '/moderation',
     onboarding: '/garages/new',
@@ -135,6 +141,8 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
 function identifyRoute(path: string): { readonly parameter?: string; readonly route: AppRoute } {
   const normalized = path.replace(/^\/(?:sq|en)(?=\/|$)/, '') || '/';
   if (normalized === '/') return { route: 'home' };
+  const admin = normalized.match(/^\/admin\/(garages|users|privacy|audit|catalog|support)$/);
+  if (admin) return { route: 'admin-section', parameter: admin[1] };
   if (normalized === '/admin') return { route: 'admin' };
   if (normalized === '/moderation') return { route: 'moderation' };
   if (normalized === '/profile') return { route: 'profile' };

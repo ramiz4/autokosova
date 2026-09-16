@@ -717,6 +717,14 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
       const userId = row.user_id;
       // Serialize account erasure with new favorites, which take a shared owner lock.
       await client.query('SELECT id FROM app_user WHERE id = $1 FOR UPDATE', [userId]);
+      // DATA-1: membership may have changed since the request was submitted. Never orphan a garage.
+      const ownerships = await client.query(
+        "SELECT 1 FROM membership WHERE user_id=$1 AND role='owner' AND state='active' FOR SHARE",
+        [userId],
+      );
+      if (ownerships.rowCount)
+        throw new AccessError(409, 'Resolve current garage ownership before erasure');
+
       const files = await client.query<{ readonly id: string; readonly storage_key: string }>(
         "SELECT id, storage_key FROM file_object WHERE owner_user_id = $1 AND retention_state = 'active'",
         [userId],
@@ -779,6 +787,9 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
           removableReviewIds,
         ]);
       }
+      // DATA-1: only this already authorized erasure assumes the target's owner context.
+      // Ordinary administrator reads still cannot browse customer requests or vehicles.
+      await client.query("SELECT set_config('app.user_id', $1, true)", [userId]);
       await client.query(
         `DELETE FROM repair_request_attachment
          WHERE repair_request_id IN (SELECT id FROM repair_request WHERE owner_user_id = $1)`,

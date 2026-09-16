@@ -1,0 +1,353 @@
+import type { AppLanguage } from './i18n';
+import { staffLabel } from './staff-copy';
+const labels: Readonly<Record<string, readonly [string, string, string]>> = {
+  administration: ['Administration', 'Administration', 'Administrimi'],
+  overview: ['Fallsteuerung', 'Case coordination', 'Koordinimi i rasteve'],
+  garages: ['Werkstätten', 'Garages', 'Serviset'],
+  users: ['Benutzer und Zuordnungen', 'Users and memberships', 'Përdoruesit dhe anëtarësimet'],
+  privacy: [
+    'Datenschutz und Löschaufträge',
+    'Privacy and deletion requests',
+    'Privatësia dhe kërkesat për fshirje',
+  ],
+  audit: ['Ereignisprotokoll', 'Audit trail', 'Historiku i ngjarjeve'],
+  catalog: ['Katalog und Pflegewege', 'Catalog and maintenance', 'Katalogu dhe mirëmbajtja'],
+  support: [
+    'Unterstützte Werkstattaufnahme',
+    'Assisted garage registration',
+    'Regjistrimi i asistuar i servisit',
+  ],
+  intro: [
+    'Administrative Aufgaben mit tatsächlichem Serverstand. Kein pauschaler Zugriff auf private Kundenanfragen oder Favoriten.',
+    'Administrative tasks use the actual server state. No general access to private requests or favorites.',
+    'Detyrat administrative përdorin gjendjen reale të serverit. Pa qasje të përgjithshme në kërkesa private ose të preferuara.',
+  ],
+  pendingGarages: [
+    'Ausstehende Werkstattprüfungen',
+    'Pending garage checks',
+    'Kontrolle servisi në pritje',
+  ],
+  unassignedCases: ['Nicht zugewiesene Fälle', 'Unassigned cases', 'Raste të pacaktuara'],
+  escalatedCases: ['Zur Adminprüfung', 'Escalated cases', 'Raste për shqyrtim administrativ'],
+  pendingDeletions: [
+    'Ausführbare Löschaufträge',
+    'Actionable deletion requests',
+    'Kërkesa të gatshme për fshirje',
+  ],
+  blockedDeletions: [
+    'Blockierte Löschaufträge',
+    'Blocked deletion requests',
+    'Kërkesa të bllokuara për fshirje',
+  ],
+  search: ['Suchen', 'Search', 'Kërko'],
+  query: ['Name oder technische ID', 'Name or technical ID', 'Emri ose ID-ja teknike'],
+  empty: ['Keine passenden Einträge.', 'No matching entries.', 'Nuk ka të dhëna që përputhen.'],
+  denied: [
+    'Nur für berechtigte Administratoren.',
+    'Authorized administrators only.',
+    'Vetëm për administratorë të autorizuar.',
+  ],
+  error: [
+    'Die Aktion wurde nicht bestätigt. Erneut prüfen; Eingaben bleiben erhalten.',
+    'The action was not confirmed. Check again; input is preserved.',
+    'Veprimi nuk u konfirmua. Kontrolloni sërish; të dhënat ruhen.',
+  ],
+  conflict: [
+    'Datensatz geändert oder Voraussetzung nicht erfüllt. Neu laden und prüfen.',
+    'The record changed or prerequisites are unmet. Reload and check.',
+    'Të dhënat ndryshuan ose kushtet nuk plotësohen. Ringarkoni dhe kontrolloni.',
+  ],
+  invalid: [
+    'Prüfvoraussetzungen oder Eingaben sind unvollständig.',
+    'Required checks or inputs are incomplete.',
+    'Kontrollet ose të dhënat e nevojshme janë të paplota.',
+  ],
+  saved: [
+    'Änderung vom Server bestätigt.',
+    'Change confirmed by the server.',
+    'Ndryshimi u konfirmua nga serveri.',
+  ],
+  deleted: [
+    'Gelöscht – keine Reaktivierung',
+    'Deleted – no reactivation',
+    'I fshirë – pa riaktivizim',
+  ],
+  revision: ['Datensatzversion', 'Record revision', 'Versioni i të dhënave'],
+  verification: ['Unternehmensprüfung', 'Company verification', 'Verifikimi i biznesit'],
+  phone: ['Telefonnummer geprüft', 'Phone checked', 'Telefoni i kontrolluar'],
+  contactPerson: [
+    'Ansprechpartner geprüft',
+    'Contact person checked',
+    'Personi i kontaktit i kontrolluar',
+  ],
+  companyDocument: [
+    'Unternehmensnachweis geprüft',
+    'Company evidence checked',
+    'Dëshmia e biznesit e kontrolluar',
+  ],
+  location: ['Standort geprüft', 'Location checked', 'Vendndodhja e kontrolluar'],
+  not_checked: ['Nicht geprüft', 'Not checked', 'I pakontrolluar'],
+  verified: ['Geprüft', 'Verified', 'I verifikuar'],
+  failed: ['Nicht bestätigt', 'Not verified', 'I paverifikuar'],
+  latitude: ['Breitengrad', 'Latitude', 'Gjerësia gjeografike'],
+  longitude: ['Längengrad', 'Longitude', 'Gjatësia gjeografike'],
+  locationHint: [
+    'Die tatsächliche Werkstattposition prüfen, nicht den Ortsmittelpunkt. Adress- und Positionsänderungen setzen die Bestätigung zurück.',
+    'Check the actual garage position, not the town center. Address or position changes invalidate verification.',
+    'Kontrolloni pozicionin real të servisit, jo qendrën. Ndryshimet e adresës ose pozicionit e anulojnë verifikimin.',
+  ],
+  saveChecks: ['Prüfstand speichern', 'Save verification', 'Ruaj verifikimin'],
+  company_verified: ['Unternehmensprüfung', 'Company check', 'Kontroll biznesi'],
+  missing_information: ['Fehlende Angaben', 'Missing information', 'Informacion i munguar'],
+  ownership_change: [
+    'Zuordnung / Eigentumsübergabe',
+    'Membership / ownership transfer',
+    'Anëtarësim / transferim pronësie',
+  ],
+  documented_support: [
+    'Dokumentierter Supportauftrag',
+    'Documented support request',
+    'Kërkesë e dokumentuar mbështetjeje',
+  ],
+  privacy_request: ['Datenschutzvorgang', 'Privacy request', 'Kërkesë privatësie'],
+  publish: ['Werkstatt veröffentlichen', 'Publish garage', 'Publiko servisin'],
+  reject: ['Aufnahme ablehnen', 'Reject registration', 'Refuzo regjistrimin'],
+  suspend: ['Administrativ sperren', 'Suspend administratively', 'Pezullo administrativisht'],
+  restore: [
+    'Administrative Sperre aufheben',
+    'Lift administrative suspension',
+    'Hiq pezullimin administrativ',
+  ],
+  decisionConfirm: [
+    'Diese Entscheidung speichern? Sie verändert die öffentliche Sichtbarkeit.',
+    'Save this decision? It changes public visibility.',
+    'Të ruhet ky vendim? Ai ndryshon dukshmërinë publike.',
+  ],
+  documents: [
+    'Private Unternehmensnachweise',
+    'Private company evidence',
+    'Dëshmitë private të biznesit',
+  ],
+  openDocument: ['Nachweis öffnen', 'Open evidence', 'Hap dëshminë'],
+  photos: ['Foto-Prüfung', 'Photo review', 'Kontrolli i fotove'],
+  photo: ['Profilfoto', 'Profile photo', 'Foto profili'],
+  approvePhoto: ['Foto freigeben', 'Approve photo', 'Mirato foton'],
+  rejectPhoto: ['Foto ablehnen', 'Reject photo', 'Refuzo foton'],
+  photoMissing: [
+    'Keine sicher verfügbare Bildquelle. Keine Freigabe ohne Sichtprüfung.',
+    'No safe image source. Do not approve without inspection.',
+    'Nuk ka burim të sigurt imazhi. Mos e miratoni pa kontroll.',
+  ],
+  members: ['Werkstattzuordnungen', 'Garage memberships', 'Anëtarësimet e servisit'],
+  owner: ['Eigentümer', 'Owner', 'Pronar'],
+  editor: ['Bearbeiter', 'Editor', 'Redaktues'],
+  active: ['Aktiv', 'Active', 'Aktiv'],
+  revoked: ['Widerrufen', 'Revoked', 'I revokuar'],
+  memberTarget: [
+    'Bestehendes Zielkonto',
+    'Existing target account',
+    'Llogaria ekzistuese e synuar',
+  ],
+  memberSave: ['Zuordnung speichern', 'Save membership', 'Ruaj anëtarësimin'],
+  revoke: ['Zuordnung widerrufen', 'Revoke membership', 'Revoko anëtarësimin'],
+  transfer: ['Eigentum übertragen', 'Transfer ownership', 'Transfero pronësinë'],
+  sourceOwner: ['Bisheriger Eigentümer', 'Current owner', 'Pronari aktual'],
+  transferHint: [
+    'Das Zielkonto wird Eigentümer; das bisherige Konto bleibt Bearbeiter. Private Kundenanfragen und Belege werden nicht übertragen.',
+    'The target becomes an owner; the previous owner stays an editor. Private requests and evidence are not transferred.',
+    'Llogaria e synuar bëhet pronare; pronari i mëparshëm mbetet redaktues. Kërkesat dhe dëshmitë private nuk transferohen.',
+  ],
+  membershipConfirm: [
+    'Diese Zuordnung ändern? Ein veröffentlichtes Profil braucht weiterhin einen aktiven Eigentümer.',
+    'Change this membership? A published profile must retain an active owner.',
+    'Të ndryshohet ky anëtarësim? Një profil publik duhet të ketë pronar aktiv.',
+  ],
+  correction: [
+    'Profil im dokumentierten Auftrag korrigieren',
+    'Correct profile under a documented request',
+    'Korrigjo profilin sipas kërkesës së dokumentuar',
+  ],
+  reference: [
+    'Referenz des freigegebenen Supportauftrags',
+    'Approved support request reference',
+    'Referenca e kërkesës së miratuar për mbështetje',
+  ],
+  supportHint: [
+    'Nur mit vorliegendem Auftrag und Zustimmung. Adminrechte ersetzen keine Einwilligung; keine sensiblen Details in die Referenz kopieren.',
+    'Only with an existing request and consent. Admin rights do not replace consent; keep sensitive details out of the reference.',
+    'Vetëm me kërkesë dhe pëlqim ekzistues. Të drejtat nuk zëvendësojnë pëlqimin; mos përfshini hollësi sensitive në referencë.',
+  ],
+  startSupport: [
+    'Vorhandenes Aufnahmeformular öffnen',
+    'Open the existing registration form',
+    'Hap formularin ekzistues të regjistrimit',
+  ],
+  provider: [
+    'Identitätsverwaltung in ZITADEL',
+    'Identity management in ZITADEL',
+    'Menaxhimi i identitetit në ZITADEL',
+  ],
+  providerHint: [
+    'Globale Rollen, Identitätssperren, Passwort und MFA bleiben im autorisierten ZITADEL-Projekt. Die App-Rolle vergibt keine Providerrechte.',
+    'Global roles, identity suspensions, passwords and MFA remain in the authorized ZITADEL project. The app role grants no provider rights.',
+    'Rolet globale, pezullimet, fjalëkalimet dhe MFA mbeten në ZITADEL. Roli në aplikacion nuk jep të drejta te ofruesi.',
+  ],
+  providerOpen: [
+    'Freigegebene ZITADEL-Konsole öffnen',
+    'Open approved ZITADEL console',
+    'Hap konsolën e miratuar ZITADEL',
+  ],
+  providerMissing: [
+    'Kein freigegebener Konsolenverweis konfiguriert. Zuständigen Identitätsadministrator kontaktieren.',
+    'No approved console link configured. Contact the identity administrator.',
+    'Nuk ka lidhje të miratuar të konsolës. Kontaktoni administratorin e identitetit.',
+  ],
+  rolesHint: [
+    'Rollen aus dem letzten verifizierten Abgleich, kein Echtzeitnachweis. Nach externem Entzug lokale App-Sitzungen widerrufen und erneuten regulären Login prüfen.',
+    'Roles from the last verified synchronization, not real-time proof. After external revocation, revoke local app sessions and check a new regular login.',
+    'Rolet janë nga sinkronizimi i fundit, jo provë në kohë reale. Pas revokimit, çkyçni sesionet dhe kontrolloni hyrjen e re.',
+  ],
+  sessions: [
+    'Lokale App-Sitzungen widerrufen',
+    'Revoke local app sessions',
+    'Revoko sesionet lokale',
+  ],
+  sessionConfirm: [
+    'Dieses Konto in dieser App-Instanz abmelden? Provideridentität und Rollen bleiben unverändert.',
+    'Sign this account out of this app instance? Provider identity and roles stay unchanged.',
+    'Të çkyçet llogaria nga kjo instancë? Identiteti dhe rolet te ofruesi mbeten të pandryshuara.',
+  ],
+  accountType: ['Kontozweck', 'Account purpose', 'Qëllimi i llogarisë'],
+  roles: ['Verifizierte Rollen', 'Verified roles', 'Rolet e verifikuara'],
+  rolesVerifiedAt: [
+    'Letzter Rollenabgleich',
+    'Last role synchronization',
+    'Sinkronizimi i fundit i roleve',
+  ],
+
+  policy: ['Aufbewahrungsregel', 'Retention policy', 'Rregulli i ruajtjes'],
+  noPolicy: [
+    'Keine freigegebene Aufbewahrungsregel hinterlegt. Löschaufträge bleiben blockiert.',
+    'No approved retention policy recorded. Deletion requests remain blocked.',
+    'Nuk ka rregull të miratuar ruajtjeje. Kërkesat për fshirje mbeten të bllokuara.',
+  ],
+  policyVersion: ['Version', 'Version', 'Versioni'],
+  operatorApprovalReference: [
+    'Betreiber-Freigabereferenz',
+    'Operator approval reference',
+    'Referenca e miratimit nga operatori',
+  ],
+  reviewEvidenceRetentionDays: [
+    'Besuchsnachweise – Tage',
+    'Visit evidence – days',
+    'Dëshmitë e vizitës – ditë',
+  ],
+  repairRequestRetentionDays: [
+    'Reparaturanfragen – Tage',
+    'Repair requests – days',
+    'Kërkesat për riparim – ditë',
+  ],
+  reportRetentionDays: ['Meldungen – Tage', 'Reports – days', 'Raportimet – ditë'],
+  auditLogRetentionDays: ['Ereignisprotokoll – Tage', 'Audit trail – days', 'Historiku – ditë'],
+  publicReviewHandling: [
+    'Öffentliche Bewertungen bei Löschung',
+    'Public reviews upon erasure',
+    'Vlerësimet publike pas fshirjes',
+  ],
+  delete: ['Löschen', 'Delete', 'Fshi'],
+  retain_anonymized: [
+    'Gemäss Freigabe anonymisiert behalten',
+    'Retain anonymized as approved',
+    'Ruaj të anonimizuara sipas miratimit',
+  ],
+  approvalAttestation: [
+    'Die fachliche/rechtliche Betreiberfreigabe liegt für genau diese Werte und Version vor.',
+    'The operator approval covers these exact values and version on the required business/legal basis.',
+    'Miratimi i operatorit mbulon këto vlera dhe këtë version mbi bazën e nevojshme profesionale/ligjore.',
+  ],
+  savePolicy: [
+    'Freigegebene Regel hinterlegen',
+    'Record approved policy',
+    'Regjistro rregullin e miratuar',
+  ],
+  policyHint: [
+    'Keine Standardfrist oder rechtliche Freigabe durch die Demo. Neue Versionen ersetzen keine dokumentierten Entscheidungen.',
+    'The demo provides no default period or legal approval. New versions do not replace documented decisions.',
+    'Demoja nuk përcakton afat standard ose miratim ligjor. Versionet e reja nuk zëvendësojnë vendimet e dokumentuara.',
+  ],
+  refreshPrerequisites: [
+    'Voraussetzungen erneut prüfen',
+    'Recheck prerequisites',
+    'Rikontrollo kushtet',
+  ],
+  processDeletion: [
+    'Freigegebenen Löschauftrag ausführen',
+    'Execute approved deletion request',
+    'Ekzekuto kërkesën e miratuar për fshirje',
+  ],
+  deletionConfirm: [
+    'Diesen Auftrag gemäss seiner Policy-Version ausführen? Daten werden gelöscht oder anonymisiert, Dateizugriffe und App-Sitzungen entzogen. Physische Dateilöschungen können noch ausstehen.',
+    'Execute under the request policy version? Data is erased or anonymized; file access and app sessions are revoked. Physical file deletions may still be pending.',
+    'Të ekzekutohet sipas versionit të kërkesës? Të dhënat fshihen ose anonimizohen; qasja dhe sesionet revokohen. Fshirjet fizike mund të jenë në pritje.',
+  ],
+  blocked_by_policy: [
+    'Blockiert: freigegebene Regel fehlt',
+    'Blocked: approved policy missing',
+    'I bllokuar: mungon rregulli i miratuar',
+  ],
+  manual_content_decision_required: [
+    'Blockiert: Werkstatteigentum zuerst klären',
+    'Blocked: resolve garage ownership first',
+    'I bllokuar: sqaroni pronësinë së pari',
+  ],
+  completed: [
+    'Datenbankvorgang abgeschlossen',
+    'Database operation completed',
+    'Veprimi në bazën e të dhënave përfundoi',
+  ],
+  pendingFiles: [
+    'Physische Dateilöschungen noch ausstehend',
+    'Physical file deletions still pending',
+    'Fshirjet fizike janë në pritje',
+  ],
+  catalogHint: [
+    'Pflege im versionierten Repository-Prozess: Quelle/Lizenz prüfen, stabile IDs erhalten, referenzierte Werte stilllegen statt löschen. Kein Laufzeit-Editor.',
+    'Maintain through the versioned repository process: check source/license, retain stable IDs, retire referenced values rather than deleting. No runtime editor.',
+    'Mirëmbajeni përmes procesit të versionuar: kontrolloni burimin/licencën, ruani ID-të, çaktivizoni në vend të fshirjes. Pa redaktues në aplikacion.',
+  ],
+  services: ['Leistungen', 'Services', 'Shërbimet'],
+  makes: ['Fahrzeugmarken', 'Vehicle makes', 'Markat e automjeteve'],
+  places: ['Orte', 'Places', 'Vendet'],
+  retired: ['Stillgelegt', 'Retired', 'I çaktivizuar'],
+
+  draft: ['Entwurf', 'Draft', 'Draft'],
+  pending_review: ['Zur Prüfung eingereicht', 'Pending review', 'Në pritje të shqyrtimit'],
+  published: ['Veröffentlicht', 'Published', 'I publikuar'],
+  rejected: ['Abgelehnt', 'Rejected', 'I refuzuar'],
+  suspended: ['Gesperrt', 'Suspended', 'I pezulluar'],
+  approved: ['Freigegeben', 'Approved', 'I miratuar'],
+  customer: ['Privatkunde', 'Customer', 'Klient privat'],
+  garage: ['Werkstattbetreiber', 'Garage operator', 'Operator servisi'],
+  discard: [
+    'Ungespeicherte Änderungen verwerfen?',
+    'Discard unsaved changes?',
+    'Të anulohen ndryshimet e paruajtura?',
+  ],
+
+  approvalSupport: [
+    'Der dokumentierte Auftrag und die erforderliche Zustimmung liegen vor.',
+    'The documented request and required consent are available.',
+    'Kërkesa e dokumentuar dhe pëlqimi i nevojshëm janë në dispozicion.',
+  ],
+  submitSupport: [
+    'Im dokumentierten Auftrag zur Prüfung einreichen',
+    'Submit for review under the documented request',
+    'Dorëzo për shqyrtim sipas kërkesës së dokumentuar',
+  ],
+};
+export function adminLabel(key: string, language: AppLanguage): string {
+  const label = labels[key];
+  return label
+    ? label[language === 'de' ? 0 : language === 'en' ? 1 : 2]
+    : staffLabel(key, language);
+}

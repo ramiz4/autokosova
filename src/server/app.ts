@@ -1,3 +1,5 @@
+import { registerAdministrationRoutes } from './administration-routes';
+import type { PostgresAdministrationStore } from './administration-store';
 import type { LocalDemoFileStore } from './local-demo-files';
 import { registerStaffRoutes } from './staff-routes';
 import { randomBytes } from 'node:crypto';
@@ -71,6 +73,8 @@ import {
 } from '../shared/repair-request';
 
 interface ServerOptions {
+  readonly administrationStore?: PostgresAdministrationStore;
+  readonly adminConsoleUrl?: string;
   readonly localDemoFiles?: LocalDemoFileStore;
   readonly garageStore?: GarageOnboardingStore;
   readonly favoriteStore?: FavoriteStore;
@@ -164,7 +168,7 @@ const repairRequestBodySchema = {
 function safeReturnTo(value: unknown): string {
   if (typeof value !== 'string' || value.length > 2000) return '/';
   const match = value.match(
-    /^(\/(?:(?:sq|en)\/)?(?:admin|moderation|profile|inquiries|favorites|inquiry|anfrage|garages(?:\/[A-Za-z0-9_-]{1,128})?))(?:\?([^#]*))?$/,
+    /^(\/(?:(?:sq|en)\/)?(?:admin(?:\/(?:garages|users|privacy|audit|catalog|support))?|moderation|profile|inquiries|favorites|inquiry|anfrage|garages(?:\/[A-Za-z0-9_-]{1,128})?))(?:\?([^#]*))?$/,
   );
   if (!match) return '/';
   const path = match[1].replace(/\/anfrage$/, '/inquiry');
@@ -480,6 +484,18 @@ export function createServer(options: ServerOptions = {}) {
   }
 
   registerStaffRoutes(app, moderationStore, requirePrincipal, errorResponse);
+  registerAdministrationRoutes(
+    app,
+    options.administrationStore,
+    options.localDemoFiles,
+    requirePrincipal,
+    errorResponse,
+    garageProfileSchema,
+    options.adminConsoleUrl,
+    (userId) => accessStore.revokeUserSessions(userId),
+  );
+  if (options.administrationStore)
+    app.addHook('onClose', async () => options.administrationStore!.close());
   if (options.localDemoFiles) app.addHook('onClose', async () => options.localDemoFiles!.close());
   app.get('/api/local-demo/files/:fileId/content', async (request, reply) => {
     try {
@@ -616,6 +632,11 @@ export function createServer(options: ServerOptions = {}) {
   });
   app.get('/api/public/garages/:garageId/photos/:photoId', async (request, reply) => {
     const params = request.params as { photoId: string; garageId: string };
+    const publishedAdminPhoto = await options.administrationStore?.publicPhoto(
+      params.garageId,
+      params.photoId,
+    );
+    if (publishedAdminPhoto) return reply.redirect(publishedAdminPhoto);
     const photo = accessStore.getGaragePhoto(params.garageId, params.photoId);
     if (!photo) {
       const demoPath = localDemoPhotoPath(params.garageId, params.photoId);
@@ -1379,6 +1400,8 @@ export function createServer(options: ServerOptions = {}) {
         body: {
           additionalProperties: false,
           properties: {
+            revision: { type: 'integer', minimum: 1 },
+            reason: { type: 'string', maxLength: 40 },
             role: { enum: ['editor', 'owner'], type: 'string' },
             userId: { minLength: 1, type: 'string' },
             garageId: { minLength: 1, type: 'string' },
@@ -1397,6 +1420,15 @@ export function createServer(options: ServerOptions = {}) {
           userId: string;
           garageId: string;
         };
+        if (options.administrationStore) {
+          const data = request.body as typeof body &
+            import('../shared/administration').AdminRevision;
+          await options.administrationStore.changeMember(principal, body.garageId, {
+            ...data,
+            state: 'active',
+          });
+          return reply.code(201).send({ status: 'created' });
+        }
         accessStore.addMembership(body.userId, body.garageId, body.role);
         accessStore.auditEvents.push({ actorUserId: principal.userId, type: 'membership-granted' });
         return reply.code(201).send({ status: 'created' });
@@ -1603,6 +1635,7 @@ export function createServer(options: ServerOptions = {}) {
         body: {
           additionalProperties: false,
           properties: {
+            requestReference: { type: 'string', minLength: 5, maxLength: 200 },
             applicantUserId: { maxLength: 120, minLength: 1, type: 'string' },
             consentSource: { const: 'documented_support_request', type: 'string' },
             consentVersion: { maxLength: 80, minLength: 1, type: 'string' },
@@ -1617,20 +1650,21 @@ export function createServer(options: ServerOptions = {}) {
       try {
         const principal = requirePrincipal(request, true);
         const body = request.body as {
+          requestReference?: string;
           applicantUserId: string;
           consentSource: 'documented_support_request';
           consentVersion: string;
           profile: GarageProfileInput;
         };
-        const garage = await garageStore.createAssistedGarage(
-          principal,
-          body.applicantUserId,
-          body.profile,
-          {
-            source: body.consentSource,
-            version: body.consentVersion,
-          },
-        );
+        const garage = options.administrationStore
+          ? await options.administrationStore.assistedGarage(principal, {
+              ...body,
+              requestReference: body.requestReference ?? '',
+            })
+          : await garageStore.createAssistedGarage(principal, body.applicantUserId, body.profile, {
+              source: body.consentSource,
+              version: body.consentVersion,
+            });
         return reply.code(201).send({ id: garage.id, publicationState: garage.publicationState });
       } catch (error) {
         return errorResponse(error, reply);
@@ -1645,6 +1679,8 @@ export function createServer(options: ServerOptions = {}) {
         body: {
           additionalProperties: false,
           properties: {
+            revision: { type: 'integer', minimum: 1, maximum: 2147483647 },
+            reason: { type: 'string', maxLength: 40 },
             decision: { enum: ['published', 'rejected', 'suspended'], type: 'string' },
             verification: verificationChecklistSchema,
           },
@@ -1661,6 +1697,14 @@ export function createServer(options: ServerOptions = {}) {
           decision: 'published' | 'rejected' | 'suspended';
           verification: VerificationChecklist;
         };
+        if (options.administrationStore) {
+          await options.administrationStore.decideGarage(
+            principal,
+            params.garageId,
+            request.body as import('../shared/administration').AdminGarageDecision,
+          );
+          return reply.code(204).send();
+        }
         await garageStore.reviewGarage(
           principal,
           params.garageId,
@@ -1680,7 +1724,11 @@ export function createServer(options: ServerOptions = {}) {
       schema: {
         body: {
           additionalProperties: false,
-          properties: { approved: { type: 'boolean' } },
+          properties: {
+            approved: { type: 'boolean' },
+            revision: { type: 'integer', minimum: 1 },
+            reason: { type: 'string', maxLength: 40 },
+          },
           required: ['approved'],
           type: 'object',
         },
@@ -1691,6 +1739,17 @@ export function createServer(options: ServerOptions = {}) {
         const principal = requirePrincipal(request, true);
         const params = request.params as { photoId: string; garageId: string };
         const body = request.body as { approved: boolean };
+        if (options.administrationStore) {
+          await options.administrationStore.decidePhoto(
+            principal,
+            params.garageId,
+            params.photoId,
+            request.body as import('../shared/administration').AdminRevision & {
+              approved: boolean;
+            },
+          );
+          return reply.code(204).send();
+        }
         accessStore.publishGaragePhoto(principal, params.garageId, params.photoId, body.approved);
         return reply.code(204).send();
       } catch (error) {
