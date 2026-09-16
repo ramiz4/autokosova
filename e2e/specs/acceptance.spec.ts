@@ -2,6 +2,7 @@ import { test, expect } from '../support/application';
 import {
   api,
   card,
+  garageAction,
   garageButton,
   requestPath,
   garagePath,
@@ -98,6 +99,9 @@ test('garage-crud creates, edits and deletes a draft through the UI', async ({
     languages: ['Deutsch'],
   });
   await layout(page, info, 'garage');
+  await garageButton(page, id).click();
+  await page.screenshot({ path: info.outputPath('garage-menu.png'), fullPage: true });
+  await page.keyboard.press('Escape');
   await deleteGarage(page, app.origin, id);
   expect((await (await api(page, app.origin, '/api/me/garages')).json()).garages).toEqual(baseline);
   await logout(page, app.origin);
@@ -116,7 +120,9 @@ test('published-deletion removes actual public visibility and keeps the operator
     ),
   ).toBe(true);
   expect((await api(page, app.origin, '/api/public/garages/' + garages[0])).status()).toBe(200);
+  await garageButton(page, garages[0]).click();
   await expect(page.locator(`[data-public-garage][href="/garages/${garages[0]}"]`)).toBeVisible();
+  await page.keyboard.press('Escape');
   for (const id of garages) await deleteGarage(page, app.origin, id);
   expect(
     (await (await search()).json()).results.some((garage: { id: string }) =>
@@ -178,7 +184,7 @@ test('account-isolation enforces private CRUD, owner/editor, CSRF and logout bou
         )
       ).status(),
     ).toBe(403);
-  await expect(page.locator('[data-owned-garage]')).toHaveCount(0);
+  await expect(page.locator('[data-garage-menu]')).toHaveCount(0);
   // Editor is setup data, not an application privilege bypass or an injected session.
   await app.database.query("INSERT INTO app_user(id,oidc_subject,status) VALUES($1,$1,'active')", [
     app.subjects.editor,
@@ -189,7 +195,7 @@ test('account-isolation enforces private CRUD, owner/editor, CSRF and logout bou
   );
   await app.login(page, 'editor');
   await readyGarages(page);
-  await garageButton(page, garages[0]).click();
+  await garageAction(page, garages[0], 'edit');
   await expect(page.locator('form')).toBeVisible();
   await expect(page.locator('[data-delete-garage]')).toHaveCount(0);
   expect((await api(page, app.origin, garagePath(garages[0]), 'DELETE')).status()).toBe(403);
@@ -232,7 +238,7 @@ test('persistent-restart preserves edits and deletions across a real app restart
   );
   await expect(garageButton(page, garages[1])).toHaveCount(0);
   expect((await api(page, app.origin, garagePath(garages[1]))).status()).toBe(403);
-  await garageButton(page, garages[0]).click();
+  await garageAction(page, garages[0], 'edit');
   await expect(page.locator('#garage-name')).toHaveValue('E2E PERSISTENT GARAGE');
 });
 
@@ -352,7 +358,7 @@ test('error-feedback preserves unsaved edits on network, conflict, permission an
   await page.locator('[data-discard-edit]').click();
   await app.login(page, 'garage');
   await readyGarages(page);
-  await garageButton(page, garages[0]).click();
+  await garageAction(page, garages[0], 'edit');
   const name = await page.locator('#garage-name').inputValue();
   await page.locator('#garage-name').fill('E2E UNSAVED GARAGE');
   const original = (await page.context().cookies(app.origin)).find(
@@ -406,7 +412,7 @@ test('late-response cannot restore private garage data after another tab changes
     await held;
     await route.fulfill({ response }); // The actual authorized response, only delayed.
   });
-  await garageButton(page, garages[0]).click();
+  await garageAction(page, garages[0], 'edit');
   await reached;
   const other = await page.context().newPage();
   try {

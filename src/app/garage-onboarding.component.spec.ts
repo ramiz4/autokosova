@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { GarageOnboardingComponent } from './garage-onboarding.component';
 import { LanguageService } from './language.service';
+import { garageManagementCopy } from '../shared/garage-management-copy';
 
 const validForm = {
   name: 'Fiktiver Testbetrieb',
@@ -189,6 +190,40 @@ it.each(['de', 'sq', 'en'] as const)(
     expect(page.querySelector('app-site-header img')).not.toBeNull();
   },
 );
+
+it('filters, sorts and counts only the private overview summaries without inventing dates', async () => {
+  const fixture = await setup();
+  const component = fixture.componentInstance;
+  component['owned'] = [
+    {
+      id: 'garage-z',
+      name: 'Zeta Klima',
+      placeId: 'xk-pristina',
+      publicationState: 'published',
+      canDelete: true,
+      description: 'Klimaservice',
+      serviceCategoryIds: ['klima'],
+      updatedAt: '2026-09-16T08:00:00.000Z',
+    },
+    {
+      id: 'garage-a',
+      name: 'Alpha Bremsen',
+      placeId: 'xk-prizren',
+      publicationState: 'draft',
+      canDelete: false,
+      serviceCategoryIds: ['bremsen'],
+    },
+  ];
+  component['overviewSearch'] = 'PRIZREN';
+  expect(component['filteredOwned'].map((garage) => garage.id)).toEqual(['garage-a']);
+  expect(component['draftCount']).toBe(1);
+  expect(component['publishedCount']).toBe(1);
+  expect(component['date'](undefined)).toBe(garageManagementCopy.de.dateUnavailable);
+  component['overviewSearch'] = '';
+  component['overviewSort'] = 'name';
+  expect(component['filteredOwned'].map((garage) => garage.id)).toEqual(['garage-a', 'garage-z']);
+  fixture.detectChanges();
+});
 
 it('does not send a delete without ownership, confirmation or a CSRF token', async () => {
   const fixture = await setup();

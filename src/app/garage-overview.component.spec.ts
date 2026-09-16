@@ -76,16 +76,14 @@ it.each(['de', 'sq', 'en'] as const)(
     );
     await component['loadOwned']();
     fixture.detectChanges();
-    expect(page.querySelectorAll('[data-owned-garage]')).toHaveLength(5);
+    expect(page.querySelectorAll('[data-garage-menu]')).toHaveLength(5);
     expect(page.querySelectorAll('[data-garage-status]')).toHaveLength(5);
     for (const state of states)
       expect(
         page.querySelector('[data-garage-status][data-state="' + state + '"]')?.textContent?.trim(),
       ).toBeTruthy();
-    expect(page.querySelectorAll('[data-public-garage]')).toHaveLength(1);
-    expect(page.querySelector('[data-public-garage]')?.getAttribute('href')).toBe(
-      (locale === 'de' ? '' : '/' + locale) + '/garages/fixture-0',
-    );
+    // Public navigation is intentionally rendered only within the published card's action menu.
+    expect(page.querySelectorAll('[data-public-garage]')).toHaveLength(0);
     expect(page.querySelectorAll('[data-new-garage]')).toHaveLength(1);
     expect(
       page.querySelector('header[aria-labelledby="onboarding-hero-title"], aside, form'),

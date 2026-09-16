@@ -45,7 +45,7 @@ test(
       const snapshot = async () =>
         (
           await db.query(
-            "SELECT to_jsonb(g) AS row FROM garage g WHERE id LIKE 'demo-admin-%' ORDER BY id",
+            "SELECT to_jsonb(g) - 'updated_at' AS row FROM garage g WHERE id LIKE 'demo-admin-%' ORDER BY id",
           )
         ).rows;
       const before = await snapshot();
@@ -64,6 +64,14 @@ test(
         );
       await run();
       assert.deepEqual(await snapshot(), before);
+      assert.equal(
+        (
+          await db.query(
+            "SELECT count(*)::integer AS count FROM garage WHERE id LIKE 'demo-admin-%' AND updated_at IS NOT NULL",
+          )
+        ).rows[0].count,
+        before.length,
+      );
       assert.deepEqual(
         (
           await db.query(

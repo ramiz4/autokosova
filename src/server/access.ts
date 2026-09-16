@@ -1311,9 +1311,15 @@ export class AccessStore implements ReviewStore {
     return [...this.garages.values()]
       .filter((garage) => this.hasGarageAccess(principal, garage.id))
       .map((garage) => ({
+        canDelete:
+          this.memberships.get(`${principal.userId}:${garage.id}`)?.state === 'active' &&
+          this.memberships.get(`${principal.userId}:${garage.id}`)?.role === 'owner',
+        description: garage.profile.description,
         id: garage.id,
         name: garage.profile.name,
+        placeId: garage.profile.placeId,
         publicationState: garage.publicationState,
+        serviceCategoryIds: [...garage.profile.serviceCategoryIds],
       }));
   }
 
