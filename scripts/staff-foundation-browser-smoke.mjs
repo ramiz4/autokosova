@@ -48,10 +48,16 @@ try {
     const destination =
       returnTo ??
       (locale === 'de' ? '' : '/' + locale) + (role === 'admin' ? '/admin' : '/moderation');
+    // The admin has assigned the fixtures to moderators, not to themselves. Their explicit
+    // "My cases" destination is therefore honestly empty, unlike the populated role landings.
+    const expectedContent =
+      role === 'admin' && destination.endsWith('/moderation')
+        ? "!!document.querySelector('[data-staff-empty]')"
+        : "document.querySelectorAll('[data-staff-row]').length>0";
     await until(
       () =>
         browser.evaluate(
-          `!window.__oldStaffDocument && location.pathname===${JSON.stringify(destination)} && document.querySelector('[data-staff-list]')?.getAttribute('aria-busy')==='false' && document.querySelectorAll('[data-staff-row]').length>0`,
+          `!window.__oldStaffDocument && location.pathname===${JSON.stringify(destination)} && document.querySelector('[data-staff-list]')?.getAttribute('aria-busy')==='false' && ${expectedContent}`,
         ),
       'signed OIDC staff landing ' + role,
     );
@@ -169,6 +175,8 @@ try {
   // Explicit, authorized return targets take precedence over the role landing.
   await login('admin', 'de', '/moderation');
   assert.equal(await browser.evaluate('location.pathname'), '/moderation');
+  assert.equal(await browser.evaluate("document.querySelectorAll('[data-staff-row]').length"), 0);
+  assert.equal(await browser.evaluate("!!document.querySelector('[data-staff-empty]')"), true);
   // A normal guest page and direct API cannot reuse any previous staff identity.
   await logout();
   assert.equal(await browser.evaluate("fetch('/api/staff/cases').then(r=>r.status)"), 401);
