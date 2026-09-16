@@ -7,6 +7,8 @@ import { routes } from './app.routes';
 import { routePath } from './language.service';
 import { accountType, type OwnAccount } from '../shared/account';
 
+const accountPanel = () => document.querySelector<HTMLElement>('[data-account-panel]');
+
 const member = { garageId: 'fixture-garage', role: 'editor' as const };
 const cases: {
   name: string;
@@ -92,24 +94,22 @@ for (const scenario of cases) {
       );
       const top = header.nativeElement as HTMLElement;
       expect(top.querySelector('[data-account-favorites]')).toBeNull();
-      top.querySelector<HTMLButtonElement>('[aria-controls="account-menu"]')!.click();
+      top.querySelector<HTMLButtonElement>('[data-account-trigger]')!.click();
       await vi.waitFor(() => expect(account.state()).toBe('ready'));
       await header.whenStable();
-      const links = top.querySelectorAll<HTMLAnchorElement>(
-        '#account-menu [data-account-favorites]',
-      );
+      const links = accountPanel()!.querySelectorAll<HTMLAnchorElement>('[data-account-favorites]');
       expect(links).toHaveLength(1);
       expect(links[0].getAttribute('href')).toBe(target);
       expect(links[0].getAttribute('aria-current')).toBe('page');
       expect(links[0].classList.contains('bg-blue-50')).toBe(true);
-      expect(!!top.querySelector('[data-account-garages]')).toBe(business);
-      expect(!!top.querySelector('[data-account-inquiries]')).toBe(!business);
+      expect(!!accountPanel()!.querySelector('[data-account-garages]')).toBe(business);
+      expect(!!accountPanel()!.querySelector('[data-account-inquiries]')).toBe(!business);
       expect(top.querySelector('#desktop-navigation [data-account-favorites]')).toBeNull();
       expect(top.querySelector('#mobile-navigation [data-account-favorites]')).toBeNull();
       links[0].click();
       await header.whenStable();
       expect(router.url).toBe(target);
-      expect(top.querySelector('#account-menu')).toBeNull();
+      expect(accountPanel()).toBeNull();
       account.invalidate();
       await profile.whenStable();
       await header.whenStable();
@@ -139,7 +139,7 @@ it.each(['guest', 'loading', 'error'] as const)(
     await vi.waitFor(() => expect(TestBed.inject(AccountSessionService).state()).toBe(state));
     await fixture.whenStable();
     const page = fixture.nativeElement as HTMLElement;
-    page.querySelector<HTMLButtonElement>('[aria-controls="account-menu"]')?.click();
+    page.querySelector<HTMLButtonElement>('[data-account-trigger]')?.click();
     await fixture.whenStable();
     expect(page.querySelector('[data-account-favorites]')).toBeNull();
     expect(page.querySelector('a[href="/favorites"]')).toBeNull();

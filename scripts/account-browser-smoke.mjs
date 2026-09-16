@@ -234,11 +234,19 @@ try {
     const requestsBefore = accountRequests;
     const repliesBefore = accountReplies;
     try {
-      await evaluate(`document.querySelector('button[aria-controls="account-menu"]').focus()`);
+      await evaluate(`document.querySelector('[data-account-trigger]').focus()`);
+      await key('Enter', 13);
+      await until(
+        () =>
+          evaluate(
+            `document.querySelector('button[brnOverlayTrigger]')?.getAttribute('aria-expanded') === 'true' && !!document.querySelector('[data-account-panel]')`,
+          ),
+        'deferred account panel opening',
+      );
       await evaluate(`(async () => {
         await document.fonts.ready;
         const selectors = ['header', '#desktop-navigation', 'header app-language-switcher',
-          'button[aria-controls="account-menu"]', '.mobile-menu-toggle', '.site-logo'];
+          'button[brnOverlayTrigger]', '.mobile-menu-toggle', '.site-logo'];
         const elements = selectors.map((selector) => document.querySelector(selector));
         const box = (element) => {
           const rect = element.getBoundingClientRect();
@@ -262,7 +270,7 @@ try {
           if (elements[3].textContent !== name) fail('Account button name changed');
           if (elements[3].getAttribute('aria-expanded') === 'true') {
             probe.menuFrames++;
-            const menu = document.querySelector('#account-menu');
+            const menu = document.querySelector('[data-account-panel]');
             if (!menu?.querySelector('[data-account-name]') || !menu?.querySelector('[data-account-inquiries]'))
               fail('Account menu contents disappeared');
             if (menu) {
@@ -279,7 +287,6 @@ try {
         };
         animation = requestAnimationFrame(sample);
       })()`);
-      await key('Enter', 13);
       await until(() => accountRequests > requestsBefore, 'held account refresh');
       await until(() => evaluate('window.__navbarProbe.menuFrames >= 8'), 'pending refresh frames');
       release();
@@ -373,7 +380,7 @@ try {
       await until(
         () =>
           evaluate(
-            `!document.querySelector('#account-menu') && document.activeElement.matches('button[aria-controls="account-menu"]')`,
+            `!document.querySelector('[data-account-panel]') && document.activeElement.matches('button[brnOverlayTrigger]')`,
           ),
         'Escape focus restoration',
       );
@@ -386,8 +393,30 @@ try {
       await openStableAccountMenu();
       await key('Escape', 27);
       await until(
-        () => evaluate(`!document.querySelector('#account-menu')`),
-        'reopened menu dismissal',
+        () => evaluate(`!!document.querySelector('[data-account-panel]')`),
+        'reopened account panel',
+      );
+      const outside = await evaluate(`(() => {
+        const main = document.querySelector('main').getBoundingClientRect();
+        return { x: main.left + 8, y: main.bottom - 8 };
+      })()`);
+      await command('Input.dispatchMouseEvent', {
+        type: 'mousePressed',
+        x: outside.x,
+        y: outside.y,
+        button: 'left',
+        clickCount: 1,
+      });
+      await command('Input.dispatchMouseEvent', {
+        type: 'mouseReleased',
+        x: outside.x,
+        y: outside.y,
+        button: 'left',
+        clickCount: 1,
+      });
+      await until(
+        () => evaluate(`!document.querySelector('[data-account-panel]')`),
+        'outside account panel dismissal',
       );
       await evaluate(`window.scrollTo(0, document.body.scrollHeight)`);
       await delay(80);
