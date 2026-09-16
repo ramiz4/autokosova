@@ -48,6 +48,7 @@ const garage: AdminGarageDetail = {
     location: 'not_checked',
   },
   adminSuspended: false,
+  prerequisites: { publishable: false, blockers: ['company_document', 'owner_account', 'point'] },
   members: [],
   documents: [],
   photos: [],
@@ -153,6 +154,7 @@ it('keeps the loaded revision and unsaved checks on a conflict, with no success 
   expect(component.detail()?.revision).toBe(7);
   expect(component.verification.phone).toBe('verified');
   expect(component.dirty).toBe(true);
+  expect(component.stale()).toBe(true);
   expect(component.success()).toBe('');
   expect(component.error()).not.toBe('');
 });

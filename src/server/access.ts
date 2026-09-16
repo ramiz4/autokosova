@@ -284,7 +284,10 @@ export class AccessError extends Error {
       | 'staff_access_revoked'
       | 'case_stale'
       | 'case_interest_conflict'
-      | 'case_assignment_lost',
+      | 'case_assignment_lost'
+      | 'admin_conflict'
+      | 'admin_blocked'
+      | 'admin_revoked',
   ) {
     super(message);
   }

@@ -18,6 +18,7 @@ import { LanguageService } from './language.service';
 import { StaffLayoutComponent } from './staff-layout.component';
 import { GarageOnboardingComponent } from './garage-onboarding.component';
 import { ButtonDirective } from './ui/button.directive';
+import { AdminAccountComboboxComponent } from './admin-account-combobox.component';
 import { adminLabel } from '../shared/admin-copy';
 import {
   ADMIN_REASON_CODES,
@@ -42,6 +43,7 @@ import type { VerificationChecklist } from '../shared/garage-onboarding';
     StaffLayoutComponent,
     GarageOnboardingComponent,
     ButtonDirective,
+    AdminAccountComboboxComponent,
   ],
   templateUrl: './admin-console.component.html',
   host: { '(window:beforeunload)': 'beforeUnload($event)' },
@@ -59,6 +61,7 @@ export class AdminConsoleComponent {
   readonly ready = signal(false);
   readonly loading = signal(false);
   readonly busy = signal(false);
+  readonly stale = signal(false);
   readonly error = signal('');
   readonly success = signal('');
   readonly page = signal(1);
@@ -76,6 +79,7 @@ export class AdminConsoleComponent {
   readonly support = signal<AdminSupportContext | null>(null);
   readonly editor = viewChild<GarageOnboardingComponent>('supportEditor');
   readonly reasons = ADMIN_REASON_CODES;
+  readonly detailTabs = ['review', 'photos', 'team', 'support'] as const;
   readonly checks = ['phone', 'contactPerson', 'companyDocument', 'location'] as const;
   readonly durations = [
     'reviewEvidenceRetentionDays',
@@ -90,7 +94,18 @@ export class AdminConsoleComponent {
   fromUserId = '';
   requestReference = '';
   memberRole: 'owner' | 'editor' = 'editor';
-  reason: AdminReasonCode | '' = '';
+  reviewReason: AdminReasonCode | '' = '';
+  photoReason: AdminReasonCode | '' = '';
+  memberReason: AdminReasonCode | '' = '';
+  supportReason: AdminReasonCode | '' = '';
+  detailTab: (typeof this.detailTabs)[number] = 'review';
+  /** Temporary test-facing alias; UI actions use their own local reason fields. */
+  get reason(): AdminReasonCode | '' {
+    return this.reviewReason;
+  }
+  set reason(value: AdminReasonCode | '') {
+    this.reviewReason = value;
+  }
   verification: { -readonly [K in keyof VerificationChecklist]: VerificationChecklist[K] } = {
     phone: 'not_checked',
     contactPerson: 'not_checked',
@@ -118,6 +133,15 @@ export class AdminConsoleComponent {
     afterNextRender(() => {
       this.ready.set(true);
       void this.account.refresh();
+      const garageId = this.route.snapshot.queryParamMap?.get('garageId');
+      const tab = this.route.snapshot.queryParamMap?.get('tab');
+      if (
+        this.section === 'garages' &&
+        garageId &&
+        /^[A-Za-z0-9_-]{1,200}$/.test(garageId) &&
+        this.detailTabs.includes(tab as (typeof this.detailTabs)[number])
+      )
+        this.detailTab = tab as (typeof this.detailTabs)[number];
     });
     effect(() => {
       const context = this.account.dataContext(),
@@ -129,7 +153,13 @@ export class AdminConsoleComponent {
       this.controller = new AbortController();
       this.clear();
       this.restoreSafeFilter();
-      if (context && ready && allowed) untracked(() => void this.load());
+      if (context && ready && allowed)
+        untracked(() => {
+          const garageId = this.route.snapshot.queryParamMap?.get('garageId');
+          if (this.section === 'garages' && garageId && /^[A-Za-z0-9_-]{1,200}$/.test(garageId))
+            void this.openGarage(garageId, this.detailTab);
+          else void this.load();
+        });
     });
     effect(() => this.language.setPageText(this.label(this.section), this.label('intro'), true));
     inject(DestroyRef).onDestroy(() => {
@@ -182,8 +212,12 @@ export class AdminConsoleComponent {
     this.consoleUrl.set('');
     this.loading.set(false);
     this.busy.set(false);
+    this.stale.set(false);
     this.dirty = false;
-    this.reason = '';
+    this.reviewReason = '';
+    this.photoReason = '';
+    this.memberReason = '';
+    this.supportReason = '';
     this.targetUserId = '';
     this.fromUserId = '';
     this.requestReference = '';
@@ -246,7 +280,10 @@ export class AdminConsoleComponent {
       if (generation === this.generation && read === this.reads) this.loading.set(false);
     }
   }
-  async openGarage(id: string): Promise<void> {
+  async openGarage(
+    id: string,
+    tab: (typeof this.detailTabs)[number] = this.detailTab,
+  ): Promise<void> {
     if (this.busy() || !this.canLeave()) return;
     const generation = this.generation,
       read = ++this.reads;
@@ -260,7 +297,12 @@ export class AdminConsoleComponent {
       );
       if (generation !== this.generation || read !== this.reads) return;
       this.detail.set(value);
-      this.reason = '';
+      this.stale.set(false);
+      this.detailTab = tab;
+      this.reviewReason = '';
+      this.photoReason = '';
+      this.memberReason = '';
+      this.supportReason = '';
       this.dirty = false;
       this.requestReference = '';
       for (const key of this.checks)
@@ -269,7 +311,11 @@ export class AdminConsoleComponent {
       this.longitude = value.profile.locationPoint?.longitude ?? null;
       this.fromUserId =
         value.members.find((m) => m.role === 'owner' && m.state === 'active')?.userId ?? '';
-      await this.findCandidates();
+      if (tab === 'team') await this.findCandidates();
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: this.garageContextParams(value.id, tab),
+      });
       afterNextRender(
         () => this.document.querySelector<HTMLElement>('[data-admin-detail-heading]')?.focus(),
         { injector: this.injector },
@@ -286,7 +332,33 @@ export class AdminConsoleComponent {
     this.proof.set('');
     this.support.set(null);
     this.dirty = false;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: this.status ? { status: this.status } : {},
+    });
     void this.load(this.page());
+  }
+  setDetailTab(tab: (typeof this.detailTabs)[number]) {
+    if (tab === this.detailTab || !this.canLeave()) return;
+    this.detailTab = tab;
+    const current = this.detail();
+    if (current) {
+      if (tab === 'team') void this.findCandidates();
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: this.garageContextParams(current.id, tab),
+      });
+    }
+  }
+  private garageContextParams(id: string, tab: (typeof this.detailTabs)[number]) {
+    const returnRequest = this.route.snapshot.queryParamMap?.get('returnRequest');
+    return {
+      garageId: id,
+      tab,
+      ...(this.status ? { status: this.status } : {}),
+      ...(this.page() > 1 ? { page: this.page() } : {}),
+      ...(returnRequest && /^[A-Za-z0-9_-]{1,200}$/.test(returnRequest) ? { returnRequest } : {}),
+    };
   }
   async findCandidates() {
     const generation = this.generation,
@@ -305,8 +377,8 @@ export class AdminConsoleComponent {
   }
   async saveVerification() {
     const detail = this.detail();
-    if (!detail || !this.reason) return;
-    await this.garageMutation('verification', {
+    if (!detail || !this.reviewReason) return;
+    await this.garageMutation('verification', this.reviewReason, {
       verification: this.verification,
       ...(this.latitude !== null && this.longitude !== null
         ? { locationPoint: { latitude: this.latitude, longitude: this.longitude } }
@@ -314,8 +386,9 @@ export class AdminConsoleComponent {
     });
   }
   async decide(decision: 'published' | 'rejected' | 'suspended' | 'restore') {
-    if (!this.reason || !window.confirm(this.label('decisionConfirm'))) return;
-    await this.garageMutation('decision', {
+    const reason = decision === 'published' ? 'company_verified' : this.reviewReason;
+    if (!reason || !window.confirm(this.label('decisionConfirm'))) return;
+    await this.garageMutation('decision', reason, {
       decision,
       verification: this.verification,
       ...(this.editingPosition && this.latitude !== null && this.longitude !== null
@@ -326,15 +399,26 @@ export class AdminConsoleComponent {
   canPublish(detail: AdminGarageDetail): boolean {
     return (
       !this.busy() &&
-      this.reason !== '' &&
-      detail.documents.some((document) => document.available) &&
-      detail.members.some((member) => member.role === 'owner' && member.state === 'active') &&
+      !this.stale() &&
+      this.publishBlockers(detail).length === 0 &&
       this.latitude !== null &&
       this.longitude !== null &&
-      !detail.members.some(
-        (member) => member.userId === this.account.identity()?.userId && member.state === 'active',
-      ) &&
       this.checks.every((check) => this.verification[check] === 'verified')
+    );
+  }
+  publishBlockers(detail: AdminGarageDetail) {
+    const correctedPoint =
+      this.editingPosition &&
+      this.latitude !== null &&
+      this.longitude !== null &&
+      Number.isFinite(this.latitude) &&
+      Number.isFinite(this.longitude) &&
+      this.latitude >= -90 &&
+      this.latitude <= 90 &&
+      this.longitude >= -180 &&
+      this.longitude <= 180;
+    return detail.prerequisites.blockers.filter(
+      (blocker) => blocker !== 'point' || !correctedPoint,
     );
   }
   async member(
@@ -342,8 +426,8 @@ export class AdminConsoleComponent {
     role = this.memberRole,
     state: 'active' | 'revoked' = 'active',
   ) {
-    if (!userId || !this.reason || !window.confirm(this.label('membershipConfirm'))) return;
-    await this.garageMutation('membership', { userId, role, state });
+    if (!userId || !this.memberReason || !window.confirm(this.label('membershipConfirm'))) return;
+    await this.garageMutation('membership', this.memberReason, { userId, role, state });
   }
   async transfer() {
     if (
@@ -353,29 +437,38 @@ export class AdminConsoleComponent {
       !window.confirm(this.label('transferHint'))
     )
       return;
-    this.reason = 'ownership_change';
-    await this.garageMutation('ownership', {
+    await this.garageMutation('ownership', 'ownership_change', {
       fromUserId: this.fromUserId,
       toUserId: this.targetUserId,
     });
   }
   async setPhoto(id: string, approved: boolean) {
     if (
-      !this.reason ||
+      !this.photoReason ||
       !window.confirm(this.label(approved ? 'approvePhoto' : 'rejectPhoto') + '?')
     )
       return;
-    await this.garageMutation('photos/' + encodeURIComponent(id) + '/decision', { approved });
+    await this.garageMutation('photos/' + encodeURIComponent(id) + '/decision', this.photoReason, {
+      approved,
+    });
   }
-  private async garageMutation(action: string, body: Record<string, unknown>) {
+  selectCandidate(account: AdminUser) {
+    this.targetUserId = account.id;
+    this.candidateQuery = account.label;
+  }
+  private async garageMutation(
+    action: string,
+    reason: AdminReasonCode,
+    body: Record<string, unknown>,
+  ) {
     const detail = this.detail();
-    if (!detail || !this.reason) return;
+    if (!detail) return;
     await this.mutate(
       '/api/admin/management/garages/' + encodeURIComponent(detail.id) + '/' + action,
-      { ...body, revision: detail.revision, reason: this.reason },
+      { ...body, revision: detail.revision, reason },
       async () => {
         this.dirty = false;
-        await this.openGarage(detail.id);
+        await this.openGarage(detail.id, this.detailTab);
       },
     );
   }
@@ -401,7 +494,7 @@ export class AdminConsoleComponent {
         '/api/local-demo/files/' + encodeURIComponent(grant.fileId) + '/content',
         { headers: { 'x-file-grant': grant.grantId } },
       );
-      if (!response.ok) throw response.status;
+      if (!response.ok) throw await this.responseError(response);
       const text = await response.text();
       if (generation === this.generation && this.detail()?.id === detail.id) this.proof.set(text);
     } catch (error) {
@@ -430,8 +523,9 @@ export class AdminConsoleComponent {
       !window.confirm(this.label('supportHint'))
     )
       return;
-    this.reason = 'documented_support';
-    await this.garageMutation('submit', { requestReference: this.requestReference.trim() });
+    await this.garageMutation('submit', 'documented_support', {
+      requestReference: this.requestReference.trim(),
+    });
   }
   async supportSaved(id: string) {
     this.support.set(null);
@@ -499,7 +593,7 @@ export class AdminConsoleComponent {
     );
   }
   private async mutate(path: string, body: unknown, after: () => Promise<void>): Promise<void> {
-    if (this.busy() || !this.allowed()) return;
+    if (this.busy() || this.stale() || !this.allowed()) return;
     const generation = this.generation;
     this.busy.set(true);
     this.error.set('');
@@ -515,7 +609,7 @@ export class AdminConsoleComponent {
         headers: { 'content-type': 'application/json', 'x-csrf-token': csrf },
         body: JSON.stringify(body),
       });
-      if (!response.ok) throw response.status;
+      if (!response.ok) throw await this.responseError(response);
       if (generation !== this.generation) return;
       this.success.set(this.label('saved'));
       this.busy.set(false);
@@ -535,29 +629,43 @@ export class AdminConsoleComponent {
     });
   }
   private async json<T>(response: Response): Promise<T> {
-    if (!response.ok) throw response.status;
+    if (!response.ok) throw await this.responseError(response);
     return response.json() as Promise<T>;
   }
+  private async responseError(response: Response): Promise<{ status: number; code?: string }> {
+    let code: string | undefined;
+    try {
+      code = ((await response.json()) as { code?: unknown }).code as string | undefined;
+    } catch {
+      // The status itself is enough for a safe, localized fallback.
+    }
+    return { status: response.status, ...(typeof code === 'string' ? { code } : {}) };
+  }
   private failure(error: unknown) {
-    if (error === 401) {
+    const status = typeof error === 'number' ? error : (error as { status?: number })?.status;
+    const code = typeof error === 'object' && error ? (error as { code?: string }).code : undefined;
+    if (status === 401) {
       this.account.invalidate();
       return;
     }
-    if (error === 403) {
+    if (status === 403) {
       this.clear();
       this.error.set(this.label('denied'));
       return;
     }
-    if (error === 404) {
+    if (status === 404) {
       this.detail.set(null);
       this.proof.set('');
     }
+    if (status === 409) this.stale.set(true);
     this.error.set(
-      error === 409
+      code === 'admin_conflict' || status === 409
         ? this.label('conflict')
-        : error === 422 || error === 400
-          ? this.label('invalid')
-          : this.label('error'),
+        : code === 'admin_blocked'
+          ? this.label('publishBlocked')
+          : status === 422 || status === 400
+            ? this.label('invalid')
+            : this.label('error'),
     );
   }
 }

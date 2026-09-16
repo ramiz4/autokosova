@@ -69,6 +69,14 @@
             <dd class="break-words">
               {{ current.profile.address }} · {{ current.profile.placeId }}
             </dd>
+            <dd class="mt-1 text-sm text-muted">
+              @if (current.profile.locationPoint) {
+                {{ label('latitude') }} {{ current.profile.locationPoint.latitude }} ·
+                {{ label('longitude') }} {{ current.profile.locationPoint.longitude }}
+              } @else {
+                {{ label('publishBlocker.point') }}
+              }
+            </dd>
           </div>
           <div>
             <dt class="text-sm text-muted">{{ label('contactPerson') }}</dt>
@@ -78,301 +86,325 @@
           </div>
         </dl>
         <p class="mt-4 whitespace-pre-wrap break-words">{{ current.profile.description }}</p>
-        @if (!current.deleted) {
-          <h3 class="mt-7 text-xl font-bold">{{ label('documents') }}</h3>
-          <div class="mt-3 flex flex-wrap gap-3">
-            @for (doc of current.documents; track doc.fileId) {
-              <button
-                appButton="outline"
-                type="button"
-                data-company-document
-                [disabled]="busy() || !doc.available"
-                (click)="openDocument(doc.fileId)"
-              >
-                {{ label(doc.available ? 'openDocument' : 'unavailable') }}
-              </button>
-            } @empty {
-              <p>{{ label('unavailable') }}</p>
-            }
-          </div>
-          @if (proof()) {
-            <pre
-              data-company-evidence
-              class="mt-4 max-w-full rounded-lg bg-slate-50 p-4 text-sm whitespace-pre-wrap break-words"
-              >{{ proof() }}</pre>
+        <nav class="mt-6 flex flex-wrap gap-2" [attr.aria-label]="label('garageContexts')">
+          @for (tab of detailTabs; track tab) {
+            <button
+              appButton="outline"
+              type="button"
+              [attr.data-admin-tab]="tab"
+              [attr.aria-current]="detailTab === tab ? 'page' : null"
+              [class.bg-slate-100]="detailTab === tab"
+              (click)="setDetailTab(tab)"
+            >
+              {{ label(tab) }}
+            </button>
           }
-          <form class="mt-7 border-t border-slate-200 pt-6" (ngSubmit)="saveVerification()">
-            <fieldset [disabled]="busy()" class="grid gap-4 sm:grid-cols-2">
-              <legend class="mb-4 text-xl font-bold">{{ label('verification') }}</legend>
-              @for (key of checks; track key) {
-                <label class="grid gap-2 font-semibold"
-                  >{{ label(key) }}
+        </nav>
+        @if (!current.deleted) {
+          @if (detailTab === 'review') {
+            <h3 class="mt-7 text-xl font-bold">{{ label('documents') }}</h3>
+            <div class="mt-3 flex flex-wrap gap-3">
+              @for (doc of current.documents; track doc.fileId) {
+                <button
+                  appButton="outline"
+                  type="button"
+                  data-company-document
+                  [disabled]="busy() || !doc.available"
+                  (click)="openDocument(doc.fileId)"
+                >
+                  {{ label(doc.available ? 'openDocument' : 'unavailable') }}
+                </button>
+              } @empty {
+                <p>{{ label('unavailable') }}</p>
+              }
+            </div>
+            @if (proof()) {
+              <pre
+                data-company-evidence
+                class="mt-4 max-w-full rounded-lg bg-slate-50 p-4 text-sm whitespace-pre-wrap break-words"
+                >{{ proof() }}</pre>
+            }
+            <form class="mt-7 border-t border-slate-200 pt-6" (ngSubmit)="saveVerification()">
+              <fieldset [disabled]="busy()" class="grid gap-4 sm:grid-cols-2">
+                <legend class="mb-4 text-xl font-bold">{{ label('verification') }}</legend>
+                @for (key of checks; track key) {
+                  <label class="grid gap-2 font-semibold"
+                    >{{ label(key + 'Value') }}
+                    <select
+                      [name]="key"
+                      [attr.data-admin-check]="key"
+                      [(ngModel)]="verification[key]"
+                      (ngModelChange)="dirty = true"
+                      class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+                    >
+                      @for (state of ['not_checked', 'verified', 'failed']; track state) {
+                        <option [value]="state">{{ label(state) }}</option>
+                      }
+                    </select>
+                  </label>
+                }
+                <button
+                  appButton="outline"
+                  type="button"
+                  class="sm:col-span-2 justify-self-start"
+                  (click)="editingPosition = !editingPosition"
+                >
+                  {{ editingPosition ? label('back') : label('correctPosition') }}
+                </button>
+                @if (editingPosition) {
+                  <label class="grid gap-2 font-semibold"
+                    >{{ label('latitude')
+                    }}<input
+                      type="number"
+                      name="latitude"
+                      step="any"
+                      min="-90"
+                      max="90"
+                      [(ngModel)]="latitude"
+                      (ngModelChange)="dirty = true; verification.location = 'not_checked'"
+                      class="min-h-11 rounded-lg border border-slate-300 px-3"
+                  /></label>
+                  <label class="grid gap-2 font-semibold"
+                    >{{ label('longitude')
+                    }}<input
+                      type="number"
+                      name="longitude"
+                      step="any"
+                      min="-180"
+                      max="180"
+                      [(ngModel)]="longitude"
+                      (ngModelChange)="dirty = true; verification.location = 'not_checked'"
+                      class="min-h-11 rounded-lg border border-slate-300 px-3"
+                  /></label>
+                  <p class="text-sm text-muted sm:col-span-2">{{ label('locationHint') }}</p>
+                }
+                <label class="grid gap-2 font-semibold sm:col-span-2"
+                  >{{ label('saveReason') }}
                   <select
-                    [name]="key"
-                    [attr.data-admin-check]="key"
-                    [(ngModel)]="verification[key]"
-                    (ngModelChange)="dirty = true"
+                    name="reviewReason"
+                    data-admin-reason
+                    [(ngModel)]="reviewReason"
+                    required
                     class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
                   >
-                    @for (state of ['not_checked', 'verified', 'failed']; track state) {
-                      <option [value]="state">{{ label(state) }}</option>
+                    <option value="">{{ label('choose') }}</option>
+                    @for (reason of reasons; track reason) {
+                      <option [value]="reason">{{ label(reason) }}</option>
                     }
                   </select>
                 </label>
-              }
-              <button
-                appButton="outline"
-                type="button"
-                class="sm:col-span-2 justify-self-start"
-                (click)="editingPosition = !editingPosition"
-              >
-                {{ editingPosition ? label('back') : label('locationHint') }}
-              </button>
-              @if (editingPosition) {
-                <label class="grid gap-2 font-semibold"
-                  >{{ label('latitude')
-                  }}<input
-                    type="number"
-                    name="latitude"
-                    step="any"
-                    min="-90"
-                    max="90"
-                    [(ngModel)]="latitude"
-                    (ngModelChange)="dirty = true"
-                    class="min-h-11 rounded-lg border border-slate-300 px-3"
-                /></label>
-                <label class="grid gap-2 font-semibold"
-                  >{{ label('longitude')
-                  }}<input
-                    type="number"
-                    name="longitude"
-                    step="any"
-                    min="-180"
-                    max="180"
-                    [(ngModel)]="longitude"
-                    (ngModelChange)="dirty = true"
-                    class="min-h-11 rounded-lg border border-slate-300 px-3"
-                /></label>
-                <p class="text-sm text-muted sm:col-span-2">{{ label('locationHint') }}</p>
-              }
-              <label class="grid gap-2 font-semibold sm:col-span-2"
-                >{{ label('reason') }}
-                <select
-                  name="adminReason"
-                  data-admin-reason
-                  [(ngModel)]="reason"
-                  required
-                  class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+                <button data-save-checks appButton type="submit" [disabled]="!reviewReason">
+                  {{ label('saveChecks') }}
+                </button>
+              </fieldset>
+            </form>
+            <div class="mt-5 flex flex-wrap gap-3">
+              @if (current.publicationState === 'pending_review') {
+                <button
+                  data-publish-garage
+                  appButton
+                  type="button"
+                  [disabled]="!canPublish(current)"
+                  (click)="decide('published')"
                 >
-                  <option value="">{{ label('choose') }}</option>
-                  @for (reason of reasons; track reason) {
-                    <option [value]="reason">{{ label(reason) }}</option>
+                  {{ label('publish') }}
+                </button>
+                @if (!canPublish(current)) {
+                  <p data-publish-blocker class="basis-full text-sm text-amber-900">
+                    @for (blocker of publishBlockers(current); track blocker) {
+                      {{ label('publishBlocker.' + blocker) }} ·
+                    }
+                    @if (!canPublish(current)) {
+                      {{ label('completeChecks') }}
+                    }
+                  </p>
+                }
+                <p class="basis-full text-sm text-muted">{{ label('company_verified') }}</p>
+                <button
+                  data-reject-garage
+                  appButton="outline"
+                  type="button"
+                  [disabled]="busy() || !reviewReason"
+                  (click)="decide('rejected')"
+                >
+                  {{ label('reject') }}
+                </button>
+              }
+              @if (
+                current.publicationState === 'published' ||
+                (current.publicationState === 'suspended' && !current.adminSuspended)
+              ) {
+                <button
+                  data-suspend-garage
+                  appButton="outline"
+                  type="button"
+                  [disabled]="busy() || !reviewReason"
+                  (click)="decide('suspended')"
+                >
+                  {{ label('suspend') }}
+                </button>
+              }
+              @if (current.publicationState === 'suspended' && current.adminSuspended) {
+                <button
+                  data-restore-garage
+                  appButton="outline"
+                  type="button"
+                  [disabled]="busy() || !reviewReason"
+                  (click)="decide('restore')"
+                >
+                  {{ label('restore') }}
+                </button>
+              }
+            </div>
+          }
+          @if (detailTab === 'photos') {
+            <h3 class="mt-8 text-xl font-bold">{{ label('photos') }}</h3>
+            <label class="mt-4 grid gap-2 font-semibold"
+              >{{ label('photoReason') }}
+              <select
+                [(ngModel)]="photoReason"
+                name="photoReason"
+                class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+              >
+                <option value="">{{ label('choose') }}</option>
+                @for (reason of reasons; track reason) {
+                  <option [value]="reason">{{ label(reason) }}</option>
+                }
+              </select>
+            </label>
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+              @for (photo of current.photos; track photo.id) {
+                <article class="rounded-xl border border-slate-200 p-4">
+                  @if (photo.previewPath) {
+                    <img
+                      [src]="photo.previewPath"
+                      [alt]="label('photo')"
+                      width="640"
+                      height="400"
+                      class="w-full rounded-lg"
+                    />
+                  } @else {
+                    <p class="text-sm text-muted">{{ label('photoMissing') }}</p>
                   }
+                  <p class="mt-3">{{ label(photo.visibility) }}</p>
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <button
+                      appButton="outline"
+                      type="button"
+                      data-approve-photo
+                      [disabled]="busy() || !photoReason || !photo.previewPath"
+                      (click)="setPhoto(photo.id, true)"
+                    >
+                      {{ label('approvePhoto') }}
+                    </button>
+                    <button
+                      appButton="outline"
+                      type="button"
+                      [disabled]="busy() || !photoReason"
+                      (click)="setPhoto(photo.id, false)"
+                    >
+                      {{ label('rejectPhoto') }}
+                    </button>
+                  </div>
+                </article>
+              } @empty {
+                <p class="text-muted">{{ label('empty') }}</p>
+              }
+            </div>
+          }
+
+          @if (detailTab === 'team') {
+            <h3 class="mt-8 text-xl font-bold">{{ label('members') }}</h3>
+            <label class="mt-4 grid gap-2 font-semibold"
+              >{{ label('membershipReason') }}
+              <select
+                [(ngModel)]="memberReason"
+                name="memberReason"
+                class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+              >
+                <option value="">{{ label('choose') }}</option>
+                @for (reason of reasons; track reason) {
+                  <option [value]="reason">{{ label(reason) }}</option>
+                }
+              </select>
+            </label>
+            <ul class="mt-4 grid gap-3">
+              @for (person of current.members; track person.userId) {
+                <li
+                  class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-4"
+                >
+                  <p class="min-w-0 break-words">
+                    {{ person.label }} · {{ label(person.role) }} · {{ label(person.state) }}
+                  </p>
+                  @if (person.state === 'active') {
+                    <button
+                      appButton="outline"
+                      type="button"
+                      [disabled]="busy() || !memberReason"
+                      (click)="member(person.userId, person.role, 'revoked')"
+                    >
+                      {{ label('revoke') }}
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+              <div class="grid gap-2 font-semibold">
+                <span>{{ label('memberTarget') }}</span>
+                <app-admin-account-combobox
+                  id="target-user"
+                  [label]="label('memberTarget')"
+                  [items]="candidates()"
+                  [query]="candidateQuery"
+                  (queryChange)="candidateQuery = $event; findCandidates()"
+                  (selected)="selectCandidate($event)"
+                />
+                @if (targetUserId) {
+                  <span class="text-sm text-muted">{{ targetUserId }}</span>
+                }
+              </div>
+              <label class="grid gap-2 font-semibold"
+                >{{ label('members') }}
+                <select
+                  name="memberRole"
+                  [(ngModel)]="memberRole"
+                  class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+                  [disabled]="busy()"
+                >
+                  <option value="editor">{{ label('editor') }}</option>
+                  <option value="owner">{{ label('owner') }}</option>
                 </select>
               </label>
-              <button data-save-checks appButton type="submit" [disabled]="!reason">
-                {{ label('saveChecks') }}
-              </button>
-            </fieldset>
-          </form>
-          <div class="mt-5 flex flex-wrap gap-3">
-            @if (current.publicationState === 'pending_review') {
               <button
-                data-publish-garage
-                appButton
-                type="button"
-                [disabled]="!canPublish(current)"
-                (click)="decide('published')"
-              >
-                {{ label('publish') }}
-              </button>
-              @if (!canPublish(current)) {
-                <p data-publish-blocker class="basis-full text-sm text-amber-900">
-                  {{ label('locationHint') }} · {{ label('companyDocument') }} ·
-                  {{ label('owner') }}
-                </p>
-              }
-              <button
-                data-reject-garage
                 appButton="outline"
+                data-save-member
                 type="button"
-                [disabled]="busy() || !reason"
-                (click)="decide('rejected')"
+                [disabled]="busy() || !memberReason || !targetUserId"
+                (click)="member()"
               >
-                {{ label('reject') }}
+                {{ label('memberSave') }}
               </button>
-            }
-            @if (
-              current.publicationState === 'published' ||
-              (current.publicationState === 'suspended' && !current.adminSuspended)
-            ) {
+            </div>
+            <div class="mt-5 rounded-xl bg-slate-50 p-4">
+              <p class="text-sm text-muted">{{ label('transferHint') }}</p>
+              <p class="mt-3">
+                {{ label('sourceOwner') }} → {{ fromUserId || label('unavailable') }} ·
+                {{ label('memberTarget') }} → {{ targetUserId || label('choose') }}
+              </p>
               <button
-                data-suspend-garage
                 appButton="outline"
+                data-transfer-owner
+                class="mt-4"
                 type="button"
-                [disabled]="busy() || !reason"
-                (click)="decide('suspended')"
+                [disabled]="busy() || !fromUserId || !targetUserId || fromUserId === targetUserId"
+                (click)="transfer()"
               >
-                {{ label('suspend') }}
+                {{ label('transfer') }}
               </button>
-            }
-            @if (current.publicationState === 'suspended' && current.adminSuspended) {
-              <button
-                data-restore-garage
-                appButton="outline"
-                type="button"
-                [disabled]="busy() || !reason"
-                (click)="decide('restore')"
-              >
-                {{ label('restore') }}
-              </button>
-            }
-          </div>
-          <h3 class="mt-8 text-xl font-bold">{{ label('photos') }}</h3>
-          <div class="mt-4 grid gap-4 sm:grid-cols-2">
-            @for (photo of current.photos; track photo.id) {
-              <article class="rounded-xl border border-slate-200 p-4">
-                @if (photo.previewPath) {
-                  <img
-                    [src]="photo.previewPath"
-                    [alt]="label('photo')"
-                    width="640"
-                    height="400"
-                    class="w-full rounded-lg"
-                  />
-                } @else {
-                  <p class="text-sm text-muted">{{ label('photoMissing') }}</p>
-                }
-                <p class="mt-3">{{ label(photo.visibility) }}</p>
-                <div class="mt-3 flex flex-wrap gap-2">
-                  <button
-                    appButton="outline"
-                    type="button"
-                    data-approve-photo
-                    [disabled]="busy() || !reason || !photo.previewPath"
-                    (click)="setPhoto(photo.id, true)"
-                  >
-                    {{ label('approvePhoto') }}
-                  </button>
-                  <button
-                    appButton="outline"
-                    type="button"
-                    [disabled]="busy() || !reason"
-                    (click)="setPhoto(photo.id, false)"
-                  >
-                    {{ label('rejectPhoto') }}
-                  </button>
-                </div>
-              </article>
-            } @empty {
-              <p class="text-muted">{{ label('empty') }}</p>
-            }
-          </div>
-
-          <h3 class="mt-8 text-xl font-bold">{{ label('members') }}</h3>
-          <ul class="mt-4 grid gap-3">
-            @for (person of current.members; track person.userId) {
-              <li
-                class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-4"
-              >
-                <p class="min-w-0 break-words">
-                  {{ person.label }} · {{ label(person.role) }} · {{ label(person.state) }}
-                </p>
-                @if (person.state === 'active') {
-                  <button
-                    appButton="outline"
-                    type="button"
-                    [disabled]="busy() || !reason"
-                    (click)="member(person.userId, person.role, 'revoked')"
-                  >
-                    {{ label('revoke') }}
-                  </button>
-                }
-              </li>
-            }
-          </ul>
-          <form class="mt-5 flex flex-wrap items-end gap-3" (ngSubmit)="findCandidates()">
-            <label class="grid min-w-0 grow gap-2"
-              >{{ label('memberTarget')
-              }}<input
-                name="candidateSearch"
-                [(ngModel)]="candidateQuery"
-                maxlength="120"
-                class="min-h-11 rounded-lg border border-slate-300 px-3"
-            /></label>
-            <button appButton="outline" type="submit" [disabled]="busy()">
-              {{ label('search') }}
-            </button>
-          </form>
-          <div class="mt-4 grid gap-4 sm:grid-cols-2">
-            <label class="grid gap-2 font-semibold"
-              >{{ label('memberTarget') }}
-              <select
-                name="targetUser"
-                data-target-user
-                [(ngModel)]="targetUserId"
-                class="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
-                [disabled]="busy()"
-              >
-                <option value="">{{ label('choose') }}</option>
-                @for (person of candidates(); track person.id) {
-                  <option [value]="person.id">{{ person.label }}</option>
-                }
-              </select>
-            </label>
-            <label class="grid gap-2 font-semibold"
-              >{{ label('members') }}
-              <select
-                name="memberRole"
-                [(ngModel)]="memberRole"
-                class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
-                [disabled]="busy()"
-              >
-                <option value="editor">{{ label('editor') }}</option>
-                <option value="owner">{{ label('owner') }}</option>
-              </select>
-            </label>
-            <button
-              appButton="outline"
-              data-save-member
-              type="button"
-              [disabled]="busy() || !reason || !targetUserId"
-              (click)="member()"
-            >
-              {{ label('memberSave') }}
-            </button>
-          </div>
-          <div class="mt-5 rounded-xl bg-slate-50 p-4">
-            <p class="text-sm text-muted">{{ label('transferHint') }}</p>
-            <label class="mt-3 grid gap-2 font-semibold"
-              >{{ label('sourceOwner') }}
-              <select
-                data-source-owner
-                name="sourceOwner"
-                [(ngModel)]="fromUserId"
-                class="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
-                [disabled]="busy()"
-              >
-                <option value="">{{ label('choose') }}</option>
-                @for (person of current.members; track person.userId) {
-                  @if (person.role === 'owner' && person.state === 'active') {
-                    <option [value]="person.userId">{{ person.label }}</option>
-                  }
-                }
-              </select>
-            </label>
-            <button
-              appButton="outline"
-              data-transfer-owner
-              class="mt-4"
-              type="button"
-              [disabled]="busy() || !fromUserId || !targetUserId || fromUserId === targetUserId"
-              (click)="transfer()"
-            >
-              {{ label('transfer') }}
-            </button>
-          </div>
-          @if (current.publicationState !== 'suspended') {
+            </div>
+          }
+          @if (detailTab === 'support' && current.publicationState !== 'suspended') {
             <div class="mt-7 border-t border-slate-200 pt-6">
               <p class="text-sm text-muted">{{ label('supportHint') }}</p>
               <label class="mt-3 grid gap-2 font-semibold"

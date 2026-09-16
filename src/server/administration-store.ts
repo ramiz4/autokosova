@@ -25,6 +25,7 @@ import {
   type AdminAuditEvent,
   type AdminCatalog,
   type AdminCatalogItem,
+  type AdminGaragePublishBlocker,
 } from '../shared/administration';
 
 export interface AdminFilter {
@@ -130,8 +131,9 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
         admin_suspended: boolean;
         admin_last_reason: AdminGarageDetail['lastReason'] | null;
         deleted_at: Date | null;
+        moderation_hidden_case_id: string | null;
       }>(
-        'SELECT admin_revision,admin_suspended,admin_last_reason,deleted_at FROM garage WHERE id=$1 FOR SHARE',
+        'SELECT admin_revision,admin_suspended,admin_last_reason,deleted_at,moderation_hidden_case_id FROM garage WHERE id=$1 FOR SHARE',
         [id],
       );
       if (!aggregate.rows[0]) throw new AccessError(404, 'Garage not found');
@@ -156,6 +158,24 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
         'SELECT source FROM garage_consent WHERE garage_id=$1',
         [id],
       );
+      const activeOwner = await client.query(
+        `SELECT 1 FROM membership m JOIN app_user u ON u.id=m.user_id
+         WHERE m.garage_id=$1 AND m.role='owner' AND m.state='active' AND u.status='active'
+         FOR SHARE OF m,u`,
+        [id],
+      );
+      const availableProof = documents.rows.some((document) => document.available);
+      const ownInterest = members.some(
+        (member) => member.userId === principal.userId && member.state === 'active',
+      );
+      const blockers: AdminGaragePublishBlocker[] = [];
+      if (base.publicationState !== 'pending_review') blockers.push('state');
+      if (row.moderation_hidden_case_id) blockers.push('moderation_hidden');
+      if (!validGarageProfile(base.profile, base.profile)) blockers.push('profile');
+      if (!base.profile.locationPoint) blockers.push('point');
+      if (!availableProof) blockers.push('company_document');
+      if (!activeOwner.rowCount) blockers.push('owner_account');
+      if (ownInterest) blockers.push('interest');
       return {
         id: base.id,
         name: base.profile.name,
@@ -178,6 +198,7 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
             ? { previewPath: localDemoPhotoPath('demo-admin-fixture', p.fixture_key)! }
             : {}),
         })),
+        prerequisites: { publishable: blockers.length === 0, blockers },
       };
     });
   }
@@ -282,7 +303,11 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
       )
     ).rows;
   }
-  async decideGarage(principal: Principal, id: string, input: AdminGarageDecision): Promise<void> {
+  async decideGarage(
+    principal: Principal,
+    id: string,
+    input: AdminGarageDecision,
+  ): Promise<Pick<AdminGarageDetail, 'publicationState' | 'adminSuspended' | 'revision'>> {
     if (!validAdminDecision(input)) throw new AccessError(422, 'Invalid garage decision');
     if (!principal.roles.has('admin')) throw new AccessError(403, 'Admin access denied');
     await this.reviewGarage(
@@ -292,6 +317,12 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
       input.verification,
       input,
     );
+    const current = await this.garage(principal, id);
+    return {
+      publicationState: current.publicationState,
+      adminSuspended: current.adminSuspended,
+      revision: current.revision,
+    };
   }
   async verifyGarage(
     principal: Principal,
@@ -397,7 +428,7 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
     );
     if (!result.rows[0]) throw new AccessError(404, 'Garage not found');
     if (result.rows[0].admin_revision !== input.revision)
-      throw new AccessError(409, 'Garage changed; reload before saving');
+      throw new AccessError(409, 'Garage changed; reload before saving', 'admin_conflict');
   }
   private async noOwnGarage(
     client: pg.PoolClient,

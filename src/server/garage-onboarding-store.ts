@@ -309,7 +309,11 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
           throw new AccessError(422, 'Invalid administrative decision');
         await assertCurrentStaffIdentity(client, principal);
         if (garage.adminRevision !== context.revision)
-          throw new AccessError(409, 'The garage changed; reload before deciding');
+          throw new AccessError(
+            409,
+            'The garage changed; reload before deciding',
+            'admin_conflict',
+          );
       }
       const state = await client.query<{
         admin_suspended: boolean;
@@ -330,27 +334,43 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
           garage.publicationState === 'suspended' &&
           state.rows[0]?.admin_suspended &&
           !state.rows[0]?.moderation_hidden_case_id);
-      if (!valid) throw new AccessError(409, 'Invalid garage state');
+      if (!valid) throw new AccessError(409, 'Invalid garage state', 'admin_blocked');
       const involved = await client.query(
         "SELECT 1 FROM membership WHERE garage_id=$1 AND user_id=$2 AND state='active'",
         [id, principal.userId],
       );
       if (involved.rowCount)
-        throw new AccessError(403, 'A garage member cannot approve their own garage');
+        throw new AccessError(
+          403,
+          'A garage member cannot approve their own garage',
+          'admin_blocked',
+        );
       const profile = {
         ...garage.profile,
         ...(context?.locationPoint ? { locationPoint: context.locationPoint } : {}),
       };
+      // A point is part of the same domain transaction even for a negative decision.
+      // Validate it before any visibility, verification or audit write can occur.
+      if (context?.locationPoint && !validGarageProfile(profile, garage.profile))
+        throw new AccessError(
+          422,
+          'A complete profile and valid actual garage point are required',
+          'admin_blocked',
+        );
       if (
         decision === 'published' &&
         ['phone', 'contactPerson', 'companyDocument', 'location'].some(
           (key) => verification[key as keyof VerificationChecklist] !== 'verified',
         )
       )
-        throw new AccessError(422, 'All company verification checks are required');
+        throw new AccessError(422, 'All company verification checks are required', 'admin_blocked');
       if (context && decision === 'published') {
         if (!validGarageProfile(profile, garage.profile) || !profile.locationPoint)
-          throw new AccessError(422, 'A complete profile and actual garage point are required');
+          throw new AccessError(
+            422,
+            'A complete profile and actual garage point are required',
+            'admin_blocked',
+          );
         const proof = await client.query(
           `SELECT 1 FROM garage_verification_document d JOIN file_object f ON f.id=d.file_id
           WHERE d.garage_id=$1 AND f.scan_state='clean' AND f.retention_state='active' FOR SHARE OF f`,
@@ -361,7 +381,11 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
           [id],
         );
         if (!proof.rowCount || !owners.rowCount)
-          throw new AccessError(422, 'Available company evidence and an active owner are required');
+          throw new AccessError(
+            422,
+            'Available company evidence and an active owner are required',
+            'admin_blocked',
+          );
       }
       if (context?.locationPoint)
         await client.query(

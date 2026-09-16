@@ -14,8 +14,8 @@ async function openGarage(page: Page, id: string) {
   await expect(page.locator('[data-admin-garage]')).toBeVisible();
   await expect(page.locator('[data-admin-reason]')).toBeEnabled();
 }
-async function reason(page: Page, value: string) {
-  await page.locator('[data-admin-reason]').selectOption(value);
+async function reason(page: Page, value: string, selector = '[data-admin-reason]') {
+  await page.locator(selector).selectOption(value);
 }
 
 test('admin-workflow verifies garages, checks evidence, decides photos, suspends/restores and transfers ownership', async ({
@@ -44,11 +44,11 @@ test('admin-workflow verifies garages, checks evidence, decides photos, suspends
     )
     .toBe('verified');
   await expect(page.locator('[data-admin-reason]')).toHaveValue('');
-  await reason(page, 'company_verified');
   await confirm(page, '[data-publish-garage]');
   await expect(page.locator('[data-suspend-garage]')).toBeVisible();
   expect((await page.request.get(app.origin + '/api/public/garages/' + id)).status()).toBe(200);
-  await reason(page, 'company_verified');
+  await page.locator('[data-admin-tab="photos"]').click();
+  await reason(page, 'company_verified', '[name="photoReason"]');
   await confirm(page, '[data-approve-photo]');
   await expect
     .poll(
@@ -58,6 +58,7 @@ test('admin-workflow verifies garages, checks evidence, decides photos, suspends
     )
     .toBe('approved');
   await expect(page.locator('[data-admin-reason]')).toHaveValue('');
+  await page.locator('[data-admin-tab="review"]').click();
   await reason(page, 'policy_violation');
   await confirm(page, '[data-suspend-garage]');
   await expect(page.locator('[data-restore-garage]')).toBeVisible();
@@ -68,7 +69,9 @@ test('admin-workflow verifies garages, checks evidence, decides photos, suspends
   await page.screenshot({ path: testInfo.outputPath('admin-garage.png'), fullPage: true });
   await page.locator('[data-admin-back]').click();
   await openGarage(page, 'demo-admin-garage-members');
-  await page.locator('[data-target-user]').selectOption('demo-admin-next-owner');
+  await page.locator('[data-admin-tab="team"]').click();
+  await page.locator('#target-user').fill('demo-admin-next-owner');
+  await page.locator('#target-user-option-0').click();
   const [transferResponse] = await Promise.all([
     page.waitForResponse(
       (r) =>
@@ -168,10 +171,10 @@ test('admin-boundaries checks staff separation, takeover, policy gates and local
     .locator('[data-case-id="review:demo-staff-review-unassigned"] [data-open-case]')
     .click();
   await page.locator('[data-take-case]').click();
-  await expect(page.locator('[data-staff-list]')).toBeVisible();
-  await page.locator('[data-case-assignee-filter]').selectOption(app.subjects.admin);
-  await page.locator('main form button[type="submit"]').click();
-  await expect(page.locator('[data-case-id="review:demo-staff-review-unassigned"]')).toBeVisible();
+  await expect(page.locator('[data-staff-case]')).toBeVisible();
+  await expect(page.locator('[data-case-heading]')).toContainText('DEMO');
+  await expect(page.locator('[data-case-assignee]')).toContainText('Admin');
+  await expect(page.locator('[data-take-case]')).toHaveCount(0);
   await page.locator('app-admin-navigation a[href="/admin/privacy"]').click();
   await expect(page.locator('[data-admin-deletions]')).toBeVisible();
   const request = page.locator('[data-deletion-id="demo-admin-deletion-policy"]');

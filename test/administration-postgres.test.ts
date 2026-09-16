@@ -126,6 +126,34 @@ test(
         }),
       );
       assert.equal((await adminStore.garage(a, id)).revision, before.revision);
+      const auditBeforeInvalidPoint = await seed.query(
+        'SELECT count(*)::integer AS count FROM moderation_event WHERE subject_id=$1',
+        [id],
+      );
+      await assert.rejects(
+        adminStore.decideGarage(a, id, {
+          revision: before.revision,
+          reason: 'company_verified',
+          decision: 'rejected',
+          verification: before.verification,
+          locationPoint: { latitude: 91, longitude: 21 } as never,
+        }),
+      );
+      const afterInvalidPoint = await adminStore.garage(a, id);
+      assert.equal(afterInvalidPoint.revision, before.revision);
+      assert.equal(
+        afterInvalidPoint.profile.locationPoint?.latitude,
+        before.profile.locationPoint?.latitude,
+      );
+      assert.equal(
+        (
+          await seed.query(
+            'SELECT count(*)::integer AS count FROM moderation_event WHERE subject_id=$1',
+            [id],
+          )
+        ).rows[0].count,
+        auditBeforeInvalidPoint.rows[0].count,
+      );
       await adminStore.verifyGarage(a, id, {
         revision: before.revision,
         reason: 'company_verified',
