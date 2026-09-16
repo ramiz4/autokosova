@@ -412,7 +412,7 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
     before: string,
     after: string,
   ): Promise<void> {
-    // USER-2/3: preserve who changed, not only the garage's current membership list.
+    // MEMBER-1/2: preserve who changed, not only the garage's current membership list.
     // The opaque compound subject is two IDs, never names, email or a support free text.
     await client.query(
       `INSERT INTO moderation_event(id,actor_user_id,subject_type,subject_id,event_type)

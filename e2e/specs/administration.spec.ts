@@ -69,7 +69,16 @@ test('admin-workflow verifies garages, checks evidence, decides photos, suspends
   await page.locator('[data-admin-back]').click();
   await openGarage(page, 'demo-admin-garage-members');
   await page.locator('[data-target-user]').selectOption('demo-admin-next-owner');
-  await confirm(page, '[data-transfer-owner]');
+  const [transferResponse] = await Promise.all([
+    page.waitForResponse(
+      (r) =>
+        r.url() ===
+          app.origin + '/api/admin/management/garages/demo-admin-garage-members/ownership' &&
+        r.request().method() === 'POST',
+    ),
+    confirm(page, '[data-transfer-owner]'),
+  ]);
+  expect(transferResponse.status()).toBe(204);
   await expect
     .poll(
       async () =>
@@ -79,7 +88,7 @@ test('admin-workflow verifies garages, checks evidence, decides photos, suspends
               app.origin + '/api/admin/management/garages/demo-admin-garage-members',
             )
           ).json()
-        ).members.find((m: { userId: string }) => m.userId === 'demo-admin-next-owner').role,
+        ).members.find((m: { userId: string }) => m.userId === 'demo-admin-next-owner')?.role,
     )
     .toBe('owner');
   await page.locator('[data-admin-back]').click();

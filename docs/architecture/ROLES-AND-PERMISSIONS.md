@@ -146,7 +146,7 @@ Zeilensperre mit der am Antrag gebundenen Policy. Abweichungen ergeben `409` ohn
 Wiederholtes Speichern derselben unveränderten Policy-Version ist idempotent, veränderte Werte
 benötigen eine neue freigegebene Version. Der Seed aktiviert weiterhin keine Policy.
 
-`USER-2/3`: Mitgliedschaftsänderungen und Eigentumsübergaben schreiben zusätzlich zur Garage-Aktion
+`MEMBER-1/2`: Mitgliedschaftsänderungen und Eigentumsübergaben schreiben zusätzlich zur Garage-Aktion
 unveränderliche `garage_membership`-Ereignisse für die betroffenen Konten. Die Gegenstandskennung
 ist das JSON-Paar `[garageId, userId]`, der Ereignistyp nennt vorherige/neue Rolle und Zustand.
 Dadurch bleibt die Übergabe auch nach späteren Zuordnungsänderungen nachvollziehbar; keine Namen,
