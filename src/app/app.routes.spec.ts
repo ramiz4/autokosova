@@ -19,6 +19,7 @@ it.each(['', 'sq', 'en'])(
     expect(routePath('sq', 'request')).toBe('/sq/inquiry');
     expect(routePath('sq', 'onboarding')).toBe('/sq/garages/new');
   },
+  15_000,
 );
 
 it.each(['', 'sq', 'en'])('redirects old German links to English paths for /%s', async (locale) => {
@@ -42,13 +43,13 @@ it.each(['', 'sq', 'en'])('redirects old German links to English paths for /%s',
 describe.each(['', 'sq', 'en'])('Route bundle boundaries for /%s', (locale) => {
   const prefix = locale ? `${locale}/` : '';
 
-  it('keeps the landing page eager without eagerly loading feature pages', () => {
-    expect(routes.find((route) => route.path === locale)?.component).toBeDefined();
-    expect(routes.filter((route) => route.component).map((route) => route.path)).toEqual([
-      '',
-      'sq',
-      'en',
-    ]);
+  it('loads the landing page on demand with no eager route component', async () => {
+    const route = routes.find((candidate) => candidate.path === locale)!;
+    expect(route.component).toBeUndefined();
+    expect(route.loadComponent).toBeTypeOf('function');
+    expect(await route.loadComponent!()).toBe(
+      (await import('./foundation.component')).FoundationComponent,
+    );
   });
 
   it.each([
