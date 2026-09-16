@@ -113,6 +113,14 @@ async function setup(
   };
 }
 
+function contactDialog(): HTMLElement {
+  const dialog = [...document.querySelectorAll<HTMLElement>('[role="dialog"]')].find((element) =>
+    Boolean(element.querySelector('[data-contact-close]')),
+  );
+  if (!dialog) throw new Error('Expected the contact dialog to be open.');
+  return dialog;
+}
+
 afterEach(() => vi.unstubAllGlobals());
 
 describe('GarageProfileComponent', () => {
@@ -217,26 +225,101 @@ describe('GarageProfileComponent', () => {
     expect(request.mock.calls.some(([url]) => String(url).startsWith('/api/me/'))).toBe(false);
   });
 
-  it('opens the exact garage contact preview without URL or stored private values', async () => {
+  it('opens the Brain contact dialog with a named description and no redundant dialog role', async () => {
     const { fixture, page } = await setup();
     const contact = [...page.querySelectorAll<HTMLButtonElement>('button')].find((button) =>
       button.textContent?.includes('Kontakt aufnehmen'),
     )!;
     contact.click();
     await fixture.whenStable();
-    const dialog = page.querySelector<HTMLElement>(
-      '[role="dialog"][aria-labelledby="contact-dialog-title"]',
-    )!;
+    const dialog = contactDialog();
     expect(dialog.textContent).toContain('Kontakt zu Fiktive Werkstatt Pejë');
     expect(dialog.textContent).toContain('AutoKosova sendet keine Nachricht');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(dialog.getAttribute('aria-labelledby')).toBe('contact-dialog-title');
+    expect(dialog.getAttribute('aria-describedby')).toMatch(/^brn-dialog-description-/);
+    expect(dialog.querySelector('h2')?.id).toMatch(/^brn-dialog-title-/);
+    expect(dialog.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(dialog.querySelector('[data-contact-close]'));
     const whatsApp = dialog.querySelector<HTMLAnchorElement>('a[href^="https://wa.me/"]')!;
     expect(whatsApp).toBeTruthy();
     expect(decodeURIComponent(whatsApp.href)).not.toContain('PRIVATE');
     expect(dialog.querySelector('a[href^="tel:+38344123456"]')).toBeTruthy();
     dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await fixture.whenStable();
-    expect(page.querySelector('[aria-labelledby="contact-dialog-title"]')).toBeNull();
+    expect(
+      [...document.querySelectorAll('[role="dialog"]')].some((element) =>
+        element.querySelector('[data-contact-close]'),
+      ),
+    ).toBe(false);
     expect(document.activeElement).toBe(contact);
+  });
+
+  it('keeps contact drafts across close and reopen without contacting a garage', async () => {
+    const { fixture, page } = await setup();
+    const contact = [...page.querySelectorAll<HTMLButtonElement>('button')].find((button) =>
+      button.textContent?.includes('Kontakt aufnehmen'),
+    )!;
+    contact.click();
+    await fixture.whenStable();
+    const dialog = contactDialog();
+    const details = dialog.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    details.click();
+    await fixture.whenStable();
+    const vehicle = dialog.querySelector<HTMLInputElement>('input[maxlength="120"]')!;
+    const concern = dialog.querySelector<HTMLTextAreaElement>('textarea[maxlength="500"]')!;
+    vehicle.value = 'Škoda Octavia';
+    vehicle.dispatchEvent(new Event('input', { bubbles: true }));
+    concern.value = 'Bremsen prüfen';
+    concern.dispatchEvent(new Event('input', { bubbles: true }));
+    await fixture.whenStable();
+
+    const preview = dialog.querySelector<HTMLTextAreaElement>('textarea[readonly]')!;
+    expect(preview.value).toContain('Škoda Octavia');
+    expect(preview.value).toContain('Bremsen prüfen');
+    expect(vehicle.maxLength).toBe(120);
+    expect(concern.maxLength).toBe(500);
+
+    dialog.querySelector<HTMLButtonElement>('[data-contact-close]')!.click();
+    await fixture.whenStable();
+    contact.click();
+    await fixture.whenStable();
+    const reopened = contactDialog();
+    expect(reopened.querySelector<HTMLInputElement>('input[type="checkbox"]')!.checked).toBe(true);
+    expect(reopened.querySelector<HTMLInputElement>('input[maxlength="120"]')!.value).toBe(
+      'Škoda Octavia',
+    );
+    expect(reopened.querySelector<HTMLTextAreaElement>('textarea[maxlength="500"]')!.value).toBe(
+      'Bremsen prüfen',
+    );
+  });
+
+  it('restores focus to either contact CTA and uses the profile fallback after a route switch', async () => {
+    const { fixture, page, route } = await setup();
+    const contacts = [...page.querySelectorAll<HTMLButtonElement>('[data-contact-open]')];
+    expect(contacts).toHaveLength(2);
+    for (const contact of contacts) {
+      contact.click();
+      await fixture.whenStable();
+      expect(document.activeElement).toBe(contactDialog().querySelector('[data-contact-close]'));
+      contactDialog().querySelector<HTMLButtonElement>('[data-contact-close]')!.click();
+      await fixture.whenStable();
+      expect(document.activeElement).toBe(contact);
+    }
+
+    const removedTrigger = contacts[0]!;
+    removedTrigger.click();
+    await fixture.whenStable();
+    removedTrigger.remove();
+    route.paramMap.next(convertToParamMap({ garageId: 'other-garage' }));
+    await fixture.whenStable();
+
+    expect(
+      [...document.querySelectorAll('[role="dialog"]')].some((element) =>
+        element.querySelector('[data-contact-close]'),
+      ),
+    ).toBe(false);
+    expect(document.activeElement).toBe(page.querySelector('[data-gallery-fallback]'));
   });
 
   it('shares only the canonical public URL and provides a copy fallback', async () => {
@@ -288,7 +371,7 @@ describe('GarageProfileComponent', () => {
     )!;
     contact.click();
     await fixture.whenStable();
-    const dialog = page.querySelector<HTMLElement>('[aria-labelledby="contact-dialog-title"]')!;
+    const dialog = contactDialog();
     expect(dialog.textContent).toContain('Keine gültige öffentliche Telefonnummer');
     expect(dialog.querySelector('a[href^="https://wa.me/"]')).toBeNull();
     expect(dialog.querySelector('a[href^="tel:"]')).toBeNull();
@@ -302,7 +385,7 @@ describe('GarageProfileComponent', () => {
     )!;
     contact.click();
     await fixture.whenStable();
-    const dialog = page.querySelector<HTMLElement>('[aria-labelledby="contact-dialog-title"]')!;
+    const dialog = contactDialog();
     expect(dialog.querySelector('a[href^="https://wa.me/"]')).toBeNull();
     expect(dialog.querySelector('a[href^="tel:+38344123456"]')).toBeTruthy();
   });
@@ -328,9 +411,7 @@ describe('GarageProfileComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Werkstattprofil nicht verfügbar');
-    expect(
-      fixture.nativeElement.querySelector('[aria-labelledby="contact-dialog-title"]'),
-    ).toBeNull();
+    expect(document.querySelector('[data-contact-close]')).toBeNull();
   });
 
   it('keeps local demo links inspectable but prevents external handover', async () => {
@@ -341,7 +422,7 @@ describe('GarageProfileComponent', () => {
     )!;
     contact.click();
     await fixture.whenStable();
-    const dialog = page.querySelector<HTMLElement>('[aria-labelledby="contact-dialog-title"]')!;
+    const dialog = contactDialog();
     const whatsApp = dialog.querySelector<HTMLAnchorElement>('a[href^="https://wa.me/"]')!;
     const telephone = dialog.querySelector<HTMLAnchorElement>('a[href^="tel:"]')!;
     expect(dialog.textContent).toContain('Lokale Demo');

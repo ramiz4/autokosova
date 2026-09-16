@@ -690,118 +690,128 @@
     </ng-template>
   </brn-dialog>
 
-  @if (contactOpen() && profile) {
-    <div
-      class="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/55 p-0 sm:items-center sm:p-5"
-      role="presentation"
-      (click)="closeContact()"
-    >
-      <section
-        class="app-dialog-panel max-h-[92dvh] w-full max-w-2xl rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="contact-dialog-title"
-        (click)="$event.stopPropagation()"
-        (keydown.escape)="closeContact()"
-      >
-        <header
-          class="app-dialog-header flex items-start justify-between gap-4 px-5 pt-5 sm:px-7 sm:pt-7"
+  <brn-dialog
+    #contactDialog="brnDialog"
+    [autoFocus]="'[data-contact-close]'"
+    [aria-labelledby]="'contact-dialog-title'"
+    [closeOnOutsidePointerEvents]="true"
+    [positionStrategy]="contactPosition"
+    [restoreFocus]="contactRestoreFocus"
+    [state]="contactOpen() ? 'open' : 'closed'"
+    (stateChanged)="contactStateChanged($event)"
+  >
+    <brn-dialog-overlay class="bg-slate-950/55" />
+    <ng-template brnDialogContent class="w-full sm:w-[calc(100vw-40px)] sm:max-w-2xl">
+      @if (profile; as garage) {
+        <section
+          class="app-dialog-panel max-h-[92dvh] w-full max-w-2xl rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
         >
-          <div>
-            <h2 id="contact-dialog-title" class="text-xl font-bold">
-              {{ ui('profile.ui.contactDialog', { garage: profile.name }) }}
-            </h2>
-            <p class="mt-2 text-sm leading-6 text-muted">
-              {{ ui('profile.ui.contactDialogBody') }}
-            </p>
+          <header
+            class="app-dialog-header flex items-start justify-between gap-4 px-5 pt-5 sm:px-7 sm:pt-7"
+          >
+            <div>
+              <h2 brnDialogTitle class="text-xl font-bold">
+                <span id="contact-dialog-title">{{
+                  ui('profile.ui.contactDialog', { garage: garage.name })
+                }}</span>
+              </h2>
+              <p brnDialogDescription class="mt-2 text-sm leading-6 text-muted">
+                {{ ui('profile.ui.contactDialogBody') }}
+              </p>
+            </div>
+            <button
+              type="button"
+              brnDialogClose
+              data-contact-close
+              class="flex size-11 shrink-0 items-center justify-center rounded-xl hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand"
+              [attr.aria-label]="ui('profile.ui.close')"
+            >
+              <lucide-icon [name]="XIcon" class="size-5" />
+            </button>
+          </header>
+          <div class="app-dialog-body px-5 pb-5 sm:px-7 sm:pb-7">
+            <label
+              class="mt-5 flex min-h-11 items-center gap-3 rounded-xl bg-blue-50 p-3 text-sm font-medium"
+              ><input
+                class="size-5"
+                type="checkbox"
+                [ngModel]="includeDetails()"
+                (ngModelChange)="includeDetails.set($event)"
+              /><span>{{ ui('profile.ui.includeDetails') }}</span></label
+            >
+            @if (includeDetails()) {
+              <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                <label class="grid gap-1 text-sm font-semibold"
+                  >{{ ui('profile.ui.vehicle')
+                  }}<input
+                    [ngModel]="vehicleSummary()"
+                    (ngModelChange)="vehicleSummary.set($event)"
+                    maxlength="120"
+                    autocomplete="off"
+                    class="min-h-11 rounded-lg border border-slate-300 px-3 font-normal"
+                    [placeholder]="ui('profile.ui.vehiclePlaceholder')" /></label
+                ><label class="grid gap-1 text-sm font-semibold"
+                  >{{ ui('profile.ui.concern')
+                  }}<textarea
+                    [ngModel]="repairSummary()"
+                    (ngModelChange)="repairSummary.set($event)"
+                    maxlength="500"
+                    rows="3"
+                    class="rounded-lg border border-slate-300 p-3 font-normal"
+                    [placeholder]="ui('profile.ui.concernPlaceholder')"
+                  ></textarea>
+                </label>
+              </div>
+            }
+            <label class="mt-5 grid gap-1 text-sm font-semibold"
+              >{{ ui('profile.ui.messageDraft')
+              }}<textarea
+                class="rounded-lg border border-slate-300 bg-slate-50 p-3 font-normal leading-6"
+                [value]="contactPreview()"
+                readonly
+                rows="6"
+              ></textarea>
+            </label>
           </div>
-          <button
-            #contactClose
-            type="button"
-            class="flex size-11 shrink-0 items-center justify-center rounded-xl hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand"
-            [attr.aria-label]="ui('profile.ui.close')"
-            (click)="closeContact()"
-          >
-            <lucide-icon [name]="XIcon" class="size-5" />
-          </button>
-        </header>
-        <div class="app-dialog-body px-5 pb-5 sm:px-7 sm:pb-7">
-          <label
-            class="mt-5 flex min-h-11 items-center gap-3 rounded-xl bg-blue-50 p-3 text-sm font-medium"
-            ><input class="size-5" [(ngModel)]="includeDetails" type="checkbox" /><span>{{
-              ui('profile.ui.includeDetails')
-            }}</span></label
-          >
-          @if (includeDetails) {
-            <div class="mt-4 grid gap-4 sm:grid-cols-2">
-              <label class="grid gap-1 text-sm font-semibold"
-                >{{ ui('profile.ui.vehicle')
-                }}<input
-                  [(ngModel)]="vehicleSummary"
-                  maxlength="120"
-                  autocomplete="off"
-                  class="min-h-11 rounded-lg border border-slate-300 px-3 font-normal"
-                  [placeholder]="ui('profile.ui.vehiclePlaceholder')" /></label
-              ><label class="grid gap-1 text-sm font-semibold"
-                >{{ ui('profile.ui.concern')
-                }}<textarea
-                  [(ngModel)]="repairSummary"
-                  maxlength="500"
-                  rows="3"
-                  class="rounded-lg border border-slate-300 p-3 font-normal"
-                  [placeholder]="ui('profile.ui.concernPlaceholder')"
-                ></textarea>
-              </label>
-            </div>
-          }
-          <label class="mt-5 grid gap-1 text-sm font-semibold"
-            >{{ ui('profile.ui.messageDraft')
-            }}<textarea
-              class="rounded-lg border border-slate-300 bg-slate-50 p-3 font-normal leading-6"
-              [value]="contactPreview()"
-              readonly
-              rows="6"
-            ></textarea>
-          </label>
-        </div>
-        <footer class="app-dialog-footer px-5 pb-5 sm:px-7 sm:pb-7">
-          @if (telephoneHref()) {
-            <div class="grid gap-3" [class.sm:grid-cols-2]="whatsAppHref()">
-              @if (whatsAppHref()) {
+          <footer class="app-dialog-footer px-5 pb-5 sm:px-7 sm:pb-7">
+            @if (telephoneHref()) {
+              <div class="grid gap-3" [class.sm:grid-cols-2]="whatsAppHref()">
+                @if (whatsAppHref()) {
+                  <a
+                    [href]="whatsAppHref()"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    appButton
+                    (click)="blockLocalDemoContact($event); contactOpened()"
+                    ><lucide-icon [name]="MessageCircleIcon" class="size-5" />{{
+                      ui('profile.ui.whatsapp')
+                    }}</a
+                  >
+                }
                 <a
-                  [href]="whatsAppHref()"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  appButton
+                  [href]="telephoneHref()"
+                  appButton="outline-brand"
                   (click)="blockLocalDemoContact($event); contactOpened()"
-                  ><lucide-icon [name]="MessageCircleIcon" class="size-5" />{{
-                    ui('profile.ui.whatsapp')
-                  }}</a
+                  ><lucide-icon [name]="PhoneIcon" class="size-5" />{{ ui('profile.ui.call') }}</a
                 >
-              }
-              <a
-                [href]="telephoneHref()"
-                appButton="outline-brand"
-                (click)="blockLocalDemoContact($event); contactOpened()"
-                ><lucide-icon [name]="PhoneIcon" class="size-5" />{{ ui('profile.ui.call') }}</a
-              >
-            </div>
-            <p class="mt-3 text-xs leading-5 text-muted">
-              {{
-                isLocalDemoProfile()
-                  ? ui('profile.ui.demoContact')
-                  : ui('profile.ui.contactFallback')
-              }}
-            </p>
-          } @else {
-            <p class="rounded-xl bg-amber-50 p-4 text-sm text-amber-950">
-              {{ ui('profile.ui.noContact') }}
-            </p>
-          }
-        </footer>
-      </section>
-    </div>
-  }
+              </div>
+              <p class="mt-3 text-xs leading-5 text-muted">
+                {{
+                  isLocalDemoProfile()
+                    ? ui('profile.ui.demoContact')
+                    : ui('profile.ui.contactFallback')
+                }}
+              </p>
+            } @else {
+              <p class="rounded-xl bg-amber-50 p-4 text-sm text-amber-950">
+                {{ ui('profile.ui.noContact') }}
+              </p>
+            }
+          </footer>
+        </section>
+      }
+    </ng-template>
+  </brn-dialog>
 
   @if (shareOpen() && profile) {
     <div

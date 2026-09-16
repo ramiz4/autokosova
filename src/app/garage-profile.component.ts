@@ -41,13 +41,18 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { OverlayPositionBuilder } from '@angular/cdk/overlay';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   BrnDialog,
   BrnDialogClose,
   BrnDialogContent,
+  BrnDialogDescription,
   BrnDialogOverlay,
+  BrnDialogTitle,
 } from '@spartan-ng/brain/dialog';
+import { map } from 'rxjs';
 import { getCatalogPlace, VEHICLE_MAKE_LABELS } from '../shared/catalog';
 import {
   buildContactPreview,
@@ -107,7 +112,9 @@ const PROFILE_SECTIONS = new Set(['about', 'reviews', 'services', 'makes', 'loca
     BrnDialog,
     BrnDialogClose,
     BrnDialogContent,
+    BrnDialogDescription,
     BrnDialogOverlay,
+    BrnDialogTitle,
     RouterLink,
     SiteFooterComponent,
     SiteHeaderComponent,
@@ -174,19 +181,28 @@ export class GarageProfileComponent {
   private readonly pendingTasks = inject(PendingTasks);
   private readonly request = inject(REQUEST);
   private readonly route = inject(ActivatedRoute);
-  private readonly contactClose = viewChild<ElementRef<HTMLButtonElement>>('contactClose');
+  private readonly contactDialog = viewChild<BrnDialog>('contactDialog');
+  protected readonly contactPosition = inject(OverlayPositionBuilder).global().centerHorizontally();
+  private readonly contactWide = toSignal(
+    inject(BreakpointObserver)
+      .observe('(min-width: 640px)')
+      .pipe(map((breakpoint) => breakpoint.matches)),
+    { initialValue: false },
+  );
   private readonly shareUrlInput = viewChild<ElementRef<HTMLInputElement>>('shareUrlInput');
-  private contactTrigger?: HTMLElement;
 
   protected readonly contactOpen = signal(false);
+  protected readonly contactReturnFocus = signal<HTMLElement | null>(null);
+  protected readonly contactRestoreFocus =
+    '[data-contact-return-focus], body:not(:has([data-contact-return-focus])) [data-gallery-fallback]';
   protected readonly galleryIndex = signal(0);
   protected readonly galleryOpen = signal(false);
   protected readonly galleryReturnFocus = signal<HTMLElement | null>(null);
   protected readonly galleryRestoreFocus =
     '[data-gallery-return-focus], body:not(:has([data-gallery-return-focus])) [data-gallery-fallback]';
-  protected includeDetails = false;
+  protected readonly includeDetails = signal(false);
   protected profile?: PublicGarageProfile;
-  protected repairSummary = '';
+  protected readonly repairSummary = signal('');
   protected reviews: readonly PublicGarageReview[] = [];
   protected reviewServiceCategoryId = '';
   protected reviewState: 'error' | 'loading' | 'ready' = 'loading';
@@ -194,13 +210,18 @@ export class GarageProfileComponent {
   protected readonly shareOpen = signal(false);
   protected readonly shareState = signal<'copied' | 'error' | null>(null);
   protected state: 'error' | 'loading' | 'ready' = 'loading';
-  protected vehicleSummary = '';
+  protected readonly vehicleSummary = signal('');
   protected readonly vehicleMakeOptions = Object.entries(VEHICLE_MAKE_LABELS);
   constructor() {
     effect(() => {
       this.account.dataContext();
       this.confirmation().cancelPending();
       this.contributionDrafts.clear();
+    });
+    effect(() => {
+      if (this.contactWide()) this.contactPosition.centerVertically();
+      else this.contactPosition.bottom('0px');
+      if (this.contactOpen()) this.contactDialog()?.updatePosition();
     });
     this.language.setPage('profile.profile', 'profile.trust');
     if (this.browser) {
@@ -210,6 +231,7 @@ export class GarageProfileComponent {
       void this.favorites.load();
       this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
         this.closeGallery();
+        this.closeContact();
         void this.loadProfile(params.get('garageId'));
       });
     } else if (this.request) {
@@ -218,7 +240,7 @@ export class GarageProfileComponent {
     this.destroyRef.onDestroy(() => {
       this.reviewGeneration++;
       this.reviewController?.abort();
-      this.contactTrigger = undefined;
+      this.contactReturnFocus()?.removeAttribute('data-contact-return-focus');
     });
   }
 
@@ -244,9 +266,9 @@ export class GarageProfileComponent {
 
   protected contactPreview(): string {
     return buildContactPreview({
-      includeDetails: this.includeDetails,
-      repairSummary: this.repairSummary,
-      vehicleSummary: this.vehicleSummary,
+      includeDetails: this.includeDetails(),
+      repairSummary: this.repairSummary(),
+      vehicleSummary: this.vehicleSummary(),
       garageName: this.profile?.name ?? this.language.t('home.badge'),
     });
   }
@@ -354,14 +376,19 @@ export class GarageProfileComponent {
   }
 
   protected openContact(event: Event): void {
-    this.contactTrigger = event.currentTarget as HTMLElement;
+    this.contactReturnFocus()?.removeAttribute('data-contact-return-focus');
+    const target = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    target?.setAttribute('data-contact-return-focus', '');
+    this.contactReturnFocus.set(target);
     this.contactOpen.set(true);
-    afterNextRender(() => this.contactClose()?.nativeElement.focus(), { injector: this.injector });
   }
 
   protected closeContact(): void {
     this.contactOpen.set(false);
-    this.contactTrigger?.focus();
+  }
+
+  protected contactStateChanged(state: 'closed' | 'open'): void {
+    this.contactOpen.set(state === 'open');
   }
 
   protected telephoneHref(): string | undefined {
@@ -444,6 +471,7 @@ export class GarageProfileComponent {
       return;
     }
     this.closeGallery();
+    this.closeContact();
     this.state = 'loading';
     try {
       const places = this.route.snapshot.queryParamMap.get('places');
