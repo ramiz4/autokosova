@@ -1,7 +1,12 @@
+import { accountNavigationCopy } from './account-navigation-copy';
 import type { AppLanguage } from './i18n';
 const labels: Readonly<Record<string, readonly [string, string, string]>> = {
   write: ['Bewertung schreiben', 'Write a review', 'Shkruaj një vlerësim'],
-  own: ['Meine Bewertungen', 'My reviews', 'Vlerësimet e mia'],
+  own: [
+    accountNavigationCopy('de').reviews,
+    accountNavigationCopy('en').reviews,
+    accountNavigationCopy('sq').reviews,
+  ],
   intro: [
     'Berichte über einen tatsächlichen Werkstattbesuch. Dein Nachweis bleibt privat.',
     'Describe an actual garage visit. Your evidence stays private.',

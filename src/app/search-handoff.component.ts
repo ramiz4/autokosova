@@ -1,3 +1,12 @@
+import {
+  LucideArrowRight,
+  LucideBadgeCheck,
+  LucideChevronDown,
+  LucideHeart,
+  LucideMapPin,
+  LucideStar,
+  type LucideIcon,
+} from '@lucide/angular';
 import { FavoritesService } from './favorites.service';
 import { FavoriteNoticeComponent } from './favorite-notice.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -21,7 +30,7 @@ import { AnalyticsService } from './analytics.service';
 import { LanguageService } from './language.service';
 import { SiteHeaderComponent } from './site-header.component';
 import { ButtonDirective } from './ui/button.directive';
-import { IconComponent } from './ui/icon.component';
+import { LucideIconComponent } from './ui/lucide-icon.component';
 
 interface Result {
   readonly companyDataVerified: boolean;
@@ -63,7 +72,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
     ButtonDirective,
     FormsModule,
     FavoriteNoticeComponent,
-    IconComponent,
+    LucideIconComponent,
     RouterLink,
     SiteHeaderComponent,
   ],
@@ -150,7 +159,11 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                 (click)="filtersOpen.set(!filtersOpen())"
               >
                 {{ ui(filtersOpen() ? 'search.ui.closeFilters' : 'search.ui.openFilters') }}
-                <app-icon name="chevron-down" class="size-4" [class.rotate-180]="filtersOpen()" />
+                <lucide-icon
+                  [name]="ChevronDownIcon"
+                  class="size-4"
+                  [class.rotate-180]="filtersOpen()"
+                />
               </button>
             </div>
             <form
@@ -302,7 +315,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                               [title]="language.t('profile.verified')"
                               [attr.aria-label]="language.t('profile.verified')"
                             >
-                              <app-icon name="badge-check" class="size-5" />
+                              <lucide-icon [name]="BadgeCheckIcon" class="size-5" />
                             </span>
                           }
                         </div>
@@ -311,16 +324,19 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                             <span class="rating-stars inline-flex gap-0.5" aria-hidden="true">
                               @for (star of [0, 1, 2, 3, 4]; track star) {
                                 <span class="relative inline-flex size-3.5">
-                                  <app-icon name="star" class="size-3.5 text-slate-200" />
+                                  <lucide-icon
+                                    [name]="StarIcon"
+                                    class="[--lucide-fill:currentColor] size-3.5 text-slate-200"
+                                  />
                                   <span
                                     class="absolute inset-y-0 left-0 overflow-hidden"
                                     [style.width.%]="
                                       starFill(garage.reviewSummary.averageRating!, star)
                                     "
                                   >
-                                    <app-icon
-                                      name="star"
-                                      class="absolute top-0 left-0 size-3.5 text-amber-500"
+                                    <lucide-icon
+                                      [name]="StarIcon"
+                                      class="[--lucide-fill:currentColor] absolute top-0 left-0 size-3.5 text-amber-500"
                                     />
                                   </span>
                                 </span>
@@ -347,7 +363,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                           </p>
                         }
                         <p class="mt-2 flex items-center gap-1 text-sm text-slate-600">
-                          <app-icon name="pin" class="size-4 text-brand-dark" />
+                          <lucide-icon [name]="MapPinIcon" class="size-4 text-brand-dark" />
                           {{ locationLabel(garage) }}
                         </p>
                         <ul class="mt-3 flex flex-wrap gap-2 text-xs">
@@ -377,9 +393,12 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                           "
                           (click)="favorites.toggle(garage.id)"
                         >
-                          <app-icon
-                            [name]="favorites.garageIds().has(garage.id) ? 'heart-filled' : 'heart'"
+                          <lucide-icon
+                            [name]="HeartIcon"
                             class="size-6"
+                            [style.--lucide-fill]="
+                              favorites.garageIds().has(garage.id) ? 'currentColor' : 'none'
+                            "
                           />
                         </button>
                         <div
@@ -390,7 +409,8 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                             [queryParams]="profileQueryParams()"
                             appButton="outline-brand"
                             size="compact"
-                            >{{ ui('search.ui.details') }}<app-icon name="arrow" class="size-4"
+                            >{{ ui('search.ui.details')
+                            }}<lucide-icon [name]="ArrowRightIcon" class="size-4"
                           /></a>
                         </div>
                       </div>
@@ -432,6 +452,13 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
   </main>`,
 })
 export class SearchHandoffComponent {
+  readonly ArrowRightIcon: LucideIcon = LucideArrowRight;
+  readonly BadgeCheckIcon: LucideIcon = LucideBadgeCheck;
+  readonly ChevronDownIcon: LucideIcon = LucideChevronDown;
+  readonly HeartIcon: LucideIcon = LucideHeart;
+  readonly MapPinIcon: LucideIcon = LucideMapPin;
+  readonly StarIcon: LucideIcon = LucideStar;
+
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly route = inject(ActivatedRoute);

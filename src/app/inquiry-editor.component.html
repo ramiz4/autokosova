@@ -17,7 +17,7 @@
       [disabled]="saved.writeState() === 'saving'"
       (click)="cancel()"
     >
-      <app-icon name="close" class="size-5" />
+      <lucide-icon [name]="XIcon" class="size-5" />
     </button>
   </header>
   <form [formGroup]="form" (ngSubmit)="save()" novalidate>
@@ -192,7 +192,7 @@
         [disabled]="saved.writeState() === 'saving' || unchanged || areasEditing() || discarding()"
         data-save-inquiry
       >
-        <app-icon name="check" class="size-4" />{{
+        <lucide-icon [name]="CheckIcon" class="size-4" />{{
           text(saved.writeState() === 'saving' ? 'saving' : 'save')
         }}
       </button>

@@ -1,7 +1,8 @@
+import { accountNavigationCopy } from './account-navigation-copy';
 import type { AppLanguage } from './i18n';
 const de = {
-  admin: 'Administration',
-  moderation: 'Moderation',
+  admin: accountNavigationCopy('de').admin,
+  moderation: accountNavigationCopy('de').moderation,
   intro: 'Fälle zuweisen, prüfen und zur zuständigen Person weitergeben.',
   adminIntro:
     'Gesamte Fallübersicht und Zuweisung. Weitere Verwaltungsbereiche werden separat ergänzt.',
@@ -68,8 +69,8 @@ const de = {
 };
 type Copy = typeof de;
 const en: Copy = {
-  admin: 'Administration',
-  moderation: 'Moderation',
+  admin: accountNavigationCopy('en').admin,
+  moderation: accountNavigationCopy('en').moderation,
   intro: 'Assign, inspect and hand over cases to the responsible person.',
   adminIntro:
     'All cases and assignments. Additional administration areas are implemented separately.',
@@ -132,8 +133,8 @@ const en: Copy = {
   refreshHint: 'Assignments and permissions are checked again before every action.',
 };
 const sq: Copy = {
-  admin: 'Administrimi',
-  moderation: 'Moderimi',
+  admin: accountNavigationCopy('sq').admin,
+  moderation: accountNavigationCopy('sq').moderation,
   intro: 'Caktoni, shqyrtoni dhe përcillni rastet te personi përgjegjës.',
   adminIntro: 'Të gjitha rastet dhe caktimet. Fushat e tjera të administrimit shtohen veçmas.',
   ownIntro: 'Këtu shfaqen vetëm rastet që ju janë caktuar.',

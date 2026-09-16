@@ -28,28 +28,29 @@
       }
       @if (!photo() || failedPhoto() === photo()) {
         <div data-favorite-no-photo class="flex flex-col items-center gap-3 text-slate-500">
-          <app-icon name="wrench" class="size-10" />
+          <lucide-icon [name]="WrenchIcon" class="size-10" />
           <p class="text-xs font-medium">{{ text('noPhoto') }}</p>
         </div>
       }
       <span
         class="absolute top-3 right-3 flex size-9 items-center justify-center rounded-full bg-white text-brand shadow-sm"
-        ><app-icon name="heart-filled" class="size-5"
+        ><lucide-icon [name]="HeartIcon" class="[--lucide-fill:currentColor] size-5"
       /></span>
     </div>
     <div class="flex grow flex-col p-5 sm:p-6">
       <h3 class="text-xl leading-7 font-bold">{{ garage.name }}</h3>
       <p class="mt-2 flex items-center gap-1.5 text-sm text-muted">
-        <app-icon name="pin" class="size-4" />{{ placeLabel() }}
+        <lucide-icon [name]="MapPinIcon" class="size-4" />{{ placeLabel() }}
       </p>
       <p
         class="mt-4 flex items-start gap-1.5 text-xs font-semibold"
         [class.text-brand-dark]="garage.companyDataVerified"
         [class.text-muted]="!garage.companyDataVerified"
       >
-        <app-icon [name]="garage.companyDataVerified ? 'badge-check' : 'info'" class="size-4" />{{
-          text(garage.companyDataVerified ? 'verified' : 'notVerified')
-        }}
+        <lucide-icon
+          [name]="garage.companyDataVerified ? BadgeCheckIcon : InfoIcon"
+          class="size-4"
+        />{{ text(garage.companyDataVerified ? 'verified' : 'notVerified') }}
       </p>
       @if (garage.rating; as rating) {
         <div class="mt-4 flex flex-wrap items-center gap-2">
@@ -83,14 +84,14 @@
           size="compact"
           class="w-full"
           [routerLink]="language.link('garage', garage.id)"
-          >{{ text('profile') }}<app-icon name="arrow" class="size-4"
+          >{{ text('profile') }}<lucide-icon [name]="ArrowRightIcon" class="size-4"
         /></a>
       </div>
     </div>
   } @else {
     <div class="flex grow flex-col items-start p-6 sm:p-8">
       <span class="flex size-12 items-center justify-center rounded-xl bg-slate-100 text-muted"
-        ><app-icon name="wrench" class="size-6"
+        ><lucide-icon [name]="WrenchIcon" class="size-6"
       /></span>
       <h3 class="mt-4 text-xl font-bold">
         {{ text(card().state === 'unavailable' ? 'unavailable' : 'profileError') }}
@@ -130,7 +131,9 @@
         [attr.aria-busy]="pending()"
         (click)="remove.emit()"
       >
-        <app-icon name="heart" class="size-4" />{{ text(pending() ? 'removing' : 'remove') }}
+        <lucide-icon [name]="HeartIcon" class="size-4" />{{
+          text(pending() ? 'removing' : 'remove')
+        }}
       </button>
     </div>
   }

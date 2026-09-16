@@ -1,3 +1,4 @@
+import { LucideMapPin, LucidePencil, LucideX, type LucideIcon } from '@lucide/angular';
 import { isPlatformBrowser } from '@angular/common';
 import {
   afterNextRender,
@@ -16,7 +17,7 @@ import { CATALOG_PLACES } from '../../shared/catalog';
 import { REPAIR_REQUEST_LIMITS } from '../../shared/repair-request';
 import { LanguageService } from '../language.service';
 import { ButtonDirective } from './button.directive';
-import { IconComponent } from './icon.component';
+import { LucideIconComponent } from './lucide-icon.component';
 import { RadiusSliderComponent } from './radius-slider.component';
 
 export interface SearchArea {
@@ -27,7 +28,7 @@ export interface SearchArea {
 @Component({
   selector: 'app-search-areas',
   host: { class: 'block min-w-0' },
-  imports: [FormsModule, ButtonDirective, IconComponent, RadiusSliderComponent],
+  imports: [FormsModule, ButtonDirective, LucideIconComponent, RadiusSliderComponent],
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -38,6 +39,10 @@ export interface SearchArea {
   templateUrl: './search-areas.component.html',
 })
 export class SearchAreasComponent implements ControlValueAccessor {
+  readonly MapPinIcon: LucideIcon = LucideMapPin;
+  readonly PencilIcon: LucideIcon = LucidePencil;
+  readonly XIcon: LucideIcon = LucideX;
+
   readonly idPrefix = input.required<string>();
   readonly editingChange = output<boolean>();
   protected readonly disabled = signal(false);

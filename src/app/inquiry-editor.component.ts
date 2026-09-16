@@ -1,3 +1,4 @@
+import { LucideCheck, LucideX, type LucideIcon } from '@lucide/angular';
 import { DOCUMENT } from '@angular/common';
 import {
   afterNextRender,
@@ -29,7 +30,7 @@ import type { SavedRepairRequest } from '../shared/saved-repair-request';
 import { LanguageService } from './language.service';
 import { SavedRepairRequestsService } from './saved-repair-requests.service';
 import { ButtonDirective } from './ui/button.directive';
-import { IconComponent } from './ui/icon.component';
+import { LucideIconComponent } from './ui/lucide-icon.component';
 import { SearchAreasComponent, type SearchArea } from './ui/search-areas.component';
 
 const wholeNumber = (control: AbstractControl) =>
@@ -37,12 +38,15 @@ const wholeNumber = (control: AbstractControl) =>
 
 @Component({
   selector: 'app-inquiry-editor',
-  imports: [ReactiveFormsModule, ButtonDirective, IconComponent, SearchAreasComponent],
+  imports: [ReactiveFormsModule, ButtonDirective, LucideIconComponent, SearchAreasComponent],
   templateUrl: './inquiry-editor.component.html',
   styleUrl: './inquiry-dialog.scss',
   host: { '(window:beforeunload)': 'beforeUnload($event)' },
 })
 export class InquiryEditorComponent implements OnInit {
+  readonly CheckIcon: LucideIcon = LucideCheck;
+  readonly XIcon: LucideIcon = LucideX;
+
   readonly request = input.required<SavedRepairRequest>();
   readonly closed = output<void>();
   protected readonly language = inject(LanguageService);

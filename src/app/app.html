@@ -45,7 +45,7 @@
             <li class="flex items-center gap-4">
               <span
                 class="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand/80 lg:size-7"
-                ><app-icon name="check" class="size-4" /></span
+                ><lucide-icon [name]="CheckIcon" class="size-4" /></span
               >{{ language.t('landing.' + key) }}
             </li>
           }
@@ -56,13 +56,14 @@
             shape="pill"
             [routerLink]="language.link('request')"
             class="w-full rounded-full border-sky-accent/50 px-6 py-4 text-lg shadow-[0_8px_36px_-8px_#008cff] sm:min-w-[425px] lg:min-h-[70px] lg:text-2xl"
-            >{{ language.t('landing.request') }} <app-icon name="arrow" class="size-7"
+            >{{ language.t('landing.request') }}
+            <lucide-icon [name]="ArrowRightIcon" class="size-7"
           /></a>
           <p class="mt-3 text-sm text-blue-100 lg:text-base">{{ language.t('landing.free') }}</p>
           <a
             href="#werkstatt-suche"
             class="mt-2 inline-flex min-h-11 items-center gap-2 rounded-lg text-sm font-semibold text-white underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-sky-accent xl:hidden"
-            >{{ language.t('landing.direct') }} <app-icon name="arrow" class="size-4"
+            >{{ language.t('landing.direct') }} <lucide-icon [name]="ArrowRightIcon" class="size-4"
           /></a>
         </div>
       </div>
@@ -71,7 +72,7 @@
       >
         <span
           class="flex size-16 shrink-0 items-center justify-center rounded-full border border-white/60 bg-white/10 text-sky-accent"
-          ><app-icon name="shield" class="size-9"
+          ><lucide-icon [name]="ShieldCheckIcon" class="size-9"
         /></span>
         <div>
           <p class="text-sm text-blue-100">{{ language.t('landing.choiceLabel') }}</p>
@@ -88,18 +89,18 @@
   >
     <div class="mx-auto grid max-w-[1360px] gap-7 lg:grid-cols-3 lg:gap-8">
       <app-benefit-card
-        icon="clock"
+        [icon]="ClockIcon"
         [title]="language.t('landing.timeTitle')"
         [description]="language.t('landing.timeBody')"
       />
       <app-benefit-card
-        icon="thumb"
+        [icon]="ThumbsUpIcon"
         [title]="language.t('landing.choiceBenefit')"
         [description]="language.t('landing.choiceBenefitBody')"
         class="border-t border-blue-100 pt-7 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0"
       />
       <app-benefit-card
-        icon="shield"
+        [icon]="ShieldCheckIcon"
         [title]="language.t('landing.trustTitle')"
         [description]="language.t('landing.trustBody')"
         class="border-t border-blue-100 pt-7 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0"
@@ -123,7 +124,7 @@
           {{ language.t('landing.searchBody') }}
         </p>
         <p class="mt-5 flex items-center gap-3 text-sm font-bold text-brand-dark">
-          <app-icon name="check" class="size-5" />{{ language.t('landing.noAccount') }}
+          <lucide-icon [name]="CheckIcon" class="size-5" />{{ language.t('landing.noAccount') }}
         </p>
       </div>
       <form
@@ -163,7 +164,7 @@
           <p class="mt-4 text-sm font-semibold text-rose-800" role="alert">{{ searchError }}</p>
         }
         <button type="submit" appButton class="mt-6 w-full">
-          <app-icon name="search" class="size-5" />{{ language.t('nav.search') }}
+          <lucide-icon [name]="SearchIcon" class="size-5" />{{ language.t('nav.search') }}
         </button>
       </form>
     </div>

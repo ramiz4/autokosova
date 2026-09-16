@@ -1,11 +1,19 @@
-import { Component, inject, input } from '@angular/core';
+import {
+  LucideCheck,
+  LucideHeart,
+  LucideInfo,
+  LucideUser,
+  LucideX,
+  type LucideIcon,
+} from '@lucide/angular';
+import { Component, computed, inject, input } from '@angular/core';
 import { FavoritesService } from './favorites.service';
 import { LanguageService } from './language.service';
-import { IconComponent } from './ui/icon.component';
+import { LucideIconComponent } from './ui/lucide-icon.component';
 
 @Component({
   selector: 'app-favorite-notice',
-  imports: [IconComponent],
+  imports: [LucideIconComponent],
   template: `
     @if (favorites.message(); as message) {
       <div
@@ -19,17 +27,10 @@ import { IconComponent } from './ui/icon.component';
             class="mt-1 flex size-9 shrink-0 items-center justify-center rounded-full"
             [class]="message === 'error' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-brand'"
           >
-            <app-icon
-              [name]="
-                message === 'error'
-                  ? 'info'
-                  : message === 'saved'
-                    ? 'heart-filled'
-                    : message === 'removed'
-                      ? 'check'
-                      : 'user'
-              "
+            <lucide-icon
+              [name]="noticeIcon()"
               class="size-[18px]"
+              [style.--lucide-fill]="message === 'saved' ? 'currentColor' : 'none'"
             />
           </span>
           <div
@@ -50,7 +51,7 @@ import { IconComponent } from './ui/icon.component';
             [attr.aria-label]="language.t('favorites.dismiss')"
             (click)="favorites.dismiss()"
           >
-            <app-icon name="close" class="size-[18px]" />
+            <lucide-icon [name]="XIcon" class="size-[18px]" />
           </button>
         </div>
       </div>
@@ -58,7 +59,25 @@ import { IconComponent } from './ui/icon.component';
   `,
 })
 export class FavoriteNoticeComponent {
+  readonly CheckIcon: LucideIcon = LucideCheck;
+  readonly HeartIcon: LucideIcon = LucideHeart;
+  readonly InfoIcon: LucideIcon = LucideInfo;
+  readonly UserIcon: LucideIcon = LucideUser;
+  readonly XIcon: LucideIcon = LucideX;
+
   readonly loginUrl = input.required<string>();
   protected readonly favorites = inject(FavoritesService);
   protected readonly language = inject(LanguageService);
+  protected readonly noticeIcon = computed<LucideIcon>(() => {
+    switch (this.favorites.message()) {
+      case 'error':
+        return this.InfoIcon;
+      case 'saved':
+        return this.HeartIcon;
+      case 'removed':
+        return this.CheckIcon;
+      default:
+        return this.UserIcon;
+    }
+  });
 }

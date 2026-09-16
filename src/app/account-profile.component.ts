@@ -1,3 +1,10 @@
+import {
+  LucideMessageCircle,
+  LucideHeart,
+  LucideUser,
+  LucideWrench,
+  type LucideIcon,
+} from '@lucide/angular';
 import { reviewLabel } from '../shared/review-copy';
 import { accountType } from '../shared/account';
 import { Component, afterNextRender, effect, inject, signal } from '@angular/core';
@@ -7,7 +14,7 @@ import { LanguageService } from './language.service';
 import { LanguageSwitcherComponent } from './language-switcher.component';
 import { SiteHeaderComponent } from './site-header.component';
 import { ButtonDirective } from './ui/button.directive';
-import { IconComponent } from './ui/icon.component';
+import { LucideIconComponent } from './ui/lucide-icon.component';
 
 @Component({
   selector: 'app-account-profile',
@@ -16,11 +23,16 @@ import { IconComponent } from './ui/icon.component';
     SiteHeaderComponent,
     LanguageSwitcherComponent,
     ButtonDirective,
-    IconComponent,
+    LucideIconComponent,
   ],
   templateUrl: './account-profile.component.html',
 })
 export class AccountProfileComponent {
+  readonly MessageCircleIcon: LucideIcon = LucideMessageCircle;
+  readonly HeartIcon: LucideIcon = LucideHeart;
+  readonly UserIcon: LucideIcon = LucideUser;
+  readonly WrenchIcon: LucideIcon = LucideWrench;
+
   protected readonly reviewLabel = reviewLabel;
   protected readonly account = inject(AccountSessionService);
   protected readonly accountType = accountType;

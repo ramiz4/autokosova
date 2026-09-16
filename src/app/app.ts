@@ -1,3 +1,12 @@
+import {
+  LucideArrowRight,
+  LucideCheck,
+  LucideClock,
+  LucideSearch,
+  LucideShieldCheck,
+  LucideThumbsUp,
+  type LucideIcon,
+} from '@lucide/angular';
 import { RadiusSliderComponent } from './ui/radius-slider.component';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -9,7 +18,7 @@ import { LanguageService } from './language.service';
 import { SiteHeaderComponent } from './site-header.component';
 import { SiteFooterComponent } from './site-footer.component';
 import { ButtonDirective } from './ui/button.directive';
-import { IconComponent } from './ui/icon.component';
+import { LucideIconComponent } from './ui/lucide-icon.component';
 import { BenefitCardComponent } from './ui/benefit-card.component';
 
 @Component({
@@ -31,12 +40,19 @@ export class App {}
     RouterLink,
     SiteHeaderComponent,
     ButtonDirective,
-    IconComponent,
+    LucideIconComponent,
     BenefitCardComponent,
   ],
   templateUrl: './app.html',
 })
 export class FoundationComponent {
+  readonly ArrowRightIcon: LucideIcon = LucideArrowRight;
+  readonly CheckIcon: LucideIcon = LucideCheck;
+  readonly ClockIcon: LucideIcon = LucideClock;
+  readonly SearchIcon: LucideIcon = LucideSearch;
+  readonly ShieldCheckIcon: LucideIcon = LucideShieldCheck;
+  readonly ThumbsUpIcon: LucideIcon = LucideThumbsUp;
+
   protected readonly analytics = inject(AnalyticsService);
   protected readonly language = inject(LanguageService);
   private readonly router = inject(Router);
