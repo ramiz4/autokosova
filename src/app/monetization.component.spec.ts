@@ -129,11 +129,25 @@ describe('Costs and fairness page', () => {
       await fixture.whenStable();
       expect(router.url).toBe(`${base}${query}#monetization-main`);
       expect(document.activeElement?.id).toBe('monetization-main');
+      const trigger = page.querySelector<HTMLButtonElement>(
+        'app-language-switcher button[brnOverlayTrigger]',
+      )!;
+      trigger.click();
+      await fixture.whenRenderingDone();
+      const links = [
+        ...document.querySelectorAll<HTMLAnchorElement>('.cdk-overlay-container nav a'),
+      ];
       for (const target of languages) {
         const targetUrl = `${routePath(target, 'monetization')}${query}#monetization-main`;
         expect(language.switchUrl(target)).toBe(targetUrl);
-        expect(page.querySelector(`app-language-switcher a[href="${targetUrl}"]`)).toBeTruthy();
+        expect(links.find((link) => link.getAttribute('href') === targetUrl)).toBeTruthy();
       }
+      expect(
+        links.find((link) => link.getAttribute('aria-current') === 'page')?.getAttribute('href'),
+      ).toBe(`${base}${query}#monetization-main`);
+      links[0].dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
+      await fixture.whenStable();
+      expect(document.querySelector('.cdk-overlay-container nav')).toBeNull();
     }
     expect(languageFromUrl(`${routePath(locale, 'home')}#content`)).toBe(locale);
   });

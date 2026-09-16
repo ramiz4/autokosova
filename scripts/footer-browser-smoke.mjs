@@ -190,25 +190,51 @@ try {
       assert.equal(geometry.columns[0], geometry.columns[1]);
       if (width < 640) assert.ok(geometry.columns[2] > geometry.columns[0]);
       else assert.equal(geometry.columns[0], geometry.columns[2]);
-      await evaluate(`document.querySelector('${selector} summary').focus()`);
+      await evaluate(`document.querySelector('${selector} button[brnOverlayTrigger]').focus()`);
       await key('Enter', 13);
-      const isOpen = `document.querySelector('${selector} details').open`;
+      const isOpen = `document.querySelector('${selector} button[brnOverlayTrigger]')
+          .getAttribute('aria-expanded') === 'true' &&
+        !!document.querySelector('.cdk-overlay-container nav')`;
       await until(() => evaluate(isOpen), 'keyboard language menu opening');
       const menuInBounds = await evaluate(`(() => {
-        const switcher = document.querySelector('${selector}');
-        const menu = switcher.querySelector('nav').getBoundingClientRect();
-        const toggle = switcher.querySelector('summary').getBoundingClientRect();
-        return menu.bottom <= toggle.top && menu.top >= 0 &&
-          menu.left >= 0 && menu.right <= innerWidth;
+        const trigger = document.querySelector('${selector} button[brnOverlayTrigger]');
+        const menu = document.querySelector('.cdk-overlay-container nav');
+        const expectedLinks = [
+          '/privacy',
+          '/sq/privacy',
+          '/en/privacy',
+        ];
+        if (!trigger || !menu) return false;
+        const toggle = trigger.getBoundingClientRect();
+        const panel = menu.getBoundingClientRect();
+        return panel.bottom <= toggle.top - 7 && panel.top >= 0 &&
+          panel.left >= 0 && panel.right <= innerWidth &&
+          menu.getAttribute('role') === null &&
+          !menu.querySelector('[role="dialog"], [role="menuitem"]') &&
+          [...menu.querySelectorAll('a')].map((link) => link.getAttribute('href')).join('|') ===
+            expectedLinks.join('|');
       })()`);
       assert.ok(menuInBounds, `${locale} ${width}px language menu position`);
+      await until(
+        () =>
+          evaluate(
+            `document.activeElement === document.querySelector('.cdk-overlay-container nav a')`,
+          ),
+        'language menu initial link focus',
+      );
       await key('Tab', 9);
-      assert.ok(await evaluate(`document.activeElement.matches('${selector} a')`));
+      assert.ok(
+        await evaluate(
+          `document.activeElement === document.querySelectorAll('.cdk-overlay-container nav a')[1]`,
+        ),
+      );
       // Retrying Escape also waits for hydration to attach the Angular key handler.
       await until(async () => {
         await key('Escape', 27);
-        return evaluate(`!document.querySelector('${selector} details').open &&
-          document.activeElement === document.querySelector('${selector} summary')`);
+        return evaluate(`document.querySelector('${selector} button[brnOverlayTrigger]')
+            .getAttribute('aria-expanded') === 'false' &&
+          !document.querySelector('.cdk-overlay-container nav') &&
+          document.activeElement === document.querySelector('${selector} button[brnOverlayTrigger]')`);
       }, 'Escape and focus restoration');
       const focusVisible = await evaluate(`document.activeElement.matches(':focus-visible') &&
         parseFloat(getComputedStyle(document.activeElement).outlineWidth) >= 2`);

@@ -168,7 +168,7 @@ it('links only the signed-in account menu, marks the active route, preserves pro
   toggle.click();
   await vi.waitFor(() => expect(account.state()).toBe('ready'));
   await fixture.whenStable();
-  const overlayTrigger = page.querySelector<HTMLButtonElement>('button[brnOverlayTrigger]')!;
+  const overlayTrigger = page.querySelector<HTMLButtonElement>('[data-account-trigger]')!;
   const panel = accountPanel()!;
   expect(overlayTrigger.getAttribute('aria-expanded')).toBe('true');
   expect(document.getElementById(overlayTrigger.getAttribute('aria-controls')!)).not.toBeNull();

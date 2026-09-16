@@ -91,23 +91,26 @@ describe('Shared site footer', () => {
   it('preserves the page, query and fragment in the existing language switcher', async () => {
     const { fixture, page } = await render('/sq/help?topic=general#public-page-title');
     const switcher = page.querySelector('app-language-switcher')!;
-    const details = switcher.querySelector('details')!;
-    const summary = switcher.querySelector('summary')!;
-    const links = [...switcher.querySelectorAll('a')];
+    const trigger = switcher.querySelector<HTMLButtonElement>('button[brnOverlayTrigger]')!;
+    expect(trigger.getAttribute('aria-label')).toBeTruthy();
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(trigger.getAttribute('aria-haspopup')).toBeNull();
+    trigger.click();
+    await fixture.whenRenderingDone();
+    const panel = document.querySelector<HTMLElement>('.cdk-overlay-container nav')!;
+    const links = [...panel.querySelectorAll('a')];
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/help?topic=general#public-page-title',
       '/sq/help?topic=general#public-page-title',
       '/en/help?topic=general#public-page-title',
     ]);
-    expect(summary.getAttribute('aria-label')).toBeTruthy();
-    expect(switcher.querySelector('nav')?.classList.contains('bottom-full')).toBe(true);
-    expect(switcher.querySelector('[aria-current="page"]')?.textContent).toContain('Shqip');
-    details.open = true;
-    links[0].focus();
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    expect(panel.getAttribute('role')).toBeNull();
+    expect(panel.querySelector('[aria-current="page"]')?.textContent).toContain('Shqip');
     links[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await fixture.whenStable();
-    expect(details.open).toBe(false);
-    expect(document.activeElement).toBe(summary);
+    expect(document.querySelector('.cdk-overlay-container nav')).toBeNull();
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
     expect(TestBed.inject(LanguageService).switchUrl('en')).toBe(
       '/en/help?topic=general#public-page-title',
     );

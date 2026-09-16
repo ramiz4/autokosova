@@ -61,13 +61,26 @@ describe('Provisional public pages and shared shell', () => {
       expect(meta.getTag('name="robots"')?.content).toBe('noindex, follow');
       expect(title.getTitle()).toBe(`${footerCopy[locale][`${id}Title`]} | AutoKosova`);
       expect(document.documentElement.lang).toBe(locale);
-      const links = [...page.querySelectorAll('app-site-footer app-language-switcher a')];
+      const trigger = page.querySelector<HTMLButtonElement>(
+        'app-site-footer app-language-switcher button[brnOverlayTrigger]',
+      )!;
+      trigger.click();
+      await fixture.whenRenderingDone();
+      const links = [
+        ...document.querySelectorAll<HTMLAnchorElement>('.cdk-overlay-container nav a'),
+      ];
       expect(links.map((link) => link.getAttribute('href'))).toEqual(
         APP_LANGUAGES.map((target) => routePath(target, id)),
       );
+      expect(
+        links.find((link) => link.getAttribute('aria-current') === 'page')?.getAttribute('href'),
+      ).toBe(routePath(locale, id));
       for (const target of APP_LANGUAGES) {
         expect(language.switchUrl(target)).toBe(routePath(target, id));
       }
+      links[0].dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
+      await fixture.whenStable();
+      expect(document.querySelector('.cdk-overlay-container nav')).toBeNull();
     }
 
     // The default shell keeps one footer; provisional noindex must not leak to home.

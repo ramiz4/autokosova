@@ -104,19 +104,34 @@ describe('Homepage', () => {
 
   it('preserves localized request, section and language destinations', async () => {
     await TestBed.inject(Router).navigateByUrl('/sq');
-    const { page } = await render();
+    const { fixture, page } = await render();
     expect(page.querySelector('h1')?.textContent).toContain('Para se të nisesh.');
     expect(page.querySelector('a[href="/sq/inquiry"]')).toBeTruthy();
     expect(page.querySelector('header a[href="/sq/garages"]')).toBeTruthy();
-    expect(page.querySelector('header a[href="/en"]')?.textContent).toContain('English');
-    expect(page.querySelector('header a[aria-current="page"]')?.textContent).toContain('Shqip');
+    const trigger = page.querySelector<HTMLButtonElement>(
+      'app-site-header app-language-switcher button[brnOverlayTrigger]',
+    )!;
+    trigger.click();
+    await fixture.whenRenderingDone();
+    const links = [...document.querySelectorAll<HTMLAnchorElement>('.cdk-overlay-container nav a')];
+    expect(links.find((link) => link.getAttribute('href') === '/en')?.textContent).toContain(
+      'English',
+    );
+    expect(
+      links.find((link) => link.getAttribute('aria-current') === 'page')?.textContent,
+    ).toContain('Shqip');
+    links[0].dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
+    await fixture.whenStable();
+    expect(document.querySelector('.cdk-overlay-container nav')).toBeNull();
   });
 
   it('keeps optional analytics a deliberate, reversible choice in the shared footer', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const page = fixture.nativeElement as HTMLElement;
-    const button = page.querySelector<HTMLButtonElement>('app-site-footer button')!;
+    const button = page.querySelector<HTMLButtonElement>(
+      'app-site-footer footer button[aria-pressed]',
+    )!;
     expect(analytics.setConsent).not.toHaveBeenCalled();
     button.click();
     await fixture.whenStable();

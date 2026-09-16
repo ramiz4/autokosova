@@ -81,7 +81,7 @@ it.each(['de', 'sq', 'en'] as const)(
     toggle.click();
     await vi.waitFor(() => expect(TestBed.inject(AccountSessionService).state()).toBe('ready'));
     await fixture.whenStable();
-    const overlayTrigger = page.querySelector<HTMLButtonElement>('button[brnOverlayTrigger]')!;
+    const overlayTrigger = accountTrigger(page);
     const panel = accountPanel()!;
     expect(overlayTrigger.getAttribute('aria-expanded')).toBe('true');
     expect(document.getElementById(overlayTrigger.getAttribute('aria-controls')!)).not.toBeNull();
