@@ -2,7 +2,7 @@
   <h3 [id]="id('label')" class="text-sm font-semibold">{{ ui('search.ui.place') }}</h3>
   @if (!areas.length) {
     <div class="flex items-start gap-2 text-sm">
-      <app-icon name="pin" class="mt-0.5 size-4 text-muted" />
+      <lucide-icon [name]="MapPinIcon" class="mt-0.5 size-4 text-muted" />
       <div>
         <p class="font-medium">{{ ui('search.ui.allLocations') }}</p>
       </div>
@@ -34,7 +34,7 @@
             >{{ placeLabel(area.placeId) }}
             <span class="whitespace-nowrap">· {{ area.radiusKm }} km</span></span
           >
-          <app-icon name="pencil" class="size-3.5" />
+          <lucide-icon [name]="PencilIcon" class="size-3.5" />
         </button>
         <button
           type="button"
@@ -43,7 +43,7 @@
           [attr.aria-label]="ui('search.ui.removeAreaLabel', { place: placeLabel(area.placeId) })"
           (click)="removeArea(areas.indexOf(area))"
         >
-          <app-icon name="close" class="size-3.5" />
+          <lucide-icon [name]="XIcon" class="size-3.5" />
         </button>
       </li>
     }
@@ -61,8 +61,8 @@
       </h4>
       <label [for]="id('area-place')" class="sr-only">{{ ui('search.ui.place') }}</label>
       <div class="relative">
-        <app-icon
-          name="pin"
+        <lucide-icon
+          [name]="MapPinIcon"
           class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted"
         />
         <select

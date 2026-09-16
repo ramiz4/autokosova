@@ -62,7 +62,7 @@
                 <div class="flex items-start gap-4">
                   <span
                     class="flex size-12 shrink-0 items-center justify-center rounded-full bg-blue-50 text-brand"
-                    ><app-icon name="user" class="size-6"
+                    ><lucide-icon [name]="UserIcon" class="size-6"
                   /></span>
                   <div class="min-w-0">
                     <h2 id="account-details-title" class="text-xl font-bold">
@@ -225,13 +225,17 @@
                     [routerLink]="language.link('onboarding')"
                     class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50"
                   >
-                    <app-icon name="wrench" class="size-4" />{{ language.t('account.myGarages') }}
+                    <lucide-icon [name]="WrenchIcon" class="size-4" />{{
+                      language.t('account.myGarages')
+                    }}
                   </a>
                 } @else {
                   <a
                     [routerLink]="language.link('inquiries')"
                     class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50"
-                    ><app-icon name="wrench" class="size-4" />{{ language.t('nav.myRequests') }}</a
+                    ><lucide-icon [name]="MessageCircleIcon" class="size-4" />{{
+                      language.t('nav.myRequests')
+                    }}</a
                   >
                 }
                 <a
@@ -244,7 +248,9 @@
                   data-account-favorites
                   [routerLink]="language.link('favorites')"
                   class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
-                  ><app-icon name="heart" class="size-4" />{{ language.t('nav.favorites') }}</a
+                  ><lucide-icon [name]="HeartIcon" class="size-4" />{{
+                    language.t('nav.favorites')
+                  }}</a
                 >
               </nav>
               <section

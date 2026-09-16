@@ -50,14 +50,14 @@
             (click)="togglePanel('account')"
           >
             <span class="flex size-8 items-center justify-center rounded-full bg-white shadow-sm"
-              ><app-icon name="user" class="size-4.5"
+              ><lucide-icon [name]="UserIcon" class="size-4.5"
             /></span>
             @if (account.signedIn()) {
               <span class="hidden max-w-36 truncate text-sm font-semibold sm:block">{{
                 account.displayName()
               }}</span>
             }
-            <app-icon name="chevron-down" class="hidden size-4 sm:block" />
+            <lucide-icon [name]="ChevronDownIcon" class="hidden size-4 sm:block" />
           </button>
         </div>
       } @else {
@@ -75,7 +75,7 @@
         aria-controls="mobile-navigation"
         (click)="toggleMenu()"
       >
-        <app-icon [name]="menuOpen() ? 'close' : 'menu'" class="size-6" />
+        <lucide-icon [name]="menuIcon()" class="size-6" />
       </button>
     </div>
   </div>
@@ -106,7 +106,7 @@
           <div class="flex items-start gap-3">
             <span
               class="flex size-10 shrink-0 items-center justify-center rounded-full bg-white text-brand shadow-sm"
-              ><app-icon name="user" class="size-5"
+              ><lucide-icon [name]="UserIcon" class="size-5"
             /></span>
             <div class="min-w-0">
               <p class="text-xs font-medium text-muted">{{ language.t('account.signedInAs') }}</p>
@@ -149,7 +149,9 @@
           [routerLink]="language.link('profile')"
           (click)="closeMenu()"
           class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
-          ><app-icon name="user" class="size-4.5" />{{ language.t('account.profileTitle') }}</a
+          ><lucide-icon [name]="UserIcon" class="size-4.5" />{{
+            language.t('account.profileTitle')
+          }}</a
         >
         @if (account.signedIn()) {
           @for (role of ['admin', 'moderation']; track role) {
@@ -163,10 +165,14 @@
                 (click)="closeMenu()"
                 [attr.aria-current]="active() === role ? 'page' : null"
                 class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
-                ><app-icon [name]="role === 'admin' ? 'settings' : 'shield'" class="size-4.5" />{{
+              >
+                <lucide-icon
+                  [name]="role === 'admin' ? SettingsIcon : ShieldCheckIcon"
+                  class="size-4.5"
+                />{{
                   role === 'admin'
-                    ? staffCopy(language.language).admin
-                    : staffCopy(language.language).moderation
+                    ? accountNavigationCopy(language.language).admin
+                    : accountNavigationCopy(language.language).moderation
                 }}</a
               >
             }
@@ -179,7 +185,9 @@
               [attr.aria-current]="active() === 'garage' ? 'page' : null"
               class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
             >
-              <app-icon name="wrench" class="size-4.5" />{{ language.t('account.myGarages') }}
+              <lucide-icon [name]="WrenchIcon" class="size-4.5" />{{
+                language.t('account.myGarages')
+              }}
             </a>
           } @else {
             <a
@@ -189,7 +197,9 @@
               [attr.aria-current]="active() === 'inquiries' ? 'page' : null"
               [class.bg-blue-50]="active() === 'inquiries'"
               class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
-              ><app-icon name="message" class="size-4.5" />{{ language.t('nav.myRequests') }}</a
+              ><lucide-icon [name]="MessageCircleIcon" class="size-4.5" />{{
+                language.t('nav.myRequests')
+              }}</a
             >
           }
           <a
@@ -199,7 +209,9 @@
             [attr.aria-current]="active() === 'reviews' ? 'page' : null"
             [class.bg-blue-50]="active() === 'reviews'"
             class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
-            ><app-icon name="star" class="size-4.5" />{{ reviewLabel('own', language.language) }}</a
+            ><lucide-icon [name]="StarIcon" class="size-4.5" />{{
+              accountNavigationCopy(language.language).reviews
+            }}</a
           >
           <a
             data-account-favorites
@@ -208,7 +220,7 @@
             [class.bg-blue-50]="active() === 'favorites'"
             (click)="closeMenu()"
             class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
-            ><app-icon name="heart" class="size-4.5" />{{ language.t('nav.favorites') }}</a
+            ><lucide-icon [name]="HeartIcon" class="size-4.5" />{{ language.t('nav.favorites') }}</a
           >
         }
       </div>
@@ -222,7 +234,7 @@
           [disabled]="account.busy()"
           (click)="logout()"
         >
-          <app-icon name="close" class="size-4.5" />{{ language.t('account.logout') }}
+          <lucide-icon [name]="XIcon" class="size-4.5" />{{ language.t('account.logout') }}
         </button>
       }
       @if (logoutError()) {

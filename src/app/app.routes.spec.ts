@@ -37,3 +37,36 @@ it.each(['', 'sq', 'en'])('redirects old German links to English paths for /%s',
   await router.navigateByUrl(base + '/suche?service=bremsen&places=xk-pristina:20');
   expect(router.url).toBe(base + '/garages?service=bremsen&places=xk-pristina:20');
 });
+
+// Non-landing pages must not pull their component code into the initial shell.
+describe.each(['', 'sq', 'en'])('Route bundle boundaries for /%s', (locale) => {
+  const prefix = locale ? `${locale}/` : '';
+
+  it('keeps the landing page eager without eagerly loading feature pages', () => {
+    expect(routes.find((route) => route.path === locale)?.component).toBeDefined();
+    expect(routes.filter((route) => route.component).map((route) => route.path)).toEqual([
+      '',
+      'sq',
+      'en',
+    ]);
+  });
+
+  it.each([
+    ['monetization', () => import('./monetization.component').then((m) => m.MonetizationComponent)],
+    ['inquiry', () => import('./repair-request.component').then((m) => m.RepairRequestComponent)],
+    ['garages', () => import('./search-handoff.component').then((m) => m.SearchHandoffComponent)],
+    [
+      'garages/:garageId',
+      () => import('./garage-profile.component').then((m) => m.GarageProfileComponent),
+    ],
+  ] as const)('loads %s on demand', async (path, expectedComponent) => {
+    const route = routes.find((candidate) => candidate.path === prefix + path)!;
+    expect(route.component).toBeUndefined();
+    expect(route.loadComponent).toBeTypeOf('function');
+    expect(await route.loadComponent!()).toBe(await expectedComponent());
+    if (path === 'garages/:garageId') {
+      expect(route.canDeactivate).toHaveLength(1);
+      expect(route.data?.['ownsFooter']).toBe(true);
+    }
+  });
+});

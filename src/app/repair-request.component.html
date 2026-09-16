@@ -104,46 +104,7 @@
                       )
                     "
                   >
-                    <svg
-                      viewBox="0 0 48 32"
-                      class="h-8 w-12"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      aria-hidden="true"
-                    >
-                      @switch (kind) {
-                        @case ('motorcycle') {
-                          <path d="M12 23h21L23 9h9l5 14M15 12h8l-11 11M28 5h6l3 7" />
-                          <circle cx="10" cy="24" r="6" />
-                          <circle cx="38" cy="24" r="6" />
-                        }
-                        @case ('van') {
-                          <path
-                            d="M4 23V6h24v17M28 12h8l7 8v5h-6M28 25H15M4 25h3M31 15h4l5 5h-9Z"
-                          />
-                          <circle cx="11" cy="25" r="4" />
-                          <circle cx="33" cy="25" r="4" />
-                        }
-                        @case ('camper') {
-                          <path d="M3 24V5h29v7h7l5 9v4h-7M15 25h14M7 10h9v7H7Zm15 0h6v7h-6Z" />
-                          <circle cx="11" cy="25" r="4" />
-                          <circle cx="33" cy="25" r="4" />
-                        }
-                        @case ('suv') {
-                          <path
-                            d="M4 24V15l7-9h20l7 10 6 3v6h-7M15 25h14M12 9l-4 7h27L29 9M22 8v8"
-                          />
-                          <circle cx="11" cy="25" r="4" />
-                          <circle cx="33" cy="25" r="4" />
-                        }
-                        @default {
-                          <path d="M4 24v-7l7-3 7-8h13l8 10 5 3v6h-7M15 25h14M13 14h24M24 7v7" />
-                          <circle cx="11" cy="25" r="4" />
-                          <circle cx="33" cy="25" r="4" />
-                        }
-                      }</svg
-                    >{{ text(kind) }}
+                    <lucide-icon [name]="vehicleIcons[kind]" class="h-8 w-12" />{{ text(kind) }}
                   </button>
                 }
               </div>
@@ -394,7 +355,7 @@
               [disabled]="step === 3 && areasEditing()"
               (click)="next()"
             >
-              {{ language.t('request.next') }}<app-icon name="arrow" class="size-5" />
+              {{ language.t('request.next') }}<lucide-icon [name]="ArrowRightIcon" class="size-5" />
             </button>
           } @else {
             <button
@@ -403,7 +364,8 @@
               class="order-3 col-span-2 min-w-0 max-sm:gap-2 max-sm:px-3 max-sm:text-sm sm:ml-auto"
               (click)="search()"
             >
-              {{ language.t('request.search') }}<app-icon name="arrow" class="size-5" />
+              {{ language.t('request.search')
+              }}<lucide-icon [name]="ArrowRightIcon" class="size-5" />
             </button>
           }
         </div>
@@ -435,7 +397,7 @@
             <div class="flex items-start gap-4">
               <span
                 class="flex size-14 shrink-0 items-center justify-center rounded-full bg-blue-100 text-brand"
-                ><app-icon [name]="benefit[0]" class="size-8"
+                ><lucide-icon [name]="benefit[0]" class="size-8"
               /></span>
               <div>
                 <h3 class="text-base leading-5 font-semibold">{{ text(benefit[1]) }}</h3>
@@ -448,7 +410,7 @@
       <section
         class="flex gap-4 rounded-2xl border border-white/85 bg-white/87 p-5 shadow-xl shadow-blue-100/40 backdrop-blur-sm"
       >
-        <app-icon name="shield" class="size-9 text-brand" />
+        <lucide-icon [name]="ShieldCheckIcon" class="size-9 text-brand" />
         <div>
           <h2 class="font-semibold text-brand">{{ text('privacy') }}</h2>
           <p class="mt-2 text-sm leading-5 text-muted">{{ text('privacyHelp') }}</p>
@@ -460,7 +422,7 @@
     <div class="mx-auto grid max-w-[1360px] gap-5 text-sm sm:grid-cols-3">
       @for (item of footerBenefits; track $index) {
         <p class="flex items-center gap-5 sm:justify-center">
-          <app-icon [name]="item[0]" class="size-9" />{{ text(item[1]) }}
+          <lucide-icon [name]="item[0]" class="size-9" />{{ text(item[1]) }}
         </p>
       }
     </div>

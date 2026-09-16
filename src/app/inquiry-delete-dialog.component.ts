@@ -1,3 +1,4 @@
+import { LucideTrash2, type LucideIcon } from '@lucide/angular';
 import { DOCUMENT } from '@angular/common';
 import {
   Component,
@@ -15,11 +16,11 @@ import { inquiriesCopy, type InquiriesCopyKey } from '../shared/inquiries-copy';
 import { LanguageService } from './language.service';
 import { SavedRepairRequestsService } from './saved-repair-requests.service';
 import { ButtonDirective } from './ui/button.directive';
-import { IconComponent } from './ui/icon.component';
+import { LucideIconComponent } from './ui/lucide-icon.component';
 
 @Component({
   selector: 'app-inquiry-delete-dialog',
-  imports: [ButtonDirective, IconComponent],
+  imports: [ButtonDirective, LucideIconComponent],
   styleUrl: './inquiry-dialog.scss',
   template: ` <dialog
     #dialog
@@ -33,7 +34,7 @@ import { IconComponent } from './ui/icon.component';
         <p class="eyebrow">{{ language.serviceLabel(request().serviceCategoryId) }}</p>
         <h2 id="inquiry-delete-title">{{ text('deleteTitle') }}</h2>
       </div>
-      <app-icon name="trash" class="size-6 text-rose-700" />
+      <lucide-icon [name]="TrashIcon" class="size-6 text-rose-700" />
     </header>
     <div class="dialog-body">
       <div id="inquiry-delete-summary" class="mb-4" data-delete-summary>
@@ -78,6 +79,8 @@ import { IconComponent } from './ui/icon.component';
   </dialog>`,
 })
 export class InquiryDeleteDialogComponent {
+  readonly TrashIcon: LucideIcon = LucideTrash2;
+
   readonly request = input.required<RepairRequestSummary>();
   readonly closed = output<void>();
   protected readonly saved = inject(SavedRepairRequestsService);

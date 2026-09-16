@@ -51,7 +51,7 @@
           [attr.data-card]="card.id"
           [attr.aria-labelledby]="'monetization-' + card.id"
         >
-          <app-icon [name]="card.icon" class="size-8 text-brand-dark" />
+          <lucide-icon [name]="card.icon" class="size-8 text-brand-dark" />
           <h2 [id]="'monetization-' + card.id" class="mt-4 text-2xl font-bold">
             {{ copy.cards[card.id].title }}
           </h2>
@@ -59,14 +59,14 @@
           <ul class="my-6 grid gap-3">
             @for (point of copy.cards[card.id].points; track point) {
               <li class="flex items-start gap-3">
-                <app-icon name="check" class="mt-0.5 size-5 text-brand-dark" />
+                <lucide-icon [name]="CheckIcon" class="mt-0.5 size-5 text-brand-dark" />
                 <span>{{ point }}</span>
               </li>
             }
           </ul>
           <div class="mt-auto pt-2">
             <a appButton="outline" [routerLink]="language.link(card.route)" class="max-w-full">
-              {{ copy.cards[card.id].action }}<app-icon name="arrow" class="size-5" />
+              {{ copy.cards[card.id].action }}<lucide-icon [name]="ArrowRightIcon" class="size-5" />
             </a>
           </div>
         </article>
@@ -79,7 +79,7 @@
       class="mt-10 rounded-2xl bg-blue-50 p-6 sm:p-8"
       aria-labelledby="monetization-principles-title"
     >
-      <app-icon name="shield" class="size-8 text-brand-dark" />
+      <lucide-icon [name]="ShieldCheckIcon" class="size-8 text-brand-dark" />
       <h2 id="monetization-principles-title" class="mt-4 text-2xl font-bold">
         {{ copy.principlesTitle }}
       </h2>
@@ -87,7 +87,7 @@
       <p class="mt-4 leading-relaxed text-muted">{{ copy.verificationNotice }}</p>
       <p class="mt-4 leading-relaxed text-muted">{{ copy.contactNotice }}</p>
       <a appButton [routerLink]="language.link('search')" class="mt-6 max-w-full">
-        {{ copy.searchAction }}<app-icon name="arrow" class="size-5" />
+        {{ copy.searchAction }}<lucide-icon [name]="ArrowRightIcon" class="size-5" />
       </a>
     </section>
   </div>

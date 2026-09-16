@@ -1,10 +1,11 @@
+import { LucideChevronDown, type LucideIcon } from '@lucide/angular';
 import { Component, inject, input } from '@angular/core';
 import { LanguageService } from './language.service';
-import { IconComponent } from './ui/icon.component';
+import { LucideIconComponent } from './ui/lucide-icon.component';
 
 @Component({
   selector: 'app-language-switcher',
-  imports: [IconComponent],
+  imports: [LucideIconComponent],
   template: `
     @if (compact()) {
       <details
@@ -18,7 +19,7 @@ import { IconComponent } from './ui/icon.component';
           [attr.aria-label]="language.t('a11y.language')"
         >
           <span class="block leading-none">{{ language.language.toUpperCase() }}</span>
-          <app-icon name="chevron-down" class="size-4" />
+          <lucide-icon [name]="ChevronDownIcon" class="size-4" />
         </summary>
         <nav
           class="absolute right-0 z-30 min-w-32 rounded-xl border border-blue-100 bg-white p-2 shadow-xl"
@@ -55,6 +56,8 @@ import { IconComponent } from './ui/icon.component';
   `,
 })
 export class LanguageSwitcherComponent {
+  readonly ChevronDownIcon: LucideIcon = LucideChevronDown;
+
   readonly compact = input(false);
   readonly placement = input<'above' | 'below'>('below');
   protected readonly language = inject(LanguageService);
