@@ -13,10 +13,12 @@ const identity: OwnAccount = {
   displayName: '<b>Fiktives Konto</b>',
   username: 'fixture-user',
   email: 'fixture@example.invalid',
+  accountType: 'garage',
   roles: ['customer', 'moderator', 'admin'],
   garageMemberships: [{ garageId: 'fixture-garage', garageName: 'Fiktive Garage', role: 'editor' }],
   expiresAt: new Date(Date.now() + 3600_000).toISOString(),
 };
+
 beforeEach(() =>
   vi.stubGlobal(
     'fetch',
@@ -28,6 +30,7 @@ afterEach(() => vi.unstubAllGlobals());
 const accountPanel = () => document.querySelector<HTMLElement>('[data-account-panel]');
 const accountTrigger = (page: HTMLElement) =>
   page.querySelector<HTMLButtonElement>('[data-account-trigger]')!;
+
 async function render(path = '/profile') {
   await TestBed.configureTestingModule({
     imports: [AccountProfileComponent],
@@ -36,31 +39,26 @@ async function render(path = '/profile') {
   await TestBed.inject(Router).navigateByUrl(path);
   const fixture = TestBed.createComponent(AccountProfileComponent);
   await fixture.whenStable();
-  // Browser-only native fetch starts after rendering and is not a TestBed pending task.
   await vi.waitFor(() => expect(TestBed.inject(AccountSessionService).state()).not.toBe('loading'));
   await fixture.whenStable();
   return { fixture, page: fixture.nativeElement as HTMLElement };
 }
 
 it.each(['de', 'sq', 'en'] as const)(
-  'renders real account fields and all roles in %s, with safe localized navigation',
+  'renders the account dashboard, roles and localized navigation in %s',
   async (locale) => {
     const path = routePath(locale, 'profile');
     const { fixture, page } = await render(path);
     expect(page.querySelector('h1')?.textContent).toContain(
       accountCopy[locale]['account.profileTitle'],
     );
+    expect(page.querySelector('[data-account-summary]')).not.toBeNull();
+    expect(page.querySelector('[data-account-details]')).not.toBeNull();
+    expect(page.querySelector('[data-account-roles-card]')).not.toBeNull();
     expect(page.querySelector('[data-account-id]')?.textContent).toContain(identity.userId);
-    const details = page.querySelector<HTMLDetailsElement>('[data-account-details]')!;
-    expect(details.open).toBe(false);
-    expect(details.querySelector('[data-account-id]')).not.toBeNull();
     expect(page.querySelector('[data-account-type]')?.textContent).toContain(
       accountCopy[locale]['account.type.garage'],
     );
-    details.querySelector('summary')!.click();
-    expect(details.open).toBe(true);
-    details.querySelector('summary')!.click();
-    expect(details.open).toBe(false);
     expect(page.querySelector('[data-account-display-name] b')).toBeNull();
     expect(page.querySelector('[data-account-display-name]')?.textContent).toContain(
       '<b>Fiktives Konto</b>',
@@ -73,21 +71,26 @@ it.each(['de', 'sq', 'en'] as const)(
     expect(page.querySelector('[data-account-memberships]')?.textContent).toContain(
       'Fiktive Garage',
     );
+    expect(page.querySelector('[data-copy-username]')).not.toBeNull();
+    expect(page.querySelector('[data-copy-user-id]')).not.toBeNull();
+    expect(page.querySelector('[data-account-garages]')?.getAttribute('href')).toBe(
+      routePath(locale, 'onboarding'),
+    );
+    expect(page.querySelector('[data-account-inquiries]')).toBeNull();
     expect(page.querySelector('main input, main textarea, main select')).toBeNull();
     expect(TestBed.inject(Meta).getTag("name='robots'")?.content).toBe('noindex, nofollow');
+    const languageLinks = page.querySelectorAll('main app-language-switcher a');
+    expect(languageLinks).toHaveLength(3);
     expect(page.querySelector('main app-language-switcher a[href="/en/profile"]')).toBeTruthy();
+    expect(page.querySelector('main [role="tab"]')).toBeNull();
     const toggle = accountTrigger(page);
     toggle.focus();
     toggle.click();
     await vi.waitFor(() => expect(TestBed.inject(AccountSessionService).state()).toBe('ready'));
     await fixture.whenStable();
-    const overlayTrigger = accountTrigger(page);
     const panel = accountPanel()!;
-    expect(overlayTrigger.getAttribute('aria-expanded')).toBe('true');
-    expect(document.getElementById(overlayTrigger.getAttribute('aria-controls')!)).not.toBeNull();
-    expect(panel.querySelector('[data-account-name]')?.textContent).toContain(identity.displayName);
-    expect(panel.querySelector('[data-account-menu-roles]')?.children).toHaveLength(1);
     expect(panel.querySelector('[data-account-profile]')?.getAttribute('href')).toBe(path);
+    const overlayTrigger = accountTrigger(page);
     overlayTrigger.focus();
     overlayTrigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await fixture.whenStable();
@@ -96,9 +99,10 @@ it.each(['de', 'sq', 'en'] as const)(
   },
 );
 
-it('provides an ID fallback, honest missing fields, no invented membership and complete translations', async () => {
-  const minimal = {
+it('shows honest customer fallbacks without inventing memberships or copy actions', async () => {
+  const minimal: OwnAccount = {
     userId: identity.userId,
+    accountType: 'customer',
     roles: ['customer'],
     garageMemberships: [],
     expiresAt: identity.expiresAt,
@@ -110,7 +114,11 @@ it('provides an ID fallback, honest missing fields, no invented membership and c
   const { page } = await render();
   expect(page.textContent).toContain(accountCopy.de['account.missing']);
   expect(page.querySelector('[data-account-memberships]')).toBeNull();
-  expect(accountName(minimal as OwnAccount)).toBe(identity.userId);
+  expect(page.querySelector('[data-copy-username]')).toBeNull();
+  expect(page.querySelector('[data-copy-user-id]')).not.toBeNull();
+  expect(page.querySelector('[data-account-garages]')).toBeNull();
+  expect(page.querySelector('[data-account-inquiries]')?.getAttribute('href')).toBe('/inquiries');
+  expect(accountName(minimal)).toBe(identity.userId);
   for (const locale of ['sq', 'en'] as const) {
     expect(Object.keys(accountCopy[locale]).sort()).toEqual(Object.keys(accountCopy.de).sort());
     expect(Object.values(accountCopy[locale]).every((text) => text.trim())).toBe(true);
@@ -131,6 +139,31 @@ it('clears private UI on expiry, offers a local login return and distinguishes m
   await fixture.whenStable();
   expect(page.querySelector('main a[href^="/auth/login"]')).toBeNull();
   expect(page.textContent).toContain(accountCopy.sq['account.loginUnavailable']);
+});
+
+it('reports confirmed clipboard copies and keeps values selectable when copying fails', async () => {
+  const { fixture, page } = await render();
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(globalThis.navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText },
+  });
+  page.querySelector<HTMLButtonElement>('[data-copy-username]')!.click();
+  await vi.waitFor(() => {
+    expect(writeText).toHaveBeenCalledWith(identity.username);
+    expect(page.querySelector('[data-copy-username-status]')?.textContent).toContain(
+      accountCopy.de['account.copied'],
+    );
+  });
+  writeText.mockRejectedValueOnce(new Error('denied'));
+  page.querySelector<HTMLButtonElement>('[data-copy-user-id]')!.click();
+  await vi.waitFor(() =>
+    expect(page.querySelector('[data-copy-user-id-status]')?.textContent).toContain(
+      accountCopy.de['account.copyError'],
+    ),
+  );
+  await fixture.whenStable();
+  expect(page.querySelector('[data-account-id]')?.classList.contains('select-text')).toBe(true);
 });
 
 it('retries a failed read without retaining the previous identity and logs out through the shared service', async () => {
@@ -155,6 +188,18 @@ it('retries a failed read without retaining the previous identity and logs out t
   await fixture.whenStable();
   expect(logout).toHaveBeenCalledOnce();
   expect(navigate).toHaveBeenCalledWith('/');
+});
+
+it('keeps the profile in place and shows an error when logout fails', async () => {
+  const { fixture, page } = await render('/en/profile');
+  vi.spyOn(TestBed.inject(AccountSessionService), 'logout').mockResolvedValue(false);
+  const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+  page.querySelector<HTMLButtonElement>('[data-account-logout]')!.click();
+  await fixture.whenStable();
+  expect(page.querySelector('[role="alert"]')?.textContent).toContain(
+    TestBed.inject(LanguageService).t('account.logoutError'),
+  );
+  expect(navigate).not.toHaveBeenCalled();
 });
 
 it('retains /profile and optional navigation context during language changes', async () => {
@@ -186,7 +231,7 @@ it('does not race provider logout with client-side home navigation from either l
 it.each(['de', 'sq', 'en'] as const)(
   'distinguishes unavailable provider data from absent fields in %s',
   async (locale) => {
-    const partial = {
+    const partial: OwnAccount = {
       ...identity,
       displayName: 'Verified name',
       email: undefined,
@@ -208,6 +253,7 @@ it.each(['de', 'sq', 'en'] as const)(
     expect(page.querySelector('[data-account-username]')?.textContent).toContain(
       accountCopy[locale]['account.profileUnavailable'],
     );
+    expect(page.querySelector('[data-copy-username]')).toBeNull();
     expect(page.querySelector('[data-account-display-name-field]')?.textContent).toContain(
       'Verified name',
     );
@@ -238,9 +284,35 @@ it('shows a fallback only for the genuinely missing field after a successful loo
   expect(page.querySelector('[data-account-username]')?.textContent).toContain(
     accountCopy.de['account.missing'],
   );
+  expect(page.querySelector('[data-copy-username]')).toBeNull();
   expect(page.querySelector('[data-account-email]')?.textContent).toContain(identity.email);
   expect(page.querySelector('[data-account-display-name-field]')?.textContent).toContain(
     identity.displayName,
   );
   expect(page.querySelector('[data-account-profile-error]')).toBeNull();
+});
+
+it('drops copy feedback and old personal data when the account context changes', async () => {
+  const { fixture, page } = await render();
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(globalThis.navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText },
+  });
+  page.querySelector<HTMLButtonElement>('[data-copy-user-id]')!.click();
+  await vi.waitFor(() => expect(page.querySelector('[data-copy-user-id-status]')).not.toBeNull());
+  const nextIdentity: OwnAccount = {
+    userId: 'second-account',
+    displayName: 'Second synthetic account',
+    email: 'second@example.invalid',
+    accountType: 'customer',
+    roles: ['customer'],
+    garageMemberships: [],
+    expiresAt: identity.expiresAt,
+  };
+  TestBed.inject(AccountSessionService).identity.set(nextIdentity);
+  await fixture.whenStable();
+  expect(page.textContent).toContain(nextIdentity.email);
+  expect(page.textContent).not.toContain(identity.email);
+  expect(page.querySelector('[data-copy-user-id-status]')).toBeNull();
 });

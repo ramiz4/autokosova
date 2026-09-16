@@ -48,6 +48,20 @@ import { LucideIconComponent } from './ui/lucide-icon.component';
           </nav>
         </ng-template>
       </brn-overlay>
+    } @else if (segmented()) {
+      <nav
+        class="grid grid-cols-3 gap-1 rounded-xl bg-slate-50 p-1 text-sm font-semibold"
+        [attr.aria-label]="language.t('a11y.language')"
+      >
+        @for (item of language.languages; track item) {
+          <a
+            [attr.aria-current]="language.language === item ? 'page' : null"
+            [href]="language.switchUrl(item)"
+            class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 py-1 text-slate-600 no-underline hover:bg-white hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-brand aria-[current=page]:bg-white aria-[current=page]:text-brand aria-[current=page]:shadow-sm"
+            >{{ item.toUpperCase() }}</a
+          >
+        }
+      </nav>
     } @else {
       <nav
         class="flex items-center gap-2 text-sm font-semibold"
@@ -69,6 +83,7 @@ export class LanguageSwitcherComponent {
   readonly ChevronDownIcon: LucideIcon = LucideChevronDown;
 
   readonly compact = input(false);
+  readonly segmented = input(false);
   readonly placement = input<'above' | 'below'>('below');
   protected readonly state = signal<'closed' | 'open'>('closed');
   protected readonly positions = computed<ConnectedPosition[]>(() => {
