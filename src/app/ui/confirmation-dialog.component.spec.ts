@@ -68,3 +68,19 @@ it('does not let a stale close settle a newer decision', async () => {
   (component as unknown as { closed(answer: unknown): void }).closed(true);
   await expect(second).resolves.toBe(true);
 });
+
+it('keeps the title and both decisions outside the scrollable description', async () => {
+  const { component, fixture } = await render();
+  const pending = component.ask({ ...request, description: request.description.repeat(100) });
+  fixture.detectChanges();
+  await fixture.whenStable();
+  const panel = document.querySelector('[data-confirmation-dialog]')!;
+  const body = panel.querySelector('.app-dialog-body')!;
+  expect(panel.classList.contains('app-dialog-panel')).toBe(true);
+  expect(panel.querySelector('.app-dialog-header h2')?.textContent).toContain(request.title);
+  expect(body.textContent).toContain(request.description);
+  expect(body.querySelector('h2, button')).toBeNull();
+  expect(panel.querySelectorAll('.app-dialog-footer button')).toHaveLength(2);
+  panel.querySelector<HTMLButtonElement>('[data-confirmation-cancel]')!.click();
+  await expect(pending).resolves.toBe(false);
+});

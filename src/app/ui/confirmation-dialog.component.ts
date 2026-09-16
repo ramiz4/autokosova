@@ -47,17 +47,24 @@ export interface ConfirmationRequest {
         @let content = request();
         @if (content) {
           <section
-            class="w-[min(760px,calc(100vw-24px))] max-h-[calc(100dvh-24px)] overflow-y-auto rounded-[20px] border border-[#dbe5f2] bg-white p-[26px] text-ink shadow-[0_24px_100px_#07143e35]"
+            data-confirmation-dialog
+            class="app-dialog-panel w-[min(760px,calc(100vw-24px))] max-h-[calc(100dvh-24px)] rounded-[20px] border border-[#dbe5f2] bg-white text-ink shadow-[0_24px_100px_#07143e35]"
             (keydown.escape)="$event.preventDefault(); $event.stopPropagation(); choose(false)"
           >
-            <h2 brnAlertDialogTitle class="text-2xl font-bold">{{ content.title }}</h2>
-            <p
-              brnAlertDialogDescription
-              class="mt-4 whitespace-pre-line text-sm leading-[1.65] text-muted"
+            <header class="app-dialog-header px-[26px] pt-[26px]">
+              <h2 brnAlertDialogTitle class="text-2xl font-bold">{{ content.title }}</h2>
+            </header>
+            <div class="app-dialog-body px-[26px] pt-4">
+              <p
+                brnAlertDialogDescription
+                class="whitespace-pre-line text-sm leading-[1.65] text-muted"
+              >
+                {{ content.description }}
+              </p>
+            </div>
+            <footer
+              class="app-dialog-footer flex flex-wrap justify-end gap-[10px] px-[26px] pt-[18px] pb-[26px]"
             >
-              {{ content.description }}
-            </p>
-            <div class="mt-[18px] flex flex-wrap justify-end gap-[10px]">
               <button
                 type="button"
                 appButton="outline"
@@ -76,7 +83,7 @@ export interface ConfirmationRequest {
               >
                 {{ content.confirmLabel }}
               </button>
-            </div>
+            </footer>
           </section>
         }
       </ng-template>

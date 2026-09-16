@@ -1,0 +1,30 @@
+// Layout only: each dialog keeps its own viewport limit, spacing and visual tokens.
+// Do not override the user-agent display:none on a closed native dialog.
+.app-dialog-panel:not(dialog),
+dialog.app-dialog-panel[open] {
+  display: flex;
+  flex-direction: column;
+}
+.app-dialog-panel,
+.app-dialog-form {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.app-dialog-form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+.app-dialog-header,
+.app-dialog-footer {
+  flex: none;
+}
+.app-dialog-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  overflow-wrap: anywhere;
+}
