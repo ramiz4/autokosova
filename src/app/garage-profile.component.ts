@@ -150,7 +150,7 @@ export class GarageProfileComponent {
   }
   protected async reviewPageChanged(page: number): Promise<void> {
     if (!(await this.canLeave())) return;
-    await this.loadReviews(this.profile?.id, undefined, page);
+    await this.loadReviewsPage(this.profile?.id, undefined, page);
   }
 
   private readonly account = inject(AccountSessionService);
@@ -460,6 +460,15 @@ export class GarageProfileComponent {
   ): Promise<void> {
     if ((!this.browser && !requestUrl) || !garageId) return;
     if (this.browser && !(await this.canLeave())) return;
+    await this.loadReviewsPage(garageId, requestUrl, page);
+  }
+
+  private async loadReviewsPage(
+    garageId = this.profile?.id,
+    requestUrl?: string,
+    page = 1,
+  ): Promise<void> {
+    if ((!this.browser && !requestUrl) || !garageId) return;
     this.contributionDrafts.clear();
     const generation = ++this.reviewGeneration;
     this.reviewController?.abort();

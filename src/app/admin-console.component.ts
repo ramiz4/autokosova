@@ -659,33 +659,39 @@ export class AdminConsoleComponent {
     const detail = this.detail();
     if (!detail || !this.fromUserId || !this.targetUserId || this.fromUserId === this.targetUserId)
       return;
+    const transfer = {
+      context: this.account.dataContext(),
+      detail,
+      fromUserId: this.fromUserId,
+      targetUserId: this.targetUserId,
+    };
     if (
       !(await this.confirm(
         this.transferConfirmation(
-          detail.name,
-          this.memberLabel(this.fromUserId),
-          this.memberLabel(this.targetUserId),
+          transfer.detail.name,
+          this.memberLabel(transfer.fromUserId),
+          this.memberLabel(transfer.targetUserId),
         ),
         this.label('transfer'),
       ))
     )
       return;
     if (
-      this.detail() !== detail ||
+      this.account.dataContext() !== transfer.context ||
+      this.detail() !== transfer.detail ||
       this.busy() ||
       !this.allowed() ||
       this.stale() ||
-      !this.fromUserId ||
-      !this.targetUserId ||
-      this.fromUserId === this.targetUserId
+      this.fromUserId !== transfer.fromUserId ||
+      this.targetUserId !== transfer.targetUserId
     )
       return;
     await this.garageMutation(
       'ownership',
       'ownership_change',
       {
-        fromUserId: this.fromUserId,
-        toUserId: this.targetUserId,
+        fromUserId: transfer.fromUserId,
+        toUserId: transfer.targetUserId,
       },
       'ownershipTransferred',
     );
@@ -928,19 +934,40 @@ export class AdminConsoleComponent {
     return `${this.link('privacy')}?${query}`;
   }
   async savePolicy() {
+    if (!this.validPolicy()) return;
+    const policy = {
+      context: this.account.dataContext(),
+      version: this.policyVersion.trim(),
+      approvalReference: this.approvalReference.trim(),
+      publicReviewHandling: this.publicReviewHandling,
+      days: { ...this.days },
+    };
+    if (!(await this.confirm(this.label('approvalAttestation'), this.label('savePolicy')))) return;
     if (
-      !this.validPolicy() ||
-      !(await this.confirm(this.label('approvalAttestation'), this.label('savePolicy')))
+      this.account.dataContext() !== policy.context ||
+      this.busy() ||
+      !this.allowed() ||
+      this.stale() ||
+      this.policyVersion.trim() !== policy.version ||
+      this.approvalReference.trim() !== policy.approvalReference ||
+      this.publicReviewHandling !== policy.publicReviewHandling ||
+      this.policySnapshot() !==
+        JSON.stringify({
+          version: policy.version,
+          approval: policy.approvalReference,
+          handling: policy.publicReviewHandling,
+          confirmed: true,
+          days: policy.days,
+        })
     )
       return;
-    if (!this.validPolicy() || this.busy() || !this.allowed() || this.stale()) return;
     await this.mutate(
       '/api/admin/lifecycle/retention-policy',
       {
-        version: this.policyVersion.trim(),
-        operatorApprovalReference: this.approvalReference.trim(),
-        publicReviewHandling: this.publicReviewHandling,
-        ...this.days,
+        version: policy.version,
+        operatorApprovalReference: policy.approvalReference,
+        publicReviewHandling: policy.publicReviewHandling,
+        ...policy.days,
       },
       async () => {
         this.approvalConfirmed = false;

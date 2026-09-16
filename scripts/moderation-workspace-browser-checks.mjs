@@ -47,10 +47,12 @@ export async function checkModerationWorkspace({ browser, client, login, output 
     throw new Error('Authorized case missing from bounded demo list');
   }
   async function confirmSubmit(accept = true, selector = '[data-submit-decision]') {
-    const click = browser.click(selector);
-    await new Promise((done) => setTimeout(done, 100));
-    await browser.command('Page.handleJavaScriptDialog', { accept });
-    await click;
+    await browser.click(selector);
+    await until(
+      () => browser.evaluate('!!document.querySelector("[data-confirmation-confirm]")'),
+      'staff decision confirmation',
+    );
+    await browser.click(accept ? '[data-confirmation-confirm]' : '[data-confirmation-cancel]');
     if (accept)
       await until(
         () => browser.evaluate('!!document.querySelector("[data-staff-case] [role=status]")'),

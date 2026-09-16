@@ -56,3 +56,15 @@ it('fails closed when destroyed before its overlay opens', async () => {
   fixture.destroy();
   await expect(pending).resolves.toBe(false);
 });
+
+it('does not let a stale close settle a newer decision', async () => {
+  const { component } = await render();
+  const first = component.ask(request);
+  component.cancelPending();
+  await expect(first).resolves.toBe(false);
+  await expect(component.ask(request)).resolves.toBe(false);
+  (component as unknown as { closed(answer: unknown): void }).closed(undefined);
+  const second = component.ask(request);
+  (component as unknown as { closed(answer: unknown): void }).closed(true);
+  await expect(second).resolves.toBe(true);
+});

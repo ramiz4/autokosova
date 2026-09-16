@@ -5,8 +5,8 @@ import { staffSection } from '../support/journeys';
 import { onboardingCopy } from '../../src/shared/onboarding-copy';
 
 async function confirm(page: Page, selector: string) {
-  page.once('dialog', (dialog) => dialog.accept());
   await page.locator(selector).click();
+  await page.locator('[data-confirmation-confirm]').click();
 }
 async function openGarage(page: Page, id: string) {
   await page.locator('[data-admin-query]').fill(id);

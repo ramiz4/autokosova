@@ -262,6 +262,38 @@ it('submits exactly the deletion policy that the administrator confirmed', async
   expect(JSON.parse(options.body)).toEqual({ policyVersion: 'SYNTHETIC-CONFIRMED' });
 });
 
+it('rejects a changed transfer or retention policy while its confirmation is pending', async () => {
+  const { component, account, fetch } = await render('garages');
+  component.detail.set({
+    ...garage,
+    members: [{ userId: 'from', label: 'From', role: 'owner', state: 'active' }],
+  });
+  component.fromUserId = 'from';
+  component.targetUserId = 'to';
+  let answer!: (value: boolean) => void;
+  vi.spyOn(component.confirmation(), 'ask').mockImplementation(
+    () => new Promise<boolean>((resolve) => (answer = resolve)),
+  );
+  fetch.mockClear();
+  const transfer = component.transfer();
+  component.targetUserId = 'other';
+  account.dataContext.set('admin:2');
+  answer(true);
+  await transfer;
+  expect(fetch).not.toHaveBeenCalled();
+
+  component.policyVersion = 'SYNTHETIC';
+  component.approvalReference = 'SYNTHETIC APPROVAL';
+  component.publicReviewHandling = 'delete';
+  for (const key of component.durations) component.days[key] = 30;
+  component.approvalConfirmed = true;
+  const policy = component.savePolicy();
+  component.policyVersion = 'CHANGED';
+  answer(true);
+  await policy;
+  expect(fetch).not.toHaveBeenCalled();
+});
+
 it('keeps only a technical selected request in the URL and detects policy edits by equality', async () => {
   const { component, fetch } = await render('privacy', 'de', 'admin', {
     requestId: 'synthetic-request',

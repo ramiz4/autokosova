@@ -88,13 +88,14 @@ export class ConfirmationDialogComponent {
   readonly state = signal<'closed' | 'open'>('closed');
   private readonly dialog = viewChild.required<BrnAlertDialog>('dialog');
   private resolve: ((answer: boolean) => void) | null = null;
+  private closing = false;
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.cancelPending());
   }
 
   ask(request: ConfirmationRequest): Promise<boolean> {
-    if (this.resolve) return Promise.resolve(false);
+    if (this.resolve || this.closing) return Promise.resolve(false);
     this.request.set(request);
     this.state.set('open');
     return new Promise<boolean>((resolve) => (this.resolve = resolve));
@@ -106,12 +107,18 @@ export class ConfirmationDialogComponent {
   }
 
   cancelPending(): void {
+    if (!this.resolve) return;
+    this.closing = true;
     this.state.set('closed');
     this.finish(false);
   }
 
   protected closed(answer: unknown): void {
     this.state.set('closed');
+    if (this.closing) {
+      this.closing = false;
+      return;
+    }
     this.finish(answer === true);
   }
 
