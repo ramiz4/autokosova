@@ -195,7 +195,7 @@ it('uses the nonmodal overlay contract for the labelled account panel', async ()
   trigger.click();
   await fixture.whenStable();
 
-  const overlayTrigger = page.querySelector<HTMLButtonElement>('button[brnOverlayTrigger]')!;
+  const overlayTrigger = page.querySelector<HTMLButtonElement>('button[data-account-trigger]')!;
 
   const panel = accountPanel()!;
   expect(overlayTrigger.getAttribute('aria-expanded')).toBe('true');
@@ -244,7 +244,7 @@ it('shows the account control without unavailable notifications or login buttons
   expect(page.textContent).not.toContain('Benachrichtigungen sind noch nicht verfügbar.');
   profile.click();
   await fixture.whenStable();
-  profile = page.querySelector<HTMLButtonElement>('button[brnOverlayTrigger]')!;
+  profile = page.querySelector<HTMLButtonElement>('button[data-account-trigger]')!;
   expect(page.querySelector('#account-notifications')).toBeNull();
   const menu = accountPanel()!;
   expect(menu.textContent).toContain('Abmelden');
@@ -378,7 +378,7 @@ it('keeps the real session and account menu intact throughout a delayed refresh'
     request.mockImplementationOnce(() => new Promise<Response>((resolve) => (finish = resolve)));
     button.click();
     await fixture.whenStable();
-    button = page.querySelector<HTMLButtonElement>('button[brnOverlayTrigger]')!;
+    button = page.querySelector<HTMLButtonElement>('button[data-account-trigger]')!;
     name = button.querySelector('span.truncate');
     expect(session.signedIn()).toBe(true);
     expect(session.state()).toBe('ready');
