@@ -129,6 +129,22 @@ function shareDialog(): HTMLElement {
   return dialog;
 }
 
+function reviewFilterTrigger(page: HTMLElement): HTMLButtonElement {
+  const trigger = [...page.querySelectorAll<HTMLButtonElement>('button')].find((button) =>
+    button.textContent?.includes('Bewertungen filtern'),
+  );
+  if (!trigger) throw new Error('Expected the review filter trigger.');
+  return trigger;
+}
+
+function reviewFilterGroup(): HTMLElement {
+  const group = document.querySelector<HTMLElement>(
+    '[role="group"][aria-label="Bewertungen filtern"]',
+  );
+  if (!group) throw new Error('Expected the review filter portal.');
+  return group;
+}
+
 function setNativeShare(share: ((data: ShareData) => Promise<void>) | undefined): void {
   Object.defineProperty(navigator, 'share', { configurable: true, value: share });
 }
@@ -582,6 +598,154 @@ describe('GarageProfileComponent', () => {
     expect(reviews.getAttribute('href')).toContain('places=xk-peja:20');
     expect(page.querySelector('[data-profile-section]')).toBeNull();
     expect(page.querySelectorAll('#photos')).toHaveLength(1);
+  });
+
+  it('uses the Brain trigger and portal for a nonmodal native review filter', async () => {
+    const { component, fixture, page } = await setup();
+    const trigger = reviewFilterTrigger(page);
+
+    expect(trigger.getAttribute('aria-haspopup')).toBeNull();
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    trigger.focus();
+    expect(document.activeElement).toBe(trigger);
+    trigger.click();
+    await fixture.whenStable();
+
+    const group = reviewFilterGroup();
+    const controls = trigger.getAttribute('aria-controls');
+    const service = group.querySelector<HTMLSelectElement>('select')!;
+    const make = group.querySelectorAll<HTMLSelectElement>('select')[1]!;
+    expect(component['reviewFiltersState']()).toBe('open');
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    expect(controls).toBeTruthy();
+    expect(document.getElementById(controls!)?.contains(group)).toBe(true);
+    expect(group.closest('[role="dialog"], [role="menu"], [role="listbox"]')).toBeNull();
+    expect(group.className).toContain('w-[min(20rem,calc(100vw-3rem))]');
+    expect(group.className).toContain(
+      'gap-3 rounded-xl border border-blue-100 bg-white p-4 text-ink shadow-xl',
+    );
+    expect(document.activeElement).toBe(service);
+
+    const nativeSelectArrow = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'ArrowDown',
+    });
+    service.dispatchEvent(nativeSelectArrow);
+    expect(nativeSelectArrow.defaultPrevented).toBe(false);
+    expect(make.getAttribute('role')).toBeNull();
+
+    group.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
+    await fixture.whenStable();
+    expect(document.querySelector('[role="group"][aria-label="Bewertungen filtern"]')).toBeNull();
+    expect(component['reviewFiltersState']()).toBe('closed');
+    expect(document.activeElement).toBe(trigger);
+
+    trigger.click();
+    await fixture.whenStable();
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }));
+    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    await fixture.whenStable();
+    expect(document.querySelector('[role="group"][aria-label="Bewertungen filtern"]')).toBeNull();
+    expect(component['reviewFiltersState']()).toBe('closed');
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('changes review signals locally and only loads once after explicit apply', async () => {
+    const { component, fixture, page, request } = await setup();
+    const trigger = reviewFilterTrigger(page);
+    request.mockClear();
+    trigger.click();
+    await fixture.whenStable();
+    const [service, make] = reviewFilterGroup().querySelectorAll<HTMLSelectElement>('select');
+    service.value = 'bremsen';
+    service.dispatchEvent(new Event('change', { bubbles: true }));
+    make.value = 'skoda';
+    make.dispatchEvent(new Event('change', { bubbles: true }));
+    await fixture.whenStable();
+
+    expect(component['reviewServiceCategoryId']()).toBe('bremsen');
+    expect(component['reviewVehicleMakeId']()).toBe('skoda');
+    expect(request).not.toHaveBeenCalled();
+    reviewFilterGroup().querySelector<HTMLButtonElement>('button')!.click();
+    await fixture.whenStable();
+
+    expect(component['reviewFiltersState']()).toBe('closed');
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledWith(
+      '/api/public/garages/fiktive-werkstatt/reviews?page=1&serviceCategoryId=bremsen&vehicleMakeId=skoda',
+      expect.objectContaining({ credentials: 'same-origin' }),
+    );
+  });
+
+  it('closes the filter before its dirty confirmation and cancels without a reload', async () => {
+    const { component, fixture, page, request } = await setup();
+    component['contributionDirty']('review-a', true);
+    request.mockClear();
+    reviewFilterTrigger(page).click();
+    await fixture.whenStable();
+    reviewFilterGroup().querySelector<HTMLButtonElement>('button')!.click();
+    await fixture.whenStable();
+
+    const confirmation = document.querySelector<HTMLElement>('[data-confirmation-dialog]')!;
+    expect(document.querySelector('[role="group"][aria-label="Bewertungen filtern"]')).toBeNull();
+    expect(document.activeElement).toBe(
+      confirmation.querySelector<HTMLButtonElement>('[data-confirmation-cancel]'),
+    );
+    confirmation.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
+    await fixture.whenStable();
+
+    expect(request).not.toHaveBeenCalled();
+    expect(component['reviewState']).toBe('ready');
+  });
+
+  it('awaits the dirty guard for pagination and loads exactly once after acceptance', async () => {
+    const { component, request } = await setup();
+    component['contributionDirty']('review-a', true);
+    const confirm = vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(false);
+    request.mockClear();
+
+    await component['reviewPageChanged'](2);
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(request).not.toHaveBeenCalled();
+
+    confirm.mockReset();
+    confirm.mockResolvedValue(true);
+    await component['reviewPageChanged'](2);
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request.mock.calls[0]?.[0]).toBe('/api/public/garages/fiktive-werkstatt/reviews?page=2');
+  });
+
+  it('aborts and ignores a stale review response when the profile route changes', async () => {
+    const { component, route } = await setup();
+    const initialReviewId = component['reviews'][0]?.id;
+    let resolveReview!: (response: Response) => void;
+    const request = vi.fn((input: string | URL | Request, init?: RequestInit) => {
+      void init;
+      if (String(input).includes('/reviews')) {
+        return new Promise<Response>((resolve) => (resolveReview = resolve));
+      }
+      return new Promise<Response>(() => undefined);
+    });
+    vi.stubGlobal('fetch', request);
+
+    const loading = component['loadReviews']();
+    await Promise.resolve();
+    const signal = request.mock.calls[0]?.[1]?.signal as AbortSignal;
+    expect(signal).toBeTruthy();
+    component['reviewFiltersState'].set('open');
+    route.paramMap.next(convertToParamMap({ garageId: 'other-garage' }));
+    expect(signal.aborted).toBe(true);
+    expect(component['reviewFiltersState']()).toBe('closed');
+
+    resolveReview(new Response(JSON.stringify({ reviews: [{ ...review, id: 'stale-review' }] })));
+    await loading;
+    expect(component['reviews'][0]?.id).toBe(initialReviewId);
   });
 
   it('uses a published demo photo as the local demo profile image', async () => {
