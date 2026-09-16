@@ -94,21 +94,42 @@ export function providerEnvironment(source) {
   }
   return { ...processEnvironment(source), ...pick(source, providerKeys), NODE_ENV: 'test' };
 }
-export function assertRealReport(report, expected) {
+// Keep failure diagnostics useful without forwarding arbitrary child strings or values.
+export function readRealReport(report, expected) {
   if (
     !report ||
     report.mode !== 'real-zitadel' ||
-    report.status !== 'passed' ||
-    report.stage !== 'complete' ||
+    !['passed', 'failed'].includes(report.status) ||
+    !['preflight', 'complete', 'cleanup', ...realSteps].includes(report.stage) ||
     report.commit !== expected.commit ||
     report.nonce !== expected.nonce ||
     report.runId !== expected.runId ||
     report.runAttempt !== expected.runAttempt ||
-    JSON.stringify(report.accounts) !== JSON.stringify(['customer', 'garage']) ||
-    JSON.stringify(report.completed) !== JSON.stringify(realSteps) ||
-    report.cleanup !== 'passed' ||
+    !Array.isArray(report.accounts) ||
+    ![[], ['customer'], ['customer', 'garage']].some(
+      (accounts) => JSON.stringify(accounts) === JSON.stringify(report.accounts),
+    ) ||
+    !Array.isArray(report.completed) ||
+    report.completed.some(
+      (step, index) =>
+        !realSteps.includes(step) ||
+        (index > 0 && realSteps.indexOf(step) <= realSteps.indexOf(report.completed[index - 1])),
+    ) ||
+    !['passed', 'failed', 'not-run'].includes(report.cleanup) ||
     Object.keys(report).sort().join(',') !==
       'accounts,cleanup,commit,completed,mode,nonce,runAttempt,runId,stage,status'
+  )
+    throw new Error('Invalid or sensitive real integration evidence');
+  return report;
+}
+export function assertRealReport(report, expected) {
+  readRealReport(report, expected);
+  if (
+    report.status !== 'passed' ||
+    report.stage !== 'complete' ||
+    JSON.stringify(report.accounts) !== JSON.stringify(['customer', 'garage']) ||
+    JSON.stringify(report.completed) !== JSON.stringify(realSteps) ||
+    report.cleanup !== 'passed'
   )
     throw new Error('Current complete real integration evidence is missing or unsuccessful');
 }

@@ -1,5 +1,29 @@
 # Echte ZITADEL-Abnahme – Issue #119
 
+## Aktuelle Korrektur – Automation ohne manuelle Approvals (16.09.2026)
+
+Nutzerauftrag: keine manuellen CI-Freigaben; fehlgeschlagenen Lauf beheben. Die ältere
+Reviewer-Einrichtung unten ist damit historisch, nicht mehr die aktuelle Ausführungspolitik.
+Das Environment wurde erneut gelesen: kein Required Reviewer/Wait Timer, nur `main` und
+`refs/pull/*/merge`, kein Admin-Bypass. Zehn strikte Required Checks gelten weiterhin.
+Beide tatsächlich vorhandenen Repository-Writer (`ramiz4`, `ramizloki`) sind explizit vertraut;
+Workflow-Actor, erneuter Actor, PR-Autor, aktuelle Schreibrechte und aktueller Merge-SHA werden
+automatisch geprüft. Diese Grenze ist keine unabhängige Personenprüfung.
+
+Lauf 35066961477 wurde regulär als `ramiz4` freigegeben; Installation, Build und tatsächliche
+1Password-Laufzeitauflösung waren erfolgreich. Der nachfolgende Runner scheiterte. Gefunden:
+Der Standalone-TypeScript-Einstieg enthielt Top-Level-await, obwohl tsx ihn in diesem Projekt
+als CommonJS lädt. Die synthetischen Tests importierten nur Hilfen und erkannten das nicht.
+Der Einstieg verwendet jetzt eine explizite asynchrone Hauptfunktion; ein echter, secretfreier
+Subprozesstest prüft den Loader und den sicheren Preflight. Fehlerberichte werden nur nach
+strikter Feld-/Wert-Allowlist übernommen, damit der konkrete fehlgeschlagene Schritt erhalten
+bleibt, ohne rohe Browserfehler, Credentials oder URLs zu protokollieren.
+
+Aktuelle echte Vor-/Nach-Merge-Ergebnisse werden im PR nach Ausführung an SHA und Lauf gebunden;
+dieser Korrekturstand allein behauptet noch keine bestandenen ZITADEL-Logins.
+
+## Historische Einrichtungs- und Prüfnachweise
+
 ## Fortsetzung nach ausdrücklicher Adminfreigabe am 16.09.2026
 
 Der Nutzer hat die Ausführung mit `gh auth switch --user ramiz4` und die anschließende Rückkehr

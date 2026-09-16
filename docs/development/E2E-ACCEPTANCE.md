@@ -111,44 +111,44 @@ aktuellen Integrationsstand wirklich erfolgreich** sein. Die synthetischen Runne
 sind kein Ersatz für echte ZITADEL-Anmeldungen. Ein nur vorbereitetes Workflow und `NOT RUN`
 erfüllen dieses Gate nicht. Einrichtungs-/Nachweisstand: [ZITADEL-Abnahmebericht](../validation/E2E-ZITADEL-ACCEPTANCE.md).
 
-### Vertrauensgrenze in GitHub Actions
+### Automatische Vertrauensgrenze in GitHub Actions
 
-`.github/workflows/e2e-zitadel.yml` definiert PR-, Main-Push- und manuelle Main-Läufe. Der
-secretfreie Vorabjob liest zuerst das **bereits administrativ eingerichtete** Environment
-`e2e-zitadel`. Es muss einen benannten Required Reviewer, `prevent_self_review=true` und
-`can_admins_bypass=false` haben. Fehlende Schutzregeln scheitern vor dem Environment-Job;
-der Workflow erstellt absichtlich kein ungeschütztes Environment als Ersatz.
+Seit dem ausdrücklichen Nutzerauftrag vom 16.09.2026 gibt es **keine manuellen Environment-
+Approvals und keinen Wait Timer**. `e2e-zitadel` bleibt der isolierte Secret-Bereich und erlaubt
+serverseitig nur `main` und `refs/pull/*/merge`. Die zehn erforderlichen Main-Checks,
+aktuelle Main-Basis und Durchsetzung auch für Administratoren bleiben unverändert.
 
-Nur ein berechtigter Maintainer darf den echten Lauf anstoßen. Ein PR muss offen, nicht Draft,
-aus demselben Repository, gegen `main` und mit aktueller Main-Basis sein. Das allein ist **kein
-Vertrauensnachweis**: Die explizite administrative Environment-Freigabe muss den konkreten Merge-SHA einschließlich
-Workflow, Installationsskripten, Abhängigkeiten und Testcode abdecken. Nach der Freigabe wird der
-Integrationsstand erneut überprüft. Kein `pull_request_target`, kein Checkout eines beliebigen
-Head-Branches, kein Credential-Zugriff durch einen Fork. Für nicht freigegebene PRs bleibt die
-Anwendungs-E2E nutzbar; echte Gesamtabnahme ist dann nicht bestanden.
+Der Workflow verwendet reguläres `pull_request`, Main-Push und optionalen manuellen Main-Start.
+Ein automatischer Vorabjob ohne Checkout/Secrets prüft die ausdrücklich vertrauten Identitäten
+`ramiz4` (1623235) und `ramizloki` (235666066), ihre aktuellen Schreibrechte und sowohl den
+ursprünglichen als auch den erneut auslösenden Actor. Der PR-Autor muss ebenfalls dieser
+benannten Vertrauensmenge angehören; Repositoryzugehörigkeit allein reicht nicht.
+Ein PR muss offen, nicht Draft, intern, gegen `main` und auf dessen aktuellem Integrations-SHA
+sein. Forks, andere Autoren/Actors, Rechteverlust und veraltete Integrationen scheitern geschlossen.
+Dieselbe Prüfung läuft nach Installation/Build unmittelbar vor der Secret-Auflösung erneut.
 
-Der abschließende Check `e2e-zitadel` läuft mit `always()` und akzeptiert nur erfolgreiche
-Vorprüfung **und** Integration. Abgewiesene, fehlende, übersprungene oder abgebrochene Tests ergeben
-keinen grünen Ersatz. Keine Retries und kein `continue-on-error`. Workflowübergreifend dieselbe
-Concurrency-Gruppe `autokosova-real-zitadel-accounts` verwenden; laufende Abnahmen werden nicht
-abgebrochen. GitHubs begrenzter Pending-Slot ist keine garantierte Warteschlange aller Commits.
+Die bewusst gewählte Vertrauensgrenze ist der eigene Entwicklungs-/Automatisierungskreis:
+Repository-Schreibrechte haben bei Einrichtung nur diese beiden Konten. Deren interner Code,
+Workflows und Abhängigkeiten gelten für die dedizierten Testzugänge als vertrauenswürdig.
+Das ist keine behauptete unabhängige Personenprüfung und keine Sandbox gegen einen bösartigen
+Repository-Writer, der Workflowdateien selbst ändern kann. Neue Schreibberechtigungen oder Apps
+mit Code-/Workflow-Schreibzugriff benötigen eine neue administrative Vertrauensentscheidung.
+Ungeprüften Fremdcode nicht automatisch in interne Branches übernehmen. Fork-Workflows bekommen
+keine Secrets; kein `pull_request_target`, privilegierter `workflow_run` oder künstlicher grüner Check.
+
+Der abschließende `e2e-zitadel`-Check akzeptiert nur erfolgreiche Vorprüfung **und** Integration.
+Untrusted/Skip/Abbruch/fehlende Konfiguration sind kein Erfolg. Keine Retries und kein
+`continue-on-error`. Workflowübergreifend dieselbe Concurrency-Gruppe
+`autokosova-real-zitadel-accounts`; laufende Abnahmen werden nicht abgebrochen. Der begrenzte
+GitHub-Pending-Slot ist keine garantierte Warteschlange aller Commits.
 
 ### Environment, Vault und Verantwortlichkeiten
 
-Ein berechtigter Repository-Administrator richtet Environment und Required Checks ein. Die
-Betriebsverantwortung für diesen freigegebenen Aufbau liegt bei Ramiz Loki; das administrative
-GitHub-Konto ist `ramiz4`. Das Environment hat `ramiz4` als Required Reviewer, verhindert
-Selbstfreigabe durch denselben GitHub-Account und erlaubt keinen Administrator-Bypass. Der
-Nutzerauftrag vom 16.09.2026 autorisiert ausdrücklich die Ausführung über dieses Admin-Konto.
-Der Wechsel zwischen eigenen Accounts ist **keine unabhängige Prüfung durch eine zweite Person**;
-pro Lauf ist dennoch der konkrete aktuelle SHA samt Workflow, Abhängigkeiten und Testcode zu
-prüfen, bevor die administrative Environment-Freigabe erteilt wird.
-
-Ramiz Loki verantwortet Vault-Inhalt, ausschließlich lesenden CI-Service-Account, Rotation und
-Widerruf. Der am 16.09.2026 eingerichtete Account ist auf 90 Tage begrenzt; Rotation spätestens
-am 01.12.2026. Sein Wiederherstellungseintrag liegt außerhalb des CI-Vaults in 1Password. Der
-CI-Account kann weder diesen Eintrag noch andere Vaults lesen. Bei Verdacht den Service-Account
-in 1Password unter Developer / Service accounts widerrufen und das Environment Secret entfernen.
+Betriebsverantwortlich für Test-Vault, Service-Account, Rotation und Widerruf ist **Ramiz Loki**;
+das administrative Konto ist `ramiz4`. Der Service-Account ist auf 90 Tage begrenzt, Rotation
+spätestens **01.12.2026**. Wiederherstellungsinformationen bleiben außerhalb des CI-Test-Vaults.
+Die alte manuelle Reviewer-Regel wurde auf Nutzerauftrag entfernt, nicht durch einen
+Auto-Approve-Bot ersetzt. Die regulären automatischen Required Checks bleiben verbindlich.
 
 Ein eigener CI-Test-Vault enthält ausschließlich die beiden vorhandenen freigegebenen
 Kunden-/Werkstatt-Testzugänge und die benötigte Test-OIDC-Konfiguration. Keine produktiven Konten,
@@ -257,7 +257,7 @@ Cookies, Auth-State, Traces, Videos, Netzwerkdumps oder rohen Browser-/Appfehler
 
 Erforderliche Repositoryregeln müssen `e2e-acceptance` **und** `e2e-zitadel` auf aktueller
 Main-Basis verlangen. Die Implementierung eines Workflows ist keine eingerichtete Merge-Sperre.
-Solange Adminrechte/Environment/Vault/Freigaben oder die echten PR-/Main-Läufe fehlen, bleibt
+Solange Environment/Vault/automatische Vertrauensprüfung oder die echten PR-/Main-Läufe fehlen, bleibt
 #119 offen und Teil-PRs verwenden nur `Refs #119`. Keine zusätzliche manuelle Funktionsabnahme,
 kein Schließungsbot; die administrative Sicherheitsfreigabe ersetzt keine automatisierten Tests.
 

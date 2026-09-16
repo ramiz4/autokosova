@@ -237,9 +237,12 @@ Passwörter gehören nur in den Browser-Testprozess, nicht in App, Build oder Se
 Anwendungsrollen und konkrete Memberships bleiben getrennte Prüfungen. Der echte Browserlauf
 muss zusätzlich Provider-End-Session, Callback und Kontowechsel nachweisen.
 
-Ein expliziter administrativer Environment-Review muss den exakten aktuellen Integrationsstand freigeben,
-bevor Credentials verfügbar werden. Fehlende Freigabe/Secrets/Callbacks/MFA-Voraussetzungen
-sind kein grüner Skip. Vorhandene Providerkonten, Registrierung oder Regeln werden nicht geändert.
+Seit dem Nutzerauftrag vom 16.09.2026 erfolgt die CI ohne manuelle Environment-Approvals.
+Automatische Prüfung der benannten vertrauenswürdigen Konten, aktuellen Schreibrechte,
+PR-Herkunft und exakten aktuellen Integrations-/Main-SHAs läuft vor dem Checkout und erneut
+vor der Secret-Auflösung. Forks/untrusted Code erhalten keine Testzugänge. Die Required Checks
+und der begrenzte Read-only-CI-Vault bleiben aktiv. Fehlende Secrets/Callbacks/MFA-Voraussetzungen
+sind kein grüner Skip; bestehende Providerkonten, Registrierung oder Regeln werden nicht geändert.
 Einrichtung und Grenzen: [E2E-ACCEPTANCE.md](../development/E2E-ACCEPTANCE.md#separater-echter-zitadel-durchlauf-119).
 Offene externe Voraussetzungen und echte Nachweise: [Abnahmebericht #119](../validation/E2E-ZITADEL-ACCEPTANCE.md).
 Historische lokale und synthetische Nachweise oben behalten ihre ursprüngliche Abnahmegrenze.

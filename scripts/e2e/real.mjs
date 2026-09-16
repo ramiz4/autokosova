@@ -7,7 +7,12 @@ import { fileURLToPath } from 'node:url';
 import { startProcess } from '../dev/process.mjs';
 import { realConfiguration } from './real-config.mjs';
 import { processEnvironment } from './policy.mjs';
-import { assertRealReport, browserEnvironment, providerEnvironment } from './real-policy.mjs';
+import {
+  assertRealReport,
+  readRealReport,
+  browserEnvironment,
+  providerEnvironment,
+} from './real-policy.mjs';
 import { createRealApplication } from './real-application.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -80,9 +85,9 @@ try {
   const code = await browser.done;
   abort.signal.throwIfAborted();
   const evidence = JSON.parse(await readFile(resultFile, 'utf8'));
-  assertRealReport(evidence, expected);
+  result = readRealReport(evidence, expected);
+  assertRealReport(result, expected);
   if (code !== 0) throw new Error('Real browser process failed');
-  result = evidence;
   exitCode = 0;
 } catch {
   // NOT RUN remains a nonzero result; no error.message or secret-bearing URLs.
@@ -111,5 +116,11 @@ try {
   process.removeListener('SIGTERM', stop);
   await writeFile(join(directory, 'summary.json'), JSON.stringify(result, null, 2) + '\n');
 }
-console.log('Real ZITADEL integration: ' + (exitCode === 2 ? 'NOT RUN' : result.status));
+console.log(
+  'Real ZITADEL integration: ' +
+    (exitCode === 2 ? 'NOT RUN' : result.status) +
+    ' (' +
+    result.stage +
+    ')',
+);
 process.exitCode = exitCode;

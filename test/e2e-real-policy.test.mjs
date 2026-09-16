@@ -8,6 +8,7 @@ import {
   providerEnvironment,
   realSteps,
   assertRealReport,
+  readRealReport,
 } from '../scripts/e2e/real-policy.mjs';
 import { assertReferences, credentialKeys } from '../scripts/e2e/real-references.mjs';
 const issuer = 'https://provider.example.invalid';
@@ -161,12 +162,48 @@ test('workflow pins actions, resolves no secrets before build and reports skippe
     assert.match(line, /@[a-f0-9]{40}(?:\s|$)/);
   assert.doesNotMatch(
     yaml,
-    /pull_request_target|continue-on-error|export-env: true|cache:|cancel-in-progress: true/,
+    /pull_request_target|continue-on-error|export-env: true|(?:^|\n)\s+cache:|cancel-in-progress: true/,
   );
   assert.ok(yaml.indexOf('npm run build') < yaml.indexOf('secrets.OP_SERVICE_ACCOUNT_TOKEN'));
   assert.match(yaml, /environment: e2e-zitadel/);
-  assert.match(yaml, /prevent_self_review/);
+  assert.match(yaml, /GITHUB_TRIGGERING_ACTOR/);
+  assert.match(yaml, /trusted\.has\(pr\.user\?\.login\)/);
   assert.match(yaml, /if: \$\{\{ always\(\) \}\}/);
   assert.match(yaml, /test "\$TRUST" = success && test "\$INTEGRATION" = success/);
   assert.equal((yaml.match(/secrets\.OP_SERVICE_ACCOUNT_TOKEN/g) || []).length, 1);
+});
+
+test('standalone browser entrypoint reaches safe preflight without CommonJS top-level-await failure', () => {
+  const child = spawnSync(process.execPath, ['--import', 'tsx', 'e2e/real/run.ts'], {
+    cwd: new URL('../', import.meta.url),
+    encoding: 'utf8',
+    timeout: 15_000,
+    // No opt-in, provider, password, database, or secret-store configuration: no external login.
+    env: { PATH: process.env.PATH },
+  });
+  assert.equal(child.status, 1);
+  assert.equal(child.stdout, '');
+  assert.equal(child.stderr.trim(), 'Real browser runner could not complete');
+});
+test('failed browser stages survive validation but never satisfy acceptance or disclose diagnostics', () => {
+  const failure = {
+    ...passed,
+    status: 'failed',
+    stage: 'customer-login',
+    accounts: [],
+    completed: ['records-cleanup', 'browser-cleanup'],
+  };
+  assert.equal(readRealReport(failure, expected).stage, 'customer-login');
+  assert.throws(() => assertRealReport(failure, expected));
+  for (const patch of [
+    { stage: 'secret-url' },
+    { accounts: ['actual-subject'] },
+    { completed: ['secret-url'] },
+    { error: 'sensitive-diagnostic' },
+    { cleanup: 'sensitive-diagnostic' },
+    { status: 'sensitive-diagnostic' },
+    { nonce: 'stale' },
+    { completed: ['customer-profile', 'customer-login'] },
+  ])
+    assert.throws(() => readRealReport({ ...failure, ...patch }, expected));
 });

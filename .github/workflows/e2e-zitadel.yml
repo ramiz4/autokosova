@@ -26,35 +26,43 @@ jobs:
       pull-requests: read
       actions: read
     steps:
-      # No checkout or credentials. Missing protections fail before GitHub can auto-create an environment.
+      # No checkout or credentials. Explicit trusted accounts, not repository membership alone.
       - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const repo = context.repo;
+            const trusted = new Map([['ramiz4', 1623235], ['ramizloki', 235666066]]);
+            if (`${repo.owner}/${repo.repo}` !== 'ramiz4/autokosova')
+              throw new Error('Unexpected repository');
             const { data: environment } = await github.rest.repos.getEnvironment({ ...repo, environment_name: 'e2e-zitadel' });
-            const reviewers = environment.protection_rules?.find(rule => rule.type === 'required_reviewers');
-            if (!reviewers?.reviewers?.length || !reviewers.prevent_self_review || environment.can_admins_bypass !== false)
-              throw new Error('e2e-zitadel requires an authorized reviewer, no self-review and no administrator bypass');
-            const { data: actor } = await github.rest.repos.getCollaboratorPermissionLevel({ ...repo, username: context.actor });
-            if (!['admin', 'maintain', 'write'].includes(actor.permission))
-              throw new Error('Real credentials require an explicitly authorized maintainer run');
+            if (environment.can_admins_bypass !== false || !environment.deployment_branch_policy?.custom_branch_policies ||
+                environment.protection_rules?.some(rule => rule.type === 'required_reviewers' || rule.type === 'wait_timer'))
+              throw new Error('Real CI requires restricted refs without manual approval or waiting gates');
+            for (const username of new Set([context.actor, process.env.GITHUB_TRIGGERING_ACTOR || context.actor])) {
+              if (!trusted.has(username)) throw new Error('Untrusted workflow actor');
+              const { data: actor } = await github.rest.repos.getCollaboratorPermissionLevel({ ...repo, username });
+              if (actor.user?.id !== trusted.get(username) || !['admin', 'maintain', 'write'].includes(actor.permission))
+                throw new Error('Real CI requires an explicitly trusted account with current write permission');
+            }
             const { data: main } = await github.rest.repos.getBranch({ ...repo, branch: 'main' });
             if (context.eventName === 'pull_request') {
               const { data: pr } = await github.rest.pulls.get({ ...repo, pull_number: context.issue.number });
               if (pr.state !== 'open' || pr.draft || pr.head.repo?.full_name !== `${repo.owner}/${repo.repo}` ||
+                  !trusted.has(pr.user?.login) || trusted.get(pr.user.login) !== pr.user.id ||
                   pr.base.ref !== 'main' || pr.base.sha !== main.commit.sha || pr.merge_commit_sha !== context.sha)
-                throw new Error('Only the current same-repository PR integration may request explicit environment approval');
+                throw new Error('Only a current trusted internal PR integration may receive test credentials');
             } else if (!['push', 'workflow_dispatch'].includes(context.eventName) ||
                        context.ref !== 'refs/heads/main' || context.sha !== main.commit.sha) {
-              throw new Error('Manual and post-merge acceptance must target current main');
+              throw new Error('Manual starts and post-merge acceptance must target current main');
             }
 
   integration:
-    name: Approved real ZITADEL run
+    name: Real ZITADEL run
     needs: trust
     permissions:
       contents: read
       pull-requests: read
+      actions: read
     environment: e2e-zitadel
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -71,19 +79,7 @@ jobs:
           --health-cmd "pg_isready -U autokosova -d autokosova"
           --health-interval 5s --health-timeout 3s --health-retries 20
     steps:
-      # Approval can wait; fail if the PR/base moved while waiting, before loading any credential.
-      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
-        with:
-          script: |
-            const { data: main } = await github.rest.repos.getBranch({ ...context.repo, branch: 'main' });
-            if (context.eventName === 'pull_request') {
-              const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: context.issue.number });
-              if (pr.state !== 'open' || pr.base.sha !== main.commit.sha || pr.merge_commit_sha !== context.sha)
-                throw new Error('Approved integration is no longer current');
-            } else if (context.sha !== main.commit.sha) {
-              throw new Error('Approved main commit is no longer current');
-            }
-      # Approval covers this exact merge/main SHA, including workflow, dependencies and test runner.
+      # Checkout only the current integration selected by the secret-free trust job.
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ github.sha }}
@@ -91,11 +87,41 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - run: npm install --global npm@11.19.0
       - run: npm ci
       - run: npm run typecheck:e2e && npm run test:e2e:policy
       - run: npx playwright install --with-deps chromium
       - run: npm run build
+      # Recheck after installation/build, immediately before any secret becomes available.
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const repo = context.repo;
+            const trusted = new Map([['ramiz4', 1623235], ['ramizloki', 235666066]]);
+            if (`${repo.owner}/${repo.repo}` !== 'ramiz4/autokosova')
+              throw new Error('Unexpected repository');
+            const { data: environment } = await github.rest.repos.getEnvironment({ ...repo, environment_name: 'e2e-zitadel' });
+            if (environment.can_admins_bypass !== false || !environment.deployment_branch_policy?.custom_branch_policies ||
+                environment.protection_rules?.some(rule => rule.type === 'required_reviewers' || rule.type === 'wait_timer'))
+              throw new Error('Real CI requires restricted refs without manual approval or waiting gates');
+            for (const username of new Set([context.actor, process.env.GITHUB_TRIGGERING_ACTOR || context.actor])) {
+              if (!trusted.has(username)) throw new Error('Untrusted workflow actor');
+              const { data: actor } = await github.rest.repos.getCollaboratorPermissionLevel({ ...repo, username });
+              if (actor.user?.id !== trusted.get(username) || !['admin', 'maintain', 'write'].includes(actor.permission))
+                throw new Error('Real CI requires an explicitly trusted account with current write permission');
+            }
+            const { data: main } = await github.rest.repos.getBranch({ ...repo, branch: 'main' });
+            if (context.eventName === 'pull_request') {
+              const { data: pr } = await github.rest.pulls.get({ ...repo, pull_number: context.issue.number });
+              if (pr.state !== 'open' || pr.draft || pr.head.repo?.full_name !== `${repo.owner}/${repo.repo}` ||
+                  !trusted.has(pr.user?.login) || trusted.get(pr.user.login) !== pr.user.id ||
+                  pr.base.ref !== 'main' || pr.base.sha !== main.commit.sha || pr.merge_commit_sha !== context.sha)
+                throw new Error('Only a current trusted internal PR integration may receive test credentials');
+            } else if (!['push', 'workflow_dispatch'].includes(context.eventName) ||
+                       context.ref !== 'refs/heads/main' || context.sha !== main.commit.sha) {
+              throw new Error('Manual starts and post-merge acceptance must target current main');
+            }
       - name: Check dedicated-vault reference syntax without loading credentials
         run: node scripts/e2e/real-references.mjs
         env:
@@ -189,7 +215,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      # A skipped/rejected/unconfigured integration is not a successful acceptance check.
+      # Untrusted, skipped or unconfigured integration is never successful acceptance.
       - run: test "$TRUST" = success && test "$INTEGRATION" = success
         env:
           TRUST: ${{ needs.trust.result }}
