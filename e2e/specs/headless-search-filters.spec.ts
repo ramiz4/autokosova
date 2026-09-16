@@ -67,6 +67,15 @@ test('search-filter-disclosure keeps Brain state, focus and filter URLs responsi
     ['sort', 'rating'],
     ['vehicleMake', 'audi'],
   ]);
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  await expect(form).toHaveAttribute('hidden', '');
+  await expect(form).toHaveJSProperty('inert', true);
+
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  await expect(form).toBeVisible();
+  await expect(form).toHaveJSProperty('inert', false);
 
   await page.setViewportSize({ width: 1280, height: 900 });
   await expect(form).toBeVisible();
@@ -80,5 +89,7 @@ test('search-filter-disclosure keeps Brain state, focus and filter URLs responsi
   await form.locator('button[type="button"]').last().click();
   await expectSearchUrl(page, [['all', 'true']]);
   await expect(vehicleMake).toHaveValue('');
+  await expect(form).toBeVisible();
+  await expect(form).toHaveJSProperty('inert', false);
   expect(errors).toEqual([]);
 });
