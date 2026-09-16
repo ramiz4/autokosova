@@ -60,6 +60,7 @@ export class SiteHeaderAccountPanelComponent {
   protected readonly accountNavigationCopy = accountNavigationCopy;
   protected readonly language = inject(LanguageService);
   protected readonly logoutError = signal(false);
+  protected readonly overlayState = signal<'open' | 'closed'>('closed');
   private readonly router = inject(Router);
   private readonly overlay = viewChild.required<BrnOverlay>('accountOverlay');
   private readonly trigger = viewChild.required<ElementRef<HTMLButtonElement>>('accountTrigger');
@@ -68,7 +69,7 @@ export class SiteHeaderAccountPanelComponent {
     afterNextRender(() => {
       this.overlay().setOrigin(this.headerAnchor());
       this.trigger().nativeElement.focus({ preventScroll: true });
-      this.overlay().open();
+      this.overlayState.set('open');
     });
   }
 
@@ -77,10 +78,11 @@ export class SiteHeaderAccountPanelComponent {
   }
 
   closePanel(): void {
-    this.overlay().close();
+    this.overlayState.set('closed');
   }
 
   protected onOverlayState(state: 'open' | 'closed'): void {
+    if (this.overlayState() !== state) this.overlayState.set(state);
     this.stateChanged.emit(state);
   }
 
