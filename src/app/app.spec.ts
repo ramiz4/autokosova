@@ -1,7 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { App, FoundationComponent } from './app';
+import { App } from './app';
 import { AnalyticsService } from './analytics.service';
+import { FoundationComponent } from './foundation.component';
 import { landingCopy } from '../shared/landing-copy';
 
 describe('Homepage', () => {

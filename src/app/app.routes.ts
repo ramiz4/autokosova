@@ -1,7 +1,6 @@
 import { inject } from '@angular/core';
 import { Router, Routes } from '@angular/router';
 import { PUBLIC_PAGE_PATHS } from '../shared/public-pages';
-import { FoundationComponent } from './app';
 import type { GarageProfileComponent } from './garage-profile.component';
 import { StaffDraftGuardService } from './staff-draft-guard.service';
 import { AdminDraftGuardService } from './admin-draft-guard.service';
@@ -21,7 +20,8 @@ function localizedRoutes(prefix: string): Routes {
   const childPrefix = prefix ? `${prefix}/` : '';
   return [
     {
-      component: FoundationComponent,
+      loadComponent: () =>
+        import('./foundation.component').then((module) => module.FoundationComponent),
       path: prefix,
       pathMatch: 'full',
     },
