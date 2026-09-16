@@ -42,8 +42,8 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
     return this.adminTransaction(principal, async (client) => {
       const result = await client.query<AdminOverview>(`SELECT
         (SELECT count(*)::integer FROM garage WHERE publication_state='pending_review' AND deleted_at IS NULL) AS "pendingGarages",
-        (SELECT count(*)::integer FROM moderation_case WHERE kind IN ('report','review_submission') AND assigned_moderator_user_id IS NULL AND status IN ('submitted','assigned','waiting_for_subject') AND escalation_reason IS NULL) AS "unassignedCases",
-        (SELECT count(*)::integer FROM moderation_case WHERE escalation_reason IS NOT NULL AND status IN ('submitted','assigned','waiting_for_subject')) AS "escalatedCases",
+        (SELECT count(*)::integer FROM moderation_case WHERE kind IN ('report','review_submission') AND assigned_moderator_user_id IS NULL AND status IN ('submitted','assigned') AND escalation_reason IS NULL) AS "unassignedCases",
+        (SELECT count(*)::integer FROM moderation_case WHERE escalation_reason IS NOT NULL AND status IN ('submitted','assigned')) AS "escalatedCases",
         (SELECT count(*)::integer FROM data_deletion_request WHERE status='submitted') AS "pendingDeletions",
         (SELECT count(*)::integer FROM data_deletion_request WHERE status IN ('blocked_by_policy','manual_content_decision_required')) AS "blockedDeletions"`);
       return result.rows[0];
@@ -190,8 +190,10 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
       ? (localDemoPhotoPath('demo-admin-fixture', result.rows[0].fixture_key) ?? undefined)
       : undefined;
   }
-  async privacy(principal: Principal, pageInput?: number): Promise<AdminPrivacy> {
-    const page = checkedPage(pageInput);
+  async privacy(principal: Principal, filter: AdminFilter): Promise<AdminPrivacy> {
+    const page = checkedPage(filter.page);
+    if (filter.status && !['submitted', 'blocked', 'completed'].includes(filter.status))
+      throw new AccessError(400, 'Invalid deletion request status');
     return this.adminTransaction(principal, async (client) => {
       const policies = await client.query(
         'SELECT * FROM lifecycle_policy ORDER BY configured_at DESC,version DESC LIMIT 1',
@@ -201,8 +203,12 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
         `SELECT d.*,COALESCE(s.display_name,d.user_id) AS label,
         (SELECT count(*)::integer FROM membership WHERE user_id=d.user_id AND state='active' AND role='owner') AS ownerships,
         (SELECT count(*)::integer FROM object_deletion_task t JOIN file_object f ON f.id=t.file_id WHERE f.owner_user_id=d.user_id AND t.completed_at IS NULL) AS pending_files
-        FROM data_deletion_request d LEFT JOIN staff_identity s ON s.user_id=d.user_id ORDER BY d.created_at,d.id LIMIT $1 OFFSET $2`,
-        [ADMIN_PAGE_SIZE + 1, (page - 1) * ADMIN_PAGE_SIZE],
+        FROM data_deletion_request d LEFT JOIN staff_identity s ON s.user_id=d.user_id
+        WHERE ($1::text IS NULL OR ($1='submitted' AND d.status='submitted')
+          OR ($1='blocked' AND d.status IN ('blocked_by_policy','manual_content_decision_required'))
+          OR ($1='completed' AND d.status='completed'))
+        ORDER BY d.created_at,d.id LIMIT $2 OFFSET $3`,
+        [filter.status || null, ADMIN_PAGE_SIZE + 1, (page - 1) * ADMIN_PAGE_SIZE],
       );
       return {
         page,

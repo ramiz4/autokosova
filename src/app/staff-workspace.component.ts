@@ -1,4 +1,3 @@
-import { AdminNavigationComponent } from './admin-navigation.component';
 import { adminLabel } from '../shared/admin-copy';
 import type { AdminOverview } from '../shared/administration';
 import { StaffDecisionFormComponent } from './staff-decision-form.component';
@@ -19,7 +18,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AccountSessionService } from './account-session.service';
 import { LanguageService } from './language.service';
-import { SiteHeaderComponent } from './site-header.component';
+import { StaffLayoutComponent } from './staff-layout.component';
 import { ButtonDirective } from './ui/button.directive';
 import { staffCopy, staffLabel } from '../shared/staff-copy';
 import {
@@ -34,9 +33,8 @@ import {
 @Component({
   selector: 'app-staff-workspace',
   imports: [
-    AdminNavigationComponent,
     StaffDecisionFormComponent,
-    SiteHeaderComponent,
+    StaffLayoutComponent,
     RouterLink,
     FormsModule,
     DatePipe,
@@ -55,6 +53,8 @@ export class StaffWorkspaceComponent {
   readonly adminOnly = inject(ActivatedRoute).snapshot.data['adminOnly'] === true;
   readonly copy = computed(() => staffCopy(this.language.language));
   readonly isAdmin = computed(() => this.account.identity()?.roles.includes('admin') ?? false);
+  /** `/moderation` stays compatible for admins as the same queue narrowed to their assignments. */
+  readonly myCases = computed(() => !this.adminOnly && this.isAdmin());
   readonly allowed = computed(
     () =>
       this.isAdmin() ||
@@ -84,6 +84,7 @@ export class StaffWorkspaceComponent {
   filterKind = '';
   filterPriority = '';
   onlyEscalated = false;
+  onlyUnassigned = false;
   moderatorId = '';
   escalationReason: StaffEscalationReason = 'requires_admin';
   private generation = 0;
@@ -104,7 +105,10 @@ export class StaffWorkspaceComponent {
     this.filterPriority = query.get('priority') ?? '';
     this.filterAssignee = query.get('assignedUserId') ?? '';
     this.onlyEscalated = query.get('escalated') === 'true';
+    this.onlyUnassigned = query.get('unassigned') === 'true';
     this.actionableOnly = query.get('actionable') !== 'false';
+    const requestedPage = Number(query.get('page'));
+    this.page.set(Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1);
     const requestedQueue = query.get('queue');
     this.queue =
       requestedQueue === 'waiting' || requestedQueue === 'done' ? requestedQueue : 'todo';
@@ -129,7 +133,7 @@ export class StaffWorkspaceComponent {
       if (context && ready && allowed)
         untracked(() => {
           const caseId = this.route.snapshot.paramMap.get('caseId');
-          void (caseId ? this.open(caseId, false) : this.load());
+          void (caseId ? this.open(caseId, false) : this.load(this.page()));
         });
     });
     effect(() =>
@@ -167,10 +171,12 @@ export class StaffWorkspaceComponent {
     const query = new URLSearchParams({ page: String(page) });
     if (this.filterStatus) query.set('status', this.filterStatus);
     if (this.queue && !this.filterStatus) query.set('queue', this.queue);
-    if (this.isAdmin() && this.filterAssignee) query.set('assignedUserId', this.filterAssignee);
+    const assignee = this.myCases() ? this.account.identity()?.userId : this.filterAssignee;
+    if (this.isAdmin() && assignee) query.set('assignedUserId', assignee);
     if (this.filterKind) query.set('kind', this.filterKind);
     if (this.filterPriority) query.set('priority', this.filterPriority);
     if (this.onlyEscalated && this.isAdmin()) query.set('escalated', 'true');
+    if (this.onlyUnassigned && this.isAdmin()) query.set('unassigned', 'true');
     try {
       const response = await fetch('/api/staff/cases?' + query, {
         credentials: 'same-origin',
@@ -222,6 +228,7 @@ export class StaffWorkspaceComponent {
     if (this.filterPriority) queryParams['priority'] = this.filterPriority;
     if (this.isAdmin() && this.filterAssignee) queryParams['assignedUserId'] = this.filterAssignee;
     if (this.isAdmin() && this.onlyEscalated) queryParams['escalated'] = 'true';
+    if (this.isAdmin() && this.onlyUnassigned) queryParams['unassigned'] = 'true';
     if (this.queue !== 'todo') queryParams['queue'] = this.queue;
     void this.router.navigate([], { relativeTo: this.route, queryParams });
     void this.load();
@@ -230,6 +237,24 @@ export class StaffWorkspaceComponent {
     this.queue = queue;
     this.filterStatus = '';
     this.applyFilters();
+  }
+  resetFilters(): void {
+    this.filterStatus = '';
+    this.filterAssignee = '';
+    this.filterKind = '';
+    this.filterPriority = '';
+    this.onlyEscalated = false;
+    this.onlyUnassigned = false;
+    this.queue = 'todo';
+    this.applyFilters();
+  }
+  goPage(page: number): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { page },
+      queryParamsHandling: 'merge',
+    });
+    void this.load(page);
   }
   async open(id: string, updateUrl = true): Promise<void> {
     if (this.busy() || this.loading()) return;

@@ -8,6 +8,7 @@ import { createServer } from '../src/server/app';
 import { PostgresModerationStore } from '../src/server/moderation-store';
 import { PostgresReviewStore } from '../src/server/review-store';
 import { LocalDemoFileStore } from '../src/server/local-demo-files';
+import type { StaffQueuePage } from '../src/shared/moderation';
 import { seedDatabase } from '../scripts/db/seed-data.mjs';
 const databaseUrl = process.env['DATABASE_URL'];
 function principal(userId: string, role: 'admin' | 'moderator' | 'customer'): Principal {
@@ -72,6 +73,18 @@ test(
         moderator = principal('staff-test-moderator', 'moderator'),
         other = principal('staff-test-other', 'moderator');
       const id = 'review:demo-staff-review-unassigned';
+      const unassignedTodo = await store.listStaffCases(admin, { queue: 'todo', unassigned: true });
+      assert.ok(unassignedTodo.cases.some((c) => c.id === id));
+      assert.ok(
+        unassignedTodo.cases.every(
+          (c) =>
+            c.assignedModeratorUserId === undefined &&
+            !c.escalation &&
+            ['submitted', 'assigned'].includes(c.status) &&
+            ['report', 'review_submission'].includes(c.kind),
+        ),
+      );
+      await assert.rejects(store.listStaffCases(moderator, { unassigned: true }));
       const mine = await store.listStaffCases(moderator, {});
       assert.ok(mine.cases.some((c) => c.id === 'review:demo-staff-review-assigned'));
       assert.ok(
@@ -121,6 +134,11 @@ test(
       await assert.rejects(store.getStaffCase(moderator, id));
       assert.ok(
         (await store.listStaffCases(admin, { escalated: true })).cases.some((c) => c.id === id),
+      );
+      assert.ok(
+        (await store.listStaffCases(admin, { queue: 'todo', escalated: true })).cases.some(
+          (c) => c.id === id,
+        ),
       );
       const escalated = await store.getStaffCase(admin, id);
       assert.equal(escalated.escalation?.reason, 'requires_admin');
@@ -224,6 +242,25 @@ test(
         const res = await app.inject({ url: '/api/staff/cases', headers: headers(m) });
         assert.equal(res.statusCode, 200);
         assert.match(res.headers['cache-control']!, /no-store/);
+        const unassigned = await app.inject({
+          url: '/api/staff/cases?queue=todo&unassigned=true',
+          headers: headers(a),
+        });
+        assert.equal(unassigned.statusCode, 200);
+        assert.ok(
+          unassigned
+            .json<StaffQueuePage>()
+            .cases.every((c) => !c.assignedModeratorUserId && !c.escalation),
+        );
+        assert.equal(
+          (
+            await app.inject({
+              url: '/api/staff/cases?unassigned=true',
+              headers: headers(m),
+            })
+          ).statusCode,
+          403,
+        );
         assert.equal(
           (
             await app.inject({

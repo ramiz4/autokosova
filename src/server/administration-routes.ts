@@ -78,7 +78,7 @@ export function registerAdministrationRoutes(
   get('/users', (r, p) => store!.users(p, r.query as AdminFilter));
   get('/garages', (r, p) => store!.garages(p, r.query as AdminFilter));
   get('/garages/:garageId', (r, p) => store!.garage(p, ids(r).garageId));
-  get('/privacy', (r, p) => store!.privacy(p, (r.query as AdminFilter).page));
+  get('/privacy', (r, p) => store!.privacy(p, r.query as AdminFilter));
   get('/audit', (r, p) => store!.auditPage(p, r.query as AdminFilter));
   get('/catalog', (_, p) => store!.catalog(p));
   get('/provider', async () => ({

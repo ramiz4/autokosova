@@ -68,6 +68,7 @@ export function registerStaffRoutes(
           additionalProperties: false,
           properties: {
             assignedUserId: { type: 'string', minLength: 1, maxLength: 200 },
+            unassigned: { type: 'boolean' },
             actionable: { type: 'boolean' },
             queue: { enum: ['todo', 'waiting', 'done'] },
             page: { type: 'integer', minimum: 1, maximum: 10000 },

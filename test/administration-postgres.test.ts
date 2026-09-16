@@ -95,12 +95,21 @@ test(
       const before = await adminStore.garage(a, id);
       assert.equal(before.publicationState, 'pending_review');
       assert.equal(validGarageProfile(before.profile, before.profile), true);
-      assert.equal((await adminStore.overview(a)).pendingGarages >= 2, true);
+      const overview = await adminStore.overview(a);
+      assert.equal(overview.pendingGarages >= 2, true);
+      assert.equal(
+        overview.unassignedCases,
+        (await lifecycle.listStaffCases(a, { queue: 'todo', unassigned: true })).cases.length,
+      );
+      assert.equal(
+        overview.escalatedCases,
+        (await lifecycle.listStaffCases(a, { queue: 'todo', escalated: true })).cases.length,
+      );
       for (const person of [m, owner]) {
         await assert.rejects(adminStore.overview(person));
         await assert.rejects(adminStore.users(person, {}));
         await assert.rejects(adminStore.garage(person, id));
-        await assert.rejects(adminStore.privacy(person));
+        await assert.rejects(adminStore.privacy(person, {}));
         await assert.rejects(adminStore.auditPage(person, {}));
         await assert.rejects(adminStore.catalog(person));
       }
@@ -339,10 +348,16 @@ test(
           verification: verified,
         }),
       );
-      const privacy = await adminStore.privacy(a);
+      const privacy = await adminStore.privacy(a, {});
       assert.equal(privacy.policy, undefined);
       assert.ok(privacy.requests.some((r) => r.status === 'blocked_by_policy'));
       assert.ok(privacy.requests.some((r) => r.status === 'manual_content_decision_required'));
+      const blockedPrivacy = await adminStore.privacy(a, { status: 'blocked' });
+      assert.ok(
+        blockedPrivacy.requests.every((r) =>
+          ['blocked_by_policy', 'manual_content_decision_required'].includes(r.status),
+        ),
+      );
       await assert.rejects(lifecycle.processPersonalDataDeletion(a, 'demo-admin-deletion-policy'));
       const policy = {
         version: 'SYNTHETIC-TEST-ONLY',

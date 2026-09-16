@@ -78,6 +78,10 @@ export class PostgresStaffWorkspace {
   async list(principal: Principal, filter: StaffQueueFilter): Promise<StaffQueuePage> {
     if (filter.assignedUserId && !principal.roles.has('admin'))
       throw new AccessError(403, 'Assignee filtering is administrative');
+    if (filter.unassigned && !principal.roles.has('admin'))
+      throw new AccessError(403, 'Unassigned filtering is administrative');
+    if (filter.unassigned && filter.assignedUserId)
+      throw new AccessError(400, 'A case cannot be assigned and unassigned');
     const page = filter.page ?? 1;
     if (!Number.isSafeInteger(page) || page < 1 || page > 10000)
       throw new AccessError(400, 'Invalid case page');
@@ -98,6 +102,8 @@ export class PostgresStaffWorkspace {
             OR ($11='done' AND c.status IN ('resolved','rejected')))
           AND ($5::text IS NULL OR c.priority=$5) AND ($6::boolean IS NULL OR (c.escalation_reason IS NOT NULL)=$6)
           AND ($9::text IS NULL OR c.assigned_moderator_user_id=$9)
+          AND (NOT $12::boolean OR (c.assigned_moderator_user_id IS NULL AND c.escalation_reason IS NULL
+            AND c.kind IN ('report','review_submission')))
         ORDER BY (c.priority='high') DESC,c.created_at,c.id LIMIT $7 OFFSET $8`,
         [
           principal.roles.has('admin'),
@@ -111,6 +117,7 @@ export class PostgresStaffWorkspace {
           filter.assignedUserId ?? null,
           filter.actionable === true,
           filter.queue ?? null,
+          filter.unassigned === true,
         ],
       );
       return {

@@ -1,9 +1,6 @@
-<div class="border-b border-slate-200 bg-white">
-  <app-site-header [compact]="true" active="admin" />
-</div>
-<main id="main-content" class="mx-auto max-w-7xl px-4 py-5 text-ink sm:px-6 sm:py-8">
+<app-staff-layout [admin]="true" [active]="$any(section)">
   <h1 tabindex="-1" class="text-3xl font-bold">{{ label(section) }}</h1>
-  <p class="mt-3 max-w-3xl text-muted">{{ label('intro') }}</p>
+  <p class="mt-2 max-w-3xl text-muted">{{ label('intro') }}</p>
   @if (account.state() === 'guest') {
     <a appButton class="mt-6" [href]="loginUrl()">{{ label('login') }}</a>
   } @else if (!ready() || account.state() === 'loading') {
@@ -11,7 +8,6 @@
   } @else if (!allowed()) {
     <p role="alert" class="mt-6">{{ label('denied') }}</p>
   } @else {
-    <app-admin-navigation [active]="section" />
     @if (error()) {
       <div role="alert" class="my-5 rounded-xl bg-rose-50 p-4 text-rose-900">
         <p>{{ error() }}</p>
@@ -439,6 +435,7 @@
               }}<select
                 name="status"
                 [(ngModel)]="status"
+                (change)="applyStatusFilter()"
                 class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
               >
                 <option value="">{{ label('all') }}</option>
@@ -603,6 +600,20 @@
 
       @if (section === 'privacy') {
         @if (privacy(); as data) {
+          <label class="mt-4 grid max-w-xs gap-2 text-sm font-semibold"
+            >{{ label('status') }}
+            <select
+              name="deletionStatus"
+              [(ngModel)]="status"
+              (change)="applyStatusFilter()"
+              class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+            >
+              <option value="">{{ label('all') }}</option>
+              <option value="submitted">{{ label('submitted') }}</option>
+              <option value="blocked">{{ label('blockedDeletions') }}</option>
+              <option value="completed">{{ label('completed') }}</option>
+            </select>
+          </label>
           <section class="rounded-xl border border-slate-200 bg-white p-5">
             <h2 class="text-xl font-bold">{{ label('policy') }}</h2>
             @if (data.policy; as policy) {
@@ -819,4 +830,4 @@
       }
     }
   }
-</main>
+</app-staff-layout>

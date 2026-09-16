@@ -2,22 +2,17 @@ import { Component, input, output, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { AdminConsoleComponent } from './admin-console.component';
-import { AdminNavigationComponent } from './admin-navigation.component';
 import { GarageOnboardingComponent } from './garage-onboarding.component';
-import { SiteHeaderComponent } from './site-header.component';
+import { StaffLayoutComponent } from './staff-layout.component';
 import { AccountSessionService } from './account-session.service';
 import { LanguageService } from './language.service';
 import { adminLabel } from '../shared/admin-copy';
 import type { AdminGarageDetail } from '../shared/administration';
 import type { AppLanguage } from '../shared/i18n';
 
-@Component({ selector: 'app-site-header', template: '' })
-class HeaderStub {
-  readonly compact = input(false);
-  readonly active = input('');
-}
-@Component({ selector: 'app-admin-navigation', template: '' })
-class NavigationStub {
+@Component({ selector: 'app-staff-layout', template: '<ng-content />' })
+class StaffLayoutStub {
+  readonly admin = input(false);
   readonly active = input('');
 }
 @Component({ selector: 'app-garage-onboarding', template: '' })
@@ -100,9 +95,9 @@ async function render(section = 'users', locale: AppLanguage = 'de', role = 'adm
   })
     .overrideComponent(AdminConsoleComponent, {
       remove: {
-        imports: [SiteHeaderComponent, AdminNavigationComponent, GarageOnboardingComponent],
+        imports: [StaffLayoutComponent, GarageOnboardingComponent],
       },
-      add: { imports: [HeaderStub, NavigationStub, OnboardingStub] },
+      add: { imports: [StaffLayoutStub, OnboardingStub] },
     })
     .compileComponents();
   const fixture = TestBed.createComponent(AdminConsoleComponent);

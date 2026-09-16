@@ -1,60 +1,43 @@
-<div class="border-b border-slate-200 bg-white">
-  <app-site-header [compact]="true" [active]="adminOnly ? 'admin' : 'moderation'" />
-</div>
-<main id="main-content" class="mx-auto max-w-7xl px-4 py-5 text-ink sm:px-6 sm:py-8">
+<app-staff-layout [admin]="isAdmin()" active="overview">
   <h1 tabindex="-1" class="text-3xl font-bold tracking-tight">
-    {{ adminOnly ? copy().admin : copy().moderation }}
+    {{ adminOnly ? copy().cases : copy().myCases }}
   </h1>
-  <p class="mt-3 max-w-3xl text-muted">{{ adminOnly ? copy().adminIntro : copy().ownIntro }}</p>
-  <div class="mt-3 flex items-center justify-between gap-3 text-sm">
-    <a [routerLink]="language.link('home')" class="font-semibold text-brand-dark">{{
-      copy().publicSite
-    }}</a>
-    <a [routerLink]="language.link('privacy')" class="text-muted">{{ copy().legal }}</a>
-  </div>
+  <p class="mt-2 max-w-3xl text-muted">{{ adminOnly ? copy().adminIntro : copy().ownIntro }}</p>
   @if (isAdmin()) {
-    <app-admin-navigation />
     @if (adminOnly && adminOverview(); as overview) {
-      <section class="mt-6 grid gap-3 sm:grid-cols-3" data-admin-overview>
+      <section class="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm" data-admin-overview>
         <a
-          class="rounded-xl border border-slate-200 bg-white p-4"
-          [routerLink]="language.link('admin') + '/garages'"
-          ><strong>{{ overview.pendingGarages }}</strong> {{ adminLabel('pendingGarages') }}</a
-        >
-        <p class="rounded-xl border border-slate-200 bg-white p-4">
-          <strong>{{ overview.unassignedCases }}</strong> {{ adminLabel('unassignedCases') }}
-        </p>
-        <p class="rounded-xl border border-slate-200 bg-white p-4">
-          <strong>{{ overview.escalatedCases }}</strong> {{ adminLabel('escalatedCases') }}
-        </p>
-        <a
-          class="rounded-xl border border-slate-200 bg-white p-4"
-          [routerLink]="language.link('admin') + '/privacy'"
-          ><strong>{{ overview.pendingDeletions }}</strong> {{ adminLabel('pendingDeletions') }}</a
+          class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+          [routerLink]="language.link('admin-section', 'garages')"
+          [queryParams]="{ status: 'pending_review' }"
+          >{{ overview.pendingGarages }} {{ adminLabel('pendingGarages') }}</a
         >
         <a
-          class="rounded-xl border border-slate-200 bg-white p-4"
-          [routerLink]="language.link('admin') + '/privacy'"
-          ><strong>{{ overview.blockedDeletions }}</strong> {{ adminLabel('blockedDeletions') }}</a
+          class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+          [routerLink]="language.link('admin')"
+          [queryParams]="{ queue: 'todo', unassigned: 'true' }"
+          >{{ overview.unassignedCases }} {{ adminLabel('unassignedCases') }}</a
+        >
+        <a
+          class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+          [routerLink]="language.link('admin')"
+          [queryParams]="{ queue: 'todo', escalated: 'true' }"
+          >{{ overview.escalatedCases }} {{ adminLabel('escalatedCases') }}</a
+        >
+        <a
+          class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+          [routerLink]="language.link('admin-section', 'privacy')"
+          [queryParams]="{ status: 'submitted' }"
+          >{{ overview.pendingDeletions }} {{ adminLabel('pendingDeletions') }}</a
+        >
+        <a
+          class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+          [routerLink]="language.link('admin-section', 'privacy')"
+          [queryParams]="{ status: 'blocked' }"
+          >{{ overview.blockedDeletions }} {{ adminLabel('blockedDeletions') }}</a
         >
       </section>
     }
-  }
-  @if (isAdmin()) {
-    <nav class="mt-5 flex flex-wrap gap-3" [attr.aria-label]="label('workspace')">
-      <a
-        appButton="outline"
-        [routerLink]="language.link('admin')"
-        [attr.aria-current]="adminOnly ? 'page' : null"
-        >{{ copy().admin }}</a
-      >
-      <a
-        appButton="outline"
-        [routerLink]="language.link('moderation')"
-        [attr.aria-current]="!adminOnly ? 'page' : null"
-        >{{ copy().moderation }}</a
-      >
-    </nav>
   }
   @if (account.state() === 'guest') {
     <section class="mt-8 rounded-2xl border border-slate-200 bg-white p-6">
@@ -310,9 +293,9 @@
         }
       </section>
     } @else {
-      <section class="my-6 rounded-xl border border-slate-200 bg-white p-4">
+      <section class="my-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <h2 class="text-xl font-bold">{{ copy().cases }}</h2>
+          <h2 class="text-xl font-bold">{{ myCases() ? copy().myCases : copy().cases }}</h2>
           <div class="flex flex-wrap gap-2" data-queue-tabs>
             @for (item of ['todo', 'waiting', 'done']; track item) {
               <button
@@ -326,80 +309,83 @@
             }
           </div>
         </div>
-        <form class="mt-4 grid gap-4 sm:grid-cols-3" (ngSubmit)="applyFilters()">
-          @if (isAdmin()) {
+        <details class="mt-4">
+          <summary class="min-h-11 cursor-pointer py-2 font-semibold text-brand-dark">
+            {{ copy().moreFilters }}
+          </summary>
+          <form class="grid gap-4 pt-3 sm:grid-cols-3" (ngSubmit)="applyFilters()">
+            @if (isAdmin() && !myCases()) {
+              <label class="grid gap-2 text-sm font-semibold"
+                >{{ adminLabel('caseWorker') }}
+                <select
+                  data-case-assignee-filter
+                  name="assignedUserId"
+                  [(ngModel)]="filterAssignee"
+                  (change)="applyFilters()"
+                  class="min-h-11 rounded-lg border border-slate-300 px-3"
+                >
+                  <option value="">{{ copy().all }}</option>
+                  @for (person of moderators(); track person.userId) {
+                    <option [value]="person.userId">{{ person.label }}</option>
+                  }
+                </select>
+              </label>
+            }
             <label class="grid gap-2 text-sm font-semibold"
-              >{{ adminLabel('caseWorker') }}
+              >{{ copy().kind }}
               <select
-                data-case-assignee-filter
-                name="assignedUserId"
-                [(ngModel)]="filterAssignee"
+                name="kind"
+                [(ngModel)]="filterKind"
+                (change)="applyFilters()"
                 class="min-h-11 rounded-lg border border-slate-300 px-3"
               >
                 <option value="">{{ copy().all }}</option>
-                @for (person of moderators(); track person.userId) {
-                  <option [value]="person.userId">{{ person.label }}</option>
+                @for (
+                  kind of isAdmin()
+                    ? ['report', 'review_submission', 'garage_submission', 'data_deletion']
+                    : ['report', 'review_submission'];
+                  track kind
+                ) {
+                  <option [value]="kind">{{ label(kind) }}</option>
                 }
               </select>
             </label>
-          }
-          <label class="grid gap-2 text-sm font-semibold"
-            >{{ copy().status
-            }}<select
-              name="status"
-              [(ngModel)]="filterStatus"
-              class="min-h-11 rounded-lg border border-slate-300 px-3"
-            >
-              <option value="">{{ copy().all }}</option>
-              @for (
-                status of ['submitted', 'assigned', 'waiting_for_subject', 'resolved', 'rejected'];
-                track status
-              ) {
-                <option [value]="status">{{ label(status) }}</option>
-              }
-            </select></label
-          >
-          <label class="grid gap-2 text-sm font-semibold"
-            >{{ copy().kind
-            }}<select
-              name="kind"
-              [(ngModel)]="filterKind"
-              class="min-h-11 rounded-lg border border-slate-300 px-3"
-            >
-              <option value="">{{ copy().all }}</option>
-              @for (
-                kind of isAdmin()
-                  ? ['report', 'review_submission', 'garage_submission', 'data_deletion']
-                  : ['report', 'review_submission'];
-                track kind
-              ) {
-                <option [value]="kind">{{ label(kind) }}</option>
-              }
-            </select></label
-          >
-          <label class="grid gap-2 text-sm font-semibold"
-            >{{ copy().priority }}
-            <select
-              name="priority"
-              [(ngModel)]="filterPriority"
-              class="min-h-11 rounded-lg border border-slate-300 px-3"
-            >
-              <option value="">{{ copy().all }}</option>
-              <option value="high">{{ copy().high }}</option>
-              <option value="normal">{{ copy().normal }}</option>
-            </select>
-          </label>
-          @if (isAdmin()) {
-            <label class="flex min-h-11 items-center gap-3"
-              ><input type="checkbox" name="escalated" [(ngModel)]="onlyEscalated" />{{
-                copy().escalation
-              }}</label
-            >
-          }
-          <button appButton="outline" type="submit" class="self-end" [disabled]="loading()">
-            {{ copy().retry }}
-          </button>
-        </form>
+            <label class="grid gap-2 text-sm font-semibold"
+              >{{ copy().priority }}
+              <select
+                name="priority"
+                [(ngModel)]="filterPriority"
+                (change)="applyFilters()"
+                class="min-h-11 rounded-lg border border-slate-300 px-3"
+              >
+                <option value="">{{ copy().all }}</option>
+                <option value="high">{{ copy().high }}</option>
+                <option value="normal">{{ copy().normal }}</option>
+              </select>
+            </label>
+            @if (isAdmin() && !myCases()) {
+              <label class="flex min-h-11 items-center gap-3"
+                ><input
+                  type="checkbox"
+                  name="unassigned"
+                  [(ngModel)]="onlyUnassigned"
+                  (change)="applyFilters()"
+                />{{ copy().unassigned }}</label
+              >
+              <label class="flex min-h-11 items-center gap-3"
+                ><input
+                  type="checkbox"
+                  name="escalated"
+                  [(ngModel)]="onlyEscalated"
+                  (change)="applyFilters()"
+                />{{ copy().escalation }}</label
+              >
+            }
+            <button appButton="outline" type="button" class="self-end" (click)="resetFilters()">
+              {{ copy().reset }}
+            </button>
+          </form>
+        </details>
       </section>
       @if (!loading() && !error() && !cases().length) {
         <p data-staff-empty class="rounded-xl border border-slate-200 bg-white p-6">
@@ -411,7 +397,7 @@
           <article
             data-staff-row
             [attr.data-case-id]="item.id"
-            class="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-[1fr_auto]"
+            class="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-[minmax(0,1fr)_auto]"
           >
             <div class="min-w-0">
               <p class="text-sm font-semibold text-brand-dark">
@@ -420,7 +406,7 @@
               <h2 class="mt-1 text-lg font-bold break-words">
                 {{ item.label || label(item.kind) }}
               </h2>
-              <p class="mt-2 text-sm">
+              <p class="mt-1 text-sm">
                 {{ label(item.status) }} ·
                 {{
                   item.assignedModeratorLabel ||
@@ -453,7 +439,7 @@
           type="button"
           [disabled]="page() <= 1 || loading()"
           data-previous-cases
-          (click)="load(page() - 1)"
+          (click)="goPage(page() - 1)"
         >
           {{ copy().previous }}</button
         ><button
@@ -461,7 +447,7 @@
           type="button"
           [disabled]="!hasMore() || loading()"
           data-next-cases
-          (click)="load(page() + 1)"
+          (click)="goPage(page() + 1)"
         >
           {{ copy().next }}
         </button>
@@ -469,4 +455,4 @@
     }
     <p class="mt-6 text-sm text-muted">{{ copy().refreshHint }}</p>
   }
-</main>
+</app-staff-layout>

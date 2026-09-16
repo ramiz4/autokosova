@@ -173,6 +173,8 @@ export interface StaffQueueFilter {
   readonly actionable?: boolean;
   readonly queue?: 'todo' | 'waiting' | 'done';
   readonly assignedUserId?: string;
+  /** Administrative shortcut; never available to moderators. */
+  readonly unassigned?: boolean;
   readonly page?: number;
   readonly kind?: StaffCaseKind;
   readonly status?: ModerationCaseStatus;

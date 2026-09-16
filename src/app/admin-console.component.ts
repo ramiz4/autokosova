@@ -11,12 +11,11 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AccountSessionService } from './account-session.service';
 import { LanguageService } from './language.service';
-import { SiteHeaderComponent } from './site-header.component';
-import { AdminNavigationComponent } from './admin-navigation.component';
+import { StaffLayoutComponent } from './staff-layout.component';
 import { GarageOnboardingComponent } from './garage-onboarding.component';
 import { ButtonDirective } from './ui/button.directive';
 import { adminLabel } from '../shared/admin-copy';
@@ -40,8 +39,7 @@ import type { VerificationChecklist } from '../shared/garage-onboarding';
   imports: [
     DatePipe,
     FormsModule,
-    SiteHeaderComponent,
-    AdminNavigationComponent,
+    StaffLayoutComponent,
     GarageOnboardingComponent,
     ButtonDirective,
   ],
@@ -51,7 +49,9 @@ import type { VerificationChecklist } from '../shared/garage-onboarding';
 export class AdminConsoleComponent {
   readonly account = inject(AccountSessionService);
   readonly language = inject(LanguageService);
-  readonly section = inject(ActivatedRoute).snapshot.data['adminSection'] as string;
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  readonly section = this.route.snapshot.data['adminSection'] as string;
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
   private candidateRead = 0;
@@ -128,6 +128,7 @@ export class AdminConsoleComponent {
       this.controller.abort();
       this.controller = new AbortController();
       this.clear();
+      this.restoreSafeFilter();
       if (context && ready && allowed) untracked(() => void this.load());
     });
     effect(() => this.language.setPageText(this.label(this.section), this.label('intro'), true));
@@ -142,6 +143,11 @@ export class AdminConsoleComponent {
   }
   link(section: string) {
     return this.language.link('admin') + '/' + section;
+  }
+  applyStatusFilter(): void {
+    const queryParams = this.status ? { status: this.status } : {};
+    void this.router.navigate([], { relativeTo: this.route, queryParams });
+    void this.load(1);
   }
   loginUrl() {
     return '/auth/login?returnTo=' + encodeURIComponent(this.link(this.section));
@@ -193,6 +199,10 @@ export class AdminConsoleComponent {
     this.approvalReference = '';
     this.publicReviewHandling = '';
     for (const key of this.durations) this.days[key] = null;
+  }
+  private restoreSafeFilter(): void {
+    if (this.section !== 'garages' && this.section !== 'privacy') return;
+    this.status = this.route.snapshot.queryParamMap?.get('status') ?? '';
   }
   async load(page = 1): Promise<void> {
     if (!this.allowed() || this.busy()) return;

@@ -1,40 +1,89 @@
 import { Component, inject, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { LanguageService } from './language.service';
 import { adminLabel } from '../shared/admin-copy';
+import { staffCopy } from '../shared/staff-copy';
+
+type Section = 'overview' | 'garages' | 'users' | 'privacy' | 'audit' | 'catalog';
+
+/** One compact internal navigator; it deliberately has no role-switching controls. */
 @Component({
   selector: 'app-admin-navigation',
   imports: [RouterLink],
-  template: ` <nav
-    class="my-6 flex gap-2 overflow-x-auto pb-1 md:flex-col md:overflow-visible"
-    [attr.aria-label]="label('administration')"
-  >
-    @for (section of sections; track section) {
-      <a
-        class="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-        [routerLink]="path(section)"
-        [attr.aria-current]="active() === section ? 'page' : null"
-        >{{ label(section) }}</a
+  template: `
+    <nav class="hidden lg:block" [attr.aria-label]="adminLabel('administration')">
+      @for (group of groups(); track group.label) {
+        <section class="mb-5">
+          @if (group.label) {
+            <p class="mb-2 px-3 text-xs font-bold tracking-wide text-muted uppercase">
+              {{ group.label }}
+            </p>
+          }
+          <div class="grid gap-1">
+            @for (section of group.sections; track section) {
+              <a
+                class="flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                [class.bg-blue-50]="active() === section"
+                [attr.aria-current]="active() === section ? 'page' : null"
+                [routerLink]="path(section)"
+                >{{ label(section) }}</a
+              >
+            }
+          </div>
+        </section>
+      }
+    </nav>
+    <label class="block lg:hidden">
+      <span class="mb-1 block text-sm font-semibold text-ink">{{
+        staffCopy(language.language).cases
+      }}</span>
+      <select
+        data-staff-section-select
+        class="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-semibold text-brand-dark"
+        [value]="active()"
+        (change)="go($event)"
       >
-    }
-  </nav>`,
+        @for (group of groups(); track group.label) {
+          <optgroup [label]="group.label || adminLabel('administration')">
+            @for (section of group.sections; track section) {
+              <option [value]="section">{{ label(section) }}</option>
+            }
+          </optgroup>
+        }
+      </select>
+    </label>
+  `,
 })
 export class AdminNavigationComponent {
   readonly language = inject(LanguageService);
-  readonly active = input('overview');
-  readonly sections = [
-    'overview',
-    'garages',
-    'users',
-    'privacy',
-    'audit',
-    'catalog',
-    'support',
-  ] as const;
-  label(key: string) {
+  private readonly router = inject(Router);
+  readonly active = input<Section | 'moderation'>('overview');
+  readonly admin = input(true);
+  readonly staffCopy = staffCopy;
+  groups(): readonly { readonly label: string; readonly sections: readonly Section[] }[] {
+    if (!this.admin()) return [{ label: '', sections: ['overview'] }];
+    return [
+      { label: '', sections: ['overview', 'garages', 'users'] },
+      { label: this.adminLabel('administration'), sections: ['privacy', 'audit', 'catalog'] },
+    ];
+  }
+  label(section: Section): string {
+    return section === 'overview'
+      ? staffCopy(this.language.language).cases
+      : section === 'catalog'
+        ? adminLabel('settings', this.language.language)
+        : adminLabel(section, this.language.language);
+  }
+  adminLabel(key: string): string {
     return adminLabel(key, this.language.language);
   }
-  path(section: string) {
-    return this.language.link('admin') + (section === 'overview' ? '' : '/' + section);
+  path(section: Section): string {
+    return section === 'overview'
+      ? this.language.link('admin')
+      : this.language.link('admin-section', section);
+  }
+  go(event: Event): void {
+    const section = (event.target as HTMLSelectElement).value as Section;
+    void this.router.navigateByUrl(this.path(section));
   }
 }

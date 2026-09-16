@@ -14,6 +14,7 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
   ],
   audit: ['Ereignisprotokoll', 'Audit trail', 'Historiku i ngjarjeve'],
   catalog: ['Katalog und Pflegewege', 'Catalog and maintenance', 'Katalogu dhe mirëmbajtja'],
+  settings: ['Einstellungen', 'Settings', 'Cilësimet'],
   support: [
     'Unterstützte Werkstattaufnahme',
     'Assisted garage registration',
