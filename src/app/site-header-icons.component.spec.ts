@@ -4,7 +4,7 @@ import { By } from '@angular/platform-browser';
 import { provideRouter, Router } from '@angular/router';
 import { AccountSessionService } from './account-session.service';
 import { SiteHeaderComponent } from './site-header.component';
-import { IconComponent } from './ui/icon.component';
+import { LucideIconComponent } from './ui/lucide-icon.component';
 
 describe.each(['', 'sq', 'en'])('Account menu icons for /%s', (locale) => {
   it.each(['customer', 'moderator', 'admin', 'garage'])(
@@ -42,9 +42,9 @@ describe.each(['', 'sq', 'en'])('Account menu icons for /%s', (locale) => {
         const link = menu.querySelector<HTMLAnchorElement>(selector)!;
         expect(link.getAttribute('href')).toBe(prefix + path);
         expect(link.textContent?.trim()).toBeTruthy();
-        const icon = fixture.debugElement.query(By.css(selector + ' app-icon'));
+        const icon = fixture.debugElement.query(By.css(selector + ' lucide-icon'));
         expect(icon, selector).not.toBeNull();
-        expect((icon.componentInstance as IconComponent).name()).toBe(name);
+        expect((icon.componentInstance as LucideIconComponent).name().icon.name).toBe(name);
         const host = icon.nativeElement as HTMLElement;
         expect(host.classList.contains('size-4.5')).toBe(true);
         expect(host.classList.contains('shrink-0')).toBe(true);
@@ -60,7 +60,7 @@ describe.each(['', 'sq', 'en'])('Account menu icons for /%s', (locale) => {
         expect(menu.querySelector('[data-account-staff="admin"]')).toBeNull();
       }
       if (role === 'admin' || role === 'moderator') {
-        expectLinkIcon('[data-account-staff="moderation"]', 'shield', '/moderation');
+        expectLinkIcon('[data-account-staff="moderation"]', 'shield-check', '/moderation');
       } else {
         expect(menu.querySelector('[data-account-staff="moderation"]')).toBeNull();
       }
@@ -68,7 +68,7 @@ describe.each(['', 'sq', 'en'])('Account menu icons for /%s', (locale) => {
         expectLinkIcon('[data-account-garages]', 'wrench', '/garages/new');
         expect(menu.querySelector('[data-account-inquiries]')).toBeNull();
       } else {
-        expectLinkIcon('[data-account-inquiries]', 'message', '/inquiries');
+        expectLinkIcon('[data-account-inquiries]', 'message-circle', '/inquiries');
         expect(menu.querySelector('[data-account-garages]')).toBeNull();
       }
       expectLinkIcon('[data-account-reviews]', 'star', '/reviews');

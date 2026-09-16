@@ -1,3 +1,10 @@
+import {
+  LucideChevronLeft,
+  LucideHeart,
+  LucideSearch,
+  LucideShieldCheck,
+  type LucideIcon,
+} from '@lucide/angular';
 import { Component, afterNextRender, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { favoritesCopy, type FavoritesCopyKey } from '../shared/favorites-copy';
@@ -9,7 +16,7 @@ import { FavoriteNoticeComponent } from './favorite-notice.component';
 import { LanguageService } from './language.service';
 import { SiteHeaderComponent } from './site-header.component';
 import { ButtonDirective } from './ui/button.directive';
-import { IconComponent } from './ui/icon.component';
+import { LucideIconComponent } from './ui/lucide-icon.component';
 
 @Component({
   selector: 'app-favorites',
@@ -17,7 +24,7 @@ import { IconComponent } from './ui/icon.component';
     RouterLink,
     SiteHeaderComponent,
     ButtonDirective,
-    IconComponent,
+    LucideIconComponent,
     FavoriteGarageCardComponent,
     FavoriteNoticeComponent,
   ],
@@ -25,6 +32,11 @@ import { IconComponent } from './ui/icon.component';
   templateUrl: './favorites.component.html',
 })
 export class FavoritesComponent {
+  readonly ChevronLeftIcon: LucideIcon = LucideChevronLeft;
+  readonly HeartIcon: LucideIcon = LucideHeart;
+  readonly SearchIcon: LucideIcon = LucideSearch;
+  readonly ShieldCheckIcon: LucideIcon = LucideShieldCheck;
+
   protected readonly account = inject(AccountSessionService);
   protected readonly favorites = inject(FavoritesService);
   protected readonly profiles = inject(FavoriteProfilesService);

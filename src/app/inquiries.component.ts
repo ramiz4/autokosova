@@ -1,3 +1,24 @@
+import {
+  LucideArrowRight,
+  LucideCar,
+  LucideCheck,
+  LucideChevronDown,
+  LucideChevronRight,
+  LucideClock,
+  LucideEllipsis,
+  LucideFileText,
+  LucideGlobe,
+  LucideInfo,
+  LucideMapPin,
+  LucidePause,
+  LucidePencil,
+  LucidePlus,
+  LucideShieldCheck,
+  LucideTrash2,
+  LucideUser,
+  LucideWrench,
+  type LucideIcon,
+} from '@lucide/angular';
 import { DOCUMENT } from '@angular/common';
 import {
   Component,
@@ -26,7 +47,7 @@ import { SavedRepairRequestsService } from './saved-repair-requests.service';
 import { SiteHeaderComponent } from './site-header.component';
 import { InquiryEditorComponent } from './inquiry-editor.component';
 import { InquiryDeleteDialogComponent } from './inquiry-delete-dialog.component';
-import { IconComponent } from './ui/icon.component';
+import { LucideIconComponent } from './ui/lucide-icon.component';
 import { ButtonDirective } from './ui/button.directive';
 
 @Component({
@@ -35,7 +56,7 @@ import { ButtonDirective } from './ui/button.directive';
     RouterLink,
     SiteHeaderComponent,
     ButtonDirective,
-    IconComponent,
+    LucideIconComponent,
     InquiryEditorComponent,
     InquiryDeleteDialogComponent,
   ],
@@ -49,6 +70,25 @@ import { ButtonDirective } from './ui/button.directive';
   templateUrl: './inquiries.component.html',
 })
 export class InquiriesComponent {
+  readonly ArrowRightIcon: LucideIcon = LucideArrowRight;
+  readonly CarIcon: LucideIcon = LucideCar;
+  readonly CheckIcon: LucideIcon = LucideCheck;
+  readonly ChevronDownIcon: LucideIcon = LucideChevronDown;
+  readonly ChevronRightIcon: LucideIcon = LucideChevronRight;
+  readonly ClockIcon: LucideIcon = LucideClock;
+  readonly EllipsisIcon: LucideIcon = LucideEllipsis;
+  readonly FileTextIcon: LucideIcon = LucideFileText;
+  readonly GlobeIcon: LucideIcon = LucideGlobe;
+  readonly InfoIcon: LucideIcon = LucideInfo;
+  readonly MapPinIcon: LucideIcon = LucideMapPin;
+  readonly PauseIcon: LucideIcon = LucidePause;
+  readonly PencilIcon: LucideIcon = LucidePencil;
+  readonly PlusIcon: LucideIcon = LucidePlus;
+  readonly ShieldCheckIcon: LucideIcon = LucideShieldCheck;
+  readonly TrashIcon: LucideIcon = LucideTrash2;
+  readonly UserIcon: LucideIcon = LucideUser;
+  readonly WrenchIcon: LucideIcon = LucideWrench;
+
   protected readonly account = inject(AccountSessionService);
   protected readonly language = inject(LanguageService);
   protected readonly saved = inject(SavedRepairRequestsService);

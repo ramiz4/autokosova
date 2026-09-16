@@ -1,3 +1,24 @@
+import {
+  LucideBadgeCheck,
+  LucideCar,
+  LucideCheck,
+  LucideChevronLeft,
+  LucideChevronRight,
+  LucideGlobe,
+  LucideHeart,
+  LucideHouse,
+  LucideImages,
+  LucideInfo,
+  LucideListFilter,
+  LucideMapPin,
+  LucideMessageCircle,
+  LucidePhone,
+  LucideSend,
+  LucideShare2,
+  LucideWrench,
+  LucideX,
+  type LucideIcon,
+} from '@lucide/angular';
 import { AccountSessionService } from './account-session.service';
 import type { PublicGarageReview, PublicReviewPage } from '../shared/reviews';
 import { reviewLabel } from '../shared/review-copy';
@@ -35,7 +56,7 @@ import { LanguageService } from './language.service';
 import { SiteFooterComponent } from './site-footer.component';
 import { SiteHeaderComponent } from './site-header.component';
 import { ButtonDirective } from './ui/button.directive';
-import { IconComponent } from './ui/icon.component';
+import { LucideIconComponent } from './ui/lucide-icon.component';
 import { RatingStarsComponent } from './ui/rating-stars.component';
 
 interface PublicGarageProfile {
@@ -73,7 +94,7 @@ const PROFILE_SECTIONS = new Set(['about', 'reviews', 'services', 'makes', 'loca
     ButtonDirective,
     FavoriteNoticeComponent,
     FormsModule,
-    IconComponent,
+    LucideIconComponent,
     RatingStarsComponent,
     RouterLink,
     SiteFooterComponent,
@@ -82,6 +103,25 @@ const PROFILE_SECTIONS = new Set(['about', 'reviews', 'services', 'makes', 'loca
   templateUrl: './garage-profile.component.html',
 })
 export class GarageProfileComponent {
+  readonly BadgeCheckIcon: LucideIcon = LucideBadgeCheck;
+  readonly CarIcon: LucideIcon = LucideCar;
+  readonly CheckIcon: LucideIcon = LucideCheck;
+  readonly ChevronLeftIcon: LucideIcon = LucideChevronLeft;
+  readonly ChevronRightIcon: LucideIcon = LucideChevronRight;
+  readonly GlobeIcon: LucideIcon = LucideGlobe;
+  readonly HeartIcon: LucideIcon = LucideHeart;
+  readonly HomeIcon: LucideIcon = LucideHouse;
+  readonly ImagesIcon: LucideIcon = LucideImages;
+  readonly InfoIcon: LucideIcon = LucideInfo;
+  readonly ListFilterIcon: LucideIcon = LucideListFilter;
+  readonly MapPinIcon: LucideIcon = LucideMapPin;
+  readonly MessageCircleIcon: LucideIcon = LucideMessageCircle;
+  readonly PhoneIcon: LucideIcon = LucidePhone;
+  readonly SendIcon: LucideIcon = LucideSend;
+  readonly ShareIcon: LucideIcon = LucideShare2;
+  readonly WrenchIcon: LucideIcon = LucideWrench;
+  readonly XIcon: LucideIcon = LucideX;
+
   protected reviewPage = 1;
   protected reviewHasMore = false;
   private reviewGeneration = 0;
