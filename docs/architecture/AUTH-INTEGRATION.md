@@ -237,7 +237,7 @@ Passwörter gehören nur in den Browser-Testprozess, nicht in App, Build oder Se
 Anwendungsrollen und konkrete Memberships bleiben getrennte Prüfungen. Der echte Browserlauf
 muss zusätzlich Provider-End-Session, Callback und Kontowechsel nachweisen.
 
-Ein unabhängiger Environment-Review muss den exakten aktuellen Integrationsstand freigeben,
+Ein expliziter administrativer Environment-Review muss den exakten aktuellen Integrationsstand freigeben,
 bevor Credentials verfügbar werden. Fehlende Freigabe/Secrets/Callbacks/MFA-Voraussetzungen
 sind kein grüner Skip. Vorhandene Providerkonten, Registrierung oder Regeln werden nicht geändert.
 Einrichtung und Grenzen: [E2E-ACCEPTANCE.md](../development/E2E-ACCEPTANCE.md#separater-echter-zitadel-durchlauf-119).

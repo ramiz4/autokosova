@@ -83,7 +83,12 @@ sowie ausdrücklich erzeugte Screenshots bekannter synthetischer Anwendungsseite
 Videos, gespeicherten Auth-Sitzungen, Providerbilder oder Netzwerkdumps. Playwright-Diagnosetexte
 bleiben lokal; CI lädt ausschließlich die freigegebenen JSON-/PNG-Dateien hoch.
 
-### Technische Merge-Sperre: derzeit externe Einschränkung
+### Technische Merge-Sperre: historische Einschränkung und Einrichtung #119
+
+Seit der ausdrücklichen Adminfreigabe am 16.09.2026 ist `main` tatsächlich geschützt: aktuelle
+Branch-Basis, beide E2E-Checks und alle neun bisherigen Qualitätschecks (zehn verschiedene
+Checknamen insgesamt), jeweils von GitHub Actions, auch für Administratoren. Keine Force-Pushes
+oder Branch-Löschung. Der frühere Befund bleibt nachfolgend als historischer Nachweis erhalten.
 
 Bei Implementierungsbeginn am 15.09.2026 hatte der verfügbare GitHub-Zugang Push-, aber keine
 Administrationsrechte. Der Ruleset-Endpunkt meldete zusätzlich HTTP 403 mit der Anforderung
@@ -110,13 +115,13 @@ erfüllen dieses Gate nicht. Einrichtungs-/Nachweisstand: [ZITADEL-Abnahmeberich
 
 `.github/workflows/e2e-zitadel.yml` definiert PR-, Main-Push- und manuelle Main-Läufe. Der
 secretfreie Vorabjob liest zuerst das **bereits administrativ eingerichtete** Environment
-`e2e-zitadel`. Es muss unabhängige Required Reviewers, `prevent_self_review=true` und
+`e2e-zitadel`. Es muss einen benannten Required Reviewer, `prevent_self_review=true` und
 `can_admins_bypass=false` haben. Fehlende Schutzregeln scheitern vor dem Environment-Job;
 der Workflow erstellt absichtlich kein ungeschütztes Environment als Ersatz.
 
 Nur ein berechtigter Maintainer darf den echten Lauf anstoßen. Ein PR muss offen, nicht Draft,
 aus demselben Repository, gegen `main` und mit aktueller Main-Basis sein. Das allein ist **kein
-Vertrauensnachweis**: Die unabhängige Environment-Freigabe muss den konkreten Merge-SHA einschließlich
+Vertrauensnachweis**: Die explizite administrative Environment-Freigabe muss den konkreten Merge-SHA einschließlich
 Workflow, Installationsskripten, Abhängigkeiten und Testcode abdecken. Nach der Freigabe wird der
 Integrationsstand erneut überprüft. Kein `pull_request_target`, kein Checkout eines beliebigen
 Head-Branches, kein Credential-Zugriff durch einen Fork. Für nicht freigegebene PRs bleibt die
@@ -131,9 +136,19 @@ abgebrochen. GitHubs begrenzter Pending-Slot ist keine garantierte Warteschlange
 ### Environment, Vault und Verantwortlichkeiten
 
 Ein berechtigter Repository-Administrator richtet Environment und Required Checks ein. Die
-1Password-verantwortliche Person muss vor Aktivierung namentlich im internen Betriebsnachweis
-benannt sein; bisher ist diese Zuständigkeit nicht verbindlich nachgewiesen. Sie verantwortet
-Vault-Inhalt, ausschließlich lesenden CI-Service-Account, Tokenrotation und Widerruf.
+Betriebsverantwortung für diesen freigegebenen Aufbau liegt bei Ramiz Loki; das administrative
+GitHub-Konto ist `ramiz4`. Das Environment hat `ramiz4` als Required Reviewer, verhindert
+Selbstfreigabe durch denselben GitHub-Account und erlaubt keinen Administrator-Bypass. Der
+Nutzerauftrag vom 16.09.2026 autorisiert ausdrücklich die Ausführung über dieses Admin-Konto.
+Der Wechsel zwischen eigenen Accounts ist **keine unabhängige Prüfung durch eine zweite Person**;
+pro Lauf ist dennoch der konkrete aktuelle SHA samt Workflow, Abhängigkeiten und Testcode zu
+prüfen, bevor die administrative Environment-Freigabe erteilt wird.
+
+Ramiz Loki verantwortet Vault-Inhalt, ausschließlich lesenden CI-Service-Account, Rotation und
+Widerruf. Der am 16.09.2026 eingerichtete Account ist auf 90 Tage begrenzt; Rotation spätestens
+am 01.12.2026. Sein Wiederherstellungseintrag liegt außerhalb des CI-Vaults in 1Password. Der
+CI-Account kann weder diesen Eintrag noch andere Vaults lesen. Bei Verdacht den Service-Account
+in 1Password unter Developer / Service accounts widerrufen und das Environment Secret entfernen.
 
 Ein eigener CI-Test-Vault enthält ausschließlich die beiden vorhandenen freigegebenen
 Kunden-/Werkstatt-Testzugänge und die benötigte Test-OIDC-Konfiguration. Keine produktiven Konten,
@@ -244,7 +259,7 @@ Erforderliche Repositoryregeln müssen `e2e-acceptance` **und** `e2e-zitadel` au
 Main-Basis verlangen. Die Implementierung eines Workflows ist keine eingerichtete Merge-Sperre.
 Solange Adminrechte/Environment/Vault/Freigaben oder die echten PR-/Main-Läufe fehlen, bleibt
 #119 offen und Teil-PRs verwenden nur `Refs #119`. Keine zusätzliche manuelle Funktionsabnahme,
-kein Schließungsbot; die unabhängige Sicherheitsfreigabe ersetzt keine automatisierten Tests.
+kein Schließungsbot; die administrative Sicherheitsfreigabe ersetzt keine automatisierten Tests.
 
 Quellen (am 16.09.2026 geprüft): [1Password GitHub Action](https://developer.1password.com/docs/ci-cd/github-actions/),
 [Service-Account-Grenzen](https://developer.1password.com/docs/service-accounts/get-started/),

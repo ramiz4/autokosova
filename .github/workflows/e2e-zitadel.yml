@@ -34,7 +34,7 @@ jobs:
             const { data: environment } = await github.rest.repos.getEnvironment({ ...repo, environment_name: 'e2e-zitadel' });
             const reviewers = environment.protection_rules?.find(rule => rule.type === 'required_reviewers');
             if (!reviewers?.reviewers?.length || !reviewers.prevent_self_review || environment.can_admins_bypass !== false)
-              throw new Error('e2e-zitadel requires independent reviewers, no self-review and no administrator bypass');
+              throw new Error('e2e-zitadel requires an authorized reviewer, no self-review and no administrator bypass');
             const { data: actor } = await github.rest.repos.getCollaboratorPermissionLevel({ ...repo, username: context.actor });
             if (!['admin', 'maintain', 'write'].includes(actor.permission))
               throw new Error('Real credentials require an explicitly authorized maintainer run');
@@ -43,7 +43,7 @@ jobs:
               const { data: pr } = await github.rest.pulls.get({ ...repo, pull_number: context.issue.number });
               if (pr.state !== 'open' || pr.draft || pr.head.repo?.full_name !== `${repo.owner}/${repo.repo}` ||
                   pr.base.ref !== 'main' || pr.base.sha !== main.commit.sha || pr.merge_commit_sha !== context.sha)
-                throw new Error('Only the current same-repository PR integration may request independent environment approval');
+                throw new Error('Only the current same-repository PR integration may request explicit environment approval');
             } else if (!['push', 'workflow_dispatch'].includes(context.eventName) ||
                        context.ref !== 'refs/heads/main' || context.sha !== main.commit.sha) {
               throw new Error('Manual and post-merge acceptance must target current main');

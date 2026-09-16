@@ -1,6 +1,36 @@
 # Echte ZITADEL-Abnahme – Issue #119
 
-## Status am 16.09.2026
+## Fortsetzung nach ausdrücklicher Adminfreigabe am 16.09.2026
+
+Der Nutzer hat die Ausführung mit `gh auth switch --user ramiz4` und die anschließende Rückkehr
+zu `ramizloki` ausdrücklich beauftragt. Der Adminzugang wurde tatsächlich verifiziert.
+`e2e-zitadel` ist eingerichtet: Required Reviewer `ramiz4`, `prevent_self_review=true`,
+`can_admins_bypass=false`. `main` verlangt aktuelle Basis sowie zehn GitHub-Actions-Checks:
+`verify`, `development-start`, `e2e-acceptance`, `e2e-zitadel`, `account-browser`,
+`favorites-db-browser`, `inquiries-browser`, `footer-browser`, `oidc-logout-browser`,
+`staff-browser`. Diese Schutzregeln gelten auch für Administratoren; kein Force-Push/Branch-Löschen.
+
+Ein eigener 1Password-Vault enthält genau drei Einträge: die erforderlichen Felder der beiden
+bereits freigegebenen Testkonten und die benötigte Test-OIDC-Konfiguration. Kein Admin-/Produktiv-
+Credential wurde übernommen. Die vorhandene lokale Testkonfiguration wurde feldweise übernommen
+und gegen die öffentliche Discovery geprüft; Nutzer-App/-DB und Providerregistrierung bleiben
+unverändert. Der CI-Service-Account hat ausschließlich `read_items` für diesen einen Vault,
+keine Schreib-/Share-/Vault-Erstellungsrechte. Tatsächlich geprüft: nur dieser Vault sichtbar,
+alle vorgesehenen Felder lesbar, fehlendes Feld verweigert, Zugriff auf den privaten Vault
+verweigert, Schreibversuch verweigert. Das Environment enthält nur 17 `op://`-Feldreferenzen,
+die Vault-ID und den Token als Environment Secret, keine Klartext-Credentials als Variables.
+
+Betriebsverantwortung: Ramiz Loki (`ramiz4` für Administration). Service-Account-Laufzeit 90 Tage;
+Rotation spätestens 01.12.2026, Widerruf über 1Password Developer / Service accounts. Der Token-
+Wiederherstellungseintrag liegt außerhalb des CI-Vaults. Die administrative Freigabe dieses
+Auftrags ist nutzerautorisiert; zwei eigene GitHub-Accounts sind kein Nachweis einer zweiten
+unabhängigen Person. Die Environment-Regeln werden unverändert regulär durchlaufen.
+
+Die bisher extern fehlende Einrichtung ist damit hergestellt. Die tatsächlichen echten
+PR-/Main-Ergebnisse werden separat an die überprüften Commits/Läufe gebunden; diese Einrichtung
+allein erklärt weiterhin keine echte Anmeldung oder das Issue für bestanden.
+
+## Historischer Zwischenstand vor der Adminfreigabe am 16.09.2026
 
 **IMPLEMENTIERUNG / EXTERN BLOCKIERT – keine bestandene echte Gesamtabnahme, kein Issue-Abschluss.**
 Ausgangsstand: `e5404b7` auf `origin/main`; eigener Branch `feat/119-zitadel-ci` und isolierter
