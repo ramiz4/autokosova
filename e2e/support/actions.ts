@@ -110,7 +110,7 @@ export async function checkActions(
   }
   await trigger(activeId).focus();
   await page.keyboard.press('Enter');
-  await expect(card(page, activeId).locator('[data-edit-inquiry]')).toBeFocused();
+  await expect(page.getByRole('menu').locator('[data-edit-inquiry]')).toBeFocused();
   for (const [key, selector] of [
     ['ArrowDown', '[data-toggle-inquiry]'],
     ['End', '[data-delete-inquiry]'],
@@ -129,7 +129,7 @@ export async function checkActions(
     ),
   ).toBe(true);
   await page.keyboard.press('Space');
-  await expect(card(page, activeId).locator('[data-edit-inquiry]')).toBeFocused();
+  await expect(page.getByRole('menu').locator('[data-edit-inquiry]')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(card(page, activeId).locator('[data-inquiry-view]')).toBeFocused();
   await expect(page.getByRole('menu')).toHaveCount(0);
@@ -142,7 +142,7 @@ export async function checkActions(
   });
   await trigger(activeId).focus();
   await page.keyboard.press('Enter');
-  await expect(card(page, activeId).locator('[data-edit-inquiry]')).toBeFocused();
+  await expect(page.getByRole('menu').locator('[data-edit-inquiry]')).toBeFocused();
   await page.keyboard.press('Shift+Tab');
   await expect.poll(() => previous.evaluate((el) => el === document.activeElement)).toBe(true);
   await expect(page.getByRole('menu')).toHaveCount(0);
@@ -150,7 +150,7 @@ export async function checkActions(
   await trigger(activeId).click();
   await trigger(inactiveId).click();
   await expect(page.getByRole('menu')).toHaveCount(1);
-  await expect(card(page, inactiveId).locator('[data-edit-inquiry]')).toBeFocused();
+  await expect(page.getByRole('menu').locator('[data-edit-inquiry]')).toBeFocused();
   await page.locator('#inquiries-title').click();
   await expect(page.getByRole('menu')).toHaveCount(0);
 }
