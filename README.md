@@ -65,8 +65,11 @@ noch die Telefon-App. Workflowdaten erzeugen keinen Login-Bypass.
 
 Ein Login-Klick fordert jetzt erneut aktive Authentifizierung beim Provider an.
 Für zusätzliches Beenden seiner Browser-SSO-Sitzung das optionale Paar
-`ZITADEL_END_SESSION_ENDPOINT` / `ZITADEL_POST_LOGOUT_URI` konfigurieren und
-`http://localhost:4200/auth/logout/callback` exakt beim Testprovider registrieren.
+`ZITADEL_END_SESSION_ENDPOINT` / `ZITADEL_POST_LOGOUT_URI` konfigurieren:
+`end_session_endpoint` ausschließlich aus der vertrauenswürdigen Discovery des
+konfigurierten Issuers übernehmen, `http://localhost:4200/auth/logout/callback` exakt beim
+Testprovider registrieren, beide Werte lokal setzen und den Starter neu starten. Bei anderem
+App-Port muss der entsprechend exakte Callback bereits registriert sein.
 Ohne dieses Paar wird ausschließlich lokal abgemeldet und diese Grenze sichtbar erklärt.
 Details, sichere Rücksprünge, andere Ports und Testgrenzen stehen in
 [AUTH-INTEGRATION.md](docs/architecture/AUTH-INTEGRATION.md#vollständige-abmeldung-und-bewusste-erneute-anmeldung-75).
@@ -111,7 +114,10 @@ fehlender Login ausgegeben; die bestehende Authentifizierung wird nicht umgangen
 
 ### Fehlerbehebung
 
-`npm run dev:doctor` nennt die betroffene Voraussetzung und den nächsten Schritt.
+`npm run dev:doctor` nennt die betroffene Voraussetzung und den nächsten Schritt. Bei
+vollständigem Login ohne Provider-Logout nennt die Diagnose ausschließlich die Variablennamen
+`ZITADEL_END_SESSION_ENDPOINT` und `ZITADEL_POST_LOGOUT_URI`, die vertrauenswürdige Discovery,
+die registrierte Callback-URI und den erforderlichen Neustart — niemals Konfigurationswerte.
 Bei fehlendem Docker zuerst Docker Desktop/Engine starten; bei Portkonflikten die
 oben genannten Portwerte prüfen. Bei Migrations- oder Seed-Fehlern hält der Ablauf an,
 bevor Angular startet. Der entsprechende `db:`-Befehl kann anschließend gezielt mit

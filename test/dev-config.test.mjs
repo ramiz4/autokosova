@@ -100,11 +100,15 @@ test('configured OIDC requires the exact localhost callback for the selected app
     AUTOKOSOVA_APP_PORT: '4200',
     ZITADEL_REDIRECT_URI: 'http://localhost:4200/auth/callback',
   });
-  assert.ok(
-    resolveConfig(root, env).notices.some((notice) =>
-      notice.includes('Provider-Logout nicht konfiguriert'),
-    ),
-  );
+  const { notices } = resolveConfig(root, env);
+  assert.equal(notices.length, 1);
+  assert.match(notices[0], /Provider-Logout nicht konfiguriert/);
+  assert.match(notices[0], /ZITADEL_END_SESSION_ENDPOINT/);
+  assert.match(notices[0], /ZITADEL_POST_LOGOUT_URI/);
+  assert.match(notices[0], /vertrauenswürdigen Discovery/);
+  assert.match(notices[0], /registrieren/);
+  assert.match(notices[0], /neu starten/);
+  assert.doesNotMatch(notices[0], /configured/);
   for (const callback of [
     'http://localhost:4000/auth/callback',
     'https://external/auth/callback',
@@ -127,6 +131,16 @@ test('copying the environment example keeps Angular on 4200 and does not activat
   assert.equal(config.appPort, 4200);
   assert.equal(config.env.ZITADEL_REDIRECT_URI, '');
   assert.ok(config.notices.some((notice) => notice.includes('Login nicht konfiguriert')));
+});
+
+test('guest development remains available without OIDC or provider-logout configuration', async (t) => {
+  const root = await workspace(t);
+  const config = resolveConfig(root, {});
+  assert.equal(config.env.ZITADEL_END_SESSION_ENDPOINT, '');
+  assert.equal(config.env.ZITADEL_POST_LOGOUT_URI, '');
+  assert.deepEqual(config.notices, [
+    'Login nicht konfiguriert; öffentliche Suche verfügbar. Siehe docs/architecture/AUTH-INTEGRATION.md.',
+  ]);
 });
 
 test('atomic worktree lock rejects concurrent starts and never steals a stale lock', async (t) => {
@@ -163,5 +177,14 @@ test('provider logout is opt-in, paired, same-origin and uses the exact app-port
     { ZITADEL_POST_LOGOUT_URI: 'http://localhost:4000/auth/logout/callback' },
     { ZITADEL_POST_LOGOUT_URI: 'http://localhost:4200/auth/logout/callback?next=evil' },
   ])
-    assert.throws(() => resolveConfig(root, { ...env, ...patch }), /OIDC-Logout/);
+    assert.throws(
+      () => resolveConfig(root, { ...env, ...patch }),
+      (error) => {
+        assert.match(error.message, /OIDC-Logout-Konfiguration ungültig oder unvollständig/);
+        assert.match(error.message, /ZITADEL_END_SESSION_ENDPOINT/);
+        assert.match(error.message, /ZITADEL_POST_LOGOUT_URI/);
+        assert.doesNotMatch(error.message, /issuer\.invalid|evil\.invalid/);
+        return true;
+      },
+    );
 });

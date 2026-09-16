@@ -28,6 +28,9 @@ setzen. Ein echter OIDC-Login benötigt dann eine passende, bereits freigegebene
 Der Entwicklungsstarter ändert keine Anbieterregistrierung. Lokale Callback-/Logout-URLs
 sind normale Konfiguration und keine Passwörter. Der Adapter liest `ZITADEL_REDIRECT_URI`;
 `ZITADEL_END_SESSION_ENDPOINT` und `ZITADEL_POST_LOGOUT_URI` werden als optionales Paar für den vollständigen Provider-Logout unterstützt (siehe unten).
+Bei vollständigem Login ohne dieses Paar nennt Start/`npm run dev:doctor` nur die beiden
+Variablennamen und die Einrichtungsreihenfolge (vertrauenswürdige Discovery, registrierter
+Callback, lokal setzen, neu starten), nie Konfigurationswerte.
 
 `.env.example` dokumentiert die erwarteten Namen und enthält keine aktive Teilkonfiguration.
 Das auskommentierte 4200-Callback-Beispiel erst zusammen mit den übrigen erforderlichen

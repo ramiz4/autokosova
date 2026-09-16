@@ -64,7 +64,7 @@ export function resolveConfig(root, environment = process.env) {
     const callback = env.ZITADEL_POST_LOGOUT_URI;
     if (!endpoint && !callback) {
       notices.push(
-        'Provider-Logout nicht konfiguriert; lokale Abmeldung und erneute Authentifizierung bleiben verfügbar. Siehe AUTH-INTEGRATION.md.',
+        'Provider-Logout nicht konfiguriert; lokale Abmeldung und erneute Authentifizierung bleiben verfügbar. Für vollständigen Logout ZITADEL_END_SESSION_ENDPOINT aus der vertrauenswürdigen Discovery des konfigurierten Issuers übernehmen, ZITADEL_POST_LOGOUT_URI als exakten localhost-Logout-Callback registrieren, lokal setzen und Starter neu starten. Siehe docs/architecture/AUTH-INTEGRATION.md.',
       );
     } else {
       let valid = false;
@@ -88,7 +88,7 @@ export function resolveConfig(root, environment = process.env) {
       }
       if (!valid)
         throw new Error(
-          'OIDC-Logout-Konfiguration ungültig oder unvollständig; Endpunkt und registrierten localhost-Logout-Callback prüfen.',
+          'OIDC-Logout-Konfiguration ungültig oder unvollständig; ZITADEL_END_SESSION_ENDPOINT aus vertrauenswürdiger Discovery und ZITADEL_POST_LOGOUT_URI als exakt registrierten localhost-Logout-Callback prüfen, dann den Starter neu starten.',
         );
     }
   }
