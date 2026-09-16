@@ -236,10 +236,14 @@
             </p>
           }
           @if (discarding()) {
-            <section role="alert" class="discard-box" aria-labelledby="discard-title">
+            <section
+              role="alert"
+              class="mt-[18px] rounded-xl border border-[#f1c9cf] bg-[#fff5f6] p-4 text-sm leading-[1.65] text-[#8e2037]"
+              aria-labelledby="discard-title"
+            >
               <h3 id="discard-title" class="font-bold">{{ text('discardTitle') }}</h3>
               <p>{{ text('discardBody') }}</p>
-              <div class="dialog-actions">
+              <div class="mt-[18px] flex flex-wrap justify-end gap-[10px]">
                 <button type="button" appButton="outline" size="compact" (click)="keepEditing()">
                   {{ text('keepEditing') }}</button
                 ><button
@@ -255,7 +259,9 @@
             </section>
           }
         </div>
-        <footer class="app-dialog-footer dialog-footer">
+        <footer
+          class="app-dialog-footer sticky bottom-0 z-2 flex flex-wrap justify-end gap-[10px] border-t border-[#e7edf5] bg-white px-[26px] py-[18px] max-[480px]:p-[18px] max-[480px]:[&_button]:flex-1 max-[480px]:[&_button]:basis-[160px]"
+        >
           <button
             type="button"
             appButton="outline"
