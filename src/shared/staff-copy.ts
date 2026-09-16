@@ -1,7 +1,8 @@
+import { accountNavigationCopy } from './account-navigation-copy';
 import type { AppLanguage } from './i18n';
 const de = {
-  admin: 'Administration',
-  moderation: 'Moderation',
+  admin: accountNavigationCopy('de').admin,
+  moderation: accountNavigationCopy('de').moderation,
   intro: 'Fälle zuweisen, prüfen und zur zuständigen Person weitergeben.',
   adminIntro: 'Handlungsbereite Aufgaben prüfen, zuweisen und abschliessen.',
   ownIntro: 'Nur ausdrücklich zugewiesene Fälle sind hier zugänglich.',
@@ -81,8 +82,8 @@ const de = {
 };
 type Copy = typeof de;
 const en: Copy = {
-  admin: 'Administration',
-  moderation: 'Moderation',
+  admin: accountNavigationCopy('en').admin,
+  moderation: accountNavigationCopy('en').moderation,
   intro: 'Assign, inspect and hand over cases to the responsible person.',
   adminIntro: 'Review, assign and complete actionable work.',
   ownIntro: 'Only explicitly assigned cases are accessible here.',
@@ -158,8 +159,8 @@ const en: Copy = {
   reassignHint: 'A new assignment replaces the current owner.',
 };
 const sq: Copy = {
-  admin: 'Administrimi',
-  moderation: 'Moderimi',
+  admin: accountNavigationCopy('sq').admin,
+  moderation: accountNavigationCopy('sq').moderation,
   intro: 'Caktoni, shqyrtoni dhe përcillni rastet te personi përgjegjës.',
   adminIntro: 'Shqyrtoni, caktoni dhe përfundoni punën që kërkon veprim.',
   ownIntro: 'Këtu shfaqen vetëm rastet që ju janë caktuar.',

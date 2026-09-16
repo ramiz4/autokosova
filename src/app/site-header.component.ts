@@ -1,15 +1,38 @@
-import { reviewLabel } from '../shared/review-copy';
-import { staffCopy } from '../shared/staff-copy';
+import {
+  LucideChevronDown,
+  LucideMessageCircle,
+  LucideHeart,
+  LucideMenu,
+  LucideSettings,
+  LucideShieldCheck,
+  LucideStar,
+  LucideUser,
+  LucideWrench,
+  LucideX,
+  type LucideIcon,
+} from '@lucide/angular';
+import {
+  Component,
+  ElementRef,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
+
+import { accountNavigationCopy } from '../shared/account-navigation-copy';
 import { accountType } from '../shared/account';
 import { NgTemplateOutlet } from '@angular/common';
-import { afterNextRender } from '@angular/core';
+
 import { AccountSessionService } from './account-session.service';
-import { Component, ElementRef, computed, inject, input, signal, viewChild } from '@angular/core';
+
 import { Router, RouterLink } from '@angular/router';
 import { LanguageService } from './language.service';
 import { LanguageSwitcherComponent } from './language-switcher.component';
 import { ButtonDirective } from './ui/button.directive';
-import { IconComponent } from './ui/icon.component';
+import { LucideIconComponent } from './ui/lucide-icon.component';
 
 @Component({
   selector: 'app-site-header',
@@ -19,12 +42,23 @@ import { IconComponent } from './ui/icon.component';
     NgTemplateOutlet,
     LanguageSwitcherComponent,
     ButtonDirective,
-    IconComponent,
+    LucideIconComponent,
   ],
   templateUrl: './site-header.component.html',
 })
 export class SiteHeaderComponent {
-  protected readonly reviewLabel = reviewLabel;
+  readonly MessageCircleIcon: LucideIcon = LucideMessageCircle;
+  readonly SettingsIcon: LucideIcon = LucideSettings;
+  readonly ShieldCheckIcon: LucideIcon = LucideShieldCheck;
+  readonly StarIcon: LucideIcon = LucideStar;
+  readonly ChevronDownIcon: LucideIcon = LucideChevronDown;
+  readonly HeartIcon: LucideIcon = LucideHeart;
+  readonly MenuIcon: LucideIcon = LucideMenu;
+  readonly UserIcon: LucideIcon = LucideUser;
+  readonly WrenchIcon: LucideIcon = LucideWrench;
+  readonly XIcon: LucideIcon = LucideX;
+
+  protected readonly accountNavigationCopy = accountNavigationCopy;
   readonly compact = input(false);
   // Keep the logo consistent across landing, inquiry, search and onboarding navigation.
   readonly smallLogo = input(true);
@@ -46,7 +80,6 @@ export class SiteHeaderComponent {
   );
   protected readonly account = inject(AccountSessionService);
   protected readonly accountType = accountType;
-  protected readonly staffCopy = staffCopy;
   protected readonly accountPanel = signal<'account' | null>(null);
   protected readonly logoutError = signal(false);
   private readonly router = inject(Router);
@@ -55,6 +88,9 @@ export class SiteHeaderComponent {
   private readonly element = inject(ElementRef<HTMLElement>);
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
   protected readonly menuOpen = signal(false);
+  protected readonly menuIcon = computed<LucideIcon>(() =>
+    this.menuOpen() ? this.XIcon : this.MenuIcon,
+  );
 
   constructor() {
     afterNextRender(() => {

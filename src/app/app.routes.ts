@@ -2,10 +2,7 @@ import { inject } from '@angular/core';
 import { Router, Routes } from '@angular/router';
 import { PUBLIC_PAGE_PATHS } from '../shared/public-pages';
 import { FoundationComponent } from './app';
-import { MonetizationComponent } from './monetization.component';
-import { RepairRequestComponent } from './repair-request.component';
-import { SearchHandoffComponent } from './search-handoff.component';
-import { GarageProfileComponent } from './garage-profile.component';
+import type { GarageProfileComponent } from './garage-profile.component';
 import { StaffDraftGuardService } from './staff-draft-guard.service';
 import { AdminDraftGuardService } from './admin-draft-guard.service';
 
@@ -29,7 +26,7 @@ function localizedRoutes(prefix: string): Routes {
       pathMatch: 'full',
     },
     {
-      component: MonetizationComponent,
+      loadComponent: () => import('./monetization.component').then((m) => m.MonetizationComponent),
       path: `${childPrefix}monetization`,
       pathMatch: 'full',
     },
@@ -148,11 +145,13 @@ function localizedRoutes(prefix: string): Routes {
       path: `${childPrefix}garages/new`,
     },
     {
-      component: RepairRequestComponent,
+      loadComponent: () =>
+        import('./repair-request.component').then((m) => m.RepairRequestComponent),
       path: `${childPrefix}inquiry`,
     },
     {
-      component: SearchHandoffComponent,
+      loadComponent: () =>
+        import('./search-handoff.component').then((m) => m.SearchHandoffComponent),
       path: `${childPrefix}garages`,
     },
     {
@@ -173,7 +172,8 @@ function localizedRoutes(prefix: string): Routes {
         import('./public-page.component').then((module) => module.PublicPageComponent),
     })),
     {
-      component: GarageProfileComponent,
+      loadComponent: () =>
+        import('./garage-profile.component').then((m) => m.GarageProfileComponent),
       canDeactivate: [(component: GarageProfileComponent | null) => component?.canLeave() ?? true],
       path: `${childPrefix}garages/:garageId`,
       // The profile keeps the shared footer inside its mobile safe-area layout.

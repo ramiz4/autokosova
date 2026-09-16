@@ -1,3 +1,16 @@
+import {
+  LucideArrowRight,
+  LucideCar,
+  LucideCarFront,
+  LucideCaravan,
+  LucideClock,
+  LucideMapPin,
+  LucideMotorbike,
+  LucideShieldCheck,
+  LucideThumbsUp,
+  LucideVan,
+  type LucideIcon,
+} from '@lucide/angular';
 import { SearchAreasComponent, type SearchArea } from './ui/search-areas.component';
 import { isPlatformBrowser } from '@angular/common';
 import {
@@ -28,7 +41,7 @@ import { RepairRequestDraft } from './repair-request-draft';
 import { LanguageService } from './language.service';
 import { SiteHeaderComponent } from './site-header.component';
 import { ButtonDirective } from './ui/button.directive';
-import { IconComponent } from './ui/icon.component';
+import { LucideIconComponent } from './ui/lucide-icon.component';
 import { requestCopy, type RequestCopyKey } from '../shared/request-copy';
 
 const serviceCategories = [
@@ -69,22 +82,42 @@ const places = [
     ReactiveFormsModule,
     SiteHeaderComponent,
     ButtonDirective,
-    IconComponent,
+    LucideIconComponent,
   ],
   selector: 'app-repair-request',
   templateUrl: './repair-request.component.html',
 })
 export class RepairRequestComponent {
+  readonly CarIcon: LucideIcon = LucideCar;
+  readonly SuvIcon: LucideIcon = LucideCarFront;
+  readonly MotorbikeIcon: LucideIcon = LucideMotorbike;
+  readonly VanIcon: LucideIcon = LucideVan;
+  readonly CamperIcon: LucideIcon = LucideCaravan;
+  protected readonly vehicleIcons: Readonly<
+    Record<(typeof REPAIR_REQUEST_VEHICLE_CLASSES)[number], LucideIcon>
+  > = {
+    car: this.CarIcon,
+    suv: this.SuvIcon,
+    motorcycle: this.MotorbikeIcon,
+    van: this.VanIcon,
+    camper: this.CamperIcon,
+  };
+  readonly ArrowRightIcon: LucideIcon = LucideArrowRight;
+  readonly ClockIcon: LucideIcon = LucideClock;
+  readonly MapPinIcon: LucideIcon = LucideMapPin;
+  readonly ShieldCheckIcon: LucideIcon = LucideShieldCheck;
+  readonly ThumbsUpIcon: LucideIcon = LucideThumbsUp;
+
   protected readonly benefits = [
-    ['clock', 'benefit1', 'benefit1Help'],
-    ['pin', 'benefit2', 'benefit2Help'],
-    ['thumb', 'benefit3', 'benefit3Help'],
-    ['shield', 'benefit4', 'benefit4Help'],
+    [this.ClockIcon, 'benefit1', 'benefit1Help'],
+    [this.MapPinIcon, 'benefit2', 'benefit2Help'],
+    [this.ThumbsUpIcon, 'benefit3', 'benefit3Help'],
+    [this.ShieldCheckIcon, 'benefit4', 'benefit4Help'],
   ] as const;
   protected readonly footerBenefits = [
-    ['clock', 'footer1'],
-    ['thumb', 'footer2'],
-    ['shield', 'footer3'],
+    [this.ClockIcon, 'footer1'],
+    [this.ThumbsUpIcon, 'footer2'],
+    [this.ShieldCheckIcon, 'footer3'],
   ] as const;
   protected get stepLabels(): readonly string[] {
     return [

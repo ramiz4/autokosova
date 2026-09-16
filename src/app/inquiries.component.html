@@ -13,8 +13,8 @@
     <a
       class="account-crumb inline-flex min-h-11 items-center gap-2 rounded-md text-xs text-muted"
       [routerLink]="language.link('profile')"
-      ><app-icon name="user" class="size-4" />{{ language.t('account.title')
-      }}<app-icon name="chevron-right" class="size-4"
+      ><lucide-icon [name]="UserIcon" class="size-4" />{{ language.t('account.title')
+      }}<lucide-icon [name]="ChevronRightIcon" class="size-4"
     /></a>
     <div class="page-heading my-8 mt-2 flex flex-wrap items-center justify-between gap-5">
       <div>
@@ -30,7 +30,7 @@
         </p>
       </div>
       <a appButton data-new-inquiry [routerLink]="language.link('request')"
-        ><app-icon name="plus" class="size-5" />{{ language.t('nav.newRequest') }}</a
+        ><lucide-icon [name]="PlusIcon" class="size-5" />{{ language.t('nav.newRequest') }}</a
       >
     </div>
     @switch (account.state()) {
@@ -39,7 +39,7 @@
       }
       @case ('guest') {
         <section class="state-panel">
-          <app-icon name="shield" class="size-9 mb-5 text-brand" />
+          <lucide-icon [name]="ShieldCheckIcon" class="size-9 mb-5 text-brand" />
           <h2>{{ language.t('account.guest') }}</h2>
           <p data-inquiries-login-help>{{ text(saved.expired() ? 'expired' : 'login') }}</p>
           @if (account.loginAvailable() === false) {
@@ -68,7 +68,7 @@
       @case ('ready') {
         @if (saved.notice(); as notice) {
           <p class="notice" role="status" data-inquiry-notice>
-            <app-icon name="check" class="size-5" />{{ text(notice) }}
+            <lucide-icon [name]="CheckIcon" class="size-5" />{{ text(notice) }}
           </p>
         }
         @if (!editingId() && !deleting() && saved.writeErrorKey()) {
@@ -96,7 +96,7 @@
                 }
               </div>
               <span class="sort-label flex gap-1.5 text-xs text-muted"
-                ><app-icon name="clock" class="size-4" />{{ text('sort') }}</span
+                ><lucide-icon [name]="ClockIcon" class="size-4" />{{ text('sort') }}</span
               >
             </div>
             <ul
@@ -113,7 +113,9 @@
                     [class.inactive]="!request.active"
                   >
                     <div class="card-heading flex items-start gap-3">
-                      <span class="service-icon"><app-icon name="wrench" class="size-6" /></span>
+                      <span class="service-icon"
+                        ><lucide-icon [name]="WrenchIcon" class="size-6"
+                      /></span>
                       <div class="card-title min-w-0 flex-1">
                         <div class="card-title-line flex flex-wrap items-center gap-2.5">
                           <h2 class="text-lg font-bold leading-[1.35] tracking-[-.02em]">
@@ -154,7 +156,7 @@
                           (keydown)="onActionTriggerKeydown(request.id, $event)"
                           data-inquiry-menu
                         >
-                          <app-icon name="more" class="size-6" />
+                          <lucide-icon [name]="EllipsisIcon" class="size-6" [strokeWidth]="4" />
                         </button>
                         @if (actionsId() === request.id) {
                           <div
@@ -173,7 +175,7 @@
                               (click)="edit(request)"
                               data-edit-inquiry
                             >
-                              <app-icon name="pencil" class="size-4" />{{ text('edit') }}
+                              <lucide-icon [name]="PencilIcon" class="size-4" />{{ text('edit') }}
                             </button>
                             <button
                               type="button"
@@ -184,8 +186,8 @@
                               (click)="deactivate(request)"
                               data-toggle-inquiry
                             >
-                              <app-icon
-                                [name]="request.active ? 'pause' : 'check'"
+                              <lucide-icon
+                                [name]="request.active ? PauseIcon : CheckIcon"
                                 class="size-4"
                               />{{ text(request.active ? 'deactivate' : 'reactivate') }}
                             </button>
@@ -199,7 +201,9 @@
                               (click)="confirmDelete(request)"
                               data-delete-inquiry
                             >
-                              <app-icon name="trash" class="size-4" />{{ text('deleteConfirm') }}
+                              <lucide-icon [name]="TrashIcon" class="size-4" />{{
+                                text('deleteConfirm')
+                              }}
                             </button>
                           </div>
                         }
@@ -212,7 +216,7 @@
                       <p
                         class="vehicle flex items-center gap-2 text-[13px] font-medium text-[#435675]"
                       >
-                        <app-icon name="car" class="size-4" /><span>{{
+                        <lucide-icon [name]="CarIcon" class="size-4" /><span>{{
                           vehicleLabel(request.vehicle) || requestText('noVehicle')
                         }}</span>
                       </p>
@@ -222,11 +226,16 @@
                       >
                         @for (area of request.areas; track area.placeId) {
                           <li>
-                            <app-icon name="pin" class="size-3.5" />{{ placeLabel(area.placeId)
+                            <lucide-icon [name]="MapPinIcon" class="size-3.5" />{{
+                              placeLabel(area.placeId)
                             }}<span>{{ area.radiusKm }} km</span>
                           </li>
                         } @empty {
-                          <li><app-icon name="globe" class="size-3.5" />{{ text('allKosovo') }}</li>
+                          <li>
+                            <lucide-icon [name]="GlobeIcon" class="size-3.5" />{{
+                              text('allKosovo')
+                            }}
+                          </li>
                         }
                       </ul>
                     </div>
@@ -248,8 +257,8 @@
                         (click)="saved.toggleDetail(request.id)"
                       >
                         {{ text('viewShort')
-                        }}<app-icon
-                          name="chevron-down"
+                        }}<lucide-icon
+                          [name]="ChevronDownIcon"
                           class="size-4"
                           [class.rotate-180]="saved.selectedId() === request.id"
                         />
@@ -264,7 +273,8 @@
                             [attr.aria-label]="text('find')"
                             [routerLink]="language.link('search')"
                             [queryParams]="query"
-                            >{{ text('findShort') }}<app-icon name="arrow" class="size-4"
+                            >{{ text('findShort')
+                            }}<lucide-icon [name]="ArrowRightIcon" class="size-4"
                           /></a>
                         } @else {
                           <button
@@ -279,7 +289,8 @@
                               !request.active ? 'search-help-' + request.id : null
                             "
                           >
-                            {{ text('findShort') }}<app-icon name="arrow" class="size-4" />
+                            {{ text('findShort')
+                            }}<lucide-icon [name]="ArrowRightIcon" class="size-4" />
                           </button>
                           @if (!request.active) {
                             <p
@@ -438,7 +449,7 @@
               </section>
             } @else if (!saved.requests().length) {
               <section data-inquiries-empty class="state-panel empty-state">
-                <span class="empty-icon"><app-icon name="document" class="size-8" /></span>
+                <span class="empty-icon"><lucide-icon [name]="FileTextIcon" class="size-8" /></span>
                 <h2>{{ text(saved.activity() === 'all' ? 'emptyTitle' : 'noMatches') }}</h2>
                 <p>{{ text(saved.activity() === 'all' ? 'empty' : 'noMatchesHelp') }}</p>
                 <a appButton class="mt-5" [routerLink]="language.link('request')">{{
@@ -459,12 +470,14 @@
               </button>
             }
             <p class="search-note">
-              <app-icon name="shield" class="size-4" />{{ text('searchHelp') }}
+              <lucide-icon [name]="ShieldCheckIcon" class="size-4" />{{ text('searchHelp') }}
             </p>
           </section>
           <aside class="help-column hidden pt-[70px] lg:block">
             <div class="privacy-card">
-              <span class="privacy-icon"><app-icon name="shield" class="size-6" /></span>
+              <span class="privacy-icon"
+                ><lucide-icon [name]="ShieldCheckIcon" class="size-6"
+              /></span>
               <h2>{{ text('privacyTitle') }}</h2>
               <p>{{ text('privacyBody') }}</p>
               <div class="privacy-divider my-6 border-t border-[#d6e3f7]"></div>
@@ -472,7 +485,7 @@
               <p>{{ text('nextBody') }}</p>
             </div>
             <p class="status-help px-2">
-              <app-icon name="info" class="size-4" />{{ text('statusHelp') }}
+              <lucide-icon [name]="InfoIcon" class="size-4" />{{ text('statusHelp') }}
             </p>
           </aside>
         </div>
