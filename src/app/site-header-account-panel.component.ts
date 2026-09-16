@@ -81,8 +81,12 @@ export class SiteHeaderAccountPanelComponent {
     this.overlayState.set('closed');
   }
 
+  protected openPanel(): void {
+    this.overlayState.set('open');
+  }
+
   protected onOverlayState(state: 'open' | 'closed'): void {
-    if (this.overlayState() !== state) this.overlayState.set(state);
+    if (state === 'closed' || this.overlayState() === 'open') this.overlayState.set(state);
     this.stateChanged.emit(state);
   }
 
