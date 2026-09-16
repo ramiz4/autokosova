@@ -6,7 +6,10 @@
   <p class="mt-2 max-w-3xl text-muted">{{ adminOnly ? copy().adminIntro : copy().ownIntro }}</p>
   @if (isAdmin()) {
     @if (adminOnly && adminOverview(); as overview) {
-      <section class="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm" data-admin-overview>
+      <section
+        class="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:flex sm:flex-wrap"
+        data-admin-overview
+      >
         @if (overview.pendingGarages > 0) {
           <a
             class="inline-flex min-h-11 min-w-11 items-center font-semibold text-brand-dark underline-offset-4 hover:underline"
