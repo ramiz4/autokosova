@@ -10,6 +10,9 @@ export async function startTestOidc(redirectUri, initialSubject) {
   const jwk = { ...(await exportJWK(publicKey)), kid: randomUUID(), use: 'sig', alg: 'RS256' };
   const codes = new Map();
   const tokens = new Map();
+  const logoutSelections = new Map();
+  let logoutSelectionLogin;
+  let logoutSelectionCount = 0;
   let profile = {
     name: 'Testkonto · Anfragen',
     preferred_username: 'inquiries-test',
@@ -75,7 +78,27 @@ export async function startTestOidc(redirectUri, initialSubject) {
         assert.equal(url.searchParams.get('post_logout_redirect_uri'), target.href);
         assert.ok(url.searchParams.get('state'));
         target.searchParams.set('state', url.searchParams.get('state'));
-        response.writeHead(302, { location: target.href }).end();
+        if (logoutSelectionLogin) {
+          const selection = randomUUID();
+          logoutSelections.set(selection, { target: target.href, login: logoutSelectionLogin });
+          response.writeHead(302, { location: '/logout?selection=' + selection }).end();
+        } else response.writeHead(302, { location: target.href }).end();
+      } else if (url.pathname === '/logout') {
+        const selection = url.searchParams.get('selection');
+        const pending = logoutSelections.get(selection);
+        assert.ok(pending);
+        if (request.method === 'POST') {
+          let body = '';
+          for await (const chunk of request) body += chunk;
+          assert.equal(new URLSearchParams(body).get('account'), 'own');
+          logoutSelections.delete(selection);
+          logoutSelectionCount++;
+          response.writeHead(303, { location: pending.target }).end();
+        } else {
+          response.setHeader('content-type', 'text/html');
+          response.end(`<form method="post"><button name="account" value="other">other-test-account</button>
+            <button name="account" value="own"><span>${pending.login}</span></button></form>`);
+        }
       } else if (url.pathname === '/token' && request.method === 'POST') {
         let body = '';
         for await (const chunk of request) body += chunk;
@@ -145,6 +168,13 @@ export async function startTestOidc(redirectUri, initialSubject) {
     },
     setProfile(value) {
       profile = { ...value };
+    },
+    setLogoutSelection(login) {
+      assert.ok(login === undefined || /^[a-zA-Z0-9@._-]+$/.test(login));
+      logoutSelectionLogin = login;
+    },
+    get logoutSelectionCount() {
+      return logoutSelectionCount;
     },
     setUserInfoMode(value) {
       userInfoMode = value;

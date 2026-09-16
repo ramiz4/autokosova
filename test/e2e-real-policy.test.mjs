@@ -207,3 +207,13 @@ test('failed browser stages survive validation but never satisfy acceptance or d
   ])
     assert.throws(() => readRealReport({ ...failure, ...patch }, expected));
 });
+
+// Safe failure labels may evolve, but never include redirect URLs, cookies or page content.
+test('logout routing failure diagnostics remain fixed labels and cannot pass acceptance', async () => {
+  const { realFailureStages, readRealReport } = await import('../scripts/e2e/real-policy.mjs');
+  for (const stage of realFailureStages) {
+    const report = { ...passed, status: 'failed', stage };
+    assert.equal(readRealReport(report, expected).stage, stage);
+    assert.throws(() => assertRealReport(report, expected));
+  }
+});

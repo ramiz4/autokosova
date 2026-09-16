@@ -105,7 +105,10 @@ export async function fullLogout(
   let endpointSeen = false,
     callbackSeen = false,
     providerRejected = false,
-    callbackRejected = false;
+    callbackRejected = false,
+    callbackRedirected = false,
+    providerRedirected = false,
+    navigationFailed = false;
   const endpoint = new URL(config.endSessionEndpoint);
   const observe = (request: Request) => {
     if (!request.isNavigationRequest() || request.frame() !== page.mainFrame()) return;
@@ -128,6 +131,15 @@ export async function fullLogout(
       response.status() >= 400
     )
       providerRejected = true;
+    if (url.origin === endpoint.origin && url.pathname === endpoint.pathname) {
+      const location = response.headers()['location'];
+      if (location) {
+        const target = new URL(location, endpoint);
+        callbackRedirected =
+          target.origin === config.origin && target.pathname === '/auth/logout/callback';
+        providerRedirected = target.origin === config.loginOrigin;
+      }
+    }
     if (
       url.origin === config.origin &&
       url.pathname === '/auth/logout/callback' &&
@@ -137,6 +149,11 @@ export async function fullLogout(
   };
   const accountSelection = (url: URL) =>
     url.origin === config.loginOrigin && ['/ui/v2/login/logout', '/logout'].includes(url.pathname);
+  const failedNavigation = (request: Request) => {
+    if (request.isNavigationRequest() && request.frame() === page.mainFrame())
+      navigationFailed = true;
+  };
+  page.on('requestfailed', failedNavigation);
   page.on('request', observe);
   page.on('response', response);
   try {
@@ -162,7 +179,11 @@ export async function fullLogout(
         const account = page
           .getByRole('button')
           .filter({ has: page.getByText(login, { exact: true }) });
-        await expect(account).toHaveCount(1);
+        await expect(account)
+          .toHaveCount(1)
+          .catch(() => {
+            throw new LogoutFailure('logout-account-selection');
+          });
         if (!accountSelection(new URL(page.url())))
           throw new LogoutFailure('logout-return-invalid');
         await account.click();
@@ -179,14 +200,23 @@ export async function fullLogout(
         ? 'logout-provider-rejected'
         : callbackRejected
           ? 'logout-callback-rejected'
-          : !endpointSeen
-            ? 'logout-endpoint-missing'
-            : !callbackSeen
-              ? 'logout-callback-missing'
-              : 'logout-return-invalid',
+          : navigationFailed
+            ? 'logout-navigation-failed'
+            : !callbackSeen && callbackRedirected
+              ? 'logout-redirect-not-followed'
+              : !callbackSeen && accountSelection(new URL(page.url()))
+                ? 'logout-selection-no-return'
+                : !callbackSeen && providerRedirected
+                  ? 'logout-provider-page'
+                  : !endpointSeen
+                    ? 'logout-endpoint-missing'
+                    : !callbackSeen
+                      ? 'logout-callback-missing'
+                      : 'logout-return-invalid',
     );
   } finally {
     page.off('request', observe);
     page.off('response', response);
+    page.off('requestfailed', failedNavigation);
   }
 }

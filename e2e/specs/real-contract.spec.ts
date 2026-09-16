@@ -22,27 +22,16 @@ test('real-runner-contract checks provider profile and actual end-session traver
   await fullLogout(page, config);
   await app.login(page, 'garage');
   await checkProfile(page, app.origin, 'garage');
-  // Synthetic hosted Login V2 session selection: another account is deliberately the first button.
-  const selectionUrl = config.loginOrigin + '/ui/v2/login/logout';
-  let callback = '';
-  const endSession = (url: URL) => url.href.startsWith(config.endSessionEndpoint + '?');
-  await page.route(endSession, async (route) => {
-    const url = new URL(route.request().url());
-    const target = new URL(config.origin + '/auth/logout/callback');
-    target.searchParams.set('state', url.searchParams.get('state')!);
-    callback = target.href;
-    await route.fulfill({ status: 302, headers: { location: selectionUrl } });
-  });
-  await page.route(selectionUrl, async (route) => {
-    await route.fulfill({
-      contentType: 'text/html',
-      body: `<button><span>e2e-customer</span></button><button id="own"><span>e2e-garage</span></button>
-       <script>document.querySelector('#own').onclick=()=>location.assign(${JSON.stringify(callback)});</script>`,
-    });
-  });
+  // Real HTTP redirects, not page.route() on a redirect target (which is never intercepted).
+  app.provider.setLogoutSelection('e2e-garage');
   await fullLogout(page, config, 'e2e-garage');
-  await page.unroute(endSession);
-  await page.unroute(selectionUrl);
+  expect(app.provider.logoutSelectionCount).toBe(1);
+  await app.login(page, 'garage');
+  await expect(fullLogout(page, config, 'absent-fixture-account')).rejects.toMatchObject({
+    stage: 'logout-account-selection',
+  });
+  expect(app.provider.logoutSelectionCount).toBe(1);
+  app.provider.setLogoutSelection(undefined);
   await app.login(page, 'garage');
   // A successful local logout and app return must still fail with no visit to the required endpoint.
   await expect(

@@ -101,6 +101,10 @@ export const realFailureStages = [
   'logout-callback-missing',
   'logout-return-invalid',
   'logout-account-selection',
+  'logout-navigation-failed',
+  'logout-redirect-not-followed',
+  'logout-selection-no-return',
+  'logout-provider-page',
 ];
 // Keep failure diagnostics useful without forwarding arbitrary child strings or values.
 export function readRealReport(report, expected) {
