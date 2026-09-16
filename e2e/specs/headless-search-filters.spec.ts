@@ -1,4 +1,17 @@
 import { expect, test } from '../support/application';
+import type { Page } from '@playwright/test';
+
+async function expectSearchUrl(page: Page, query: readonly (readonly [string, string])[]) {
+  await expect
+    .poll(() => {
+      const url = new URL(page.url());
+      return {
+        pathname: url.pathname,
+        query: [...url.searchParams.entries()].sort(([left], [right]) => left.localeCompare(right)),
+      };
+    })
+    .toEqual({ pathname: '/garages', query });
+}
 
 test('search-filter-disclosure keeps Brain state, focus and filter URLs responsive', async ({
   app,
@@ -48,9 +61,12 @@ test('search-filter-disclosure keeps Brain state, focus and filter URLs responsi
   await expect(form).toHaveJSProperty('inert', false);
   await vehicleMake.selectOption('audi');
   await form.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(
-    /places=xk-pristina%3A20.*service=bremsen.*vehicleMake=audi.*sort=rating|places=xk-pristina%3A20.*service=bremsen.*sort=rating.*vehicleMake=audi/,
-  );
+  await expectSearchUrl(page, [
+    ['places', 'xk-pristina:20'],
+    ['service', 'bremsen'],
+    ['sort', 'rating'],
+    ['vehicleMake', 'audi'],
+  ]);
 
   await page.setViewportSize({ width: 1280, height: 900 });
   await expect(form).toBeVisible();
@@ -62,7 +78,7 @@ test('search-filter-disclosure keeps Brain state, focus and filter URLs responsi
   await expect(form).toHaveJSProperty('inert', false);
   await expect(vehicleMake).toBeFocused();
   await form.locator('button[type="button"]').last().click();
-  await expect(page).toHaveURL(/\?all=true$/);
+  await expectSearchUrl(page, [['all', 'true']]);
   await expect(vehicleMake).toHaveValue('');
   expect(errors).toEqual([]);
 });
