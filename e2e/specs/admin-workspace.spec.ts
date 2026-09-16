@@ -33,7 +33,17 @@ test('admin-context publishes the complete review in one confirmed write and kee
   await expect(page).toHaveURL(/tab=review/);
   await expect(page.locator('[data-admin-tab="review"]')).toHaveAttribute('aria-current', 'page');
   await page.locator('[data-admin-back]').click();
-  await expect(
-    page.locator('[data-admin-garage-id="demo-admin-garage-pending"] [data-admin-open-garage]'),
-  ).toBeFocused();
+  // A task deep link has no originating garage-list page. The default bounded page need not
+  // contain this garage; in that case the heading receives focus, without inventing a search.
+  await expect(page.locator('main h1')).toBeFocused();
+  await page.locator('[data-admin-query]').fill('demo-admin-garage-pending');
+  await page.locator('[data-admin-search]').click();
+  const garage = page.locator(
+    '[data-admin-garage-id="demo-admin-garage-pending"] [data-admin-open-garage]',
+  );
+  await garage.click();
+  await expect(page.locator('[data-admin-detail-heading]')).toBeVisible();
+  await page.locator('[data-admin-back]').click();
+  await expect(page.locator('[data-admin-query]')).toHaveValue('demo-admin-garage-pending');
+  await expect(garage).toBeFocused();
 });
