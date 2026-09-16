@@ -301,34 +301,40 @@
           </section>
         }
         @if (current.canEscalate) {
-          <form
-            class="mt-6 grid gap-3 border-t border-slate-200 pt-6 sm:max-w-lg"
-            (ngSubmit)="escalate()"
+          <details
+            data-escalate-panel
+            class="mt-6 border-t border-slate-200 pt-4"
+            [open]="current.conflictOfInterest"
           >
-            <label class="font-semibold" for="staff-escalation">{{ copy().reason }}</label
-            ><select
-              id="staff-escalation"
-              name="reason"
-              class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
-              [(ngModel)]="escalationReason"
-              (ngModelChange)="onEscalationChange()"
-              [disabled]="busy()"
-            >
-              <option value="">{{ copy().choose }}</option>
-              @for (reason of reasons; track reason) {
-                <option [value]="reason">{{ label(reason) }}</option>
-              }
-            </select>
-            <p class="text-sm text-muted">{{ copy().escalationConfirm }}</p>
-            <button
-              data-escalate
-              appButton="outline"
-              type="submit"
-              [disabled]="busy() || !escalationReason"
-            >
+            <summary class="min-h-11 cursor-pointer py-3 font-semibold text-brand-dark">
               {{ copy().escalate }}
-            </button>
-          </form>
+            </summary>
+            <form class="mt-3 grid gap-3 sm:max-w-lg" (ngSubmit)="escalate()">
+              <label class="font-semibold" for="staff-escalation">{{ copy().reason }}</label
+              ><select
+                id="staff-escalation"
+                name="reason"
+                class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+                [(ngModel)]="escalationReason"
+                (ngModelChange)="onEscalationChange()"
+                [disabled]="busy()"
+              >
+                <option value="">{{ copy().choose }}</option>
+                @for (reason of reasons; track reason) {
+                  <option [value]="reason">{{ label(reason) }}</option>
+                }
+              </select>
+              <p class="text-sm text-muted">{{ copy().escalationConfirm }}</p>
+              <button
+                data-escalate
+                appButton="outline"
+                type="submit"
+                [disabled]="busy() || !escalationReason"
+              >
+                {{ copy().escalate }}
+              </button>
+            </form>
+          </details>
         }
         <details class="mt-8">
           <summary class="min-h-11 cursor-pointer py-2 font-bold">{{ copy().history }}</summary>
