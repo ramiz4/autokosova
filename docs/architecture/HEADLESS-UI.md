@@ -111,10 +111,11 @@ remain separate release evidence.
 
 Pull requests run `verify` and `development-start`. Full browser, provider and
 E2E acceptance is scheduled only on `main`: `E2E acceptance` runs
-`npm run test:e2e`; `Inquiries browser` runs the inquiry/private-list smokes
-and `npm run test:dialogs:browser`; account, footer, staff, favourites and
-OIDC workflows run their named synthetic browser paths. Scheduled workflows
-check out the immutable SHA that triggered the run.
+`npm run test:e2e`; `Inquiries browser` runs the inquiry/private-list smokes,
+the existing gallery and mobile-navigation smokes, and
+`npm run test:dialogs:browser` after installing Chromium. Account, footer,
+staff, favourites and OIDC workflows run their named synthetic browser paths.
+Scheduled workflows check out the immutable SHA that triggered the run.
 
 The presence of a script, or a future scheduled run, is not passing evidence
 for a current change. Record the exact SHA and completed run before treating a
