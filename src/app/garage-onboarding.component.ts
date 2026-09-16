@@ -67,7 +67,7 @@ interface OwnedGarage {
   name: string;
   placeId: string;
   publicationState: GaragePublicationState;
-  serviceCategoryIds: readonly string[];
+  serviceCategoryIds?: readonly string[];
   updatedAt?: string;
 }
 interface PrivateGarage {
@@ -238,13 +238,13 @@ export class GarageOnboardingComponent {
     return CATALOG_PLACES.find((place) => place.id === placeId)?.label ?? placeId;
   }
   protected serviceLabels(garage: OwnedGarage): string[] {
-    return garage.serviceCategoryIds.map((id) => this.language.serviceLabel(id));
+    return (garage.serviceCategoryIds ?? []).map((id) => this.language.serviceLabel(id));
   }
   protected visibleServices(garage: OwnedGarage): string[] {
     return this.serviceLabels(garage).slice(0, 3);
   }
   protected hiddenServiceCount(garage: OwnedGarage): number {
-    return Math.max(0, garage.serviceCategoryIds.length - 3);
+    return Math.max(0, (garage.serviceCategoryIds?.length ?? 0) - 3);
   }
   protected date(value: string | undefined): string {
     if (!value || !Number.isFinite(Date.parse(value))) return this.management.dateUnavailable;
