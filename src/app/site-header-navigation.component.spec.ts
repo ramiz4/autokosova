@@ -42,21 +42,28 @@ describe('Mobile header navigation overlay', () => {
     return { fixture, page: fixture.nativeElement as HTMLElement };
   }
 
+  const navigationTrigger = (page: HTMLElement) =>
+    page.querySelector<HTMLButtonElement>('button.mobile-menu-toggle[brnOverlayTrigger]')!;
+  const navigationPanel = (trigger: HTMLButtonElement) =>
+    document
+      .getElementById(trigger.getAttribute('aria-controls') ?? '')
+      ?.querySelector<HTMLElement>('nav');
+
   it('uses the nonmodal Brain overlay contract and preserves native mobile links', async () => {
     const { fixture, page } = await render();
-    const trigger = page.querySelector<HTMLButtonElement>('button[brnOverlayTrigger]')!;
+    const trigger = navigationTrigger(page);
 
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
-    expect(trigger.getAttribute('aria-controls')).toBe('mobile-navigation');
+    expect(trigger.getAttribute('aria-controls')).toMatch(/^brn-overlay-\d+$/);
     expect(trigger.getAttribute('aria-haspopup')).toBeNull();
-    expect(document.getElementById('mobile-navigation')).toBeNull();
+    expect(navigationPanel(trigger)).toBeUndefined();
 
     trigger.focus();
     trigger.click();
     await fixture.whenStable();
 
     const overlay = document.getElementById(trigger.getAttribute('aria-controls')!)!;
-    const navigation = overlay.querySelector<HTMLElement>('nav')!;
+    const navigation = navigationPanel(trigger)!;
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     expect(document.activeElement).toBe(navigation.querySelector('a.nav-link'));
     expect(overlay.getAttribute('role')).toBeNull();
@@ -76,36 +83,36 @@ describe('Mobile header navigation overlay', () => {
     navigation.querySelector<HTMLAnchorElement>('a.nav-link')!.focus();
     navigation.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await fixture.whenStable();
-    expect(document.getElementById(trigger.getAttribute('aria-controls')!)).toBeNull();
+    expect(navigationPanel(trigger)).toBeUndefined();
     expect(document.activeElement).toBe(trigger);
   });
 
   it('closes on a second activation, route transition and desktop breakpoint without delayed account-close interference', async () => {
     const { fixture, page } = await render();
-    const trigger = page.querySelector<HTMLButtonElement>('button[brnOverlayTrigger]')!;
+    const trigger = navigationTrigger(page);
     const open = async () => {
       trigger.click();
       await fixture.whenStable();
-      expect(document.getElementById(trigger.getAttribute('aria-controls')!)).not.toBeNull();
+      expect(navigationPanel(trigger)).toBeDefined();
     };
 
     await open();
     navigationState(fixture.componentInstance).onAccountState('closed');
     await fixture.whenStable();
-    expect(document.getElementById(trigger.getAttribute('aria-controls')!)).not.toBeNull();
+    expect(navigationPanel(trigger)).toBeDefined();
 
     trigger.click();
     await fixture.whenStable();
-    expect(document.getElementById(trigger.getAttribute('aria-controls')!)).toBeNull();
+    expect(navigationPanel(trigger)).toBeUndefined();
 
     await open();
     await TestBed.inject(Router).navigateByUrl('/next');
     await fixture.whenStable();
-    expect(document.getElementById(trigger.getAttribute('aria-controls')!)).toBeNull();
+    expect(navigationPanel(trigger)).toBeUndefined();
 
     await open();
     breakpoints.next({ matches: true, breakpoints: {} });
     await fixture.whenStable();
-    expect(document.getElementById(trigger.getAttribute('aria-controls')!)).toBeNull();
+    expect(navigationPanel(trigger)).toBeUndefined();
   });
 });

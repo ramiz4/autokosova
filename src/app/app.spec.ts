@@ -58,26 +58,30 @@ describe('Homepage', () => {
   it('keeps menu state accessible, closes on Escape and restores focus', async () => {
     const { fixture, page } = await render();
     const toggle = page.querySelector<HTMLButtonElement>(
-      'button[aria-controls="mobile-navigation"]',
+      'button.mobile-menu-toggle[brnOverlayTrigger]',
     )!;
-    const menu = page.querySelector<HTMLElement>('#mobile-navigation')!;
-    expect(menu.hidden).toBe(true);
+    const menu = () =>
+      document
+        .getElementById(toggle.getAttribute('aria-controls') ?? '')
+        ?.querySelector<HTMLElement>('nav');
+    expect(menu()).toBeUndefined();
+    toggle.focus();
     toggle.click();
     await fixture.whenStable();
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    expect(menu.hidden).toBe(false);
-    menu.querySelector('a')!.focus();
-    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(menu()).toBeDefined();
+    menu()!.querySelector('a')!.focus();
+    menu()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await fixture.whenStable();
-    expect(menu.hidden).toBe(true);
+    expect(menu()).toBeUndefined();
     expect(document.activeElement).toBe(toggle);
     toggle.click();
     await fixture.whenStable();
-    menu
-      .querySelector('a')!
+    menu()!
+      .querySelector('a.nav-link')!
       .dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
     await fixture.whenStable();
-    expect(menu.hidden).toBe(true);
+    expect(menu()).toBeUndefined();
   });
 
   it('starts the faster search with only the selected location and radius', async () => {
