@@ -12,6 +12,8 @@ export const requiredCases = [
   'review-boundaries',
   'admin-workflow',
   'admin-boundaries',
+  'real-runner-contract',
+  'real-harness-lifecycle',
 ];
 export const requiredProjects = ['desktop', 'mobile'];
 

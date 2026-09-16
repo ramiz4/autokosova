@@ -1,0 +1,196 @@
+name: Real ZITADEL acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Use this exact group in every workflow using these two real accounts.
+concurrency:
+  group: autokosova-real-zitadel-accounts
+  cancel-in-progress: false
+
+jobs:
+  trust:
+    name: ZITADEL trust prerequisites
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+    steps:
+      # No checkout or credentials. Missing protections fail before GitHub can auto-create an environment.
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const repo = context.repo;
+            const { data: environment } = await github.rest.repos.getEnvironment({ ...repo, environment_name: 'e2e-zitadel' });
+            const reviewers = environment.protection_rules?.find(rule => rule.type === 'required_reviewers');
+            if (!reviewers?.reviewers?.length || !reviewers.prevent_self_review || environment.can_admins_bypass !== false)
+              throw new Error('e2e-zitadel requires independent reviewers, no self-review and no administrator bypass');
+            const { data: actor } = await github.rest.repos.getCollaboratorPermissionLevel({ ...repo, username: context.actor });
+            if (!['admin', 'maintain', 'write'].includes(actor.permission))
+              throw new Error('Real credentials require an explicitly authorized maintainer run');
+            const { data: main } = await github.rest.repos.getBranch({ ...repo, branch: 'main' });
+            if (context.eventName === 'pull_request') {
+              const { data: pr } = await github.rest.pulls.get({ ...repo, pull_number: context.issue.number });
+              if (pr.state !== 'open' || pr.draft || pr.head.repo?.full_name !== `${repo.owner}/${repo.repo}` ||
+                  pr.base.ref !== 'main' || pr.base.sha !== main.commit.sha || pr.merge_commit_sha !== context.sha)
+                throw new Error('Only the current same-repository PR integration may request independent environment approval');
+            } else if (!['push', 'workflow_dispatch'].includes(context.eventName) ||
+                       context.ref !== 'refs/heads/main' || context.sha !== main.commit.sha) {
+              throw new Error('Manual and post-merge acceptance must target current main');
+            }
+
+  integration:
+    name: Approved real ZITADEL run
+    needs: trust
+    permissions:
+      contents: read
+      pull-requests: read
+    environment: e2e-zitadel
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_DB: autokosova
+          POSTGRES_PASSWORD: autokosova
+          POSTGRES_USER: autokosova
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U autokosova -d autokosova"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    steps:
+      # Approval can wait; fail if the PR/base moved while waiting, before loading any credential.
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const { data: main } = await github.rest.repos.getBranch({ ...context.repo, branch: 'main' });
+            if (context.eventName === 'pull_request') {
+              const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: context.issue.number });
+              if (pr.state !== 'open' || pr.base.sha !== main.commit.sha || pr.merge_commit_sha !== context.sha)
+                throw new Error('Approved integration is no longer current');
+            } else if (context.sha !== main.commit.sha) {
+              throw new Error('Approved main commit is no longer current');
+            }
+      # Approval covers this exact merge/main SHA, including workflow, dependencies and test runner.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+      - run: npm install --global npm@11.19.0
+      - run: npm ci
+      - run: npm run typecheck:e2e && npm run test:e2e:policy
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Check dedicated-vault reference syntax without loading credentials
+        run: node scripts/e2e/real-references.mjs
+        env:
+          OP_CI_TEST_VAULT_ID: ${{ vars.OP_CI_TEST_VAULT_ID }}
+          ZITADEL_ISSUER_REF: ${{ vars.ZITADEL_ISSUER_REF }}
+          ZITADEL_CLIENT_ID_REF: ${{ vars.ZITADEL_CLIENT_ID_REF }}
+          ZITADEL_AUDIENCE_REF: ${{ vars.ZITADEL_AUDIENCE_REF }}
+          ZITADEL_JWKS_URI_REF: ${{ vars.ZITADEL_JWKS_URI_REF }}
+          ZITADEL_AUTHORIZATION_ENDPOINT_REF: ${{ vars.ZITADEL_AUTHORIZATION_ENDPOINT_REF }}
+          ZITADEL_TOKEN_ENDPOINT_REF: ${{ vars.ZITADEL_TOKEN_ENDPOINT_REF }}
+          ZITADEL_USERINFO_ENDPOINT_REF: ${{ vars.ZITADEL_USERINFO_ENDPOINT_REF }}
+          ZITADEL_REDIRECT_URI_REF: ${{ vars.ZITADEL_REDIRECT_URI_REF }}
+          ZITADEL_END_SESSION_ENDPOINT_REF: ${{ vars.ZITADEL_END_SESSION_ENDPOINT_REF }}
+          ZITADEL_POST_LOGOUT_URI_REF: ${{ vars.ZITADEL_POST_LOGOUT_URI_REF }}
+          E2E_REAL_CUSTOMER_LOGIN_REF: ${{ vars.E2E_REAL_CUSTOMER_LOGIN_REF }}
+          E2E_REAL_CUSTOMER_PASSWORD_REF: ${{ vars.E2E_REAL_CUSTOMER_PASSWORD_REF }}
+          E2E_REAL_CUSTOMER_SUBJECT_REF: ${{ vars.E2E_REAL_CUSTOMER_SUBJECT_REF }}
+          E2E_REAL_GARAGE_LOGIN_REF: ${{ vars.E2E_REAL_GARAGE_LOGIN_REF }}
+          E2E_REAL_GARAGE_PASSWORD_REF: ${{ vars.E2E_REAL_GARAGE_PASSWORD_REF }}
+          E2E_REAL_GARAGE_SUBJECT_REF: ${{ vars.E2E_REAL_GARAGE_SUBJECT_REF }}
+          E2E_REAL_LOGIN_ORIGIN_REF: ${{ vars.E2E_REAL_LOGIN_ORIGIN_REF }}
+      - name: Resolve only approved test fields at runtime
+        id: credentials
+        uses: 1password/load-secrets-action@70062d7a876d3eb6334754fa26efd2fbd90c32f2 # v5.0.1
+        with:
+          export-env: false
+          version: '2.38.1'
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          ZITADEL_ISSUER: ${{ vars.ZITADEL_ISSUER_REF }}
+          ZITADEL_CLIENT_ID: ${{ vars.ZITADEL_CLIENT_ID_REF }}
+          ZITADEL_AUDIENCE: ${{ vars.ZITADEL_AUDIENCE_REF }}
+          ZITADEL_JWKS_URI: ${{ vars.ZITADEL_JWKS_URI_REF }}
+          ZITADEL_AUTHORIZATION_ENDPOINT: ${{ vars.ZITADEL_AUTHORIZATION_ENDPOINT_REF }}
+          ZITADEL_TOKEN_ENDPOINT: ${{ vars.ZITADEL_TOKEN_ENDPOINT_REF }}
+          ZITADEL_USERINFO_ENDPOINT: ${{ vars.ZITADEL_USERINFO_ENDPOINT_REF }}
+          ZITADEL_REDIRECT_URI: ${{ vars.ZITADEL_REDIRECT_URI_REF }}
+          ZITADEL_END_SESSION_ENDPOINT: ${{ vars.ZITADEL_END_SESSION_ENDPOINT_REF }}
+          ZITADEL_POST_LOGOUT_URI: ${{ vars.ZITADEL_POST_LOGOUT_URI_REF }}
+          E2E_REAL_CUSTOMER_LOGIN: ${{ vars.E2E_REAL_CUSTOMER_LOGIN_REF }}
+          E2E_REAL_CUSTOMER_PASSWORD: ${{ vars.E2E_REAL_CUSTOMER_PASSWORD_REF }}
+          E2E_REAL_CUSTOMER_SUBJECT: ${{ vars.E2E_REAL_CUSTOMER_SUBJECT_REF }}
+          E2E_REAL_GARAGE_LOGIN: ${{ vars.E2E_REAL_GARAGE_LOGIN_REF }}
+          E2E_REAL_GARAGE_PASSWORD: ${{ vars.E2E_REAL_GARAGE_PASSWORD_REF }}
+          E2E_REAL_GARAGE_SUBJECT: ${{ vars.E2E_REAL_GARAGE_SUBJECT_REF }}
+          E2E_REAL_LOGIN_ORIGIN: ${{ vars.E2E_REAL_LOGIN_ORIGIN_REF }}
+      - name: Run isolated application and both real browser journeys
+        id: acceptance
+        run: node scripts/e2e/real.mjs
+        env:
+          AUTOKOSOVA_E2E_REAL: '1'
+          E2E_REAL_ISOLATED: '1'
+          E2E_REAL_BASE_URL: http://localhost:4200
+          AUTOKOSOVA_E2E_DATABASE_URL: postgresql://autokosova:autokosova@127.0.0.1:5432/autokosova
+          E2E_REAL_ISSUER: ${{ steps.credentials.outputs.ZITADEL_ISSUER }}
+          E2E_REAL_END_SESSION_ENDPOINT: ${{ steps.credentials.outputs.ZITADEL_END_SESSION_ENDPOINT }}
+          ZITADEL_ISSUER: ${{ steps.credentials.outputs.ZITADEL_ISSUER }}
+          ZITADEL_CLIENT_ID: ${{ steps.credentials.outputs.ZITADEL_CLIENT_ID }}
+          ZITADEL_AUDIENCE: ${{ steps.credentials.outputs.ZITADEL_AUDIENCE }}
+          ZITADEL_JWKS_URI: ${{ steps.credentials.outputs.ZITADEL_JWKS_URI }}
+          ZITADEL_AUTHORIZATION_ENDPOINT: ${{ steps.credentials.outputs.ZITADEL_AUTHORIZATION_ENDPOINT }}
+          ZITADEL_TOKEN_ENDPOINT: ${{ steps.credentials.outputs.ZITADEL_TOKEN_ENDPOINT }}
+          ZITADEL_USERINFO_ENDPOINT: ${{ steps.credentials.outputs.ZITADEL_USERINFO_ENDPOINT }}
+          ZITADEL_REDIRECT_URI: ${{ steps.credentials.outputs.ZITADEL_REDIRECT_URI }}
+          ZITADEL_END_SESSION_ENDPOINT: ${{ steps.credentials.outputs.ZITADEL_END_SESSION_ENDPOINT }}
+          ZITADEL_POST_LOGOUT_URI: ${{ steps.credentials.outputs.ZITADEL_POST_LOGOUT_URI }}
+          E2E_REAL_CUSTOMER_LOGIN: ${{ steps.credentials.outputs.E2E_REAL_CUSTOMER_LOGIN }}
+          E2E_REAL_CUSTOMER_PASSWORD: ${{ steps.credentials.outputs.E2E_REAL_CUSTOMER_PASSWORD }}
+          E2E_REAL_CUSTOMER_SUBJECT: ${{ steps.credentials.outputs.E2E_REAL_CUSTOMER_SUBJECT }}
+          E2E_REAL_GARAGE_LOGIN: ${{ steps.credentials.outputs.E2E_REAL_GARAGE_LOGIN }}
+          E2E_REAL_GARAGE_PASSWORD: ${{ steps.credentials.outputs.E2E_REAL_GARAGE_PASSWORD }}
+          E2E_REAL_GARAGE_SUBJECT: ${{ steps.credentials.outputs.E2E_REAL_GARAGE_SUBJECT }}
+          E2E_REAL_LOGIN_ORIGIN: ${{ steps.credentials.outputs.E2E_REAL_LOGIN_ORIGIN }}
+          E2E_REAL_USERNAME_SELECTOR: ${{ vars.E2E_REAL_USERNAME_SELECTOR }}
+          E2E_REAL_PASSWORD_SELECTOR: ${{ vars.E2E_REAL_PASSWORD_SELECTOR }}
+          E2E_REAL_SUBMIT_SELECTOR: ${{ vars.E2E_REAL_SUBMIT_SELECTOR }}
+          E2E_REAL_LOGOUT_CONFIRM_SELECTOR: ${{ vars.E2E_REAL_LOGOUT_CONFIRM_SELECTOR }}
+      - name: Upload only the reduced commit-bound result
+        if: ${{ !cancelled() && steps.acceptance.outcome != 'skipped' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: e2e-zitadel-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/e2e-real/summary.json
+          if-no-files-found: error
+          retention-days: 7
+
+  e2e-zitadel:
+    name: e2e-zitadel
+    needs: [trust, integration]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      # A skipped/rejected/unconfigured integration is not a successful acceptance check.
+      - run: test "$TRUST" = success && test "$INTEGRATION" = success
+        env:
+          TRUST: ${{ needs.trust.result }}
+          INTEGRATION: ${{ needs.integration.result }}
