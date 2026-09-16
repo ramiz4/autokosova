@@ -75,11 +75,20 @@ test('garage CRUD keeps account purpose, requires active ownership for deletion 
       (await app.inject({ url: '/api/me', headers: headers('other') })).json().accountType,
       'customer',
     );
-    assert.equal(
-      (await app.inject({ url: '/api/me/garages', headers: headers('owner') })).json().garages
-        .length,
-      2,
-    );
+    const summaries = (
+      await app.inject({ url: '/api/me/garages', headers: headers('owner') })
+    ).json().garages;
+    assert.equal(summaries.length, 2);
+    assert.deepEqual(Object.keys(summaries[0]).sort(), [
+      'canDelete',
+      'id',
+      'name',
+      'placeId',
+      'publicationState',
+      'serviceCategoryIds',
+    ]);
+    assert.equal(summaries[0].canDelete, true);
+    assert.deepEqual(summaries[0].serviceCategoryIds, ['bremsen']);
     assert.equal(
       (await app.inject({ url: '/api/me/garages', headers: headers('other') })).json().garages
         .length,

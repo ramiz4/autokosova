@@ -24,6 +24,16 @@ export interface PrivateGarage {
   readonly consentVersion: string;
   readonly verification: VerificationChecklist;
 }
+export interface OwnedGarageSummary {
+  readonly canDelete: boolean;
+  readonly description?: string;
+  readonly id: string;
+  readonly name: string;
+  readonly placeId: string;
+  readonly publicationState: GaragePublicationState;
+  readonly serviceCategoryIds: readonly string[];
+  readonly updatedAt?: string;
+}
 type Maybe<T> = T | Promise<T>;
 export interface GarageOnboardingStore {
   close?(): Promise<void>;
@@ -36,9 +46,7 @@ export interface GarageOnboardingStore {
     consentVersion: string,
   ): Maybe<{ id: string; publicationState: GaragePublicationState }>;
   getPrivateGarage(principal: Principal, garageId: string): Maybe<PrivateGarage>;
-  listOwnedGarages(
-    principal: Principal,
-  ): Maybe<readonly { id: string; name: string; publicationState: GaragePublicationState }[]>;
+  listOwnedGarages(principal: Principal): Maybe<readonly OwnedGarageSummary[]>;
   updateGarageProfile(
     principal: Principal,
     garageId: string,
@@ -195,11 +203,24 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
   }
   async listOwnedGarages(principal: Principal) {
     return this.transaction(principal, async (client) => {
-      const result = await client.query(
-        'SELECT w.id, w.name, w.publication_state AS "publicationState" FROM garage w JOIN membership m ON m.garage_id = w.id WHERE m.user_id=$1 AND m.state=\'active\' AND w.deleted_at IS NULL ORDER BY w.name,w.id',
+      const result = await client.query<
+        Omit<OwnedGarageSummary, 'updatedAt'> & { readonly updatedAt?: Date }
+      >(
+        `SELECT w.id, w.name, w.publication_state AS "publicationState", w.place_id AS "placeId",
+          w.description, w.updated_at AS "updatedAt",
+          ARRAY(SELECT service_category_id FROM garage_service_category WHERE garage_id=w.id
+            ORDER BY service_category_id) AS "serviceCategoryIds",
+          EXISTS(SELECT 1 FROM membership owner WHERE owner.garage_id=w.id
+            AND owner.user_id=$1 AND owner.state='active' AND owner.role='owner') AS "canDelete"
+         FROM garage w JOIN membership m ON m.garage_id=w.id
+         WHERE m.user_id=$1 AND m.state='active' AND w.deleted_at IS NULL
+         ORDER BY w.name,w.id`,
         [principal.userId],
       );
-      return result.rows;
+      return result.rows.map(({ updatedAt, ...garage }) => ({
+        ...garage,
+        ...(updatedAt ? { updatedAt: updatedAt.toISOString() } : {}),
+      }));
     });
   }
   async getPrivateGarage(principal: Principal, id: string): Promise<PrivateGarage> {

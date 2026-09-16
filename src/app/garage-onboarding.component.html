@@ -55,7 +55,7 @@
             ? 'relative min-w-0'
             : 'min-w-0 rounded-2xl border border-white/85 bg-white/87 p-5 shadow-xl shadow-blue-900/5 backdrop-blur-sm sm:px-8 sm:py-6 lg:px-10'
         "
-        aria-labelledby="form-title"
+        [attr.aria-labelledby]="managing && !editing ? 'workspace-title' : 'form-title'"
       >
         @if (managing && editing) {
           <button
@@ -116,20 +116,63 @@
           }
         }
         @if (managing && !editing) {
-          <button
-            data-new-garage
-            type="button"
-            class="mt-5 min-h-11 rounded-lg bg-brand px-5 text-sm font-semibold text-white disabled:opacity-50"
-            [disabled]="sending || loading"
-            (click)="reset()"
+          <section
+            class="garage-management"
+            data-garages-overview
+            [attr.aria-busy]="ownedLoading || loading"
           >
-            {{ management.create }}
-          </button>
-          <section class="mt-6" data-garages-overview [attr.aria-busy]="ownedLoading || loading">
+            <header class="garage-management-hero">
+              <div class="garage-management-copy">
+                <h1 #workspaceTitle tabindex="-1" id="workspace-title">{{ management.title }}</h1>
+                <p>{{ management.intro }}</p>
+                <div class="garage-metrics" aria-label="{{ management.title }}">
+                  <article>
+                    <span class="metric-icon"
+                      ><lucide-icon [name]="ShieldCheckIcon" class="size-6"
+                    /></span>
+                    <strong>{{ owned.length }}</strong
+                    ><span>{{ management.title }}</span>
+                  </article>
+                  <article>
+                    <span class="metric-icon metric-icon-success"
+                      ><lucide-icon [name]="BadgeCheckIcon" class="size-6"
+                    /></span>
+                    <strong>{{ publishedCount }}</strong
+                    ><span>{{ copy.statePublished }}</span>
+                  </article>
+                  <article>
+                    <span class="metric-icon"
+                      ><lucide-icon [name]="FileTextIcon" class="size-6"
+                    /></span>
+                    <strong>{{ draftCount }}</strong
+                    ><span>{{ copy.stateDraft }}</span>
+                  </article>
+                </div>
+              </div>
+              <div class="garage-management-art">
+                <img
+                  src="/images/garage-management/garage-management-hero.png"
+                  alt=""
+                  width="1536"
+                  height="1024"
+                />
+                <button
+                  data-new-garage
+                  type="button"
+                  class="new-garage"
+                  [disabled]="sending || loading"
+                  (click)="reset()"
+                >
+                  <lucide-icon [name]="PlusIcon" class="size-5" />{{ management.create }}
+                </button>
+              </div>
+            </header>
             @if (ownedLoading || !ownedLoaded) {
-              <p role="status" data-garages-loading>{{ management.loading }}</p>
+              <div class="garage-state" role="status" data-garages-loading>
+                {{ management.loading }}
+              </div>
             } @else if (ownedLoadFailed) {
-              <p role="alert">{{ message || copy.loadError }}</p>
+              <div class="garage-state" role="alert">{{ message || copy.loadError }}</div>
               <button
                 data-garages-retry
                 type="button"
@@ -139,39 +182,171 @@
                 {{ management.retry }}
               </button>
             } @else {
-              <ul class="grid gap-4 sm:grid-cols-2">
-                @for (garage of owned; track garage.id) {
-                  <li class="min-w-0 rounded-xl border border-slate-200 bg-white p-5">
-                    <h3 class="text-lg font-bold [overflow-wrap:anywhere]">{{ garage.name }}</h3>
-                    <ng-container
-                      [ngTemplateOutlet]="publicationBadge"
-                      [ngTemplateOutletContext]="{ $implicit: garage.publicationState }"
-                    />
-                    <div class="mt-4 flex flex-wrap gap-3">
-                      <button
-                        type="button"
-                        class="min-h-11 rounded-lg border border-blue-200 px-4 font-semibold text-brand disabled:opacity-50"
-                        [disabled]="sending || loading"
-                        (click)="open(garage.id)"
-                        [attr.data-owned-garage]="garage.id"
-                        [attr.aria-label]="management.edit + ': ' + garage.name"
-                      >
-                        {{ management.edit }}
-                      </button>
-                      @if (garage.publicationState === 'published') {
-                        <a
-                          data-public-garage
-                          class="inline-flex min-h-11 items-center text-sm text-brand underline"
-                          [routerLink]="language.link('garage', garage.id)"
-                          >{{ management.viewPublic }}</a
+              <div class="garage-toolbar">
+                <label class="garage-search"
+                  ><lucide-icon [name]="SearchIcon" class="size-5" /><span class="sr-only">{{
+                    management.search
+                  }}</span>
+                  <input
+                    type="search"
+                    [(ngModel)]="overviewSearch"
+                    [placeholder]="management.search"
+                  />
+                </label>
+                <div class="garage-toolbar-selects">
+                  <label
+                    ><span class="sr-only">{{ management.allStates }}</span
+                    ><select [(ngModel)]="overviewState">
+                      <option value="all">{{ management.allStates }}</option>
+                      <option value="draft">{{ copy.stateDraft }}</option>
+                      <option value="pending_review">{{ copy.statePending }}</option>
+                      <option value="published">{{ copy.statePublished }}</option>
+                      <option value="rejected">{{ copy.stateRejected }}</option>
+                      <option value="suspended">{{ copy.stateSuspended }}</option></select
+                    ><lucide-icon [name]="ChevronDownIcon" class="size-4"
+                  /></label>
+                  <label
+                    ><span class="sr-only">{{ management.sortUpdated }}</span
+                    ><select [(ngModel)]="overviewSort">
+                      <option value="updated">{{ management.sortUpdated }}</option>
+                      <option value="name">{{ management.sortName }}</option></select
+                    ><lucide-icon [name]="ChevronDownIcon" class="size-4"
+                  /></label>
+                </div>
+              </div>
+              @if (!owned.length) {
+                <div data-garages-empty class="garage-state">{{ management.empty }}</div>
+              } @else if (!filteredOwned.length) {
+                <div data-garages-no-results class="garage-state">{{ management.noResults }}</div>
+              } @else {
+                <ul class="garage-list">
+                  @for (garage of filteredOwned; track garage.id) {
+                    <li class="garage-card" [attr.data-garage-card]="garage.id">
+                      <div class="garage-thumbnail" aria-hidden="true">
+                        <lucide-icon [name]="ShieldCheckIcon" class="size-9" />
+                      </div>
+                      <div class="garage-card-main">
+                        <div class="garage-card-title">
+                          <h2>{{ garage.name }}</h2>
+                          <ng-container
+                            [ngTemplateOutlet]="publicationBadge"
+                            [ngTemplateOutletContext]="{ $implicit: garage.publicationState }"
+                          />
+                        </div>
+                        <p class="garage-place">
+                          <lucide-icon [name]="MapPinIcon" class="size-4" />{{
+                            placeLabel(garage.placeId)
+                          }}
+                        </p>
+                        <p class="garage-description">{{ cardDescription(garage) }}</p>
+                        <ul class="garage-chips" [attr.aria-label]="management.title">
+                          @for (service of visibleServices(garage); track service) {
+                            <li>{{ service }}</li>
+                          }
+                          @if (hiddenServiceCount(garage)) {
+                            <li>+{{ hiddenServiceCount(garage) }}</li>
+                          }
+                        </ul>
+                      </div>
+                      <div class="garage-meta">
+                        <p>
+                          <lucide-icon [name]="ClockIcon" class="size-5" /><span
+                            >{{ management.updated
+                            }}<strong
+                              ><time [attr.datetime]="garage.updatedAt">{{
+                                date(garage.updatedAt)
+                              }}</time></strong
+                            ></span
+                          >
+                        </p>
+                        <p>
+                          <lucide-icon [name]="GlobeIcon" class="size-5" /><span
+                            >{{ management.publicProfile
+                            }}<strong>{{ stateHelpFor(garage.publicationState) }}</strong></span
+                          >
+                        </p>
+                      </div>
+                      <div class="garage-actions">
+                        <button
+                          type="button"
+                          [id]="'garage-actions-' + garage.id"
+                          [cdkMenuTriggerFor]="garageActions"
+                          [cdkMenuPosition]="overviewMenuPositions"
+                          #actionsMenu="cdkMenuTriggerFor"
+                          [disabled]="sending || loading"
+                          [attr.aria-label]="management.actions + ': ' + garage.name"
+                          [attr.data-garage-menu]="garage.id"
                         >
-                      }
-                    </div>
-                  </li>
-                } @empty {
-                  <li data-garages-empty class="text-sm text-muted">{{ management.empty }}</li>
-                }
-              </ul>
+                          <lucide-icon [name]="EllipsisIcon" class="size-6" />
+                        </button>
+                        <ng-template #garageActions
+                          ><div
+                            cdkMenu
+                            class="garage-actions-menu"
+                            [attr.aria-labelledby]="'garage-actions-' + garage.id"
+                          >
+                            @if (garage.publicationState === 'published') {
+                              <a
+                                cdkMenuItem
+                                [routerLink]="language.link('garage', garage.id)"
+                                data-public-garage
+                                ><lucide-icon [name]="GlobeIcon" class="size-4" />{{
+                                  management.viewPublic
+                                }}</a
+                              >
+                            }
+                            <button
+                              type="button"
+                              cdkMenuItem
+                              (cdkMenuItemTriggered)="openFromOverview(garage, actionsMenu)"
+                              [disabled]="sending || loading"
+                              [cdkMenuItemDisabled]="sending || loading"
+                              [attr.data-owned-garage]="garage.id"
+                            >
+                              <lucide-icon [name]="PencilIcon" class="size-4" />{{
+                                management.edit
+                              }}
+                            </button>
+                            <button type="button" cdkMenuItem disabled [cdkMenuItemDisabled]="true">
+                              <lucide-icon [name]="FileTextIcon" class="size-4" />{{
+                                management.duplicate
+                              }}
+                              <span>{{ management.unavailable }}</span>
+                            </button>
+                            <button type="button" cdkMenuItem disabled [cdkMenuItemDisabled]="true">
+                              <lucide-icon [name]="FileTextIcon" class="size-4" />{{
+                                management.statistics
+                              }}
+                              <span>{{ management.unavailable }}</span>
+                            </button>
+                            <div role="separator"></div>
+                            <button
+                              type="button"
+                              cdkMenuItem
+                              class="delete"
+                              (cdkMenuItemTriggered)="removeOwned(garage, actionsMenu)"
+                              [disabled]="!garage.canDelete || sending || loading"
+                              [cdkMenuItemDisabled]="!garage.canDelete || sending || loading"
+                              data-delete-garage
+                            >
+                              <lucide-icon [name]="FileTextIcon" class="size-4" />{{
+                                management.remove
+                              }}
+                            </button>
+                          </div></ng-template
+                        >
+                      </div>
+                    </li>
+                  }
+                </ul>
+                <p class="garage-results">
+                  {{
+                    management.results
+                      .replace('{visible}', '' + filteredOwned.length)
+                      .replace('{total}', '' + owned.length)
+                  }}
+                </p>
+              }
             }
           </section>
         }

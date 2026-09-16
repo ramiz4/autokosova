@@ -6,7 +6,7 @@ import { garageManagementCopy } from '../../src/shared/garage-management-copy';
 import { translate } from '../../src/shared/i18n';
 
 export const card = (page: Page, id: string) => page.locator(`[data-inquiry-id="${id}"]`);
-export const garageButton = (page: Page, id: string) => page.locator(`[data-owned-garage="${id}"]`);
+export const garageButton = (page: Page, id: string) => page.locator(`[data-garage-menu="${id}"]`);
 export const requestPath = (id: string) => '/api/me/repair-requests/' + encodeURIComponent(id);
 export const garagePath = (id: string) => '/api/garages/' + encodeURIComponent(id);
 
@@ -49,6 +49,16 @@ export async function readyInquiries(page: Page): Promise<void> {
 export async function readyGarages(page: Page): Promise<void> {
   await expect(page.locator('[data-garages-overview]')).toHaveAttribute('aria-busy', 'false');
   await expect(page.locator('[data-garages-loading]')).toHaveCount(0);
+}
+export async function garageAction(
+  page: Page,
+  id: string,
+  action: 'edit' | 'delete',
+): Promise<void> {
+  await garageButton(page, id).click();
+  await page
+    .locator(action === 'edit' ? `[data-owned-garage="${id}"]` : '[data-delete-garage]')
+    .click();
 }
 export async function logout(page: Page, origin: string): Promise<void> {
   await page.locator('[data-account-trigger]').click();
@@ -216,9 +226,9 @@ export async function createGarage(
   await page.locator('[data-garages-back]').click();
   await readyGarages(page);
   await expect(garageButton(page, id)).toBeVisible();
-  await expect(
-    garageButton(page, id).locator('xpath=../..').locator('[data-public-garage]'),
-  ).toHaveCount(0);
+  await garageButton(page, id).click();
+  await expect(page.locator('[data-public-garage]')).toHaveCount(0);
+  await page.keyboard.press('Escape');
   return id;
 }
 
@@ -228,7 +238,7 @@ export async function editGarage(
   id: string,
   name: string,
 ): Promise<void> {
-  await garageButton(page, id).click();
+  await garageAction(page, id, 'edit');
   await expect(page.locator('[data-save-garage]')).toBeDisabled();
   await page.locator('#garage-name').fill(name);
   await expect(page.locator('[data-save-garage]')).toBeEnabled();
@@ -244,7 +254,7 @@ export async function editGarage(
   await expect(page.locator('form [role="status"]')).toBeVisible();
   await page.reload();
   await readyGarages(page);
-  await garageButton(page, id).click();
+  await garageAction(page, id, 'edit');
   await expect(page.locator('#garage-name')).toHaveValue(name);
   const detail = await api(page, origin, garagePath(id));
   expect(detail.status()).toBe(200);
@@ -254,9 +264,7 @@ export async function editGarage(
 }
 
 export async function deleteGarage(page: Page, origin: string, id: string): Promise<void> {
-  await garageButton(page, id).click();
-  await expect(page.locator('[data-garage-actions] [data-delete-garage]')).toHaveCount(0);
-  await page.locator('[data-delete-garage]').click();
+  await garageAction(page, id, 'delete');
   await expect(page.locator('[data-confirmation-confirm]')).toBeVisible();
   const [response] = await Promise.all([
     page.waitForResponse(
@@ -286,7 +294,8 @@ export async function layout(page: Page, info?: TestInfo, label = 'application')
   const surface = page
     .locator('dialog[open]')
     .or(page.locator('main'))
-    .or(page.locator('[aria-labelledby="form-title"]'));
+    .or(page.locator('[aria-labelledby="form-title"]'))
+    .or(page.locator('[aria-labelledby="workspace-title"]'));
   const geometry = await surface.evaluateAll((elements) =>
     elements.map((element) => ({
       overflow: element.scrollWidth > element.clientWidth + 1,
