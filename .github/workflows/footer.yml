@@ -1,23 +1,26 @@
 name: Footer browser
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  schedule:
+    # Daily at 00:37 UTC (02:37 Zurich summer / 01:37 winter).
+    - cron: '37 0 * * *'
 
 permissions:
   contents: read
 
 concurrency:
   group: footer-browser-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   footer-browser:
+    if: ${{ github.event_name == 'schedule' && github.ref == 'refs/heads/main' && github.repository == 'ramiz4/autokosova' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc

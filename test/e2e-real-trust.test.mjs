@@ -19,20 +19,10 @@ async function check(patch = {}) {
   const context = {
     repo: { owner: 'ramiz4', repo: 'autokosova' },
     actor: 'ramizloki',
-    eventName: 'pull_request',
-    sha: 'merge-sha',
-    ref: 'refs/pull/126/merge',
-    issue: { number: 126 },
+    eventName: 'schedule',
+    sha: 'main-sha',
+    ref: 'refs/heads/main',
     ...patch.context,
-  };
-  const pr = {
-    state: 'open',
-    draft: false,
-    user: { login: 'ramizloki', id: 235666066 },
-    head: { repo: { full_name: 'ramiz4/autokosova' } },
-    base: { ref: 'main', sha: 'main-sha' },
-    merge_commit_sha: 'merge-sha',
-    ...patch.pr,
   };
   const environment = {
     can_admins_bypass: false,
@@ -53,7 +43,6 @@ async function check(patch = {}) {
         }),
         getBranch: async () => ({ data: { commit: { sha: 'main-sha' } } }),
       },
-      pulls: { get: async () => ({ data: pr }) },
     },
   };
   await new AsyncFunction('github', 'context', 'process', scripts[0])(github, context, {
@@ -68,28 +57,25 @@ test('same automatic trust checks run before checkout and immediately before sec
     workflow.lastIndexOf('script: |') < workflow.indexOf('secrets.OP_SERVICE_ACCOUNT_TOKEN'),
   );
 });
-test('trusted internal integration and actual main run automatically, without human reviewers', async () => {
+test('trusted nightly main snapshots run automatically, without human reviewers', async () => {
   await check();
   await check({ context: { actor: 'ramiz4' } });
-  for (const eventName of ['push', 'workflow_dispatch'])
-    await check({ context: { eventName, ref: 'refs/heads/main', sha: 'main-sha' } });
 });
-test('forks, untrusted authors or actors, permission loss, stale refs and approval gates fail closed', async () => {
+test('non-scheduled runs, non-main refs, untrusted actors, stale snapshots and approval gates fail closed', async () => {
   for (const patch of [
-    { pr: { head: { repo: { full_name: 'external/fork' } } } },
-    { pr: { user: { login: 'external', id: 999 } } },
-    { pr: { user: { login: 'ramizloki', id: 999 } } },
+    { context: { eventName: 'pull_request' } },
+    { context: { eventName: 'push' } },
+    { context: { eventName: 'workflow_dispatch' } },
+    { context: { eventName: 'pull_request_target' } },
+    { context: { eventName: 'workflow_run' } },
+    { context: { ref: 'refs/heads/feature' } },
+    { context: { ref: 'refs/pull/158/merge' } },
+    { context: { ref: 'refs/tags/main' } },
+    { context: { sha: 'stale' } },
     { context: { actor: 'external' } },
     { trigger: 'external' },
     { actor: { permission: 'read' } },
     { actor: { user: { id: 999 } } },
-    { pr: { draft: true } },
-    { pr: { state: 'closed' } },
-    { pr: { base: { ref: 'main', sha: 'stale' } } },
-    { pr: { merge_commit_sha: 'stale' } },
-    { context: { eventName: 'push', ref: 'refs/heads/main', sha: 'stale' } },
-    { context: { eventName: 'workflow_dispatch', ref: 'refs/heads/feature', sha: 'main-sha' } },
-    { context: { eventName: 'pull_request_target' } },
     { context: { repo: { owner: 'external', repo: 'autokosova' } } },
     { environment: { can_admins_bypass: true } },
     { environment: { deployment_branch_policy: null } },

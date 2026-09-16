@@ -1,12 +1,9 @@
 name: Real ZITADEL acceptance
 
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
-  push:
-    branches: [main]
-  workflow_dispatch:
+  schedule:
+    # Daily at 00:57 UTC (02:57 Zurich summer / 01:57 winter).
+    - cron: '57 0 * * *'
 
 permissions:
   contents: read
@@ -18,12 +15,12 @@ concurrency:
 
 jobs:
   trust:
+    if: ${{ github.event_name == 'schedule' && github.ref == 'refs/heads/main' && github.repository == 'ramiz4/autokosova' }}
     name: ZITADEL trust prerequisites
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: read
-      pull-requests: read
       actions: read
     steps:
       # No checkout or credentials. Explicit trusted accounts, not repository membership alone.
@@ -45,23 +42,16 @@ jobs:
                 throw new Error('Real CI requires an explicitly trusted account with current write permission');
             }
             const { data: main } = await github.rest.repos.getBranch({ ...repo, branch: 'main' });
-            if (context.eventName === 'pull_request') {
-              const { data: pr } = await github.rest.pulls.get({ ...repo, pull_number: context.issue.number });
-              if (pr.state !== 'open' || pr.draft || pr.head.repo?.full_name !== `${repo.owner}/${repo.repo}` ||
-                  !trusted.has(pr.user?.login) || trusted.get(pr.user.login) !== pr.user.id ||
-                  pr.base.ref !== 'main' || pr.base.sha !== main.commit.sha || pr.merge_commit_sha !== context.sha)
-                throw new Error('Only a current trusted internal PR integration may receive test credentials');
-            } else if (!['push', 'workflow_dispatch'].includes(context.eventName) ||
-                       context.ref !== 'refs/heads/main' || context.sha !== main.commit.sha) {
-              throw new Error('Manual starts and post-merge acceptance must target current main');
-            }
+            if (context.eventName !== 'schedule' || context.ref !== 'refs/heads/main' ||
+                context.sha !== main.commit.sha)
+              throw new Error('Nightly real acceptance must target current main');
 
   integration:
+    if: ${{ github.event_name == 'schedule' && github.ref == 'refs/heads/main' && github.repository == 'ramiz4/autokosova' }}
     name: Real ZITADEL run
     needs: trust
     permissions:
       contents: read
-      pull-requests: read
       actions: read
     environment: e2e-zitadel
     runs-on: ubuntu-latest
@@ -79,7 +69,7 @@ jobs:
           --health-cmd "pg_isready -U autokosova -d autokosova"
           --health-interval 5s --health-timeout 3s --health-retries 20
     steps:
-      # Checkout only the current integration selected by the secret-free trust job.
+      # Checkout only the main snapshot selected by the secret-free trust job.
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ github.sha }}
@@ -112,16 +102,9 @@ jobs:
                 throw new Error('Real CI requires an explicitly trusted account with current write permission');
             }
             const { data: main } = await github.rest.repos.getBranch({ ...repo, branch: 'main' });
-            if (context.eventName === 'pull_request') {
-              const { data: pr } = await github.rest.pulls.get({ ...repo, pull_number: context.issue.number });
-              if (pr.state !== 'open' || pr.draft || pr.head.repo?.full_name !== `${repo.owner}/${repo.repo}` ||
-                  !trusted.has(pr.user?.login) || trusted.get(pr.user.login) !== pr.user.id ||
-                  pr.base.ref !== 'main' || pr.base.sha !== main.commit.sha || pr.merge_commit_sha !== context.sha)
-                throw new Error('Only a current trusted internal PR integration may receive test credentials');
-            } else if (!['push', 'workflow_dispatch'].includes(context.eventName) ||
-                       context.ref !== 'refs/heads/main' || context.sha !== main.commit.sha) {
-              throw new Error('Manual starts and post-merge acceptance must target current main');
-            }
+            if (context.eventName !== 'schedule' || context.ref !== 'refs/heads/main' ||
+                context.sha !== main.commit.sha)
+              throw new Error('Nightly real acceptance must target current main');
       - name: Check dedicated-vault reference syntax without loading credentials
         run: node scripts/e2e/real-references.mjs
         env:
@@ -209,9 +192,9 @@ jobs:
           retention-days: 7
 
   e2e-zitadel:
+    if: ${{ always() && github.event_name == 'schedule' && github.ref == 'refs/heads/main' && github.repository == 'ramiz4/autokosova' }}
     name: e2e-zitadel
     needs: [trust, integration]
-    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
