@@ -53,6 +53,8 @@ beforeEach(() => {
   vi.stubGlobal('fetch', request);
 });
 afterEach(() => vi.unstubAllGlobals());
+
+const accountPanel = () => document.querySelector<HTMLElement>('[data-account-panel]');
 async function render(locale: 'de' | 'sq' | 'en' = 'de') {
   await TestBed.configureTestingModule({
     imports: [FavoritesComponent],
@@ -78,19 +80,24 @@ it.each(['de', 'sq', 'en'] as const)(
     expect(page.querySelectorAll('[data-favorite-no-photo]')).toHaveLength(2);
     expect(page.querySelector('app-rating-stars')).toBeNull();
     expect(TestBed.inject(Meta).getTag("name='robots'")?.content).toBe('noindex, nofollow');
-    const toggle = page.querySelector<HTMLButtonElement>('[aria-controls="account-menu"]')!;
+    const toggle = page.querySelector<HTMLButtonElement>('[data-account-trigger]')!;
+    toggle.focus();
     toggle.click();
     await fixture.whenStable();
-    await vi.waitFor(() => expect(page.querySelector('[data-account-favorites]')).toBeTruthy());
-    const link = page.querySelector<HTMLAnchorElement>('[data-account-favorites]')!;
+    await vi.waitFor(() =>
+      expect(accountPanel()?.querySelector('[data-account-favorites]')).toBeTruthy(),
+    );
+    const overlayTrigger = page.querySelector<HTMLButtonElement>('button[brnOverlayTrigger]')!;
+    const link = accountPanel()!.querySelector<HTMLAnchorElement>('[data-account-favorites]')!;
     expect(link.getAttribute('href')).toBe(routePath(locale, 'favorites'));
     expect(link.getAttribute('aria-current')).toBe('page');
     expect(link.classList.contains('bg-blue-50')).toBe(true);
     expect(page.querySelector('nav [data-account-favorites]')).toBeNull();
-    toggle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    overlayTrigger.focus();
+    overlayTrigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await fixture.whenStable();
-    expect(page.querySelector('#account-menu')).toBeNull();
-    expect(document.activeElement).toBe(toggle);
+    expect(accountPanel()).toBeNull();
+    expect(document.activeElement).toBe(overlayTrigger);
     expect(TestBed.inject(LanguageService).switchUrl('en')).toBe('/en/favorites');
   },
 );

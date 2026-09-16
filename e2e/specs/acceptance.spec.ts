@@ -415,7 +415,7 @@ test('late-response cannot restore private garage data after another tab changes
     await page.bringToFront();
     // Trigger the real browser lifecycle listener; do not replace account/API state.
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-    await expect(page.locator('[aria-controls="account-menu"]')).toContainText('E2E other');
+    await expect(page.locator('[data-account-trigger]')).toContainText('E2E other');
     release();
     await expect(page.locator('#garage-name')).toHaveValue('');
     await expect(page.locator('body')).not.toContainText(responseName);

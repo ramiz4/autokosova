@@ -319,7 +319,7 @@ try {
         () => evaluate(`${rendered} && document.documentElement.lang === '${locale}'`),
         'localized inquiry rendering',
       );
-      await evaluate(`document.querySelector('button[aria-controls="account-menu"]').focus()`);
+      await evaluate(`document.querySelector('[data-account-trigger]').focus()`);
       await key('Enter', 13);
       await until(
         () => evaluate(`!!document.querySelector('[data-account-inquiries]')`),
@@ -341,7 +341,7 @@ try {
       await until(
         () =>
           evaluate(
-            `!document.querySelector('#account-menu') && document.activeElement.matches('button[aria-controls="account-menu"]')`,
+            `!document.querySelector('[data-account-panel]') && document.activeElement.matches('button[brnOverlayTrigger]')`,
           ),
         'Escape restores focus',
       );
@@ -484,20 +484,23 @@ try {
   accountPayload = account();
   await command('Page.reload', { ignoreCache: true });
   await until(() => evaluate(rendered), 'session restored');
-  await evaluate(`document.querySelector('button[aria-controls="account-menu"]').click()`);
+  await evaluate(`document.querySelector('[data-account-trigger]').click()`);
   await until(
     () => evaluate(`!!document.querySelector('[data-account-inquiries]')`),
     'menu selection',
   );
   await evaluate(`document.querySelector('[data-account-inquiries]').click()`);
-  await until(() => evaluate(`!document.querySelector('#account-menu')`), 'selection closes menu');
-  await evaluate(`document.querySelector('button[aria-controls="account-menu"]').click()`);
+  await until(
+    () => evaluate(`!document.querySelector('[data-account-panel]')`),
+    'selection closes menu',
+  );
+  await evaluate(`document.querySelector('[data-account-trigger]').click()`);
   await until(
     () => evaluate(`!!document.querySelector('[data-account-inquiries]')`),
     'logout menu',
   );
   await evaluate(
-    `[...document.querySelectorAll('#account-menu button')].find(button => button.textContent.includes('Abmelden')).click()`,
+    `[...document.querySelectorAll('[data-account-panel] button')].find(button => button.textContent.includes('Abmelden')).click()`,
   );
   await until(() => evaluate(`location.pathname === '/'`), 'logout returns home');
   await command('Page.navigate', { url: origin + '/sq/inquiries' });

@@ -161,9 +161,9 @@ export async function fullLogout(
   page.on('request', observe);
   page.on('response', response);
   try {
-    await page.locator('[aria-controls="account-menu"]').click();
+    await page.locator('[data-account-trigger]').click();
     await page
-      .locator('#account-menu')
+      .locator('[data-account-panel]')
       .getByRole('button', { name: 'Abmelden', exact: true })
       .click();
     await page.waitForURL((url) => url.href === config.origin + '/' || accountSelection(url), {

@@ -12,6 +12,10 @@ beforeEach(() =>
 );
 afterEach(() => vi.unstubAllGlobals());
 
+const accountPanel = () => document.querySelector<HTMLElement>('[data-account-panel]');
+const accountStateHandler = (component: SiteHeaderComponent) =>
+  component as unknown as { onAccountState(state: 'open' | 'closed'): void };
+
 describe('Header account actions', () => {
   it.each(['', 'sq', 'en'])(
     'links login and registration directly to OIDC for /%s',
@@ -39,7 +43,7 @@ describe('Header account actions', () => {
       }
       expect(page.querySelector('[aria-live]')).toBeNull();
       expect(page.querySelector('nav [aria-disabled="true"]')).toBeNull();
-      expect(page.querySelector('#account-menu')).toBeNull();
+      expect(accountPanel()).toBeNull();
       const menuItems = (selector: string) =>
         Array.from(page.querySelectorAll<HTMLAnchorElement>(selector)).map((link) => ({
           text: link.textContent!.trim(),
@@ -119,6 +123,79 @@ it('dismisses the floating menu with an outside pointer action', async () => {
   expect(page.querySelector<HTMLElement>('#mobile-navigation')!.hidden).toBe(true);
 });
 
+it('keeps the native navigation open when a delayed account close arrives', async () => {
+  const account = {
+    signedIn: signal(true),
+    state: signal('ready'),
+    identity: signal({ userId: 'fictitious-user', roles: ['customer'], garageMemberships: [] }),
+    displayName: () => 'Fiktives Konto',
+    busy: signal(false),
+    refresh: vi.fn().mockResolvedValue(undefined),
+    logout: vi.fn().mockResolvedValue(true),
+  };
+  await TestBed.configureTestingModule({
+    imports: [SiteHeaderComponent],
+    providers: [provideRouter([]), { provide: AccountSessionService, useValue: account }],
+  }).compileComponents();
+  const fixture = TestBed.createComponent(SiteHeaderComponent);
+  await fixture.whenStable();
+  const page = fixture.nativeElement as HTMLElement;
+  page.querySelector<HTMLButtonElement>('button[data-account-trigger]')!.click();
+  await fixture.whenStable();
+  expect(accountPanel()).not.toBeNull();
+
+  const navigation = page.querySelector<HTMLButtonElement>('.mobile-menu-toggle')!;
+  navigation.click();
+  await fixture.whenStable();
+  expect(page.querySelector<HTMLElement>('#mobile-navigation')!.hidden).toBe(false);
+  expect(accountPanel()).toBeNull();
+
+  accountStateHandler(fixture.componentInstance).onAccountState('closed');
+  await fixture.whenStable();
+  expect(page.querySelector<HTMLElement>('#mobile-navigation')!.hidden).toBe(false);
+});
+
+it('uses the nonmodal overlay contract for the labelled account panel', async () => {
+  const account = {
+    signedIn: signal(true),
+    state: signal('ready'),
+    identity: signal({ userId: 'fictitious-user', roles: ['customer'], garageMemberships: [] }),
+    displayName: () => 'Fiktives Konto',
+    busy: signal(false),
+    refresh: vi.fn().mockResolvedValue(undefined),
+    logout: vi.fn().mockResolvedValue(true),
+  };
+  await TestBed.configureTestingModule({
+    imports: [SiteHeaderComponent],
+    providers: [provideRouter([]), { provide: AccountSessionService, useValue: account }],
+  }).compileComponents();
+  const fixture = TestBed.createComponent(SiteHeaderComponent);
+  await fixture.whenStable();
+  const page = fixture.nativeElement as HTMLElement;
+  const trigger = page.querySelector<HTMLButtonElement>('button[data-account-trigger]')!;
+  trigger.focus();
+  trigger.click();
+  await fixture.whenStable();
+
+  const overlayTrigger = page.querySelector<HTMLButtonElement>('button[brnOverlayTrigger]')!;
+
+  const panel = accountPanel()!;
+  expect(overlayTrigger.getAttribute('aria-expanded')).toBe('true');
+  expect(document.getElementById(overlayTrigger.getAttribute('aria-controls')!)).not.toBeNull();
+  expect(panel.getAttribute('aria-label')).toBe('Mein Konto');
+  expect(panel.getAttribute('role')).toBeNull();
+  expect(panel.getAttribute('aria-modal')).toBeNull();
+  expect(panel.className).toContain('w-[var(--header-width)]');
+  expect(panel.className).toContain('sm:w-88');
+  expect(panel.className).not.toContain('absolute');
+
+  overlayTrigger.focus();
+  overlayTrigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await fixture.whenStable();
+  expect(accountPanel()).toBeNull();
+  expect(document.activeElement).toBe(overlayTrigger);
+});
+
 it('shows the account control without unavailable notifications or login buttons for an authenticated session', async () => {
   const account = {
     signedIn: signal(true),
@@ -143,14 +220,15 @@ it('shows the account control without unavailable notifications or login buttons
   const notification = page.querySelector<HTMLButtonElement>(
     'button[aria-controls="account-notifications"]',
   )!;
-  const profile = page.querySelector<HTMLButtonElement>('button[aria-controls="account-menu"]')!;
+  let profile = page.querySelector<HTMLButtonElement>('button[data-account-trigger]')!;
   expect(notification).toBeNull();
   expect(profile).toBeTruthy();
   expect(page.textContent).not.toContain('Benachrichtigungen sind noch nicht verfügbar.');
   profile.click();
   await fixture.whenStable();
+  profile = page.querySelector<HTMLButtonElement>('button[brnOverlayTrigger]')!;
   expect(page.querySelector('#account-notifications')).toBeNull();
-  const menu = page.querySelector('#account-menu')!;
+  const menu = accountPanel()!;
   expect(menu.textContent).toContain('Abmelden');
   expect(menu.textContent).toContain('Meine Anfragen');
   expect(menu.textContent).toContain('Favoriten');
@@ -174,9 +252,10 @@ it('shows the account control without unavailable notifications or login buttons
     expect(nav.textContent).not.toContain('Meine Anfragen');
     expect(nav.textContent).not.toContain('Favoriten');
   }
+  profile.focus();
   profile.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   await fixture.whenStable();
-  expect(page.querySelector('#account-menu')).toBeNull();
+  expect(accountPanel()).toBeNull();
   expect(document.activeElement).toBe(profile);
   profile.click();
   await fixture.whenStable();
@@ -184,7 +263,7 @@ it('shows the account control without unavailable notifications or login buttons
   account.state.set('guest');
   account.identity.set(null!);
   await fixture.whenStable();
-  expect(page.querySelector('#account-menu')).toBeNull();
+  expect(accountPanel()).toBeNull();
   expect(page.textContent).not.toContain('Meine Anfragen');
   expect(page.textContent).not.toContain('Favoriten');
 });
@@ -212,9 +291,9 @@ it('keeps a garage operator in the business menu even after deleting the last ga
   const fixture = TestBed.createComponent(SiteHeaderComponent);
   await fixture.whenStable();
   const page = fixture.nativeElement as HTMLElement;
-  page.querySelector<HTMLButtonElement>('button[aria-controls="account-menu"]')!.click();
+  page.querySelector<HTMLButtonElement>('button[data-account-trigger]')!.click();
   await fixture.whenStable();
-  const menu = page.querySelector('#account-menu')!;
+  const menu = accountPanel()!;
   expect(menu.textContent).toContain('Werkstattbetreiber');
   expect(menu.querySelector('[data-account-garages]')?.getAttribute('href')).toBe('/garages/new');
   expect(menu.querySelector('[data-account-inquiries]')).toBeNull();
@@ -271,8 +350,8 @@ it('keeps the real session and account menu intact throughout a delayed refresh'
   await fixture.whenStable();
   const page = fixture.nativeElement as HTMLElement;
   const header = page.querySelector('header')!;
-  const button = page.querySelector<HTMLButtonElement>('button[aria-controls="account-menu"]')!;
-  const name = button.querySelector('span.truncate');
+  let button = page.querySelector<HTMLButtonElement>('button[data-account-trigger]')!;
+  let name = button.querySelector('span.truncate');
   expect(name).not.toBeNull();
   const language = page.querySelector('app-language-switcher');
   const navigation = page.querySelector('#desktop-navigation');
@@ -281,6 +360,8 @@ it('keeps the real session and account menu intact throughout a delayed refresh'
     request.mockImplementationOnce(() => new Promise<Response>((resolve) => (finish = resolve)));
     button.click();
     await fixture.whenStable();
+    button = page.querySelector<HTMLButtonElement>('button[brnOverlayTrigger]')!;
+    name = button.querySelector('span.truncate');
     expect(session.signedIn()).toBe(true);
     expect(session.state()).toBe('ready');
     expect(header.classList.contains('is-authenticated')).toBe(true);
@@ -288,7 +369,7 @@ it('keeps the real session and account menu intact throughout a delayed refresh'
     expect(button.textContent).toContain(identity.displayName);
     expect(page.querySelector('app-language-switcher')).toBe(language);
     expect(page.querySelector('#desktop-navigation')).toBe(navigation);
-    const menu = page.querySelector('#account-menu')!;
+    const menu = accountPanel()!;
     const menuName = menu.querySelector('[data-account-name]');
     const inquiries = menu.querySelector('[data-account-inquiries]');
     expect(menuName?.textContent).toContain(identity.displayName);
@@ -298,12 +379,12 @@ it('keeps the real session and account menu intact throughout a delayed refresh'
     finish(new Response(JSON.stringify(identity)));
     await refresh;
     await fixture.whenStable();
-    expect(page.querySelector('#account-menu')).toBe(menu);
+    expect(accountPanel()).toBe(menu);
     expect(menu.querySelector('[data-account-name]')).toBe(menuName);
     expect(menu.querySelector('[data-account-inquiries]')).toBe(inquiries);
     expect(button.querySelector('span.truncate')).toBe(name);
     button.click();
     await fixture.whenStable();
-    expect(page.querySelector('#account-menu')).toBeNull();
+    expect(accountPanel()).toBeNull();
   }
 });

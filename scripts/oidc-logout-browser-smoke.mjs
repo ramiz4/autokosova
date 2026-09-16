@@ -46,12 +46,12 @@ async function scenario(configured) {
     async function logout(locale, header) {
       const sessionsBefore = provider.sessionCount;
       if (header) {
-        await click('button[aria-controls="account-menu"]');
+        await click('[data-account-trigger]');
         await until(
-          () => evaluate('!!document.querySelector("#account-menu button")'),
-          'account menu',
+          () => evaluate('!!document.querySelector("[data-account-panel] button")'),
+          'account panel',
         );
-        await evaluate('document.querySelector("#account-menu button").focus()');
+        await evaluate('document.querySelector("[data-account-panel] button").focus()');
         await browser.key('Enter', 13);
       } else await click('[data-account-logout]');
       const target = configured ? (locale === 'de' ? '/' : '/' + locale) : '/auth/logged-out';
