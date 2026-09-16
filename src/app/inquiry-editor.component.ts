@@ -57,7 +57,6 @@ const wholeNumber = (control: AbstractControl) =>
     BrnDialogTitle,
   ],
   templateUrl: './inquiry-editor.component.html',
-  styleUrl: './inquiry-dialog.scss',
   host: { '(window:beforeunload)': 'beforeUnload($event)' },
 })
 export class InquiryEditorComponent implements OnInit {
