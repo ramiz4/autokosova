@@ -374,11 +374,11 @@ test('error-feedback preserves unsaved edits on network, conflict, permission an
   expect(
     (await app.database.query('SELECT name FROM garage WHERE id=$1', [garages[0]])).rows[0].name,
   ).toBe(name);
-  page.once('dialog', (dialog) => dialog.dismiss());
   await page.locator('[data-cancel-garage]').click();
+  await page.locator('[data-confirmation-cancel]').click();
   await expect(page.locator('#garage-name')).toHaveValue('E2E UNSAVED GARAGE');
-  page.once('dialog', (dialog) => dialog.accept());
   await page.locator('[data-cancel-garage]').click();
+  await page.locator('[data-confirmation-confirm]').click();
   await expect(page.locator('form')).toHaveCount(0);
 });
 
