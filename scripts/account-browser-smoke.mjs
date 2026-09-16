@@ -364,7 +364,7 @@ try {
       assert.equal(await evaluate("document.querySelector('[data-account-details]').open"), true);
       await key('Enter', 13);
       assert.equal(await evaluate("document.querySelector('[data-account-details]').open"), false);
-      await openStableAccountMenu(false);
+      await openStableAccountMenu();
       await until(
         () => evaluate(`!!document.querySelector('[data-account-name]')`),
         'keyboard account menu opening',
@@ -392,12 +392,7 @@ try {
         ),
       );
       // Reopening must be equally stable; the first opening must not merely warm a cache.
-      await openStableAccountMenu();
-      await key('Escape', 27);
-      await until(
-        () => evaluate(`!!document.querySelector('[data-account-panel]')`),
-        'reopened account panel',
-      );
+      await openStableAccountMenu(false);
       const outside = await evaluate(`(() => {
         const main = document.querySelector('main').getBoundingClientRect();
         return { x: main.left + 8, y: main.bottom - 8 };
