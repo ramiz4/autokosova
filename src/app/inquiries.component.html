@@ -137,53 +137,49 @@
                           >
                         </p>
                       </div>
-                      <div class="actions relative shrink-0" data-inquiry-actions>
+                      <div class="actions shrink-0" data-inquiry-actions>
                         <button
                           type="button"
                           class="icon-action"
                           [id]="'actions-trigger-' + request.id"
                           [attr.title]="text('actions')"
-                          aria-haspopup="menu"
+                          [cdkMenuTriggerFor]="requestActions"
+                          [cdkMenuPosition]="actionsMenuPositions"
+                          #actionsMenu="cdkMenuTriggerFor"
                           [attr.aria-label]="
                             text('actions') +
                             ': ' +
                             language.serviceLabel(request.serviceCategoryId)
                           "
-                          [attr.aria-expanded]="actionsId() === request.id"
-                          [attr.aria-controls]="'actions-' + request.id"
                           [disabled]="saved.writeState() === 'saving'"
-                          (click)="toggleActions(request.id, $event)"
-                          (keydown)="onActionTriggerKeydown(request.id, $event)"
                           data-inquiry-menu
                         >
                           <lucide-icon [name]="EllipsisIcon" class="size-6" [strokeWidth]="4" />
                         </button>
-                        @if (actionsId() === request.id) {
+                        <ng-template #requestActions>
                           <div
+                            cdkMenu
                             class="actions-popup"
-                            [id]="'actions-' + request.id"
-                            role="menu"
                             [attr.aria-labelledby]="'actions-trigger-' + request.id"
-                            (keydown)="onActionsKeydown($event)"
                           >
                             <button
                               type="button"
-                              role="menuitem"
+                              cdkMenuItem
                               class="hover:bg-[#f1f5fb]"
-                              tabindex="-1"
                               [disabled]="saved.writeState() === 'saving'"
-                              (click)="edit(request)"
+                              [cdkMenuItemDisabled]="saved.writeState() === 'saving'"
+                              (cdkMenuItemTriggered)="edit(request, actionsMenu)"
                               data-edit-inquiry
                             >
                               <lucide-icon [name]="PencilIcon" class="size-4" />{{ text('edit') }}
                             </button>
                             <button
                               type="button"
-                              role="menuitem"
+                              cdkMenuItem
                               class="hover:bg-[#f1f5fb]"
-                              tabindex="-1"
                               [disabled]="saved.writeState() === 'saving'"
-                              (click)="deactivate(request)"
+                              [cdkMenuItemDisabled]="saved.writeState() === 'saving'"
+                              (cdkMenuItemTriggered)="deactivate(request, actionsMenu)"
                               data-toggle-inquiry
                             >
                               <lucide-icon
@@ -194,11 +190,11 @@
                             <div role="separator" class="mx-1 my-1.5 h-px bg-[#dbe4f0]"></div>
                             <button
                               type="button"
-                              role="menuitem"
+                              cdkMenuItem
                               class="delete-action text-[#b02443] hover:bg-[#f1f5fb]"
-                              tabindex="-1"
                               [disabled]="saved.writeState() === 'saving'"
-                              (click)="confirmDelete(request)"
+                              [cdkMenuItemDisabled]="saved.writeState() === 'saving'"
+                              (cdkMenuItemTriggered)="confirmDelete(request, actionsMenu)"
                               data-delete-inquiry
                             >
                               <lucide-icon [name]="TrashIcon" class="size-4" />{{
@@ -206,7 +202,7 @@
                               }}
                             </button>
                           </div>
-                        }
+                        </ng-template>
                       </div>
                     </div>
                     @if (request.symptomPreview) {

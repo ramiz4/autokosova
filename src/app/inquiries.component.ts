@@ -20,6 +20,7 @@ import {
   type LucideIcon,
 } from '@lucide/angular';
 import { DOCUMENT } from '@angular/common';
+import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
 import {
   Component,
   DestroyRef,
@@ -29,6 +30,7 @@ import {
   inject,
   signal,
   viewChild,
+  viewChildren,
   untracked,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -59,13 +61,11 @@ import { ButtonDirective } from './ui/button.directive';
     LucideIconComponent,
     InquiryEditorComponent,
     InquiryDeleteDialogComponent,
+    CdkMenu,
+    CdkMenuItem,
+    CdkMenuTrigger,
   ],
   styleUrl: './inquiries.component.scss',
-  host: {
-    '(document:pointerdown)': 'dismissActions($event)',
-    '(document:focusin)': 'dismissActions($event)',
-    '(keydown.escape)': 'closeActions(true)',
-  },
   providers: [SavedRepairRequestsService],
   templateUrl: './inquiries.component.html',
 })
@@ -94,11 +94,26 @@ export class InquiriesComponent {
   protected readonly saved = inject(SavedRepairRequestsService);
 
   protected readonly filters = ['all', 'active', 'inactive'] as const;
-  protected readonly actionsId = signal<string | null>(null);
+  protected readonly actionsMenuPositions = [
+    {
+      originX: 'end',
+      originY: 'bottom',
+      overlayX: 'end',
+      overlayY: 'top',
+      offsetY: 6,
+    },
+    {
+      originX: 'end',
+      originY: 'top',
+      overlayX: 'end',
+      overlayY: 'bottom',
+      offsetY: -6,
+    },
+  ] satisfies CdkMenuTrigger['menuPosition'];
   protected readonly editingId = signal<string | null>(null);
   protected readonly deleting = signal<RepairRequestSummary | null>(null);
   private readonly editor = viewChild(InquiryEditorComponent);
-  private actionTrigger?: HTMLElement;
+  private readonly actionMenus = viewChildren(CdkMenuTrigger);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
@@ -109,7 +124,7 @@ export class InquiriesComponent {
       untracked(() => {
         this.editingId.set(null);
         this.deleting.set(null);
-        this.closeActions();
+        this.actionMenus().forEach((menu) => menu.close());
       });
     });
     effect(() => this.language.setPageText(this.text('title'), this.text('description'), true));
@@ -124,10 +139,10 @@ export class InquiriesComponent {
       ? true
       : (this.editor()?.canLeave() ?? true);
   }
-  protected async edit(request: RepairRequestSummary): Promise<void> {
+  protected async edit(request: RepairRequestSummary, menu: CdkMenuTrigger): Promise<void> {
     if (this.saved.writeState() === 'saving') return;
-    // The editor must return to the persistent trigger, not the removed menu item.
-    this.closeActions(true);
+    // The CDK menu closes before the editor's Brain dialog opens and owns focus.
+    menu.close();
     this.editingId.set(request.id);
     await this.saved.openDetail(request.id);
   }
@@ -142,98 +157,24 @@ export class InquiriesComponent {
       { injector: this.injector },
     );
   }
-  protected toggleActions(id: string, event: Event): void {
-    if (this.actionsId() === id) this.closeActions(true);
-    else this.openActions(id, event);
-  }
-  protected onActionTriggerKeydown(id: string, event: KeyboardEvent): void {
-    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-    event.preventDefault();
-    this.openActions(id, event, event.key === 'ArrowUp');
-  }
-  private openActions(id: string, event: Event, last = false): void {
-    if (this.saved.writeState() === 'saving') return;
-    this.actionTrigger = event.currentTarget as HTMLElement;
-    this.actionsId.set(id);
-    afterNextRender(
-      () => {
-        // Ignore a pending focus callback if another card or a dialog has taken over.
-        if (this.actionsId() !== id) return;
-        const items = this.document
-          .getElementById('actions-' + id)
-          ?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
-        items?.[last ? items.length - 1 : 0]?.focus();
-      },
-      { injector: this.injector },
-    );
-  }
-  protected onActionsKeydown(event: KeyboardEvent): void {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      this.closeActions(true);
-      return;
-    }
-    if (event.key === 'Tab') {
-      // Resume the browser's normal Tab/Shift+Tab order from the persistent trigger.
-      this.closeActions(true);
-      return;
-    }
-    const items = Array.from(
-      (event.currentTarget as HTMLElement).querySelectorAll<HTMLButtonElement>('[role="menuitem"]'),
-    );
-    const index = items.indexOf(this.document.activeElement as HTMLButtonElement);
-    let next: number;
-    switch (event.key) {
-      case 'ArrowDown':
-        next = (index + 1) % items.length;
-        break;
-      case 'ArrowUp':
-        next = (index - 1 + items.length) % items.length;
-        break;
-      case 'Home':
-        next = 0;
-        break;
-      case 'End':
-        next = items.length - 1;
-        break;
-      default:
-        return;
-    }
-    event.preventDefault();
-    items[next]?.focus();
-  }
-  protected closeActions(restore = false): void {
-    if (!this.actionsId()) return;
-    this.actionsId.set(null);
-    if (restore) this.actionTrigger?.focus();
-  }
-  protected dismissActions(event: Event): void {
-    if (
-      event.target instanceof Node &&
-      !this.actionTrigger?.closest('[data-inquiry-actions]')?.contains(event.target)
-    ) {
-      this.closeActions(event.type === 'pointerdown');
-    }
-  }
-  protected async deactivate(request: RepairRequestSummary): Promise<void> {
-    const trigger = this.actionTrigger;
+  protected async deactivate(request: RepairRequestSummary, menu: CdkMenuTrigger): Promise<void> {
     const context = this.account.dataContext();
-    this.closeActions(true);
+    menu.close();
     await this.saved.mutate(request, { kind: 'activity', active: !request.active });
     if (this.destroyRef.destroyed || this.account.dataContext() !== context) return;
     afterNextRender(
       () => {
         if (this.account.dataContext() !== context) return;
-        if (trigger?.isConnected) trigger.focus();
+        const trigger = this.document.getElementById(`actions-trigger-${request.id}`);
+        if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus();
         else this.document.querySelector<HTMLElement>('#inquiries-title')?.focus();
       },
       { injector: this.injector },
     );
   }
-  protected confirmDelete(request: RepairRequestSummary): void {
+  protected confirmDelete(request: RepairRequestSummary, menu: CdkMenuTrigger): void {
     if (this.saved.writeState() === 'saving') return;
-    this.closeActions(true);
+    menu.close();
     this.deleting.set(request);
   }
   protected deleteClosed(id: string): void {
