@@ -1,5 +1,18 @@
 # Echte ZITADEL-Abnahme – Issue #119
 
+## Aktuelle CI-Policy – nächtlich auf main (#158, 16.09.2026)
+
+Die nachfolgenden PR-/Main-Läufe, zehn Pflichtchecks und PR-Environment-Freigaben sind
+historische Nachweise. Die spätere ausdrückliche Nutzerentscheidung #158 ersetzt deren
+Trigger-/Merge-Policy: alle acht E2E-/Browser-Workflows nur per nächtlichem `schedule` auf
+`main`; echte ZITADEL-Abnahme täglich um 00:57 UTC. Im PR bleiben `verify` und
+`development-start` verpflichtend, einschließlich schneller E2E-Typ-/Policytests in `verify`.
+Das ZITADEL-Environment erlaubt nur `main`; bestehende Actor-/Secret-/Cleanup-Grenzen bleiben
+bestehen. Kein nächtliches Testergebnis wird aus der Zeitplan-Konfiguration abgeleitet.
+Aktuelle Betriebsregeln: [E2E-ACCEPTANCE.md](../development/E2E-ACCEPTANCE.md).
+
+## Historische Implementierungs- und Ausführungsnachweise
+
 ## Gezielte Logout-Korrektur nach Providerabgleich (16.09.2026)
 
 Der Nutzer hat die dokumentierten Post-Logout-Callbacks für 4200 und 4000 beim Testclient

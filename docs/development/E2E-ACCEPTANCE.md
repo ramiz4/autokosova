@@ -68,64 +68,91 @@ Fehlerregressionen bleiben bestehen statt einer Kombinationsexplosion über alle
 
 ## CI, Ergebnisse und Abschluss
 
-`.github/workflows/e2e.yml` führt `e2e-acceptance` bei PRs gegen `main`, jedem Push auf `main`
-und manuellem Workflowstart aus. Der Standard-PR-Checkout prüft die GitHub-Integrationsref,
-der Push-Lauf den tatsächlich gemergten Commit. Kein Deployment und keine Repository-Schreibrechte.
+Seit Nutzerentscheidung vom **16.09.2026 (#158)** laufen alle acht bestehenden E2E-/Browser-
+Workflows ausschließlich zeitgesteuert nachts auf `main`. Keine `pull_request`-, `push`-,
+`workflow_dispatch`- oder wiederverwendbaren Trigger. Jeder Job prüft Ereignis, Repository
+`ramiz4/autokosova` und `refs/heads/main`; der primäre Checkout ist an `github.sha` gebunden.
+GitHub plant auf dem Default-Branch; `main` muss daher Default-Branch bleiben. Ein versehentlicher
+Default-Branch-Wechsel führt nicht zur Ausführung auf einem anderen Branch.
+
+| Workflow / Check | Täglich UTC | Europe/Zurich Sommer | Europe/Zurich Winter |
+| --- | --- | --- | --- |
+| `e2e.yml` / `e2e-acceptance` | 00:17 | 02:17 | 01:17 |
+| `account.yml` / `account-browser` | 00:22 | 02:22 | 01:22 |
+| `favorites-browser.yml` / `favorites-db-browser` | 00:27 | 02:27 | 01:27 |
+| `inquiries-browser.yml` / `inquiries-browser` | 00:32 | 02:32 | 01:32 |
+| `footer.yml` / `footer-browser` | 00:37 | 02:37 | 01:37 |
+| `oidc-logout-browser.yml` / `oidc-logout-browser` | 00:42 | 02:42 | 01:42 |
+| `staff.yml` / `staff-browser` | 00:47 | 02:47 | 01:47 |
+| `e2e-zitadel.yml` / `e2e-zitadel` | 00:57 | 02:57 | 01:57 |
+
+Die versetzten Starts vermeiden einen gleichzeitigen Anlauf aller Suiten. Cron ist UTC, kein
+minutengenaues SLA: GitHub kann geplante Läufe verzögern oder bei hoher Last auslassen. Bei
+60 Tagen ohne Repositoryaktivität deaktiviert GitHub Zeitpläne öffentlicher Repositories;
+der Betreiber muss den Workflow dann wieder aktivieren. Siehe
+[GitHub schedule](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
+Concurrency verhindert überlappende Läufe desselben Workflows; laufende Tests werden nicht
+abgebrochen. Der Staff-Vorhervergleich behält seinen dokumentierten historischen Baseline-SHA.
+Kein Deployment und keine Repository-Schreibrechte. Lokale Diagnosebefehle bleiben verfügbar.
 
 Ein Worker, null Wiederholungen, `forbidOnly` und feste Pflichtinventarliste verhindern Teilabnahme.
 Der Reporter lehnt leere/fehlende/doppelte Fälle, Skip, erwartete Fehler, Abbruch, Timeout und
 Retry-Erfolge ab. Ein unabhängiger Starter prüft zusätzlich die frisch geschriebene Ergebnisdatei, Lauf-Nonce, Commit und das vollständige Inventar; ein fehlgeschlagener Reporter kann so keinen falschen Erfolg ergeben. `test:e2e:policy` prüft diese Regeln sowie den tatsächlichen Playwright-Exitcode
 mit erfolgreichen und absichtlich fehlerhaften/übersprungenen/leeren Tests. Fehler werden nicht
-mit `continue-on-error` verdeckt. Main-Läufe werden nicht zugunsten nachfolgender Pushes abgebrochen.
+mit `continue-on-error` verdeckt. Laufende nächtliche Main-Abnahmen werden nicht durch einen weiteren Lauf abgebrochen.
 
 Artefakte (7 Tage): `test-results/e2e/acceptance.json` mit geprüfter Commit-SHA, Testinventar und Status
 sowie ausdrücklich erzeugte Screenshots bekannter synthetischer Anwendungsseiten. Keine Traces,
 Videos, gespeicherten Auth-Sitzungen, Providerbilder oder Netzwerkdumps. Playwright-Diagnosetexte
 bleiben lokal; CI lädt ausschließlich die freigegebenen JSON-/PNG-Dateien hoch.
 
-### Technische Merge-Sperre: historische Einschränkung und Einrichtung #119
+### PR-Gates seit #158
 
-Seit der ausdrücklichen Adminfreigabe am 16.09.2026 ist `main` tatsächlich geschützt: aktuelle
-Branch-Basis, beide E2E-Checks und alle neun bisherigen Qualitätschecks (zehn verschiedene
-Checknamen insgesamt), jeweils von GitHub Actions, auch für Administratoren. Keine Force-Pushes
-oder Branch-Löschung. Der frühere Befund bleibt nachfolgend als historischer Nachweis erhalten.
+`main` verlangt weiterhin **`verify` und `development-start` von GitHub Actions** mit aktueller
+Main-Basis. Durchsetzung auch für Administratoren, Gesprächsauflösung, Reviewkonfiguration,
+Force-Push-Verbot und Löschschutz bleiben erhalten. Nur die acht oben genannten E2E-/Browser-
+Checks werden aus der Merge-Pflicht entfernt; sonst würden ihre nicht mehr gestarteten
+PR-Läufe Merges dauerhaft blockieren. Es werden keine grünen Ersatzchecks erzeugt.
 
-Bei Implementierungsbeginn am 15.09.2026 hatte der verfügbare GitHub-Zugang Push-, aber keine
-Administrationsrechte. Der Ruleset-Endpunkt meldete zusätzlich HTTP 403 mit der Anforderung
-GitHub Pro oder öffentliches Repository. **Eine technische Merge-Sperre ist damit nicht eingerichtet
-und nicht nachgewiesen.** Kein Planwechsel, keine Veröffentlichung und kein Ausweichen auf andere
-Credentials wurde vorgenommen. Die CI selbst ist fail-closed, reguläre Merges werden anhand der
-aktuellen erfolgreichen Checks geprüft; das ersetzt keine serverseitige Merge-Sperre.
+`verify` behält Format, Lint, App-Typprüfung, Unit-/Server-/DB-Tests, Build und schnellen
+HTTP-/SSR-Smoke. `development-start` behält den isolierten Entwicklungsstart-Nachweis.
+Zusätzlich laufen `typecheck:e2e` und `test:e2e:policy` im PR: schnelle Typ-/Vertragsprüfungen,
+keine Browser-Abnahme. Die Workflow-Regressionen prüfen alle acht Zeitpläne, Branch-/Repo-
+Grenzen, gesperrte Ereignisse, Timeouts und Concurrency; die Trusttests führen beide identischen
+ZITADEL-Vorprüfungen gegen positive/negative Kontexte aus.
 
-Nach Bereitstellung geeigneter Rechte/Plan: `e2e-acceptance` als erforderlichen Check mit aktueller
-Zielbranch-Basis und ohne Bypass eintragen, bestehende Qualitätschecks beibehalten. Danach mit einem
-absichtlich roten Prüf-PR die tatsächliche Sperre überprüfen; diesen Prüfstand niemals mergen.
-Es gibt keinen eigenen Schließungsbot. Der Implementierungs-PR schließt #112 durch `Closes #112`
-beim regulären Merge nach erfolgreicher Abnahme; der anschließende Main-Lauf wird separat geprüft.
-Ein dortiger Fehler wird behoben und nicht als bestandene Prüfung bezeichnet.
+Ein grüner PR ist nach dieser bewussten Nutzerentscheidung **kein E2E-Nachweis**. Nächtliche
+Fehler bleiben rot und müssen anhand ihrer commitgebundenen Artefakte bearbeitet werden,
+blockieren aber keinen PR. Für den tatsächlichen E2E-Nachweis zählt ausschließlich der
+entsprechende erfolgreiche nächtliche Lauf, nicht die Konfiguration eines Zeitplans.
+
+Historie: #112 dokumentierte zunächst fehlende Administrationsrechte. #119 richtete am
+16.09.2026 zehn Pflichtchecks einschließlich der Browser-Suiten ein. #158 ersetzt diese
+Merge-Policy ausdrücklich durch zwei PR-Pflichtchecks plus nächtliche E2E-Abnahme.
 
 ## Separater echter ZITADEL-Durchlauf (#119)
 
-Die echte Abnahme ist von `e2e-acceptance` getrennt. Für #119 müssen **beide Checks auf dem
-aktuellen Integrationsstand wirklich erfolgreich** sein. Die synthetischen Runner-Regressionen
-sind kein Ersatz für echte ZITADEL-Anmeldungen. Ein nur vorbereitetes Workflow und `NOT RUN`
-erfüllen dieses Gate nicht. Einrichtungs-/Nachweisstand: [ZITADEL-Abnahmebericht](../validation/E2E-ZITADEL-ACCEPTANCE.md).
+Die echte Abnahme bleibt von `e2e-acceptance` getrennt. Beide liefern nur mit einem tatsächlich
+erfolgreichen Lauf einen Nachweis; sie sind seit #158 keine PR-Merge-Gates mehr. Synthetische
+Runner-Regressionen sind kein Ersatz für echte ZITADEL-Anmeldungen. Eine vorbereitete
+Konfiguration und `NOT RUN` sind kein Erfolg. Einrichtungs-/Nachweisstand und historische
+#119-Abnahme: [ZITADEL-Abnahmebericht](../validation/E2E-ZITADEL-ACCEPTANCE.md).
 
 ### Automatische Vertrauensgrenze in GitHub Actions
 
 Seit dem ausdrücklichen Nutzerauftrag vom 16.09.2026 gibt es **keine manuellen Environment-
-Approvals und keinen Wait Timer**. `e2e-zitadel` bleibt der isolierte Secret-Bereich und erlaubt
-serverseitig nur `main` und `refs/pull/*/merge`. Die zehn erforderlichen Main-Checks,
-aktuelle Main-Basis und Durchsetzung auch für Administratoren bleiben unverändert.
+Approvals und keinen Wait Timer**. `e2e-zitadel` bleibt der isolierte Secret-Bereich, ohne
+Admin-Bypass. Seit #158 erlaubt die serverseitige Branch-Policy ausschließlich `main`,
+nicht mehr `refs/pull/*/merge`.
 
-Der Workflow verwendet reguläres `pull_request`, Main-Push und optionalen manuellen Main-Start.
+Der Workflow akzeptiert ausschließlich `schedule` auf dem aktuellen `main`-Commit.
 Ein automatischer Vorabjob ohne Checkout/Secrets prüft die ausdrücklich vertrauten Identitäten
 `ramiz4` (1623235) und `ramizloki` (235666066), ihre aktuellen Schreibrechte und sowohl den
-ursprünglichen als auch den erneut auslösenden Actor. Der PR-Autor muss ebenfalls dieser
-benannten Vertrauensmenge angehören; Repositoryzugehörigkeit allein reicht nicht.
-Ein PR muss offen, nicht Draft, intern, gegen `main` und auf dessen aktuellem Integrations-SHA
-sein. Forks, andere Autoren/Actors, Rechteverlust und veraltete Integrationen scheitern geschlossen.
-Dieselbe Prüfung läuft nach Installation/Build unmittelbar vor der Secret-Auflösung erneut.
+ursprünglichen als auch den erneut auslösenden Actor. GitHubs Schedule-Actor muss weiterhin
+zu dieser Vertrauensmenge gehören. Forks, PRs, Push-/manuelle Starts, andere Actors,
+Rechteverlust und veraltete Main-Snapshots scheitern geschlossen. Dieselbe Prüfung läuft nach
+Installation/Build unmittelbar vor der Secret-Auflösung erneut. Ändert sich `main` während
+dieses Aufbaus, wird der veraltete Lauf verweigert, nicht auf einen anderen Commit umgestellt.
 
 Die bewusst gewählte Vertrauensgrenze ist der eigene Entwicklungs-/Automatisierungskreis:
 Repository-Schreibrechte haben bei Einrichtung nur diese beiden Konten. Deren interner Code,
@@ -264,11 +291,11 @@ Browser-Exitcode. Kein erfolgreiches Teilinventar, Retry-Ergebnis oder fehlender
 Nur diese Datei wird für sieben Tage hochgeladen; keine Passwörter, Subjects, Providerbilder,
 Cookies, Auth-State, Traces, Videos, Netzwerkdumps oder rohen Browser-/Appfehler.
 
-Erforderliche Repositoryregeln müssen `e2e-acceptance` **und** `e2e-zitadel` auf aktueller
-Main-Basis verlangen. Die Implementierung eines Workflows ist keine eingerichtete Merge-Sperre.
-Solange Environment/Vault/automatische Vertrauensprüfung oder die echten PR-/Main-Läufe fehlen, bleibt
-#119 offen und Teil-PRs verwenden nur `Refs #119`. Keine zusätzliche manuelle Funktionsabnahme,
-kein Schließungsbot; die administrative Sicherheitsfreigabe ersetzt keine automatisierten Tests.
+Die erforderlichen PR-Checks sind seit #158 ausschließlich `verify` und `development-start`;
+`e2e-acceptance` und `e2e-zitadel` liefern getrennte nächtliche Main-Ergebnisse. Fehlende
+Environment-/Vault-Konfiguration oder fehlgeschlagene automatische Vertrauensprüfungen bleiben
+sichtbare Fehler, keine bestandene Abnahme. Die administrative Sicherheitsfreigabe und ein
+erfolgreicher PR ersetzen keine tatsächlichen Provider-/Browser-Ergebnisse.
 
 Quellen (am 16.09.2026 geprüft): [1Password GitHub Action](https://developer.1password.com/docs/ci-cd/github-actions/),
 [Service-Account-Grenzen](https://developer.1password.com/docs/service-accounts/get-started/),
