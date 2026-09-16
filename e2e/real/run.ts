@@ -20,7 +20,7 @@ import {
   garagePath,
   card,
 } from '../support/journeys';
-import { signIn, checkProfile, toggleInquiry, fullLogout } from './journeys';
+import { signIn, checkProfile, toggleInquiry, fullLogout, LogoutFailure } from './journeys';
 
 // No raw errors, traces, screenshots, videos, auth-state files or network dumps in this mode.
 async function main() {
@@ -180,8 +180,8 @@ async function main() {
         beforeGarages,
       );
     });
-    await step('garage-logout', () => fullLogout(garage, config));
-    await step('customer-logout', () => fullLogout(customer, config));
+    await step('garage-logout', () => fullLogout(garage, config, config.accounts[1].login));
+    await step('customer-logout', () => fullLogout(customer, config, config.accounts[0].login));
     // Same browser context, without clearing cookies/storage: reject unintended account reuse.
     await step('account-switch', async () => {
       await signIn(customer, config, config.accounts[1]);
@@ -197,8 +197,9 @@ async function main() {
         (await (await api(customer, config.origin, '/api/me/repair-requests')).json()).requests,
       ).toEqual([]);
     });
-    await step('switched-logout', () => fullLogout(customer, config));
-  } catch {
+    await step('switched-logout', () => fullLogout(customer, config, config.accounts[1].login));
+  } catch (error) {
+    if (error instanceof LogoutFailure) result.stage = error.stage;
     // Fixed stage retained; no arbitrary error messages or personal data.
   } finally {
     const failedStage = result.completed.length === realSteps.length - 2 ? undefined : result.stage;

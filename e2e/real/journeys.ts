@@ -1,5 +1,6 @@
-import { expect, type Page, type Request } from '@playwright/test';
+import { expect, type Page, type Request, type Response } from '@playwright/test';
 import type { OwnAccount } from '../../src/shared/account';
+import { realFailureStages } from '../../scripts/e2e/real-policy.mjs';
 import { realConfiguration } from '../../scripts/e2e/real-config.mjs';
 import { api, card, inquiryAction, readyInquiries } from '../support/journeys';
 
@@ -84,6 +85,13 @@ export async function toggleInquiry(page: Page, origin: string, id: string) {
   }
 }
 
+export class LogoutFailure extends Error {
+  constructor(readonly stage: string) {
+    super('Provider logout did not complete');
+    if (!realFailureStages.includes(stage)) throw new Error('Invalid logout failure stage');
+  }
+}
+
 export async function fullLogout(
   page: Page,
   config: {
@@ -92,13 +100,16 @@ export async function fullLogout(
     endSessionEndpoint: string;
     logoutConfirmSelector?: string;
   },
+  login?: string,
 ) {
   let endpointSeen = false,
-    callbackSeen = false;
+    callbackSeen = false,
+    providerRejected = false,
+    callbackRejected = false;
+  const endpoint = new URL(config.endSessionEndpoint);
   const observe = (request: Request) => {
     if (!request.isNavigationRequest() || request.frame() !== page.mainFrame()) return;
     const url = new URL(request.url());
-    const endpoint = new URL(config.endSessionEndpoint);
     if (url.origin === endpoint.origin && url.pathname === endpoint.pathname) {
       endpointSeen =
         url.searchParams.get('post_logout_redirect_uri') ===
@@ -107,7 +118,27 @@ export async function fullLogout(
     if (endpointSeen && url.origin === config.origin && url.pathname === '/auth/logout/callback')
       callbackSeen = true;
   };
+  const response = (response: Response) => {
+    const request = response.request();
+    if (!request.isNavigationRequest() || request.frame() !== page.mainFrame()) return;
+    const url = new URL(response.url());
+    if (
+      url.origin === endpoint.origin &&
+      url.pathname === endpoint.pathname &&
+      response.status() >= 400
+    )
+      providerRejected = true;
+    if (
+      url.origin === config.origin &&
+      url.pathname === '/auth/logout/callback' &&
+      response.status() >= 400
+    )
+      callbackRejected = true;
+  };
+  const accountSelection = (url: URL) =>
+    url.origin === config.loginOrigin && ['/ui/v2/login/logout', '/logout'].includes(url.pathname);
   page.on('request', observe);
+  page.on('response', response);
   try {
     await page.locator('[aria-controls="account-menu"]').click();
     await page
@@ -116,17 +147,46 @@ export async function fullLogout(
       .click();
     if (config.logoutConfirmSelector) {
       const confirmation = page.locator(config.logoutConfirmSelector);
-      // Explicit provider-version selector only; no generic click or MFA bypass.
       await expect(confirmation).toBeVisible();
       if (new URL(page.url()).origin !== config.loginOrigin)
-        throw new Error('Unexpected logout origin');
+        throw new LogoutFailure('logout-return-invalid');
       await confirmation.click();
+    } else {
+      await page.waitForURL((url) => url.href === config.origin + '/' || accountSelection(url), {
+        timeout: 45_000,
+      });
+      if (accountSelection(new URL(page.url()))) {
+        // ZITADEL Login V2 presents one button per session. Select only the account under test.
+        // Never click a generic provider button, another account, or a post-logout login link.
+        if (!login) throw new LogoutFailure('logout-account-selection');
+        const account = page
+          .getByRole('button')
+          .filter({ has: page.getByText(login, { exact: true }) });
+        await expect(account).toHaveCount(1);
+        if (!accountSelection(new URL(page.url())))
+          throw new LogoutFailure('logout-return-invalid');
+        await account.click();
+      }
     }
     await page.waitForURL(config.origin + '/', { timeout: 45_000 });
     expect(endpointSeen).toBe(true);
     expect(callbackSeen).toBe(true);
     expect((await api(page, config.origin, '/api/me')).status()).toBe(401);
+  } catch (error) {
+    if (error instanceof LogoutFailure) throw error;
+    throw new LogoutFailure(
+      providerRejected
+        ? 'logout-provider-rejected'
+        : callbackRejected
+          ? 'logout-callback-rejected'
+          : !endpointSeen
+            ? 'logout-endpoint-missing'
+            : !callbackSeen
+              ? 'logout-callback-missing'
+              : 'logout-return-invalid',
+    );
   } finally {
     page.off('request', observe);
+    page.off('response', response);
   }
 }

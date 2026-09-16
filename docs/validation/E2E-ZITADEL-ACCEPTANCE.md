@@ -22,6 +22,20 @@ bleibt, ohne rohe Browserfehler, Credentials oder URLs zu protokollieren.
 Aktuelle echte Vor-/Nach-Merge-Ergebnisse werden im PR nach Ausführung an SHA und Lauf gebunden;
 dieser Korrekturstand allein behauptet noch keine bestandenen ZITADEL-Logins.
 
+### Weiterer echter Durchlauf nach dem Loader-Fix
+
+Lauf 35069158591 startete automatisch ohne Environment-Freigabe. Sein reduzierter Bericht
+belegt beide echten Logins und Profile, Anfrage-CRUD samt Aktivierung, Werkstatt-CRUD,
+fremde Objektzugriffe sowie beide bestätigten Löschungen. Cleanup war erfolgreich.
+Der erste Provider-Logout bestand noch nicht; kein kompletter Live-Erfolg behauptet.
+
+Der Logout-Helfer unterstützt zusätzlich die normale Login-V2-Session-Auswahl: ausschließlich
+der Button des Kontos dieses Laufs auf dem konfigurierten Provider-Origin, kein generischer
+Klick und kein automatischer erneuter Login. Ein synthetischer Desktop-/Mobiltest mit einem
+absichtlich zuerst angeordneten fremden Konto prüft die Auswahl. Feste Fehlerstufen unterscheiden
+Provider-Ablehnung, Callback-Ablehnung, fehlenden Endpunkt/Callback und fehlerhafte Rückkehr,
+ohne Response-Bodies oder URLs zu protokollieren. Providerregistrierungen bleiben unverändert.
+
 ## Historische Einrichtungs- und Prüfnachweise
 
 ## Fortsetzung nach ausdrücklicher Adminfreigabe am 16.09.2026

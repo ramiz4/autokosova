@@ -218,7 +218,8 @@ anschließende Kontowechsel verwendet denselben Browserkontext **ohne Cookie-/St
 
 Vollständiger Logout muss Navigation zum konfigurierten End-Session-Endpunkt, die Rückkehr über
 `/auth/logout/callback` und danach eine unauthentifizierte App zeigen. Ein lokaler Status 401
-allein gilt nicht als Erfolg. Provider-Version, Login-/Logout-Bestätigung und MFA sind erst durch
+allein gilt nicht als Erfolg. Die bekannte Login-V2-Logout-Seite wird über den exakten Kontonamen bedient, niemals über einen
+beliebigen Provider-Button. Provider-Version, Login-/Logout-Bestätigung und MFA sind erst durch
 einen echten Lauf bestätigt; kein synthetischer Test bescheinigt sie.
 
 Cleanup prüft die vom eigenen Lauf beobachteten IDs und UUID-Markierungen. Bestehende Kontodaten

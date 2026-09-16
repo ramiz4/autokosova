@@ -94,13 +94,23 @@ export function providerEnvironment(source) {
   }
   return { ...processEnvironment(source), ...pick(source, providerKeys), NODE_ENV: 'test' };
 }
+export const realFailureStages = [
+  'logout-provider-rejected',
+  'logout-callback-rejected',
+  'logout-endpoint-missing',
+  'logout-callback-missing',
+  'logout-return-invalid',
+  'logout-account-selection',
+];
 // Keep failure diagnostics useful without forwarding arbitrary child strings or values.
 export function readRealReport(report, expected) {
   if (
     !report ||
     report.mode !== 'real-zitadel' ||
     !['passed', 'failed'].includes(report.status) ||
-    !['preflight', 'complete', 'cleanup', ...realSteps].includes(report.stage) ||
+    !['preflight', 'complete', 'cleanup', ...realSteps, ...realFailureStages].includes(
+      report.stage,
+    ) ||
     report.commit !== expected.commit ||
     report.nonce !== expected.nonce ||
     report.runId !== expected.runId ||
