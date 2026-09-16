@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import pg from 'pg';
 import { AccessError, type Principal, type FileGrant } from './access';
 import { assertCurrentStaffIdentity } from './staff-identity';
@@ -19,10 +19,84 @@ export class LocalDemoFileStore {
       environment['NODE_ENV'] === 'production' ||
       environment['AUTOKOSOVA_LOCAL_DEMO_FILES'] !== '1' ||
       !['localhost', '127.0.0.1', '[::1]'].includes(target.hostname) ||
-      decodeURIComponent(target.pathname) !== '/autokosova'
+      (decodeURIComponent(target.pathname) !== '/autokosova' &&
+        !(environment['NODE_ENV'] === 'test' && /^\/ak_e2e_[a-f0-9]{32}$/.test(target.pathname)))
     )
       throw new Error('Local demo files require an explicitly enabled local test database');
     this.pool = new pg.Pool({ connectionString: databaseUrl });
+  }
+  /** A real byte transfer of an exact known demo document, never a general-purpose upload. */
+  async createVisitEvidence(
+    principal: Principal,
+    requestId: string,
+    text: string,
+  ): Promise<{ fileId: string; evidenceKind: 'invoice'; localFixture: true }> {
+    if (!/^[a-f0-9-]{36}$/i.test(requestId)) throw new AccessError(422, 'Invalid upload request');
+    const key = (['visit-valid', 'visit-mismatch'] as const).find(
+      (key) => staffDemoFixtures[key] === text,
+    );
+    if (!key)
+      throw new AccessError(
+        422,
+        'Only the supplied fictional demo documents are accepted',
+        'demo_document_required',
+      );
+    const fileId =
+      'demo-review-upload-' +
+      createHash('sha256')
+        .update(JSON.stringify([principal.userId, requestId]))
+        .digest('hex')
+        .slice(0, 40);
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        "SELECT set_config('app.user_id',$1,true),set_config('app.system_role',$2,true)",
+        [
+          principal.userId,
+          principal.roles.has('admin')
+            ? 'admin'
+            : principal.roles.has('moderator')
+              ? 'moderator'
+              : '',
+        ],
+      );
+      await assertCurrentStaffIdentity(client, principal);
+      const user = await client.query(
+        "SELECT id FROM app_user WHERE id=$1 AND status='active' FOR SHARE",
+        [principal.userId],
+      );
+      if (!user.rowCount) throw new AccessError(403, 'Active account required');
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [fileId]);
+      const prior = await client.query<{ fixture_key: string; retention_state: string }>(
+        'SELECT x.fixture_key,f.retention_state FROM file_object f LEFT JOIN local_demo_file_fixture x ON x.file_id=f.id WHERE f.id=$1 AND f.owner_user_id=$2',
+        [fileId, principal.userId],
+      );
+      if (prior.rowCount) {
+        if (prior.rows[0].fixture_key !== key || prior.rows[0].retention_state !== 'active')
+          throw new AccessError(409, 'Upload request already used');
+      } else {
+        await client.query(
+          "INSERT INTO file_object(id,owner_user_id,storage_key,content_type,size_bytes,scan_state,retention_state) VALUES($1,$2,$3,'text/plain',$4,'clean','active')",
+          [fileId, principal.userId, 'local-demo/' + fileId, Buffer.byteLength(text)],
+        );
+        await client.query("SELECT set_config('app.local_demo_upload','known_fixture',true)");
+        await client.query(
+          'INSERT INTO local_demo_file_fixture(file_id,fixture_key) VALUES($1,$2)',
+          [fileId, key],
+        );
+      }
+      await client.query('COMMIT');
+      return { fileId, evidenceKind: 'invoice', localFixture: true };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  visitSample(): string {
+    return staffDemoFixtures['visit-valid'];
   }
   async close(): Promise<void> {
     this.grants.clear();

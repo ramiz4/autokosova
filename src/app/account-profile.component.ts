@@ -1,3 +1,4 @@
+import { reviewLabel } from '../shared/review-copy';
 import { accountType } from '../shared/account';
 import { Component, afterNextRender, effect, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
@@ -20,6 +21,7 @@ import { IconComponent } from './ui/icon.component';
   templateUrl: './account-profile.component.html',
 })
 export class AccountProfileComponent {
+  protected readonly reviewLabel = reviewLabel;
   protected readonly account = inject(AccountSessionService);
   protected readonly accountType = accountType;
   protected readonly language = inject(LanguageService);

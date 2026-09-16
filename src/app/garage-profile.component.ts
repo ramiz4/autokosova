@@ -1,6 +1,11 @@
-import { isPlatformBrowser } from '@angular/common';
+import { AccountSessionService } from './account-session.service';
+import type { PublicGarageReview, PublicReviewPage } from '../shared/reviews';
+import { reviewLabel } from '../shared/review-copy';
+import { ReviewContributionComponent } from './review-contribution.component';
+import { DatePipe, isPlatformBrowser } from '@angular/common';
 import {
   afterNextRender,
+  effect,
   ChangeDetectorRef,
   Component,
   DestroyRef,
@@ -58,33 +63,13 @@ interface PublicGarageProfile {
   readonly verificationLabel?: 'Unternehmensdaten geprüft';
 }
 
-interface PublicGarageReview {
-  readonly evidence: { readonly label: string; readonly state: 'verified' };
-  readonly id: string;
-  readonly ratings: {
-    readonly communication: number;
-    readonly overall: number;
-    readonly priceTransparency: number;
-    readonly punctuality: number;
-    readonly workQuality: number;
-  };
-  readonly serviceCategoryId: string;
-  readonly text: string;
-  readonly updates: readonly {
-    readonly createdAt: string;
-    readonly kind: 'complaint' | 'rework';
-    readonly text: string;
-  }[];
-  readonly vehicleMakeId?: string;
-  readonly visitMonth: string;
-  readonly garageResponse?: { readonly createdAt: string; readonly text: string };
-}
-
 const PROFILE_SECTIONS = new Set(['about', 'reviews', 'services', 'makes', 'location', 'photos']);
 
 @Component({
   selector: 'app-garage-profile',
   imports: [
+    DatePipe,
+    ReviewContributionComponent,
     ButtonDirective,
     FavoriteNoticeComponent,
     FormsModule,
@@ -97,6 +82,27 @@ const PROFILE_SECTIONS = new Set(['about', 'reviews', 'services', 'makes', 'loca
   templateUrl: './garage-profile.component.html',
 })
 export class GarageProfileComponent {
+  protected reviewPage = 1;
+  protected reviewHasMore = false;
+  private reviewGeneration = 0;
+  private reviewController?: AbortController;
+  private readonly contributionDrafts = new Set<string>();
+  protected reviewLabel(key: string): string {
+    return reviewLabel(key, this.language.language);
+  }
+  protected contributionDirty(id: string, dirty: boolean): void {
+    if (dirty) this.contributionDrafts.add(id);
+    else this.contributionDrafts.delete(id);
+  }
+  canLeave(): boolean {
+    return !this.contributionDrafts.size || window.confirm(this.reviewLabel('discard'));
+  }
+  protected async reviewPageChanged(page: number): Promise<void> {
+    if (!this.canLeave()) return;
+    await this.loadReviews(this.profile?.id, undefined, page);
+  }
+
+  private readonly account = inject(AccountSessionService);
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly analytics = inject(AnalyticsService);
   private readonly changeDetector = inject(ChangeDetectorRef);
@@ -129,6 +135,10 @@ export class GarageProfileComponent {
   protected vehicleSummary = '';
   protected readonly vehicleMakeOptions = Object.entries(VEHICLE_MAKE_LABELS);
   constructor() {
+    effect(() => {
+      this.account.dataContext();
+      this.contributionDrafts.clear();
+    });
     this.language.setPage('profile.profile', 'profile.trust');
     if (this.browser) {
       this.route.fragment.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((fragment) => {
@@ -140,6 +150,8 @@ export class GarageProfileComponent {
       this.pendingTasks.run(() => this.loadForServer(this.request!));
     }
     this.destroyRef.onDestroy(() => {
+      this.reviewGeneration++;
+      this.reviewController?.abort();
       this.galleryTrigger = undefined;
       this.contactTrigger = undefined;
     });
@@ -389,11 +401,20 @@ export class GarageProfileComponent {
     this.analytics.track('contact_channel_opened');
   }
 
-  protected async loadReviews(garageId = this.profile?.id, requestUrl?: string): Promise<void> {
+  protected async loadReviews(
+    garageId = this.profile?.id,
+    requestUrl?: string,
+    page = 1,
+  ): Promise<void> {
     if ((!this.browser && !requestUrl) || !garageId) return;
+    if (this.browser && !this.canLeave()) return;
+    this.contributionDrafts.clear();
+    const generation = ++this.reviewGeneration;
+    this.reviewController?.abort();
+    this.reviewController = new AbortController();
     this.reviewState = 'loading';
     try {
-      const query = new URLSearchParams();
+      const query = new URLSearchParams({ page: String(page) });
       if (this.reviewServiceCategoryId)
         query.set('serviceCategoryId', this.reviewServiceCategoryId);
       if (this.reviewVehicleMakeId) query.set('vehicleMakeId', this.reviewVehicleMakeId);
@@ -403,14 +424,17 @@ export class GarageProfileComponent {
           `/api/public/garages/${encodeURIComponent(garageId)}/reviews${suffix}`,
           requestUrl,
         ),
-        { credentials: 'same-origin' },
+        { credentials: 'same-origin', cache: 'no-store', signal: this.reviewController.signal },
       );
       if (!response.ok) throw new Error('Garage reviews request failed');
-      const payload = (await response.json()) as { reviews?: readonly PublicGarageReview[] };
+      const payload = (await response.json()) as PublicReviewPage;
+      if (generation !== this.reviewGeneration) return;
       this.reviews = payload.reviews ?? [];
+      this.reviewPage = payload.page ?? page;
+      this.reviewHasMore = payload.hasMore === true;
       this.reviewState = 'ready';
     } catch {
-      this.reviewState = 'error';
+      if (generation === this.reviewGeneration) this.reviewState = 'error';
     } finally {
       this.changeDetector.markForCheck();
     }

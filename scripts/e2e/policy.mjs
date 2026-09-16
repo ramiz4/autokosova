@@ -8,6 +8,8 @@ export const requiredCases = [
   'localized-navigation',
   'error-feedback',
   'late-response',
+  'review-workflow',
+  'review-boundaries',
 ];
 export const requiredProjects = ['desktop', 'mobile'];
 

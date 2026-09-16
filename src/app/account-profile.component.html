@@ -235,6 +235,12 @@
                   >
                 }
                 <a
+                  data-account-reviews
+                  [routerLink]="language.link('reviews')"
+                  class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
+                  >{{ reviewLabel('own', language.language) }}</a
+                >
+                <a
                   data-account-favorites
                   [routerLink]="language.link('favorites')"
                   class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-brand-dark hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"

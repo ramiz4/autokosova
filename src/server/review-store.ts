@@ -5,6 +5,14 @@ import pg from 'pg';
 import type { FileGrant, Principal } from './access';
 import { AccessError } from './access';
 import {
+  validReviewSubmission,
+  REVIEW_LIMITS,
+  REVIEW_PAGE_SIZE,
+  type OwnReviewDetail,
+  type OwnReviewPage,
+  type PublicReviewPage,
+} from '../shared/reviews';
+import {
   calculateOverallRating,
   isReviewRejectionReason,
   isReviewUpdateKind,
@@ -56,6 +64,8 @@ interface ReviewAccessRow extends ReviewRow {
 }
 
 interface PublicResponseRow {
+  readonly revision: number;
+  readonly updated_at: Date;
   readonly created_at: Date;
   readonly response_text: string;
 }
@@ -137,6 +147,8 @@ export class PostgresReviewStore implements ReviewStore {
   }
 
   async createReview(principal: Principal, input: ReviewSubmissionInput): Promise<OwnReview> {
+    if (!validReviewSubmission(input))
+      throw new AccessError(422, 'Invalid review submission', 'review_invalid');
     if (principal.roles.has('admin')) {
       throw new AccessError(403, 'An admin cannot submit a review on behalf of a customer');
     }
@@ -145,16 +157,58 @@ export class PostgresReviewStore implements ReviewStore {
       await client.query('BEGIN');
       await this.setPrincipal(client, principal);
       await this.ensureUser(client, principal.userId);
-      const garage = await client.query<{ id: string }>(
-        'SELECT id FROM public_garage_profile WHERE id = $1',
+      const garage = await client.query<{ available: boolean }>(
+        'SELECT review_lock_public_garage($1) AS available',
         [input.garageId],
       );
-      if (!garage.rowCount) throw new AccessError(404, 'Published garage not found');
+      if (!garage.rows[0]?.available) throw new AccessError(404, 'Published garage not found');
+      const membership = await client.query(
+        "SELECT 1 FROM membership WHERE garage_id=$1 AND user_id=$2 AND state='active' FOR SHARE",
+        [input.garageId, principal.userId],
+      );
+      if (membership.rowCount)
+        throw new AccessError(403, 'You cannot review your own garage', 'self_review');
+      const active = await client.query(
+        "SELECT 1 FROM app_user WHERE id=$1 AND status='active' FOR SHARE",
+        [principal.userId],
+      );
+      if (!active.rowCount) throw new AccessError(403, 'Active account required');
+      // The owned evidence file is the visit key. Separate files permit separate actual visits.
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        JSON.stringify([principal.userId, input.evidenceFileId]),
+      ]);
+      const existing = await client.query<Record<string, unknown>>(
+        `SELECT r.*,to_char(r.visit_month,'YYYY-MM') AS visit_month,e.evidence_kind,e.verification_state AS evidence_status
+         FROM garage_review r JOIN visit_evidence e ON e.review_id=r.id WHERE e.private_file_id=$1 AND r.author_user_id=$2`,
+        [input.evidenceFileId, principal.userId],
+      );
+      if (existing.rows[0]) {
+        const row = existing.rows[0];
+        if (
+          row['garage_id'] !== input.garageId ||
+          row['service_category_id'] !== input.serviceCategoryId ||
+          (row['vehicle_make_id'] ?? undefined) !== input.vehicleMakeId ||
+          row['visit_month'] !== input.visitMonth ||
+          row['review_text'] !== input.text.trim() ||
+          row['evidence_kind'] !== input.evidenceKind ||
+          row['work_quality'] !== input.workQuality ||
+          row['communication'] !== input.communication ||
+          row['price_transparency'] !== input.priceTransparency ||
+          row['punctuality'] !== input.punctuality
+        )
+          throw new AccessError(
+            409,
+            'This visit evidence already belongs to another submission',
+            'evidence_already_used',
+          );
+        await client.query('COMMIT');
+        return toOwnReview(row as unknown as ReviewRow);
+      }
       const file = await client.query<{ id: string }>(
         `SELECT id
          FROM file_object
          WHERE id = $1 AND owner_user_id = $2
-           AND scan_state = 'clean' AND retention_state = 'active'`,
+           AND scan_state = 'clean' AND retention_state = 'active' FOR SHARE`,
         [input.evidenceFileId, principal.userId],
       );
       if (!file.rowCount) throw new AccessError(404, 'Private evidence file not found');
@@ -412,6 +466,120 @@ export class PostgresReviewStore implements ReviewStore {
     }
   }
 
+  async listOwnReviewPage(principal: Principal, page: number): Promise<OwnReviewPage> {
+    validatePage(page);
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await this.setPrincipal(client, principal);
+      const rows = await this.ownDetails(
+        client,
+        principal,
+        undefined,
+        REVIEW_PAGE_SIZE + 1,
+        (page - 1) * REVIEW_PAGE_SIZE,
+      );
+      await client.query('COMMIT');
+      return {
+        reviews: rows.slice(0, REVIEW_PAGE_SIZE),
+        page,
+        hasMore: rows.length > REVIEW_PAGE_SIZE,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  async getOwnReview(principal: Principal, reviewId: string): Promise<OwnReviewDetail> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await this.setPrincipal(client, principal);
+      const rows = await this.ownDetails(client, principal, reviewId, 1, 0);
+      if (!rows[0]) throw new AccessError(404, 'Own review not found');
+      await client.query('COMMIT');
+      return rows[0];
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  private async ownDetails(
+    client: pg.PoolClient,
+    principal: Principal,
+    reviewId: string | undefined,
+    limit: number,
+    offset: number,
+  ): Promise<OwnReviewDetail[]> {
+    const result = await client.query<
+      ReviewRow & {
+        review_text: string;
+        garage_name: string | null;
+        evidence_kind: OwnReviewDetail['evidenceKind'];
+        evidence_file_id: string | null;
+        vehicle_make_id: string | null;
+        submitted_at: Date;
+        case_status: string | null;
+        case_reason: string | null;
+      }
+    >(
+      `SELECT r.*,to_char(r.visit_month,'YYYY-MM') AS visit_month,g.name AS garage_name,
+       e.verification_state AS evidence_status,e.evidence_kind,e.private_file_id AS evidence_file_id,
+       c.status AS case_status,c.reason_code AS case_reason
+       FROM garage_review r LEFT JOIN visit_evidence e ON e.review_id=r.id
+       LEFT JOIN public_garage_profile g ON g.id=r.garage_id
+       LEFT JOIN moderation_case c ON c.id='review:'||r.id AND c.kind='review_submission'
+       WHERE r.author_user_id=$1 AND ($2::text IS NULL OR r.id=$2)
+       ORDER BY r.submitted_at DESC,r.id LIMIT $3 OFFSET $4`,
+      [principal.userId, reviewId ?? null, limit, offset],
+    );
+    const updates = result.rows.length
+      ? await client.query<{
+          review_id: string;
+          update_kind: ReviewUpdateKind;
+          update_text: string;
+          created_at: Date;
+        }>(
+          `SELECT review_id,update_kind,update_text,created_at FROM review_update WHERE author_user_id=$1 AND review_id=ANY($2::text[]) ORDER BY created_at,id LIMIT 500`,
+          [principal.userId, result.rows.map((r) => r.id)],
+        )
+      : { rows: [] };
+    return result.rows.map((row) => ({
+      ...toOwnReview(row),
+      text: row.review_text,
+      garageName: row.garage_name ?? '',
+      evidenceKind: row.evidence_kind,
+      submittedAt: row.submitted_at.toISOString(),
+      ...(row.evidence_file_id ? { evidenceFileId: row.evidence_file_id } : {}),
+      ...(row.vehicle_make_id ? { vehicleMakeId: row.vehicle_make_id } : {}),
+      ...(row.case_status ? { caseStatus: row.case_status } : {}),
+      ...(row.case_reason ? { caseReason: row.case_reason } : {}),
+      updates: updates.rows
+        .filter((u) => u.review_id === row.id)
+        .map((u) => ({
+          kind: u.update_kind,
+          text: u.update_text,
+          createdAt: u.created_at.toISOString(),
+        })),
+    }));
+  }
+  async listPublicReviewPage(
+    garageId: string,
+    filter: ReviewPublicFilter = {},
+  ): Promise<PublicReviewPage> {
+    const page = filter.page ?? 1;
+    validatePage(page);
+    const reviews = await this.listPublicReviews(garageId, { ...filter, page });
+    return {
+      reviews: reviews.slice(0, REVIEW_PAGE_SIZE),
+      page,
+      hasMore: reviews.length > REVIEW_PAGE_SIZE,
+    };
+  }
   async listOwnReviews(principal: Principal): Promise<readonly OwnReview[]> {
     const client = await this.pool.connect();
     try {
@@ -448,11 +616,17 @@ export class PostgresReviewStore implements ReviewStore {
               work_quality, communication, price_transparency, punctuality, overall_rating,
               review_text, published_at
        FROM public_garage_review
-       WHERE garage_id = $1
+       WHERE garage_id = $1 AND EXISTS(SELECT 1 FROM public_garage_profile WHERE id=$1)
          AND ($2::text IS NULL OR service_category_id = $2)
          AND ($3::text IS NULL OR vehicle_make_id = $3)
-       ORDER BY visit_month DESC, published_at DESC, id`,
-      [garageId, filter.serviceCategoryId ?? null, filter.vehicleMakeId ?? null],
+       ORDER BY visit_month DESC, published_at DESC, id LIMIT $4 OFFSET $5`,
+      [
+        garageId,
+        filter.serviceCategoryId ?? null,
+        filter.vehicleMakeId ?? null,
+        REVIEW_PAGE_SIZE + 1,
+        ((filter.page ?? 1) - 1) * REVIEW_PAGE_SIZE,
+      ],
     );
     return Promise.all(result.rows.map((review) => this.toPublicReview(review)));
   }
@@ -462,8 +636,11 @@ export class PostgresReviewStore implements ReviewStore {
     reviewId: string,
     kind: ReviewUpdateKind,
     text: string,
+    requestId?: string,
   ): Promise<void> {
     if (!isReviewUpdateKind(kind)) throw new AccessError(422, 'Review update is invalid');
+    validateReviewText(text, REVIEW_LIMITS.maxUpdateLength);
+    validateRequestId(requestId);
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -474,10 +651,39 @@ export class PostgresReviewStore implements ReviewStore {
       if (review.publication_state !== 'published') {
         throw new AccessError(409, 'Only published reviews can receive an update');
       }
+      await this.lockContribution(client, reviewId);
+      const currentAuthor = await client.query(
+        'SELECT 1 FROM garage_review WHERE id=$1 AND author_user_id=$2',
+        [reviewId, principal.userId],
+      );
+      if (!currentAuthor.rowCount) throw new AccessError(404, 'Own review not found');
+      if (requestId) {
+        await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+          JSON.stringify([principal.userId, requestId]),
+        ]);
+        const prior = await client.query<{
+          review_id: string;
+          update_kind: string;
+          update_text: string;
+        }>(
+          'SELECT review_id,update_kind,update_text FROM review_update WHERE author_user_id=$1 AND request_id=$2',
+          [principal.userId, requestId],
+        );
+        if (prior.rows[0]) {
+          if (
+            prior.rows[0].review_id !== reviewId ||
+            prior.rows[0].update_kind !== kind ||
+            prior.rows[0].update_text !== text.trim()
+          )
+            throw new AccessError(409, 'Update request already used');
+          await client.query('COMMIT');
+          return;
+        }
+      }
       await client.query(
-        `INSERT INTO review_update (id, review_id, author_user_id, update_kind, update_text)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [randomUUID(), reviewId, principal.userId, kind, text.trim()],
+        `INSERT INTO review_update (id, review_id, author_user_id, update_kind, update_text, request_id)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [randomUUID(), reviewId, principal.userId, kind, text.trim(), requestId ?? null],
       );
       await this.audit(client, principal.userId, reviewId, `review-${kind}-added`);
       await client.query('COMMIT');
@@ -494,7 +700,16 @@ export class PostgresReviewStore implements ReviewStore {
     garageId: string,
     reviewId: string,
     text: string,
+    requestId?: string,
+    responseRevision?: number,
   ): Promise<void> {
+    validateReviewText(text, REVIEW_LIMITS.maxResponseLength);
+    validateRequestId(requestId);
+    if (
+      responseRevision !== undefined &&
+      (!Number.isSafeInteger(responseRevision) || responseRevision < 0)
+    )
+      throw new AccessError(422, 'Invalid response revision');
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -514,14 +729,39 @@ export class PostgresReviewStore implements ReviewStore {
         );
         if (!member.rowCount) throw new AccessError(403, 'Garage access denied');
       }
+      await this.lockContribution(client, reviewId);
+      const currentMember = await client.query(
+        "SELECT 1 FROM membership WHERE garage_id=$1 AND user_id=$2 AND state='active' FOR SHARE",
+        [garageId, principal.userId],
+      );
+      if (!currentMember.rowCount) throw new AccessError(403, 'Garage access denied');
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        'response:' + reviewId,
+      ]);
+      const prior = await client.query<{
+        revision: number;
+        request_id: string | null;
+        response_text: string;
+      }>(
+        'SELECT revision,request_id,response_text FROM review_garage_response WHERE review_id=$1 FOR UPDATE',
+        [reviewId],
+      );
+      if (requestId && prior.rows[0]?.request_id === requestId) {
+        if (prior.rows[0].response_text !== text.trim())
+          throw new AccessError(409, 'Response request already used');
+        await client.query('COMMIT');
+        return;
+      }
+      if (responseRevision !== undefined && (prior.rows[0]?.revision ?? 0) !== responseRevision)
+        throw new AccessError(409, 'The garage response changed; reload before editing');
       await client.query(
         `INSERT INTO review_garage_response (
-           review_id, garage_id, author_user_id, response_text
-         ) VALUES ($1, $2, $3, $4)
+           review_id, garage_id, author_user_id, response_text, request_id
+         ) VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (review_id) DO UPDATE
          SET response_text = EXCLUDED.response_text, author_user_id = EXCLUDED.author_user_id,
-             updated_at = now()`,
-        [reviewId, garageId, principal.userId, text.trim()],
+             request_id=EXCLUDED.request_id,revision=review_garage_response.revision+1,updated_at = now()`,
+        [reviewId, garageId, principal.userId, text.trim(), requestId ?? null],
       );
       await this.audit(client, principal.userId, reviewId, 'review-garage-response-posted');
       await client.query('COMMIT');
@@ -561,6 +801,14 @@ export class PostgresReviewStore implements ReviewStore {
     }
   }
 
+  private async lockContribution(client: pg.PoolClient, reviewId: string): Promise<void> {
+    const locked = await client.query<{ allowed: boolean }>(
+      'SELECT review_lock_contribution($1) AS allowed',
+      [reviewId],
+    );
+    if (!locked.rows[0]?.allowed)
+      throw new AccessError(409, 'This review no longer accepts public contributions');
+  }
   private async audit(
     client: pg.PoolClient,
     actorUserId: string,
@@ -646,12 +894,18 @@ export class PostgresReviewStore implements ReviewStore {
         : '';
     await client.query(`SELECT set_config('app.system_role', $1, true)`, [systemRole]);
     await assertCurrentStaffIdentity(client, principal);
+    await this.ensureUser(client, principal.userId);
+    const user = await client.query(
+      "SELECT id FROM app_user WHERE id=$1 AND status='active' FOR SHARE",
+      [principal.userId],
+    );
+    if (!user.rowCount) throw new AccessError(403, 'Active account required');
   }
 
   private async toPublicReview(review: PublicReviewRow): Promise<PublicGarageReview> {
     const [response, updates] = await Promise.all([
       this.pool.query<PublicResponseRow>(
-        `SELECT created_at, response_text FROM public_review_garage_response WHERE review_id = $1`,
+        `SELECT created_at, updated_at, revision, response_text FROM public_review_garage_response WHERE review_id = $1`,
         [review.id],
       ),
       this.pool.query<PublicUpdateRow>(
@@ -683,6 +937,8 @@ export class PostgresReviewStore implements ReviewStore {
         ? {
             garageResponse: {
               createdAt: response.rows[0].created_at.toISOString(),
+              updatedAt: response.rows[0].updated_at.toISOString(),
+              revision: response.rows[0].revision,
               text: response.rows[0].response_text,
             },
           }
@@ -729,4 +985,21 @@ function toOwnReview(row: ReviewRow): OwnReview {
     visitMonth: row.visit_month,
     garageId: row.garage_id,
   };
+}
+
+function validatePage(page: number): void {
+  if (!Number.isSafeInteger(page) || page < 1 || page > 10000)
+    throw new AccessError(400, 'Invalid review page');
+}
+function validateRequestId(id: string | undefined): void {
+  if (id !== undefined && !/^[a-f0-9-]{36}$/i.test(id))
+    throw new AccessError(422, 'Invalid request identifier');
+}
+function validateReviewText(text: string, maximum: number): void {
+  if (
+    typeof text !== 'string' ||
+    text.trim().length < REVIEW_LIMITS.minTextLength ||
+    text.trim().length > maximum
+  )
+    throw new AccessError(422, 'Invalid review text');
 }

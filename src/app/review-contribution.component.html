@@ -1,0 +1,68 @@
+@if (canWrite()) {
+  <section
+    class="mt-5 rounded-xl border border-blue-100 bg-blue-50/40 p-4"
+    [attr.aria-busy]="busy()"
+  >
+    @if (error()) {
+      <p role="alert" class="mb-3 text-sm text-rose-900">{{ error() }}</p>
+    }
+    @if (success()) {
+      <p role="status" class="mb-3 text-sm text-emerald-900">{{ label('saved') }}</p>
+    }
+    @if (!editing()) {
+      <button data-start-contribution appButton="outline" type="button" (click)="start()">
+        {{ label(mode() === 'update' ? 'update' : response() ? 'responseEdit' : 'respond') }}
+      </button>
+    } @else {
+      <form class="grid gap-3" (ngSubmit)="save()">
+        <p class="text-sm text-muted">
+          {{ label(mode() === 'response' ? 'responseHelp' : 'updateHelp') }}
+        </p>
+        @if (mode() === 'update') {
+          <label class="grid gap-2 text-sm font-semibold" [for]="'review-update-kind-' + reviewId()"
+            >{{ label('update') }}
+            <select
+              [id]="'review-update-kind-' + reviewId()"
+              name="kind"
+              [(ngModel)]="kind"
+              [disabled]="busy()"
+              class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+            >
+              <option value="complaint">{{ label('complaint') }}</option>
+              <option value="rework">{{ label('rework') }}</option>
+            </select>
+          </label>
+        }
+        <label class="grid gap-2 text-sm font-semibold" [for]="'review-contribution-' + reviewId()"
+          >{{ label(mode() === 'response' ? 'response' : 'update') }}
+          <textarea
+            [id]="'review-contribution-' + reviewId()"
+            data-contribution-text
+            name="text"
+            rows="4"
+            minlength="20"
+            maxlength="1200"
+            required
+            [(ngModel)]="text"
+            (ngModelChange)="edited()"
+            [disabled]="busy()"
+            class="w-full rounded-lg border border-slate-300 bg-white p-3"
+          ></textarea>
+          <span class="font-normal text-muted">20–1200</span>
+        </label>
+        <div class="flex flex-wrap gap-3">
+          <button
+            data-save-contribution
+            appButton
+            type="submit"
+            [disabled]="busy() || !dirty() || text.trim().length < 20 || text.trim().length > 1200"
+          >
+            {{ label('savePublic') }}</button
+          ><button appButton="outline" type="button" (click)="cancel()" [disabled]="busy()">
+            {{ label('cancel') }}
+          </button>
+        </div>
+      </form>
+    }
+  </section>
+}

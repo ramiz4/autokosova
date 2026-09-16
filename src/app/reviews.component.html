@@ -1,0 +1,175 @@
+<div class="border-b border-slate-200 bg-white">
+  <app-site-header [compact]="true" active="reviews" />
+</div>
+<main id="main-content" class="mx-auto max-w-4xl px-4 py-8 text-ink sm:px-6 sm:py-12">
+  <h1 class="text-3xl font-bold">{{ label('own') }}</h1>
+  @if (account.state() === 'guest') {
+    <p class="mt-5">{{ label('login') }}</p>
+    <a appButton class="mt-4" [href]="loginUrl()">{{ language.t('nav.login') }}</a>
+  } @else if (account.state() === 'loading' || !ready()) {
+    <p role="status" class="mt-6">{{ label('loading') }}</p>
+  } @else if (account.state() === 'error') {
+    <p role="alert" class="mt-6">{{ label('error') }}</p>
+    <button appButton="outline" type="button" (click)="account.refresh()">
+      {{ label('retry') }}
+    </button>
+  } @else {
+    @if (error()) {
+      <p role="alert" class="mt-5 rounded-xl bg-rose-50 p-4 text-rose-900">{{ error() }}</p>
+      <button
+        appButton="outline"
+        class="mt-3"
+        type="button"
+        [disabled]="busy()"
+        (click)="load(page())"
+      >
+        {{ label('retry') }}
+      </button>
+    }
+    @if (loading()) {
+      <p role="status" class="mt-5">{{ label('loading') }}</p>
+    }
+    @if (detail(); as review) {
+      <button
+        appButton="outline"
+        type="button"
+        class="my-5"
+        (click)="load(page())"
+        [disabled]="busy()"
+      >
+        {{ label('back') }}
+      </button>
+      <article
+        data-own-review-detail
+        [attr.data-review-id]="review.id"
+        class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7"
+      >
+        <h2 class="text-xl font-bold">{{ review.garageName || label('unavailable') }}</h2>
+        <p class="mt-3">
+          {{ review.visitMonth }} · {{ language.serviceLabel(review.serviceCategoryId) }} ·
+          {{ review.ratings.overall.toFixed(1) }} / 5
+        </p>
+        <p class="mt-3 whitespace-pre-wrap break-words">{{ review.text }}</p>
+        <dl class="mt-5 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm">
+          <div>
+            <dt class="font-semibold">{{ label('status') }}</dt>
+            <dd data-own-review-status>{{ label(review.publicationState) }}</dd>
+          </div>
+          <div>
+            <dt class="font-semibold">{{ label('evidenceStatus') }}</dt>
+            <dd>{{ label(review.evidenceStatus) }}</dd>
+          </div>
+          @if (review.caseStatus) {
+            <div>
+              <dt class="font-semibold">{{ label('caseStatus') }}</dt>
+              <dd>{{ label(review.caseStatus) }}</dd>
+            </div>
+          }
+        </dl>
+        @if (review.rejectionReason) {
+          <p class="mt-4 rounded-lg bg-amber-50 p-3">{{ label(review.rejectionReason) }}</p>
+        }
+        @if (review.caseStatus === 'waiting_for_subject') {
+          <p class="mt-4 rounded-lg bg-amber-50 p-3">{{ label('missing_information') }}</p>
+        }
+        @if (review.evidenceFileId && review.evidenceStatus !== 'deleted_after_retention') {
+          <button
+            data-open-own-evidence
+            appButton="outline"
+            type="button"
+            class="mt-4"
+            (click)="openEvidence()"
+            [disabled]="busy()"
+          >
+            {{ label('openEvidence') }}
+          </button>
+        }
+        @if (evidence(); as text) {
+          <pre
+            data-own-evidence
+            class="mt-4 max-w-full rounded-xl bg-slate-50 p-4 text-sm whitespace-pre-wrap break-words"
+            >{{ text }}</pre>
+        }
+        @if (review.publicationState === 'published') {
+          <a
+            appButton="outline"
+            class="mt-5"
+            [routerLink]="language.link('garage', review.garageId)"
+            fragment="reviews"
+            >{{ label('published') }}</a
+          >
+          <app-review-contribution
+            mode="update"
+            [reviewId]="review.id"
+            [garageId]="review.garageId"
+            (dirtyChange)="setDirty($event)"
+            (changed)="open(review.id, true)"
+          />
+        }
+        @for (update of review.updates; track $index) {
+          <div class="mt-4 border-l-4 border-blue-100 pl-4">
+            <p class="text-sm font-semibold">
+              {{ label(update.kind) }} · {{ update.createdAt | date: 'dd.MM.yyyy HH:mm' }}
+            </p>
+            <p class="mt-2 whitespace-pre-wrap break-words">{{ update.text }}</p>
+          </div>
+        }
+      </article>
+    } @else {
+      @if (!loading() && !error() && !reviews().length) {
+        <p data-own-reviews-empty class="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+          {{ label('empty') }}
+        </p>
+      }
+      <div data-own-review-list class="mt-6 grid gap-4">
+        @for (review of reviews(); track review.id) {
+          <article
+            [attr.data-review-id]="review.id"
+            class="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-[1fr_auto]"
+          >
+            <div class="min-w-0">
+              <h2 class="text-lg font-bold break-words">
+                {{ review.garageName || label('unavailable') }}
+              </h2>
+              <p class="mt-2 text-sm">
+                {{ review.visitMonth }} · {{ language.serviceLabel(review.serviceCategoryId) }} ·
+                {{ review.ratings.overall.toFixed(1) }} / 5
+              </p>
+              <p class="mt-2 font-semibold">{{ label(review.publicationState) }}</p>
+              <p class="mt-1 text-sm text-muted">
+                {{ label('evidenceStatus') }}: {{ label(review.evidenceStatus) }}
+              </p>
+            </div>
+            <button
+              data-open-own-review
+              appButton="outline"
+              type="button"
+              (click)="open(review.id)"
+              [disabled]="loading()"
+              class="self-center"
+            >
+              {{ label('details') }}
+            </button>
+          </article>
+        }
+      </div>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <button
+          appButton="outline"
+          type="button"
+          (click)="load(page() - 1)"
+          [disabled]="loading() || page() <= 1"
+        >
+          {{ label('previous') }}</button
+        ><button
+          appButton="outline"
+          type="button"
+          (click)="load(page() + 1)"
+          [disabled]="loading() || !hasMore()"
+        >
+          {{ label('next') }}
+        </button>
+      </div>
+    }
+  }
+</main>

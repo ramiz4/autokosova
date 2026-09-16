@@ -210,7 +210,11 @@ test('a negative review with an invoice can be published without garage confirma
     const garageResponse = await app.inject({
       headers: headers(garageOwner, true),
       method: 'POST',
-      payload: { text: 'Wir nehmen die fiktive Rückmeldung ernst und prüfen die Nacharbeit.' },
+      payload: {
+        text: 'Wir nehmen die fiktive Rückmeldung ernst und prüfen die Nacharbeit.',
+        requestId: '36f3842a-813a-47e5-85b8-ce6bdc116903',
+        responseRevision: 0,
+      },
       url: `/api/garages/${garageId}/reviews/${reviewId}/response`,
     });
     const publicReviews = await app.inject({
@@ -308,6 +312,7 @@ test('rejection remains private with a reason, while only published reviews chan
       method: 'POST',
       payload: {
         kind: 'rework',
+        requestId: '881ac2c5-177d-4bf1-844e-dc8d8d46f56c',
         text: 'Die fiktive Nacharbeit wurde später nachvollziehbar ergänzt.',
       },
       url: `/api/me/reviews/${publishedId}/updates`,
