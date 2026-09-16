@@ -58,7 +58,7 @@ export async function checkProfile(page: Page, origin: string, kind: 'customer' 
   }
   await page.goto(origin + '/profile');
   await expect(page.locator('[data-account-profile-error]')).toHaveCount(0);
-  await page.locator('[data-account-details] summary').click();
+  await expect(page.locator('[data-account-details]')).toBeVisible();
   // Compare the actually delivered values, not hard-coded personal data or Subject-as-name fallbacks.
   for (const [field, selector] of [
     ['displayName', '[data-account-display-name-field]'],
