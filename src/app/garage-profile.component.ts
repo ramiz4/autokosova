@@ -42,6 +42,12 @@ import {
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  BrnDialog,
+  BrnDialogClose,
+  BrnDialogContent,
+  BrnDialogOverlay,
+} from '@spartan-ng/brain/dialog';
 import { getCatalogPlace, VEHICLE_MAKE_LABELS } from '../shared/catalog';
 import {
   buildContactPreview,
@@ -98,6 +104,10 @@ const PROFILE_SECTIONS = new Set(['about', 'reviews', 'services', 'makes', 'loca
     LucideIconComponent,
     RatingStarsComponent,
     ConfirmationDialogComponent,
+    BrnDialog,
+    BrnDialogClose,
+    BrnDialogContent,
+    BrnDialogOverlay,
     RouterLink,
     SiteFooterComponent,
     SiteHeaderComponent,
@@ -164,15 +174,16 @@ export class GarageProfileComponent {
   private readonly pendingTasks = inject(PendingTasks);
   private readonly request = inject(REQUEST);
   private readonly route = inject(ActivatedRoute);
-  private readonly galleryClose = viewChild<ElementRef<HTMLButtonElement>>('galleryClose');
   private readonly contactClose = viewChild<ElementRef<HTMLButtonElement>>('contactClose');
   private readonly shareUrlInput = viewChild<ElementRef<HTMLInputElement>>('shareUrlInput');
-  private galleryTrigger?: HTMLElement;
   private contactTrigger?: HTMLElement;
 
   protected readonly contactOpen = signal(false);
   protected readonly galleryIndex = signal(0);
   protected readonly galleryOpen = signal(false);
+  protected readonly galleryReturnFocus = signal<HTMLElement | null>(null);
+  protected readonly galleryRestoreFocus =
+    '[data-gallery-return-focus], body:not(:has([data-gallery-return-focus])) [data-gallery-fallback]';
   protected includeDetails = false;
   protected profile?: PublicGarageProfile;
   protected repairSummary = '';
@@ -197,14 +208,16 @@ export class GarageProfileComponent {
         this.scrollToSection(fragment);
       });
       void this.favorites.load();
-      void this.load();
+      this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+        this.closeGallery();
+        void this.loadProfile(params.get('garageId'));
+      });
     } else if (this.request) {
       this.pendingTasks.run(() => this.loadForServer(this.request!));
     }
     this.destroyRef.onDestroy(() => {
       this.reviewGeneration++;
       this.reviewController?.abort();
-      this.galleryTrigger = undefined;
       this.contactTrigger = undefined;
     });
   }
@@ -318,10 +331,12 @@ export class GarageProfileComponent {
 
   protected openGallery(index: number, event: Event): void {
     if (!this.profile?.photoIds[index]) return;
-    this.galleryTrigger = event.currentTarget as HTMLElement;
+    this.galleryReturnFocus()?.removeAttribute('data-gallery-return-focus');
+    const trigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    trigger?.setAttribute('data-gallery-return-focus', '');
+    this.galleryReturnFocus.set(trigger);
     this.galleryIndex.set(index);
     this.galleryOpen.set(true);
-    afterNextRender(() => this.galleryClose()?.nativeElement.focus(), { injector: this.injector });
   }
 
   protected moveGallery(direction: -1 | 1): void {
@@ -332,7 +347,10 @@ export class GarageProfileComponent {
 
   protected closeGallery(): void {
     this.galleryOpen.set(false);
-    this.galleryTrigger?.focus();
+  }
+
+  protected galleryStateChanged(state: 'closed' | 'open'): void {
+    this.galleryOpen.set(state === 'open');
   }
 
   protected openContact(event: Event): void {
@@ -404,12 +422,11 @@ export class GarageProfileComponent {
   }
 
   protected async load(): Promise<void> {
-    const garageId = this.route.snapshot.paramMap.get('garageId');
-    if (!this.browser || !garageId) {
+    if (!this.browser) {
       this.state = 'error';
       return;
     }
-    await this.loadProfile(garageId);
+    await this.loadProfile(this.route.snapshot.paramMap.get('garageId'));
   }
 
   private async loadForServer(request: Request): Promise<void> {
@@ -421,7 +438,12 @@ export class GarageProfileComponent {
     await this.loadProfile(garageId, request.url);
   }
 
-  private async loadProfile(garageId: string, requestUrl?: string): Promise<void> {
+  private async loadProfile(garageId: string | null, requestUrl?: string): Promise<void> {
+    if (!garageId) {
+      this.state = 'error';
+      return;
+    }
+    this.closeGallery();
     this.state = 'loading';
     try {
       const places = this.route.snapshot.queryParamMap.get('places');
