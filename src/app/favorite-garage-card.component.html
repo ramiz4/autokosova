@@ -123,7 +123,7 @@
       <button
         data-favorite-remove
         type="button"
-        class="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg px-2 text-sm font-semibold text-muted hover:bg-rose-50 hover:text-rose-800 focus-visible:outline-2 focus-visible:outline-brand disabled:cursor-wait disabled:opacity-60"
+        class="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg px-2 text-sm font-semibold text-muted hover:bg-rose-50 hover:text-rose-800 focus-visible:outline-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-60"
         [disabled]="pending()"
         [attr.aria-label]="
           text('removeLabel', { name: card().garage?.name || text('unavailable') })

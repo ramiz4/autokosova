@@ -376,7 +376,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                         </ul>
                         <button
                           type="button"
-                          class="absolute top-1 right-1 flex size-11 items-center justify-center rounded-full transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand disabled:cursor-wait disabled:opacity-50"
+                          class="absolute top-1 right-1 flex size-11 items-center justify-center rounded-full transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-50"
                           [class.text-brand]="favorites.garageIds().has(garage.id)"
                           [class.text-ink]="!favorites.garageIds().has(garage.id)"
                           [attr.aria-label]="
