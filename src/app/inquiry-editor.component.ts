@@ -4,7 +4,6 @@ import {
   afterNextRender,
   Component,
   DestroyRef,
-  ElementRef,
   inject,
   input,
   OnInit,
@@ -13,6 +12,13 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators, type AbstractControl } from '@angular/forms';
+import {
+  BrnDialog,
+  BrnDialogContent,
+  BrnDialogDescription,
+  BrnDialogOverlay,
+  BrnDialogTitle,
+} from '@spartan-ng/brain/dialog';
 import { VEHICLE_MAKE_LABELS } from '../shared/catalog';
 import { inquiriesCopy, type InquiriesCopyKey } from '../shared/inquiries-copy';
 import { requestCopy, type RequestCopyKey } from '../shared/request-copy';
@@ -38,7 +44,17 @@ const wholeNumber = (control: AbstractControl) =>
 
 @Component({
   selector: 'app-inquiry-editor',
-  imports: [ReactiveFormsModule, ButtonDirective, LucideIconComponent, SearchAreasComponent],
+  imports: [
+    ReactiveFormsModule,
+    ButtonDirective,
+    LucideIconComponent,
+    SearchAreasComponent,
+    BrnDialog,
+    BrnDialogContent,
+    BrnDialogDescription,
+    BrnDialogOverlay,
+    BrnDialogTitle,
+  ],
   templateUrl: './inquiry-editor.component.html',
   styleUrl: './inquiry-dialog.scss',
   host: { '(window:beforeunload)': 'beforeUnload($event)' },
@@ -48,7 +64,7 @@ export class InquiryEditorComponent implements OnInit {
   readonly XIcon: LucideIcon = LucideX;
 
   readonly request = input.required<SavedRepairRequest>();
-  readonly closed = output<void>();
+  readonly closed = output<string>();
   protected readonly language = inject(LanguageService);
   protected readonly saved = inject(SavedRepairRequestsService);
   protected readonly services = REPAIR_REQUEST_SERVICE_CATEGORIES;
@@ -60,7 +76,7 @@ export class InquiryEditorComponent implements OnInit {
   protected readonly areasEditing = signal(false);
   protected readonly validation = signal('');
   protected readonly discarding = signal(false);
-  private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
+  protected readonly dialogState = signal<'closed' | 'open'>('closed');
   private readonly areasEditor = viewChild(SearchAreasComponent);
   private readonly document = inject(DOCUMENT);
   private readonly fb = inject(FormBuilder).nonNullable;
@@ -96,16 +112,12 @@ export class InquiryEditorComponent implements OnInit {
     }),
   });
   constructor() {
-    let previousFocus: HTMLElement | null = null;
     afterNextRender(() => {
-      previousFocus = this.document.activeElement as HTMLElement;
-      this.dialog().nativeElement.showModal();
+      this.dialogState.set('open');
     });
     inject(DestroyRef).onDestroy(() => {
       this.resolveLeave?.(false);
       this.form.reset();
-      if (previousFocus?.isConnected) previousFocus.focus();
-      else this.document.querySelector<HTMLElement>('#inquiries-title')?.focus();
     });
   }
   ngOnInit(): void {
@@ -131,7 +143,18 @@ export class InquiryEditorComponent implements OnInit {
     event?.preventDefault();
     if (this.saved.writeState() === 'saving') return;
     if (!this.unchanged || this.areasEditing()) this.discarding.set(true);
-    else this.closed.emit();
+    else this.finishClose();
+  }
+  protected onEditorEscape(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.cancel();
+  }
+  protected onDialogClosed(): void {
+    this.closed.emit(this.request().id);
+  }
+  private finishClose(): void {
+    this.dialogState.set('closed');
   }
   canLeave(): boolean | Promise<boolean> {
     if (this.saved.writeState() === 'saving') return false;
@@ -146,7 +169,7 @@ export class InquiryEditorComponent implements OnInit {
     this.resolveLeave = undefined;
     this.leavePromise = undefined;
     this.form.markAsPristine();
-    this.closed.emit();
+    this.finishClose();
   }
   protected keepEditing(): void {
     this.discarding.set(false);
@@ -189,16 +212,16 @@ export class InquiryEditorComponent implements OnInit {
     if (error) {
       if (this.areasEditing()) this.areasEditor()?.focusEditor();
       else
-        this.dialog()
-          .nativeElement.querySelector<HTMLElement>(
-            'input.ng-invalid,select.ng-invalid,textarea.ng-invalid',
+        this.document
+          .querySelector<HTMLElement>(
+            '[data-inquiry-editor] input.ng-invalid,[data-inquiry-editor] select.ng-invalid,[data-inquiry-editor] textarea.ng-invalid',
           )
           ?.focus();
       return;
     }
     if (await this.saved.mutate(this.request(), { kind: 'update', input })) {
       this.form.markAsPristine();
-      this.closed.emit();
+      this.finishClose();
     }
   }
 }

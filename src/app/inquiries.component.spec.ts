@@ -102,6 +102,23 @@ async function render(path = '/inquiries') {
   return { fixture, service, page: fixture.nativeElement as HTMLElement };
 }
 
+function editorDialog(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('[data-inquiry-editor]');
+}
+
+function supportTestDialog() {
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+    configurable: true,
+    value: function (this: HTMLDialogElement) {
+      this.open = true;
+    },
+  });
+}
+
+afterEach(() => {
+  delete (HTMLDialogElement.prototype as unknown as { showModal?: unknown }).showModal;
+});
+
 it.each(['de', 'sq', 'en'] as const)(
   'uses the canonical %s overview, readonly details and only approved search filters',
   async (locale) => {
@@ -237,30 +254,15 @@ it('preserves overview context on language change and clears private data during
   }
 });
 
-// jsdom has no native top-layer implementation. Actual focus trapping is exercised in Chrome.
-function supportTestDialog() {
-  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
-    configurable: true,
-    value: function (this: HTMLDialogElement) {
-      this.open = true;
-    },
-  });
-}
-
-afterEach(() => {
-  delete (HTMLDialogElement.prototype as unknown as { showModal?: unknown }).showModal;
-});
-
 it('edits the stored detail, keeps private attachments and the separate creation draft, and only confirms an API success', async () => {
-  supportTestDialog();
   const { page, fixture, service } = await render();
   page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
   await fixture.whenStable();
   page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
   await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
   await fixture.whenStable();
-  const dialog = page.querySelector<HTMLDialogElement>('[data-inquiry-editor]')!;
-  expect(dialog.open).toBe(true);
+  const dialog = editorDialog()!;
+  expect(dialog.closest('[role="dialog"]')?.getAttribute('aria-modal')).toBe('true');
   const symptom = dialog.querySelector<HTMLTextAreaElement>('#edit-symptom')!;
   expect(symptom.value).toBe(detail.symptom);
   symptom.value = 'Geänderter fiktiver Bedarf';
@@ -277,23 +279,22 @@ it('edits the stored detail, keeps private attachments and the separate creation
       vehicle: detail.vehicle,
     }),
   });
-  expect(page.querySelector('[data-inquiry-editor]')).toBeTruthy();
+  expect(editorDialog()).toBeTruthy();
   expect(TestBed.inject(RepairRequestDraft).read()?.['symptom']).toBe('UNSAVED-DRAFT');
   mutate.mockResolvedValue(true);
   dialog.querySelector<HTMLButtonElement>('[data-save-inquiry]')!.click();
   await fixture.whenStable();
-  expect(page.querySelector('[data-inquiry-editor]')).toBeNull();
+  expect(editorDialog()).toBeNull();
 });
 
 it('validates local dates and guards unsaved edits on Escape and navigation', async () => {
-  supportTestDialog();
   const { page, fixture, service } = await render();
   page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
   await fixture.whenStable();
   page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
   await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
   await fixture.whenStable();
-  const dialog = page.querySelector<HTMLDialogElement>('[data-inquiry-editor]')!;
+  const dialog = editorDialog()!;
   const pickup = dialog.querySelector<HTMLInputElement>('#edit-pickup')!;
   pickup.value = '2026-01-01';
   pickup.dispatchEvent(new Event('input', { bubbles: true }));
@@ -303,7 +304,9 @@ it('validates local dates and guards unsaved edits on Escape and navigation', as
   await fixture.whenStable();
   expect(mutation).not.toHaveBeenCalled();
   expect(dialog.querySelector('[data-edit-validation]')).toBeTruthy();
-  dialog.dispatchEvent(new Event('cancel', { cancelable: true }));
+  dialog.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+  );
   await fixture.whenStable();
   expect(dialog.textContent).toContain(inquiriesCopy.de.discardTitle);
   const leaving = fixture.componentInstance.canLeave();
@@ -312,7 +315,7 @@ it('validates local dates and guards unsaved edits on Escape and navigation', as
   dialog.querySelector<HTMLButtonElement>('[data-discard-edit]')!.click();
   await fixture.whenStable();
   expect(await leaving).toBe(true);
-  expect(page.querySelector('[data-inquiry-editor]')).toBeNull();
+  expect(editorDialog()).toBeNull();
 });
 
 it('requires confirmation before deletion, supports cancellation and discards the dialog on account change', async () => {
@@ -346,14 +349,13 @@ it('requires confirmation before deletion, supports cancellation and discards th
 });
 
 it('does not save an unchanged or reverted inquiry and cancels without a discard prompt', async () => {
-  supportTestDialog();
   const { page, fixture, service } = await render();
   page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
   await fixture.whenStable();
   page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
   await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
   await fixture.whenStable();
-  const dialog = page.querySelector<HTMLDialogElement>('[data-inquiry-editor]')!;
+  const dialog = editorDialog()!;
   const save = dialog.querySelector<HTMLButtonElement>('[data-save-inquiry]')!;
   expect(save.disabled).toBe(true);
   const mutation = vi.spyOn(service, 'mutate');
@@ -369,14 +371,79 @@ it('does not save an unchanged or reverted inquiry and cancels without a discard
   input.dispatchEvent(new Event('input', { bubbles: true }));
   await fixture.whenStable();
   expect(save.disabled).toBe(true);
-  dialog.dispatchEvent(new Event('cancel', { cancelable: true }));
+  dialog.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+  );
   await fixture.whenStable();
-  expect(page.querySelector('[data-inquiry-editor]')).toBeNull();
+  expect(editorDialog()).toBeNull();
   expect(mutation).not.toHaveBeenCalled();
 });
 
+it('keeps the editor open while a save is pending and closes only after its confirmed result', async () => {
+  const { page, fixture, service } = await render();
+  page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
+  await fixture.whenStable();
+  page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
+  await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
+  await fixture.whenStable();
+  const symptom = editorDialog()!.querySelector<HTMLTextAreaElement>('#edit-symptom')!;
+  symptom.value = 'Langsame fiktive Änderung';
+  symptom.dispatchEvent(new Event('input', { bubbles: true }));
+  await fixture.whenStable();
+  let resolveMutation!: (result: boolean) => void;
+  const pendingMutation = new Promise<boolean>((resolve) => (resolveMutation = resolve));
+  vi.spyOn(service, 'mutate').mockImplementation(async () => {
+    service.writeState.set('saving');
+    return pendingMutation;
+  });
+  editorDialog()!.querySelector<HTMLButtonElement>('[data-save-inquiry]')!.click();
+  await vi.waitFor(() => expect(service.writeState()).toBe('saving'));
+  editorDialog()!.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+  );
+  await fixture.whenStable();
+  expect(editorDialog()).toBeTruthy();
+  expect(editorDialog()!.textContent).not.toContain(inquiriesCopy.de.discardTitle);
+  resolveMutation(true);
+  await vi.waitFor(() => expect(editorDialog()).toBeNull());
+});
+
+it('resolves a pending navigation guard safely when the editor is destroyed by a session change', async () => {
+  const { page, fixture, service } = await render();
+  page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
+  await fixture.whenStable();
+  page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
+  await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
+  await fixture.whenStable();
+  const symptom = editorDialog()!.querySelector<HTMLTextAreaElement>('#edit-symptom')!;
+  symptom.value = 'Ungespeicherte fiktive Navigation';
+  symptom.dispatchEvent(new Event('input', { bubbles: true }));
+  const leaving = fixture.componentInstance.canLeave();
+  expect(leaving).toBeInstanceOf(Promise);
+  current = null;
+  TestBed.inject(AccountSessionService).invalidate();
+  await fixture.whenStable();
+  expect(await leaving).toBe(false);
+  expect(editorDialog()).toBeNull();
+});
+
+it('falls back to the stable inquiries title when the persistent editor trigger is gone', async () => {
+  const { page, fixture, service } = await render();
+  const trigger = page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!;
+  trigger.click();
+  await fixture.whenStable();
+  page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
+  await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
+  await fixture.whenStable();
+  trigger.remove();
+  editorDialog()!.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+  );
+  await vi.waitFor(() => expect(editorDialog()).toBeNull());
+  expect(document.activeElement).toBe(page.querySelector('#inquiries-title'));
+});
+
 it('preserves the editor and unsaved text across real session revalidation', async () => {
-  supportTestDialog();
   const { page, fixture, service } = await render();
   page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
   await fixture.whenStable();
@@ -384,7 +451,9 @@ it('preserves the editor and unsaved text across real session revalidation', asy
   await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
   await fixture.whenStable();
   const editor = page.querySelector('app-inquiry-editor')!;
-  const input = editor.querySelector<HTMLTextAreaElement>('textarea[formControlName="symptom"]')!;
+  const input = editorDialog()!.querySelector<HTMLTextAreaElement>(
+    'textarea[formControlName="symptom"]',
+  )!;
   input.value = 'Ungespeicherte fiktive Bearbeitung';
   input.dispatchEvent(new Event('input', { bubbles: true }));
   current = { ...identity, displayName: 'Aktualisiertes fiktives Konto' };
@@ -603,7 +672,6 @@ it('blocks management and details while a write is pending', async () => {
 });
 
 it('returns from the editor and delete cancellation to the persistent menu trigger', async () => {
-  supportTestDialog();
   const { page, fixture, service } = await render();
   const trigger = page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!;
   trigger.click();
@@ -611,11 +679,11 @@ it('returns from the editor and delete cancellation to the persistent menu trigg
   page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
   await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
   await fixture.whenStable();
-  page
-    .querySelector('[data-inquiry-editor]')!
-    .dispatchEvent(new Event('cancel', { cancelable: true }));
+  editorDialog()!.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+  );
   await fixture.whenStable();
-  expect(page.querySelector('[data-inquiry-editor]')).toBeNull();
+  expect(editorDialog()).toBeNull();
   expect(document.activeElement).toBe(trigger);
   trigger.click();
   await fixture.whenStable();
