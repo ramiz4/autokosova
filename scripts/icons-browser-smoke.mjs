@@ -1,10 +1,26 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
 const cwd = fileURLToPath(new URL('..', import.meta.url));
+const stats = JSON.parse(
+  readFileSync(new URL('../dist/autokosova/stats.json', import.meta.url), 'utf8'),
+);
+const featureChunks = [
+  'src/app/monetization.component.ts',
+  'src/app/repair-request.component.ts',
+  'src/app/search-handoff.component.ts',
+  'src/app/garage-profile.component.ts',
+].map((source) => {
+  const output = Object.entries(stats.outputs).find(
+    ([file, info]) => file.endsWith('.js') && info.entryPoint === source,
+  );
+  assert.ok(output, `${source} must have a lazy browser entry`);
+  return `/${output[0]}`;
+});
 const probe = createServer();
 await new Promise((resolve) => probe.listen(0, '127.0.0.1', resolve));
 const port = probe.address().port;
@@ -30,11 +46,24 @@ try {
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  const scripts = new Set();
+  let documentRequests = 0;
+  page.on('request', (request) => {
+    if (request.resourceType() === 'script') scripts.add(new URL(request.url()).pathname);
+    if (request.resourceType() === 'document') documentRequests++;
+  });
   let measured = 0;
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     for (const prefix of ['', '/sq', '/en']) {
-      await page.goto(origin + (prefix || '/'));
+      scripts.clear();
+      await Promise.all([
+        page.waitForResponse((response) => response.url() === `${origin}/api/me`),
+        page.goto(origin + (prefix || '/')),
+      ]);
+      featureChunks.forEach((chunk) =>
+        assert.ok(!scripts.has(chunk), `Eager feature request: ${chunk}`),
+      );
       await page.locator('lucide-icon svg').first().waitFor({ state: 'attached' });
       if (width < 1280) {
         const toggle = page.locator('button[aria-controls="mobile-navigation"]');
@@ -72,7 +101,15 @@ try {
     }
   }
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(origin + '/inquiry');
+  const documentsBeforeNavigation = documentRequests;
+  await page.locator('main a[href="/en/inquiry"]:visible').first().click();
+  await page.locator('#request-title').waitFor();
+  assert.ok(scripts.has(featureChunks[1]), 'The inquiry chunk loads on client navigation');
+  assert.equal(
+    documentRequests,
+    documentsBeforeNavigation,
+    'Navigation must not reload the document',
+  );
   const vehicles = page.locator('lucide-icon.h-8.w-12');
   await vehicles.first().waitFor();
   assert.equal(await vehicles.count(), 5);
@@ -93,6 +130,18 @@ try {
   });
   assert.equal(fill.before, 'none');
   assert.equal(fill.after, fill.color);
+  for (const prefix of ['', '/sq', '/en']) {
+    for (const path of ['/monetization', '/inquiry', '/garages', '/garages/bundle-smoke-missing']) {
+      const [, response] = await Promise.all([
+        page.waitForResponse((response) => response.url() === `${origin}/api/me`),
+        page.goto(origin + prefix + path),
+      ]);
+      assert.equal(response.status(), 200);
+      assert.match(await response.text(), /<main[\s>]/, `SSR content missing for ${prefix}${path}`);
+      assert.equal(await page.locator('main').count(), 1);
+      assert.equal(await page.locator('footer').count(), 1);
+    }
+  }
   assert.deepEqual(errors, [], 'No hydration or browser runtime errors');
   console.log(
     JSON.stringify({
@@ -103,6 +152,9 @@ try {
       vehicleIcons: 5,
       signalMenuSwitches: 6,
       fillInheritance: true,
+      landingExcludesFeatureChunks: true,
+      clientNavigationWithoutReload: true,
+      localizedLazyDeepLinks: 12,
     }),
   );
 } finally {

@@ -8,7 +8,7 @@
     "ng": "ng",
     "start": "ng serve",
     "start:ssr": "node dist/autokosova/server/server.mjs",
-    "build": "ng build",
+    "build": "ng build --stats-json",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:server": "tsx --test test/**/*.test.ts",

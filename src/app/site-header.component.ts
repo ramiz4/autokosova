@@ -22,8 +22,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import { reviewLabel } from '../shared/review-copy';
-import { staffCopy } from '../shared/staff-copy';
+import { accountNavigationCopy } from '../shared/account-navigation-copy';
 import { accountType } from '../shared/account';
 import { NgTemplateOutlet } from '@angular/common';
 
@@ -59,7 +58,7 @@ export class SiteHeaderComponent {
   readonly WrenchIcon: LucideIcon = LucideWrench;
   readonly XIcon: LucideIcon = LucideX;
 
-  protected readonly reviewLabel = reviewLabel;
+  protected readonly accountNavigationCopy = accountNavigationCopy;
   readonly compact = input(false);
   // Keep the logo consistent across landing, inquiry, search and onboarding navigation.
   readonly smallLogo = input(true);
@@ -77,7 +76,6 @@ export class SiteHeaderComponent {
   >();
   protected readonly account = inject(AccountSessionService);
   protected readonly accountType = accountType;
-  protected readonly staffCopy = staffCopy;
   protected readonly accountPanel = signal<'account' | null>(null);
   protected readonly logoutError = signal(false);
   private readonly router = inject(Router);
