@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { AdminNavigationComponent } from './admin-navigation.component';
 import { LanguageService } from './language.service';
 
@@ -13,7 +13,7 @@ async function render(admin: boolean) {
         useValue: {
           language: 'en',
           link: (route: string, section?: string) =>
-            route === 'admin-section' ? `/admin/${section}` : '/admin',
+            route === 'admin-section' ? `/en/admin/${section}` : `/en/${route}`,
         },
       },
     ],
@@ -46,4 +46,16 @@ it('does not expose administration paths in the moderator navigator', async () =
     'overview',
   ]);
   expect(page.querySelectorAll('nav a')).toHaveLength(1);
+  expect(page.querySelector('nav a')?.getAttribute('href')).toBe('/en/moderation');
+  expect(page.querySelector('nav a')?.textContent).toContain('My cases');
+  expect(page.querySelector('a[href*="/admin"]')).toBeNull();
+});
+
+it('keeps the moderator mobile section change inside the assigned-case workspace', async () => {
+  const page = await render(false);
+  const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+  const select = page.querySelector<HTMLSelectElement>('[data-staff-section-select]')!;
+  select.value = 'overview';
+  select.dispatchEvent(new Event('change'));
+  expect(navigate).toHaveBeenCalledWith('/en/moderation');
 });

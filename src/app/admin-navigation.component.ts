@@ -69,7 +69,9 @@ export class AdminNavigationComponent {
   }
   label(section: Section): string {
     return section === 'overview'
-      ? staffCopy(this.language.language).cases
+      ? this.admin()
+        ? staffCopy(this.language.language).cases
+        : staffCopy(this.language.language).myCases
       : section === 'catalog'
         ? adminLabel('settings', this.language.language)
         : adminLabel(section, this.language.language);
@@ -78,6 +80,7 @@ export class AdminNavigationComponent {
     return adminLabel(key, this.language.language);
   }
   path(section: Section): string {
+    if (!this.admin()) return this.language.link('moderation');
     return section === 'overview'
       ? this.language.link('admin')
       : this.language.link('admin-section', section);
