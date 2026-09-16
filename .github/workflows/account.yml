@@ -1,23 +1,26 @@
 name: Account browser
 
 on:
-  pull_request:
-  push:
-    branches: [main]
+  schedule:
+    # Daily at 00:22 UTC (02:22 Zurich summer / 01:22 winter).
+    - cron: '22 0 * * *'
 
 permissions:
   contents: read
 
 concurrency:
   group: account-browser-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   account-browser:
+    if: ${{ github.event_name == 'schedule' && github.ref == 'refs/heads/main' && github.repository == 'ramiz4/autokosova' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc

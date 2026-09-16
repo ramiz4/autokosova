@@ -1,15 +1,24 @@
 name: OIDC logout browser
 on:
-  pull_request:
-  push:
-    branches: [main]
+  schedule:
+    # Daily at 00:42 UTC (02:42 Zurich summer / 01:42 winter).
+    - cron: '42 0 * * *'
+
 permissions:
   contents: read
+concurrency:
+  group: oidc-logout-browser-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   oidc-logout-browser:
+    if: ${{ github.event_name == 'schedule' && github.ref == 'refs/heads/main' && github.repository == 'ramiz4/autokosova' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
