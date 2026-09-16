@@ -165,7 +165,7 @@ it.each([
 ] as const)(
   'explains review approval and its prerequisites before the action in %s',
   async (language, caseLabel, approvalLabel, rejectionLabel) => {
-    const { fixture, page, decisions } = await render(language);
+    const { fixture, component, page, decisions } = await render(language);
     expect(staffCopy(language).review_submission).toBe(caseLabel);
     expect(staffLabel('confirmReviewRejection', language)).toBe(rejectionLabel);
     expect(page.querySelector('legend')!.textContent).toContain(
@@ -177,7 +177,7 @@ it.each([
     expect(approve.getAttribute('aria-describedby')).toBe(hint.id);
     expect(approve.disabled).toBe(true);
     expect(hint.textContent).toContain(staffLabel('reviewChecksRequired', language));
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const confirm = vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(false);
     const checks = Array.from(page.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'));
     for (const checkbox of checks.slice(0, 2)) {
       checkbox.click();
@@ -190,13 +190,18 @@ it.each([
     expect(hint.textContent).toContain(staffLabel('effect_publish_review', language));
     expect(decisions).toHaveLength(0);
     approve.click();
-    expect(confirm).toHaveBeenCalledWith(expect.stringContaining(approvalLabel));
+    await fixture.whenStable();
     expect(confirm).toHaveBeenCalledWith(
-      expect.stringContaining(staffLabel('effect_publish_review', language)),
+      expect.objectContaining({
+        title: approvalLabel,
+        confirmLabel: approvalLabel,
+        description: expect.stringContaining(staffLabel('effect_publish_review', language)),
+      }),
     );
     expect(decisions).toHaveLength(0);
-    confirm.mockReturnValue(true);
+    confirm.mockResolvedValue(true);
     approve.click();
+    await fixture.whenStable();
     expect(decisions).toEqual([
       {
         action: 'publish_review',
@@ -219,7 +224,7 @@ it('explains missing evidence and never enables approval even when all checks ar
 });
 
 it('distinguishes opening rejection from confirming a reasoned rejection', async () => {
-  const { fixture, page, decisions } = await render();
+  const { fixture, component, page, decisions } = await render();
   const reject = page.querySelector<HTMLButtonElement>('[data-reject-review]')!;
   expect(reject.getAttribute('aria-expanded')).toBe('false');
   reject.click();
@@ -237,8 +242,9 @@ it('distinguishes opening rejection from confirming a reasoned rejection', async
   reason.dispatchEvent(new Event('change'));
   await fixture.whenStable();
   expect(submit.disabled).toBe(false);
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(true);
   submit.click();
+  await fixture.whenStable();
   expect(decisions).toEqual([
     {
       action: 'reject_review',

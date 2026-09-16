@@ -119,7 +119,12 @@ test('review-workflow submits evidence, assigns, verifies, publishes, replies an
   await expect(page.locator('[data-evidence-text]')).toContainText('DEMO – kein echter Nachweis');
   for (const field of ['garageMatches', 'serviceMatches', 'visitMonthMatches'])
     await page.locator(`input[name="${field}"]`).check();
-  await page.locator('[data-publish-review]').click();
+  await expect(page.locator('[data-review-publish-hint]')).toContainText(
+    'Besuchsnachweis bleibt privat',
+  );
+  await layout(page, info, 'review-approval-ready');
+  await page.getByRole('button', { name: 'Bewertung freigeben', exact: true }).click();
+  await expect(page.getByRole('alertdialog')).toContainText('Besuchsnachweis bleibt privat');
   await page.locator('[data-confirmation-confirm]').click();
   await expect(page.locator('[data-staff-case] [role="status"]')).toBeVisible();
   await page.locator('[data-back-cases]').click();
