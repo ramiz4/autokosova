@@ -42,7 +42,7 @@
         <div class="flex flex-wrap gap-3" data-review-actions>
           @if (actions().includes('publish_review')) {
             <button
-              appButton
+              [appButton]="action === 'reject_review' ? 'outline' : 'primary'"
               type="button"
               data-publish-review
               [disabled]="!publishValid()"
@@ -62,23 +62,6 @@
             </button>
           }
         </div>
-      }
-      @if (actions().includes('request_information')) {
-        <div class="flex flex-wrap gap-3" data-secondary-review-actions>
-          <button
-            data-action="request_information"
-            appButton="outline"
-            type="button"
-            (click)="choose('request_information')"
-          >
-            {{ label('request_information') }}
-          </button>
-        </div>
-        @if (action === 'request_information') {
-          <p data-decision-effect class="text-sm text-muted">
-            {{ label('effect_request_information') }}
-          </p>
-        }
       }
       @if (!(actions().includes('publish_review') || actions().includes('reject_review'))) {
         <div class="flex flex-wrap gap-3" data-report-actions>
@@ -139,6 +122,23 @@
         <button appButton data-submit-decision type="submit" [disabled]="!valid()">
           {{ label(action) }}
         </button>
+      }
+      @if (actions().includes('request_information')) {
+        <div class="flex flex-wrap gap-3" data-secondary-review-actions>
+          <button
+            data-action="request_information"
+            appButton="outline"
+            type="button"
+            (click)="choose('request_information')"
+          >
+            {{ label('request_information') }}
+          </button>
+        </div>
+        @if (action === 'request_information') {
+          <p data-decision-effect class="text-sm text-muted">
+            {{ label('effect_request_information') }}
+          </p>
+        }
       }
     </fieldset>
   </form>

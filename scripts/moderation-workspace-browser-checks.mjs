@@ -147,7 +147,7 @@ export async function checkModerationWorkspace({ browser, client, login, output 
   await open('review:demo-staff-review-own-appeal');
   assert.equal(await browser.evaluate('!!document.querySelector("[data-decision-form]")'), false);
   assert.equal(await browser.evaluate('!!document.querySelector("[data-escalate]")'), true);
-  await open('demo-staff-review-removed-report');
+  await open('demo-staff-review-removed-report', 'de', 'done');
   assert.equal(await browser.evaluate('!!document.querySelector("[data-action=restore]")'), false);
   await open('review:demo-staff-review-appeal');
   for (const field of ['garageMatches', 'serviceMatches', 'visitMonthMatches'])
