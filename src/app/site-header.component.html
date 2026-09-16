@@ -42,7 +42,7 @@
             [headerPositions]="headerPositions"
             [headerWidth]="headerWidth()"
             [internalShell]="internalShell()"
-            (closeRequested)="panel.set(null)"
+            (closeRequested)="closePanels()"
             (stateChanged)="onAccountState($event)"
           >
             <ng-container [ngTemplateOutlet]="publicNavigation" />
@@ -125,7 +125,7 @@
     [class.nav-link-active]="active() === 'request'"
     [attr.aria-current]="active() === 'request' ? 'page' : null"
     [routerLink]="language.link('request')"
-    (click)="panel.set(null)"
+    (click)="closePanels()"
     >{{ language.t('nav.newRequest') }}</a
   >
   <a
@@ -133,7 +133,7 @@
     [class.nav-link-active]="active() === 'search'"
     [attr.aria-current]="active() === 'search' ? 'page' : null"
     [routerLink]="language.link('search')"
-    (click)="panel.set(null)"
+    (click)="closePanels()"
     >{{ language.t('nav.search') }}</a
   >
   <a
@@ -141,7 +141,7 @@
     [class.nav-link-active]="active() === 'garage'"
     [attr.aria-current]="active() === 'garage' ? 'page' : null"
     [routerLink]="language.link('onboarding')"
-    (click)="panel.set(null)"
+    (click)="closePanels()"
     >{{ language.t('nav.garages') }}</a
   >
 </ng-template>

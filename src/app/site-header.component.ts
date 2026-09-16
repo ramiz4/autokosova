@@ -134,8 +134,13 @@ export class SiteHeaderComponent {
   }
 
   protected toggleMenu(): void {
-    this.accountPanel()?.closePanel();
+    this.closePanels();
     this.panel.set(this.navigationOpen() ? null : 'navigation');
+  }
+
+  protected closePanels(): void {
+    this.accountPanel()?.closePanel();
+    this.panel.set(null);
   }
 
   protected closeNavigation(restoreFocus = false): void {
