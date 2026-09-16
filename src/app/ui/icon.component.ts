@@ -24,6 +24,7 @@ export type IconName =
   | 'check'
   | 'badge-check'
   | 'shield'
+  | 'settings'
   | 'clock'
   | 'thumb'
   | 'menu'
@@ -107,6 +108,8 @@ export class IconComponent {
     arrow: 'M4 12h16m-6-6 6 6-6 6',
     check: 'm5 12 4 4L19 6',
     shield: 'm12 2 9 4v6c0 5-9 10-9 10S3 17 3 12V6l9-4Zm-5 10 3 3 7-7',
+    settings:
+      'm9 3-.5 3-2.5 1-2.5-1.5-2 3.5L4 11v2l-2.5 2 2 3.5L6 17l2.5 1 .5 3h6l.5-3 2.5-1 2.5 1.5 2-3.5-2.5-2v-2l2.5-2-2-3.5L18 7l-2.5-1L15 3H9Zm3 5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z',
     clock: 'M12 8v5l4 2M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z',
     thumb:
       'M7 10H3v11h4V10Zm0 10 3 1h7a3 3 0 0 0 3-2l2-7a2 2 0 0 0-2-3h-6l1-4c0-2-1-3-3-3l-2 5-3 4',
