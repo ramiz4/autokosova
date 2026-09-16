@@ -76,12 +76,11 @@ test('review-workflow submits evidence, assigns, verifies, publishes, replies an
   await row().locator('[data-open-case]').click();
   await page.locator('[data-evidence]').click();
   await expect(page.locator('[data-evidence-text]')).toContainText('DEMO – kein echter Nachweis');
-  await page.locator('#staff-decision-action').selectOption('publish_review');
   for (const field of ['garageMatches', 'serviceMatches', 'visitMonthMatches'])
     await page.locator(`input[name="${field}"]`).check();
   page.once('dialog', (dialog) => dialog.accept());
-  await page.locator('[data-submit-decision]').click();
-  await expect(page.locator('[data-staff-case]')).toHaveCount(0);
+  await page.locator('[data-publish-review]').click();
+  await expect(page.locator('[data-staff-case] [role="status"]')).toBeVisible();
   await logout(page, app.origin);
   await app.login(page, 'customer');
   await page.goto(app.origin + '/reviews');

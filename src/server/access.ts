@@ -280,7 +280,11 @@ export class AccessError extends Error {
       | 'review_invalid'
       | 'self_review'
       | 'evidence_already_used'
-      | 'demo_document_required',
+      | 'demo_document_required'
+      | 'staff_access_revoked'
+      | 'case_stale'
+      | 'case_interest_conflict'
+      | 'case_assignment_lost',
   ) {
     super(message);
   }

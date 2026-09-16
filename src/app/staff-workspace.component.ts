@@ -7,6 +7,7 @@ import {
   Component,
   Injector,
   DestroyRef,
+  HostListener,
   afterNextRender,
   computed,
   effect,
@@ -19,6 +20,7 @@ import { FormsModule } from '@angular/forms';
 import { AccountSessionService } from './account-session.service';
 import { LanguageService } from './language.service';
 import { StaffLayoutComponent } from './staff-layout.component';
+import { StaffDraftGuardService } from './staff-draft-guard.service';
 import { ButtonDirective } from './ui/button.directive';
 import { staffCopy, staffLabel } from '../shared/staff-copy';
 import {
@@ -29,6 +31,11 @@ import {
   type StaffQueuePage,
   type StaffEscalationReason,
 } from '../shared/moderation';
+
+interface StaffHttpError {
+  readonly status: number;
+  readonly code?: string;
+}
 
 @Component({
   selector: 'app-staff-workspace',
@@ -49,7 +56,9 @@ export class StaffWorkspaceComponent {
   private readonly injector = inject(Injector);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly draftGuard = inject(StaffDraftGuardService);
   private previousCase = '';
+  private listScrollY = 0;
   readonly adminOnly = inject(ActivatedRoute).snapshot.data['adminOnly'] === true;
   readonly copy = computed(() => staffCopy(this.language.language));
   readonly isAdmin = computed(() => this.account.identity()?.roles.includes('admin') ?? false);
@@ -77,6 +86,7 @@ export class StaffWorkspaceComponent {
   readonly hasMore = signal(false);
   readonly reasons = STAFF_ESCALATION_REASONS;
   readonly evidenceText = signal<string | null>(null);
+  readonly draftDirty = signal(false);
   filterStatus = '';
   actionableOnly = true;
   queue: '' | 'todo' | 'waiting' | 'done' = 'todo';
@@ -85,11 +95,15 @@ export class StaffWorkspaceComponent {
   filterPriority = '';
   onlyEscalated = false;
   onlyUnassigned = false;
+  onlyAppeal = false;
   moderatorId = '';
   escalationReason: StaffEscalationReason = 'requires_admin';
   private generation = 0;
   private controller?: AbortController;
+  private detailController?: AbortController;
   private detailVersion = 0;
+  private assignmentInitial = '';
+  private escalationInitial: StaffEscalationReason = 'requires_admin';
   constructor() {
     afterNextRender(() => {
       this.ready.set(true);
@@ -99,25 +113,46 @@ export class StaffWorkspaceComponent {
       const caseId = params.get('caseId');
       if (caseId && this.ready() && this.allowed()) void this.open(caseId, false);
     });
-    const query = this.route.snapshot.queryParamMap;
+    this.applyRouteQuery(this.route.snapshot.queryParamMap);
+    this.route.queryParamMap.subscribe((query) => {
+      this.applyRouteQuery(query);
+      if (this.ready() && this.allowed() && !this.route.snapshot.paramMap.get('caseId'))
+        void this.load(this.page());
+    });
+    effect(() => this.draftGuard.setDirty(this.hasUnsavedInput()));
+    effect(() => {
+      if (!this.account.dataContext()) this.clearPrivate();
+    });
+    effect(() => {
+      if (this.allowed()) return;
+      this.clearPrivate();
+    });
+    this.initialize();
+    /* Query values are intentionally technical, bounded route context only. */
+  }
+  private applyRouteQuery(query: import('@angular/router').ParamMap): void {
     this.filterStatus = query.get('status') ?? '';
     this.filterKind = query.get('kind') ?? '';
     this.filterPriority = query.get('priority') ?? '';
     this.filterAssignee = query.get('assignedUserId') ?? '';
     this.onlyEscalated = query.get('escalated') === 'true';
     this.onlyUnassigned = query.get('unassigned') === 'true';
+    this.onlyAppeal = query.get('appeal') === 'true';
     this.actionableOnly = query.get('actionable') !== 'false';
     const requestedPage = Number(query.get('page'));
     this.page.set(Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1);
     const requestedQueue = query.get('queue');
     this.queue =
       requestedQueue === 'waiting' || requestedQueue === 'done' ? requestedQueue : 'todo';
+  }
+  private initialize(): void {
     effect(() => {
       const context = this.account.dataContext();
       const ready = this.ready();
       const allowed = this.allowed();
       this.generation++;
       this.controller?.abort();
+      this.detailController?.abort();
       this.detailVersion++;
       this.adminOverview.set(null);
       this.cases.set([]);
@@ -130,6 +165,8 @@ export class StaffWorkspaceComponent {
       this.loading.set(false);
       this.busy.set(false);
       this.moderatorId = '';
+      this.assignmentInitial = '';
+      this.escalationInitial = 'requires_admin';
       if (context && ready && allowed)
         untracked(() => {
           const caseId = this.route.snapshot.paramMap.get('caseId');
@@ -146,6 +183,8 @@ export class StaffWorkspaceComponent {
     inject(DestroyRef).onDestroy(() => {
       this.generation++;
       this.controller?.abort();
+      this.detailController?.abort();
+      this.clearPrivate();
     });
   }
   label(value: string): string {
@@ -155,10 +194,16 @@ export class StaffWorkspaceComponent {
     return this.copy()[value];
   }
   loginUrl(): string {
-    return (
-      '/auth/login?returnTo=' +
-      encodeURIComponent(this.language.link(this.adminOnly ? 'admin' : 'moderation'))
-    );
+    // Angular serializes `:` in a technical case id. Decode that one router serialization before
+    // handing the entire local URL to the server; a double-encoded attacker value remains encoded
+    // and is rejected by `safeReturnTo`.
+    let target = this.router.url;
+    try {
+      target = decodeURIComponent(target);
+    } catch {
+      // Keep malformed input encoded; the server's strict whitelist will fall back safely.
+    }
+    return '/auth/login?returnTo=' + encodeURIComponent(target);
   }
   async load(page = 1): Promise<void> {
     if (!this.allowed() || this.busy()) return;
@@ -177,6 +222,7 @@ export class StaffWorkspaceComponent {
     if (this.filterPriority) query.set('priority', this.filterPriority);
     if (this.onlyEscalated && this.isAdmin()) query.set('escalated', 'true');
     if (this.onlyUnassigned && this.isAdmin()) query.set('unassigned', 'true');
+    if (this.onlyAppeal) query.set('appeal', 'true');
     try {
       const response = await fetch('/api/staff/cases?' + query, {
         credentials: 'same-origin',
@@ -229,6 +275,7 @@ export class StaffWorkspaceComponent {
     if (this.isAdmin() && this.filterAssignee) queryParams['assignedUserId'] = this.filterAssignee;
     if (this.isAdmin() && this.onlyEscalated) queryParams['escalated'] = 'true';
     if (this.isAdmin() && this.onlyUnassigned) queryParams['unassigned'] = 'true';
+    if (this.onlyAppeal) queryParams['appeal'] = 'true';
     if (this.queue !== 'todo') queryParams['queue'] = this.queue;
     void this.router.navigate([], { relativeTo: this.route, queryParams });
     void this.load();
@@ -245,6 +292,7 @@ export class StaffWorkspaceComponent {
     this.filterPriority = '';
     this.onlyEscalated = false;
     this.onlyUnassigned = false;
+    this.onlyAppeal = false;
     this.queue = 'todo';
     this.applyFilters();
   }
@@ -257,8 +305,9 @@ export class StaffWorkspaceComponent {
     void this.load(page);
   }
   async open(id: string, updateUrl = true): Promise<void> {
-    if (this.busy() || this.loading()) return;
-    if (updateUrl && !this.route.snapshot.paramMap.get('caseId')) {
+    if (this.busy()) return;
+    if (updateUrl && this.route.snapshot.paramMap.get('caseId') !== id) {
+      this.listScrollY = this.document.defaultView?.scrollY ?? 0;
       const query = this.router.url.includes('?')
         ? this.router.url.slice(this.router.url.indexOf('?'))
         : '';
@@ -270,9 +319,10 @@ export class StaffWorkspaceComponent {
       );
       return;
     }
-    const generation = this.generation,
-      context = this.account.dataContext(),
+    const context = this.account.dataContext(),
       version = ++this.detailVersion;
+    this.detailController?.abort();
+    this.detailController = new AbortController();
     this.loading.set(true);
     this.error.set('');
     this.success.set('');
@@ -280,50 +330,64 @@ export class StaffWorkspaceComponent {
     this.evidenceText.set(null);
     this.moderatorId = '';
     try {
-      const data = await this.json<StaffCaseDetail>(
-        await fetch('/api/staff/cases/' + encodeURIComponent(id), {
-          credentials: 'same-origin',
-          cache: 'no-store',
-          signal: this.controller?.signal,
-        }),
-      );
-      if (
-        generation === this.generation &&
-        version === this.detailVersion &&
-        context === this.account.dataContext()
-      ) {
+      const [data, candidates] = await Promise.all([
+        this.json<StaffCaseDetail>(
+          await fetch('/api/staff/cases/' + encodeURIComponent(id), {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            signal: this.detailController.signal,
+          }),
+        ),
+        this.isAdmin()
+          ? this.json<{ moderators: StaffModerator[] }>(
+              await fetch('/api/staff/moderators', {
+                credentials: 'same-origin',
+                cache: 'no-store',
+                signal: this.detailController.signal,
+              }),
+            )
+          : Promise.resolve(null),
+      ]);
+      if (version === this.detailVersion && context === this.account.dataContext()) {
         this.detail.set(data);
+        this.moderators.set(candidates?.moderators ?? []);
         this.previousCase = id;
         this.focus('[data-case-heading]');
         this.moderatorId = data.assignedModeratorUserId ?? '';
+        this.assignmentInitial = this.moderatorId;
+        this.escalationReason = 'requires_admin';
+        this.escalationInitial = this.escalationReason;
+        this.syncDraftGuard();
       }
     } catch (error) {
-      if (generation === this.generation && version === this.detailVersion) this.failure(error);
+      if (version === this.detailVersion) this.failure(error);
     } finally {
-      if (generation === this.generation && version === this.detailVersion) this.loading.set(false);
+      if (version === this.detailVersion) this.loading.set(false);
     }
   }
   back(): void {
     if (this.busy()) return;
-    this.detailVersion++;
-    this.detail.set(null);
-    this.evidenceText.set(null);
-    if (this.route.snapshot.paramMap.get('caseId')) void this.router.navigateByUrl(this.listUrl());
-    void this.load(this.page()).then(() => this.focusList());
+    if (this.route.snapshot.paramMap.get('caseId')) {
+      void this.router.navigateByUrl(this.listUrl()).then((left) => {
+        if (left)
+          void this.load(this.page()).then(() => {
+            this.document.defaultView?.scrollTo({ top: this.listScrollY });
+            this.focusList();
+          });
+      });
+    }
   }
   async decide(input: StaffCaseDecision): Promise<void> {
     if (input.revision !== this.detail()?.revision) return;
     await this.mutate('decide', input);
   }
   async nextEligibleCase(): Promise<void> {
-    this.resultAvailable.set(false);
-    this.detail.set(null);
-    this.evidenceText.set(null);
     await this.load(1);
-    const next = this.cases()[0];
-    if (next) await this.open(next.id, false);
+    const next = this.cases().find((item) => item.id !== this.detail()?.id);
+    if (next) await this.open(next.id, true);
     else if (this.route.snapshot.paramMap.get('caseId'))
       await this.router.navigateByUrl(this.listUrl());
+    else this.success.set(this.copy().empty);
   }
   private focus(selector: string): void {
     afterNextRender(() => this.document.querySelector<HTMLElement>(selector)?.focus(), {
@@ -346,7 +410,7 @@ export class StaffWorkspaceComponent {
     if (this.moderatorId) await this.mutate('assign', { moderatorUserId: this.moderatorId });
   }
   async escalate(): Promise<void> {
-    if (window.confirm(this.copy().escalationConfirm))
+    if (window.confirm(`${this.copy().escalationConfirm}\n\n${this.detail()?.label ?? ''}`))
       await this.mutate('escalate', { reason: this.escalationReason });
   }
   async openEvidence(): Promise<void> {
@@ -362,7 +426,7 @@ export class StaffWorkspaceComponent {
       const grant = await this.json<{ fileId: string; grantId: string; localFixture?: boolean }>(
         await fetch(
           `/api/reviews/${encodeURIComponent(detail.subjectId)}/evidence/download-grant`,
-          { credentials: 'same-origin', cache: 'no-store', signal: this.controller?.signal },
+          { credentials: 'same-origin', cache: 'no-store', signal: this.detailController?.signal },
         ),
       );
       if (
@@ -378,10 +442,10 @@ export class StaffWorkspaceComponent {
           credentials: 'same-origin',
           cache: 'no-store',
           headers: { 'x-file-grant': grant.grantId },
-          signal: this.controller?.signal,
+          signal: this.detailController?.signal,
         },
       );
-      if (!response.ok) throw response.status;
+      if (!response.ok) throw await this.httpError(response);
       const text = await response.text();
       if (
         generation === this.generation &&
@@ -419,24 +483,19 @@ export class StaffWorkspaceComponent {
         cache: 'no-store',
         headers: { 'content-type': 'application/json', 'x-csrf-token': csrf },
         body: JSON.stringify({ ...body, revision: detail.revision }),
-        signal: this.controller?.signal,
+        signal: this.detailController?.signal,
       });
-      if (!response.ok) throw response.status;
+      if (!response.ok) throw await this.httpError(response);
       if (generation !== this.generation || context !== this.account.dataContext()) return;
-      this.success.set(this.copy().success);
-      this.busy.set(false);
       if (action === 'assign') {
         await this.open(detail.id, false);
       } else if (action === 'decide') {
+        await this.open(detail.id, false);
         this.resultAvailable.set(true);
       } else {
-        this.detail.set(null);
-        this.evidenceText.set(null);
-        await this.load(this.page());
-        if (this.route.snapshot.paramMap.get('caseId'))
-          await this.router.navigateByUrl(this.listUrl());
-        this.focusList();
+        this.clearPrivate();
       }
+      this.success.set(this.label('outcome_' + action));
     } catch (error) {
       if (generation === this.generation && context === this.account.dataContext())
         this.failure(error);
@@ -450,29 +509,93 @@ export class StaffWorkspaceComponent {
       : '';
     return this.language.link(this.adminOnly ? 'admin' : 'moderation') + query;
   }
+  onDecisionDirty(dirty: boolean): void {
+    this.draftDirty.set(dirty);
+    this.syncDraftGuard();
+  }
+  onAssignmentChange(): void {
+    this.syncDraftGuard();
+  }
+  onEscalationChange(): void {
+    this.syncDraftGuard();
+  }
+  canLeave(): boolean {
+    return this.draftGuard.confirmDiscard();
+  }
+  @HostListener('window:beforeunload', ['$event'])
+  beforeUnload(event: BeforeUnloadEvent): void {
+    if (!this.hasUnsavedInput()) return;
+    event.preventDefault();
+    event.returnValue = '';
+  }
+  private hasUnsavedInput(): boolean {
+    return (
+      this.draftDirty() ||
+      this.moderatorId !== this.assignmentInitial ||
+      this.escalationReason !== this.escalationInitial
+    );
+  }
+  private syncDraftGuard(): void {
+    this.draftGuard.setDirty(this.hasUnsavedInput());
+  }
+  private clearPrivate(): void {
+    this.generation++;
+    this.detailVersion++;
+    this.controller?.abort();
+    this.detailController?.abort();
+    this.detail.set(null);
+    this.evidenceText.set(null);
+    this.moderators.set([]);
+    this.cases.set([]);
+    this.busy.set(false);
+    this.resultAvailable.set(false);
+    this.moderatorId = '';
+    this.assignmentInitial = '';
+    this.escalationReason = 'requires_admin';
+    this.escalationInitial = 'requires_admin';
+    this.draftDirty.set(false);
+    this.draftGuard.setDirty(false);
+  }
   private async json<T>(response: Response): Promise<T> {
-    if (!response.ok) throw response.status;
+    if (!response.ok) throw await this.httpError(response);
     return response.json() as Promise<T>;
   }
+  private async httpError(response: Response): Promise<StaffHttpError> {
+    try {
+      const body = (await response.json()) as { code?: unknown };
+      return {
+        status: response.status,
+        ...(typeof body.code === 'string' ? { code: body.code } : {}),
+      };
+    } catch {
+      return { status: response.status };
+    }
+  }
   private failure(error: unknown): void {
-    if (error === 401) {
+    const status = typeof error === 'number' ? error : (error as StaffHttpError).status;
+    const code = typeof error === 'object' && error ? (error as StaffHttpError).code : undefined;
+    if (status === 401 || code === 'staff_access_revoked') {
       this.account.invalidate();
       return;
     }
-    if (error === 403 || error === 404) {
-      if (error === 403) {
+    if (status === 403 || status === 404) {
+      if (code === 'case_interest_conflict') {
+        this.error.set(this.copy().interest);
+        return;
+      }
+      if (status === 403) {
         this.cases.set([]);
         this.moderators.set([]);
       }
       this.detail.set(null);
       this.evidenceText.set(null);
-      this.error.set(error === 403 ? this.copy().denied : this.copy().unavailable);
+      this.error.set(status === 403 ? this.copy().denied : this.copy().unavailable);
       return;
     }
     this.error.set(
-      error === 409
+      status === 409
         ? this.copy().conflict
-        : error === 422
+        : status === 422
           ? this.label('invalidDecision')
           : this.copy().error,
     );

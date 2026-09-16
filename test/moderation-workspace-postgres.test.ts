@@ -170,6 +170,11 @@ test(
         message: 'DEMO – Bitte diese Entscheidung durch eine andere Person prüfen.',
       });
       const appeal = await get('review:demo-staff-review-mismatch', admin);
+      assert.deepEqual(appeal.appealContext, {
+        originalDecision: 'rejected',
+        originalReason: 'evidence_not_sufficient',
+      });
+      assert.match(JSON.stringify(appeal.appealContext), /evidence_not_sufficient/);
       await assert.rejects(
         store.assignStaffCase(admin, appeal.id, {
           moderatorUserId: mod.userId,

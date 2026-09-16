@@ -68,7 +68,8 @@ const de = {
     'Du bist an diesem Fall beteiligt. Keine Selbstentscheidung; an eine andere berechtigte Person übergeben.',
   reportDetails: 'Meldung',
   evidence: 'Privaten Nachweis öffnen',
-  evidenceUnavailable: 'Der Nachweis ist nicht verfügbar.',
+  evidenceUnavailable:
+    'Der Nachweis fehlt oder wurde entzogen. Veröffentlichung ist gesperrt; ablehnen oder eine Rückfrage vermerken.',
   visit: 'Besuchsmonat',
   service: 'Arbeit / Leistung',
   evidenceStatus: 'Nachweisstatus',
@@ -142,7 +143,8 @@ const en: Copy = {
     'You are involved in this case. Do not decide it yourself; hand it over to another authorized person.',
   reportDetails: 'Report',
   evidence: 'Open private evidence',
-  evidenceUnavailable: 'Evidence is unavailable.',
+  evidenceUnavailable:
+    'Evidence is missing or withdrawn. Publishing is blocked; reject it or record an information request.',
   visit: 'Visit month',
   service: 'Work / service',
   evidenceStatus: 'Evidence status',
@@ -216,7 +218,8 @@ const sq: Copy = {
     'Jeni të përfshirë në këtë rast. Mos vendosni vetë; përcilleni te një person tjetër i autorizuar.',
   reportDetails: 'Raportimi',
   evidence: 'Hap dëshminë private',
-  evidenceUnavailable: 'Dëshmia nuk është e disponueshme.',
+  evidenceUnavailable:
+    'Dëshmia mungon ose është tërhequr. Publikimi është i bllokuar; refuzoje ose shëno një kërkesë për informacion.',
   visit: 'Muaji i vizitës',
   service: 'Puna / shërbimi',
   evidenceStatus: 'Statusi i dëshmisë',
@@ -336,6 +339,23 @@ const extraLabels: Readonly<Record<string, readonly [string, string, string]>> =
     'Unabhängige Widerspruchsprüfung: Die vorherige Entscheidung bleibt im Verlauf erhalten.',
     'Independent appeal review: the previous decision stays in the history.',
     'Shqyrtim i pavarur i ankesës: vendimi i mëparshëm ruhet në historik.',
+  ],
+  originalDecision: ['Ursprüngliche Entscheidung', 'Original decision', 'Vendimi fillestar'],
+  appealMessage: ['Widerspruchsnachricht', 'Appeal message', 'Mesazhi i ankesës'],
+  outcome_decide: [
+    'Entscheidung gespeichert und neu geprüft.',
+    'Decision saved and rechecked.',
+    'Vendimi u ruajt dhe u kontrollua përsëri.',
+  ],
+  outcome_assign: [
+    'Zuweisung gespeichert; der Fall wurde neu geladen.',
+    'Assignment saved; the case was reloaded.',
+    'Caktimi u ruajt; rasti u ringarkua.',
+  ],
+  outcome_escalate: [
+    'Fall wurde an die Administration übergeben.',
+    'Case was referred to administration.',
+    'Rasti u përcoll te administrimi.',
   ],
   garageResponse: ['Werkstattantwort', 'Garage response', 'Përgjigjja e servisit'],
   updates: ['Nachträge des Kunden', 'Customer updates', 'Përditësimet e klientit'],

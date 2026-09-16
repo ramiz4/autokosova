@@ -101,3 +101,16 @@ it('requires a rejection reason, preserves input while busy changes, and resets 
   expect(component.action).toBe('');
   expect(component.rejectionReason).toBe('');
 });
+it('reports a real draft, preserves it for an ordinary same-revision read and clears it on discard', async () => {
+  const { fixture, component } = await render();
+  const dirty: boolean[] = [];
+  component.dirtyChange.subscribe((value) => dirty.push(value));
+  component.garageMatches = true;
+  component.emitDirty();
+  expect(dirty.at(-1)).toBe(true);
+  fixture.componentRef.setInput('detail', { ...detail, label: 'Fresh authorized projection' });
+  await fixture.whenStable();
+  expect(component.garageMatches).toBe(true);
+  component.discard();
+  expect(dirty.at(-1)).toBe(false);
+});

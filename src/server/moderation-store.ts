@@ -141,7 +141,11 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
     if (!isStaffCaseDecision(input)) throw new AccessError(422, 'Case decision is invalid');
     const detail = await this.workspace.get(principal, caseId);
     if (detail.conflictOfInterest)
-      throw new AccessError(403, 'A person involved in a case cannot decide it');
+      throw new AccessError(
+        403,
+        'A person involved in a case cannot decide it',
+        'case_interest_conflict',
+      );
     if (!detail.allowedActions?.includes(input.action))
       throw new AccessError(409, 'This action is not available for the current case');
     // These are the existing domain writers, not another publication workflow. They repeat

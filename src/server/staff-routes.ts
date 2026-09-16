@@ -35,7 +35,7 @@ export function registerStaffRoutes(
   function staff(request: FastifyRequest, write = false) {
     const principal = requirePrincipal(request, write);
     if (!principal.roles.has('admin') && !principal.roles.has('moderator'))
-      throw new AccessError(403, 'Staff access denied');
+      throw new AccessError(403, 'Staff access denied', 'staff_access_revoked');
     available();
     return principal;
   }
@@ -78,6 +78,7 @@ export function registerStaffRoutes(
             },
             priority: { enum: ['normal', 'high'] },
             escalated: { type: 'boolean' },
+            appeal: { type: 'boolean' },
           },
         },
       },

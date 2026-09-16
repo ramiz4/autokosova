@@ -6,6 +6,9 @@ import { MonetizationComponent } from './monetization.component';
 import { RepairRequestComponent } from './repair-request.component';
 import { SearchHandoffComponent } from './search-handoff.component';
 import { GarageProfileComponent } from './garage-profile.component';
+import { StaffDraftGuardService } from './staff-draft-guard.service';
+
+const staffDraftNavigationGuard = () => inject(StaffDraftGuardService).confirmDiscard();
 
 export const routes: Routes = [
   ...localizedRoutes(''),
@@ -52,6 +55,12 @@ function localizedRoutes(prefix: string): Routes {
         path: `${childPrefix}${path}/cases/:caseId`,
         pathMatch: 'full' as const,
         data: { adminOnly: path === 'admin', ownsFooter: true },
+        runGuardsAndResolvers: 'always' as const,
+        canActivate: [staffDraftNavigationGuard],
+        canDeactivate: [
+          (component: import('./staff-workspace.component').StaffWorkspaceComponent | null) =>
+            component?.canLeave() ?? true,
+        ],
         loadComponent: () =>
           import('./staff-workspace.component').then((m) => m.StaffWorkspaceComponent),
       },
@@ -59,6 +68,12 @@ function localizedRoutes(prefix: string): Routes {
         path: `${childPrefix}${path}`,
         pathMatch: 'full' as const,
         data: { adminOnly: path === 'admin', ownsFooter: true },
+        runGuardsAndResolvers: 'always' as const,
+        canActivate: [staffDraftNavigationGuard],
+        canDeactivate: [
+          (component: import('./staff-workspace.component').StaffWorkspaceComponent | null) =>
+            component?.canLeave() ?? true,
+        ],
         loadComponent: () =>
           import('./staff-workspace.component').then((m) => m.StaffWorkspaceComponent),
       },

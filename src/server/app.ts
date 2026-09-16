@@ -167,7 +167,24 @@ const repairRequestBodySchema = {
 };
 
 function safeReturnTo(value: unknown): string {
-  if (typeof value !== 'string' || value.length > 2000) return '/';
+  // This value crosses the OIDC boundary. Parse it once only: encoded paths, fragments and an
+  // unknown query key are rejected instead of being decoded into a second redirect target.
+  if (
+    typeof value !== 'string' ||
+    value.length > 2000 ||
+    value.includes('%') ||
+    value.includes('#') ||
+    value.includes('\\')
+  )
+    return '/';
+  const staff = value.match(
+    /^(\/(?:sq\/|en\/)?(?:admin|moderation)\/cases\/[A-Za-z0-9:_-]{1,200})(?:\?([^#]*))?$/,
+  );
+  if (staff) return safeStaffReturn(staff[1], staff[2]);
+  const administration = value.match(
+    /^(\/(?:sq\/|en\/)?admin\/(?:garages|privacy))(?:\?([^#]*))?$/,
+  );
+  if (administration) return safeAdministrationReturn(administration[1], administration[2]);
   const match = value.match(
     /^(\/(?:(?:sq|en)\/)?(?:admin(?:\/(?:garages|users|privacy|audit|catalog|support))?|moderation|profile|reviews|inquiries|favorites|inquiry|anfrage|garages(?:\/[A-Za-z0-9_-]{1,128}(?:\/reviews\/new)?)?))(?:\?([^#]*))?$/,
   );
@@ -187,6 +204,50 @@ function safeReturnTo(value: unknown): string {
     return path;
   }
   return `${path}${query.size ? `?${query}` : ''}`;
+}
+
+function safeStaffReturn(path: string, rawQuery?: string): string {
+  if (!rawQuery) return path;
+  const input = new URLSearchParams(rawQuery);
+  const output = new URLSearchParams();
+  const allowed: Readonly<Record<string, RegExp>> = {
+    queue: /^(todo|waiting|done)$/,
+    page: /^(?:[1-9]|[1-9][0-9]{1,3}|10000)$/,
+    kind: /^(report|review_submission|garage_submission|data_deletion)$/,
+    priority: /^(normal|high)$/,
+    status: /^(submitted|assigned|waiting_for_subject|resolved|rejected)$/,
+    assignedUserId: /^[A-Za-z0-9_-]{1,200}$/,
+    unassigned: /^(true|false)$/,
+    escalated: /^(true|false)$/,
+    appeal: /^(true|false)$/,
+  };
+  for (const [key, value] of input) {
+    if (!allowed[key]?.test(value) || input.getAll(key).length !== 1) return '/';
+    output.set(key, value);
+  }
+  return `${path}${output.size ? `?${output}` : ''}`;
+}
+
+function safeAdministrationReturn(path: string, rawQuery?: string): string {
+  if (!rawQuery) return path;
+  const input = new URLSearchParams(rawQuery);
+  const output = new URLSearchParams();
+  const allowed: Readonly<Record<string, RegExp>> = {
+    garageId: /^[A-Za-z0-9_-]{1,200}$/,
+    requestId: /^[A-Za-z0-9_-]{1,200}$/,
+    returnRequest: /^[A-Za-z0-9_-]{1,200}$/,
+    tab: /^(review|photos|team|support)$/,
+    page: /^(?:[1-9]|[1-9][0-9]{1,3}|10000)$/,
+    status:
+      /^(submitted|pending_review|blocked|completed|blocked_by_policy|manual_content_decision_required)$/,
+  };
+  for (const [key, item] of input) {
+    if (!allowed[key]?.test(item) || input.getAll(key).length !== 1) return '/';
+    output.set(key, item);
+  }
+  if (path.endsWith('/garages') && input.has('requestId')) return '/';
+  if (path.endsWith('/privacy') && (input.has('garageId') || input.has('tab'))) return '/';
+  return `${path}${output.size ? `?${output}` : ''}`;
 }
 
 const stringListSchema = {

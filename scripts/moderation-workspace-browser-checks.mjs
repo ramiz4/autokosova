@@ -103,13 +103,9 @@ export async function checkModerationWorkspace({ browser, client, login, output 
   await confirmSubmit();
   assert.equal(await state('demo-staff-review-mismatch'), 'rejected');
   await open('review:demo-staff-review-blocked');
-  assert.equal(
-    await browser.evaluate('!!document.querySelector("option[value=publish_review]")'),
-    false,
-  );
+  assert.equal(await browser.evaluate('!!document.querySelector("[data-publish-review]")'), false);
   assert.equal(await browser.evaluate('!!document.querySelector("[data-evidence]")'), false);
-  await browser.fill('#staff-decision-action', 'request_information');
-  await browser.click('[data-submit-decision]');
+  await browser.click('[data-action="request_information"]');
   await until(
     () => browser.evaluate('!!document.querySelector("[data-staff-case] [role=status]")'),
     'request for information saved',
@@ -123,7 +119,7 @@ export async function checkModerationWorkspace({ browser, client, login, output 
     'waiting_for_subject',
   );
   await open('demo-staff-review-reported-report');
-  await browser.fill('#staff-decision-action', 'temporarily_hide');
+  await browser.click('[data-action="temporarily_hide"]');
   await browser.fill('#moderation-reason', 'private_data_exposure');
   await confirmSubmit();
   assert.equal(await state('demo-staff-review-reported'), 'temporarily_hidden');
@@ -133,8 +129,7 @@ export async function checkModerationWorkspace({ browser, client, login, output 
     0,
   );
   await open('demo-staff-review-reported-report');
-  await browser.fill('#staff-decision-action', 'restore');
-  await confirmSubmit();
+  await confirmSubmit(true, '[data-action="restore"]');
   assert.equal(await state('demo-staff-review-reported'), 'published');
   await open('demo-staff-profile-report');
   await until(
@@ -144,17 +139,16 @@ export async function checkModerationWorkspace({ browser, client, login, output 
       ),
     'actual public demo profile photo context',
   );
-  await browser.fill('#staff-decision-action', 'temporarily_hide');
+  await browser.click('[data-action="temporarily_hide"]');
   await browser.fill('#moderation-reason', 'policy_violation');
   await confirmSubmit();
   await open('demo-staff-profile-report');
-  await browser.fill('#staff-decision-action', 'restore');
-  await confirmSubmit();
+  await confirmSubmit(true, '[data-action="restore"]');
   await open('review:demo-staff-review-own-appeal');
   assert.equal(await browser.evaluate('!!document.querySelector("[data-decision-form]")'), false);
   assert.equal(await browser.evaluate('!!document.querySelector("[data-escalate]")'), true);
   await open('demo-staff-review-removed-report');
-  assert.equal(await browser.evaluate('!!document.querySelector("option[value=restore]")'), false);
+  assert.equal(await browser.evaluate('!!document.querySelector("[data-action=restore]")'), false);
   await open('review:demo-staff-review-appeal');
   for (const field of ['garageMatches', 'serviceMatches', 'visitMonthMatches'])
     await browser.click('input[name="' + field + '"]');
