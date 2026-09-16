@@ -167,8 +167,11 @@ test('workflow pins actions, resolves no secrets before build and reports skippe
   assert.ok(yaml.indexOf('npm run build') < yaml.indexOf('secrets.OP_SERVICE_ACCOUNT_TOKEN'));
   assert.match(yaml, /environment: e2e-zitadel/);
   assert.match(yaml, /GITHUB_TRIGGERING_ACTOR/);
-  assert.match(yaml, /trusted\.has\(pr\.user\?\.login\)/);
-  assert.match(yaml, /if: \$\{\{ always\(\) \}\}/);
+  assert.match(yaml, /trusted\.has\(username\)/);
+  assert.match(yaml, /context\.eventName !== 'schedule'/);
+  assert.match(yaml, /context\.ref !== 'refs\/heads\/main'/);
+  assert.match(yaml, /context\.sha !== main\.commit\.sha/);
+  assert.match(yaml, /if: \$\{\{ always\(\) && github\.event_name == 'schedule'/);
   assert.match(yaml, /test "\$TRUST" = success && test "\$INTEGRATION" = success/);
   assert.equal((yaml.match(/secrets\.OP_SERVICE_ACCOUNT_TOKEN/g) || []).length, 1);
 });

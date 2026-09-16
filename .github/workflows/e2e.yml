@@ -1,21 +1,20 @@
 name: E2E acceptance
 
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
-  workflow_dispatch:
+  schedule:
+    # Daily at 00:17 UTC (02:17 Zurich summer / 01:17 winter).
+    - cron: '17 0 * * *'
 
 permissions:
   contents: read
 
 concurrency:
-  group: e2e-acceptance-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: e2e-acceptance-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   e2e-acceptance:
+    if: ${{ github.event_name == 'schedule' && github.ref == 'refs/heads/main' && github.repository == 'ramiz4/autokosova' }}
     name: e2e-acceptance
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -36,8 +35,10 @@ jobs:
     env:
       AUTOKOSOVA_E2E_DATABASE_URL: postgresql://autokosova:autokosova@127.0.0.1:5432/autokosova
     steps:
-      # Default PR checkout is refs/pull/<n>/merge, not just the head branch.
+      # Pin the main snapshot that triggered this nightly run, not a moving branch.
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
