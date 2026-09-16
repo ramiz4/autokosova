@@ -123,6 +123,24 @@ it('dismisses the floating menu with an outside pointer action', async () => {
   expect(page.querySelector<HTMLElement>('#mobile-navigation')!.hidden).toBe(true);
 });
 
+it('closes native navigation on its second activation', async () => {
+  await TestBed.configureTestingModule({
+    imports: [SiteHeaderComponent],
+    providers: [provideRouter([])],
+  }).compileComponents();
+  const fixture = TestBed.createComponent(SiteHeaderComponent);
+  await fixture.whenStable();
+  const page = fixture.nativeElement as HTMLElement;
+  const toggle = page.querySelector<HTMLButtonElement>('.mobile-menu-toggle')!;
+  toggle.click();
+  await fixture.whenStable();
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  toggle.click();
+  await fixture.whenStable();
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  expect(page.querySelector<HTMLElement>('#mobile-navigation')!.hidden).toBe(true);
+});
+
 it('keeps the native navigation open when a delayed account close arrives', async () => {
   const account = {
     signedIn: signal(true),
