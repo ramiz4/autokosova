@@ -394,8 +394,19 @@ try {
       // Reopening must be equally stable; the first opening must not merely warm a cache.
       await openStableAccountMenu(false);
       const outside = await evaluate(`(() => {
-        const main = document.querySelector('main').getBoundingClientRect();
-        return { x: main.left + 8, y: main.bottom - 8 };
+        const panel = document.querySelector('[data-account-panel]');
+        const trigger = document.querySelector('button[brnOverlayTrigger]');
+        const main = document.querySelector('main');
+        const candidates = [
+          [main.getBoundingClientRect().left + 8, Math.min(innerHeight - 8, main.getBoundingClientRect().top + 8)],
+          [8, innerHeight - 8],
+          [innerWidth - 8, innerHeight - 8],
+        ];
+        for (const [x, y] of candidates) {
+          const target = document.elementFromPoint(x, y);
+          if (target && !panel.contains(target) && !trigger.contains(target)) return { x, y };
+        }
+        throw new Error('No visible outside account-panel target');
       })()`);
       await command('Input.dispatchMouseEvent', {
         type: 'mousePressed',
