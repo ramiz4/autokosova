@@ -74,4 +74,16 @@ test('staff-context preserves authorized case context across navigation, drafts,
   await page.locator('[data-next-case]').click();
   await expect(page).not.toHaveURL(completedUrl);
   await expect(page.locator('[data-staff-case]')).toBeVisible();
+  // Relinquishing a case leaves its now-unauthorized detail URL, retains the result, and
+  // reloads the remaining assigned work instead of showing a false empty queue.
+  await page.goto(app.origin + '/moderation/cases/review:demo-staff-review-blocked');
+  await page.locator('[data-escalate-panel] summary').click();
+  await page.locator('#staff-escalation').selectOption('requires_admin');
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.locator('[data-escalate]').click();
+  await expect(page).toHaveURL(app.origin + '/moderation');
+  await expect(page.locator('main [role="status"]')).toContainText('Administration');
+  await expect(page.locator('[data-staff-list]')).toHaveAttribute('aria-busy', 'false');
+  await expect(page.locator('[data-case-id="review:demo-staff-review-blocked"]')).toHaveCount(0);
+  await expect(page.locator('[data-open-case]').first()).toBeVisible();
 });

@@ -103,7 +103,6 @@ export class StaffDecisionFormComponent {
       this.garageMatches ||
         this.serviceMatches ||
         this.visitMonthMatches ||
-        this.action !== '' ||
         this.rejectionReason !== '' ||
         this.reason !== '',
     );

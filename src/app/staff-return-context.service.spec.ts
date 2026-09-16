@@ -18,3 +18,15 @@ it('defaults deep links to the returned case without overwriting an existing lis
   context.remember('session-a', 'review:listed');
   expect(context.take('session-a')).toEqual({ caseId: 'review:listed', scrollY: 480 });
 });
+
+it('consumes an escalation notice once and never carries it across account contexts', () => {
+  const context = new StaffReturnContextService();
+  context.rememberEscalation('moderator:1');
+  expect(context.takeEscalation('moderator:1')).toBe(true);
+  expect(context.takeEscalation('moderator:1')).toBe(false);
+  context.rememberEscalation('moderator:1');
+  expect(context.takeEscalation('moderator:2')).toBe(false);
+  context.rememberEscalation('moderator:1');
+  context.clear();
+  expect(context.takeEscalation('moderator:1')).toBe(false);
+});

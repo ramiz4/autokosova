@@ -123,10 +123,14 @@ export class StaffWorkspaceComponent {
     });
     effect(() => this.draftGuard.setDirty(this.hasUnsavedInput()));
     effect(() => {
-      if (!this.account.dataContext()) this.clearPrivate();
+      if (!this.account.dataContext()) {
+        this.returnContext.clear();
+        this.clearPrivate();
+      }
     });
     effect(() => {
       if (this.allowed()) return;
+      this.returnContext.clear();
       this.clearPrivate();
     });
     this.initialize();
@@ -251,6 +255,12 @@ export class StaffWorkspaceComponent {
       this.hasMore.set(data.hasMore);
       this.moderators.set(candidates?.moderators ?? []);
       this.restoreListContext(context);
+      if (
+        context &&
+        !this.route.snapshot.paramMap.get('caseId') &&
+        this.returnContext.takeEscalation(context)
+      )
+        this.success.set(this.label('outcome_escalate'));
       if (this.isAdmin()) {
         const overview = await fetch('/api/admin/management/overview', {
           credentials: 'same-origin',
@@ -569,8 +579,10 @@ export class StaffWorkspaceComponent {
         this.nextAvailable.set(true);
         this.success.set(this.decisionOutcome(body));
       } else {
+        const target = this.listUrl();
         this.clearPrivate();
-        this.success.set(this.label('outcome_escalate'));
+        if (context) this.returnContext.rememberEscalation(context);
+        await this.router.navigateByUrl(target);
       }
     } catch (error) {
       if (generation === this.generation && context === this.account.dataContext())

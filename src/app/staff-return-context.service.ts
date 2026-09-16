@@ -3,6 +3,18 @@ import { Injectable } from '@angular/core';
 /** Bounded navigation affordance only; no case data or drafts leave the active component. */
 @Injectable({ providedIn: 'root' })
 export class StaffReturnContextService {
+  private escalatedContext?: string;
+
+  rememberEscalation(accountContext: string): void {
+    this.escalatedContext = accountContext;
+  }
+
+  takeEscalation(accountContext: string): boolean {
+    const matches = this.escalatedContext === accountContext;
+    this.escalatedContext = undefined;
+    return matches;
+  }
+
   private value?: {
     readonly accountContext: string;
     readonly caseId: string;
@@ -28,6 +40,7 @@ export class StaffReturnContextService {
   }
 
   clear(): void {
+    this.escalatedContext = undefined;
     this.value = undefined;
   }
 }

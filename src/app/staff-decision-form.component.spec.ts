@@ -142,3 +142,17 @@ it('reports a real draft, preserves it for an ordinary same-revision read and cl
   component.discard();
   expect(dirty.at(-1)).toBe(false);
 });
+
+it('opens an action without inventing a draft, but protects its entered rejection reason', async () => {
+  const { component } = await render();
+  const dirty: boolean[] = [];
+  component.dirtyChange.subscribe((value) => dirty.push(value));
+  component.choose('reject_review');
+  expect(dirty.at(-1)).toBe(false);
+  component.rejectionReason = 'evidence_not_sufficient';
+  component.emitDirty();
+  expect(dirty.at(-1)).toBe(true);
+  component.rejectionReason = '';
+  component.emitDirty();
+  expect(dirty.at(-1)).toBe(false);
+});
