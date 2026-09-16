@@ -208,7 +208,12 @@ export class GarageProfileComponent {
   protected reviewState: 'error' | 'loading' | 'ready' = 'loading';
   protected reviewVehicleMakeId = '';
   protected readonly shareOpen = signal(false);
+  protected readonly shareReturnFocus = signal<HTMLElement | null>(null);
+  protected readonly shareRestoreFocus =
+    '[data-share-return-focus], body:not(:has([data-share-return-focus])) [data-gallery-fallback]';
   protected readonly shareState = signal<'copied' | 'error' | null>(null);
+  private shareContext = 0;
+  private sharePending = false;
   protected state: 'error' | 'loading' | 'ready' = 'loading';
   protected readonly vehicleSummary = signal('');
   protected readonly vehicleMakeOptions = Object.entries(VEHICLE_MAKE_LABELS);
@@ -232,6 +237,7 @@ export class GarageProfileComponent {
       this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
         this.closeGallery();
         this.closeContact();
+        this.closeShare();
         void this.loadProfile(params.get('garageId'));
       });
     } else if (this.request) {
@@ -241,6 +247,7 @@ export class GarageProfileComponent {
       this.reviewGeneration++;
       this.reviewController?.abort();
       this.contactReturnFocus()?.removeAttribute('data-contact-return-focus');
+      this.shareContext++;
     });
   }
 
@@ -409,31 +416,64 @@ export class GarageProfileComponent {
     return isLocalDemoGarageId(this.profile?.id);
   }
 
-  protected async shareProfile(): Promise<void> {
-    const data = { title: this.profile?.name ?? 'AutoKosova', url: this.shareUrl() };
-    if (this.browser && typeof navigator.share === 'function') {
-      try {
-        await navigator.share(data);
-        return;
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
+  protected async shareProfile(event?: Event): Promise<void> {
+    if (!this.browser || !this.profile || this.shareOpen() || this.sharePending) return;
+
+    const profileId = this.profile.id;
+    const context = this.shareContext;
+    this.sharePending = true;
+    this.shareReturnFocus()?.removeAttribute('data-share-return-focus');
+    const trigger = event?.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    trigger?.setAttribute('data-share-return-focus', '');
+    this.shareReturnFocus.set(trigger);
+
+    try {
+      const data = { title: this.profile.name, url: this.shareUrl() };
+      if (typeof navigator.share === 'function') {
+        try {
+          await navigator.share(data);
+          return;
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') return;
+        }
       }
+      if (!this.shareContextCurrent(profileId, context)) return;
+      this.shareState.set(null);
+      this.shareOpen.set(true);
+      afterNextRender(
+        () => {
+          if (this.shareContextCurrent(profileId, context) && this.shareOpen()) {
+            this.selectShareUrl();
+          }
+        },
+        { injector: this.injector },
+      );
+    } finally {
+      if (this.shareContext === context) this.sharePending = false;
     }
-    this.shareState.set(null);
-    this.shareOpen.set(true);
-    afterNextRender(() => this.shareUrlInput()?.nativeElement.select(), {
-      injector: this.injector,
-    });
   }
 
   protected async copyShareUrl(): Promise<void> {
+    const profileId = this.profile?.id;
+    const context = this.shareContext;
+    if (!profileId || !this.shareOpen()) return;
     try {
       await navigator.clipboard.writeText(this.shareUrl());
+      if (!this.shareContextCurrent(profileId, context) || !this.shareOpen()) return;
       this.shareState.set('copied');
     } catch {
+      if (!this.shareContextCurrent(profileId, context) || !this.shareOpen()) return;
       this.shareState.set('error');
-      this.shareUrlInput()?.nativeElement.select();
+      this.selectShareUrl();
     }
+  }
+
+  protected selectShareUrl(): void {
+    this.shareUrlInput()?.nativeElement.select();
+  }
+
+  protected shareStateChanged(state: 'closed' | 'open'): void {
+    this.shareOpen.set(state === 'open');
   }
 
   protected shareUrl(): string {
@@ -472,6 +512,7 @@ export class GarageProfileComponent {
     }
     this.closeGallery();
     this.closeContact();
+    this.closeShare();
     this.state = 'loading';
     try {
       const places = this.route.snapshot.queryParamMap.get('places');
@@ -553,5 +594,18 @@ export class GarageProfileComponent {
 
   private publicApiUrl(path: string, requestUrl?: string): string {
     return requestUrl ? new URL(path, requestUrl).toString() : path;
+  }
+
+  private closeShare(): void {
+    this.shareContext++;
+    this.sharePending = false;
+    this.shareOpen.set(false);
+    this.shareState.set(null);
+  }
+
+  private shareContextCurrent(profileId: string, context: number): boolean {
+    return (
+      !this.destroyRef.destroyed && this.shareContext === context && this.profile?.id === profileId
+    );
   }
 }

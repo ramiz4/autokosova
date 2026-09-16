@@ -121,6 +121,18 @@ function contactDialog(): HTMLElement {
   return dialog;
 }
 
+function shareDialog(): HTMLElement {
+  const dialog = [...document.querySelectorAll<HTMLElement>('[role="dialog"]')].find((element) =>
+    Boolean(element.querySelector('[data-share-url]')),
+  );
+  if (!dialog) throw new Error('Expected the share dialog to be open.');
+  return dialog;
+}
+
+function setNativeShare(share: ((data: ShareData) => Promise<void>) | undefined): void {
+  Object.defineProperty(navigator, 'share', { configurable: true, value: share });
+}
+
 afterEach(() => vi.unstubAllGlobals());
 
 describe('GarageProfileComponent', () => {
@@ -322,25 +334,146 @@ describe('GarageProfileComponent', () => {
     expect(document.activeElement).toBe(page.querySelector('[data-gallery-fallback]'));
   });
 
-  it('shares only the canonical public URL and provides a copy fallback', async () => {
-    const clipboard = { writeText: vi.fn().mockResolvedValue(undefined) };
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: clipboard });
+  it('keeps successful and cancelled native sharing outside the fallback', async () => {
+    const nativeShare = vi.fn().mockResolvedValue(undefined);
+    setNativeShare(nativeShare);
+    const { fixture, page } = await setup();
+    const trigger = page.querySelector<HTMLButtonElement>('[data-share-open]')!;
+
+    trigger.click();
+    await fixture.whenStable();
+
+    expect(nativeShare).toHaveBeenCalledWith({
+      title: profile.name,
+      url: expect.stringMatching(/\/garages\/fiktive-werkstatt$/),
+    });
+    expect(document.querySelector('[data-share-url]')).toBeNull();
+
+    setNativeShare(vi.fn().mockRejectedValue(new DOMException('cancelled', 'AbortError')));
+    trigger.click();
+    await fixture.whenStable();
+
+    expect(document.querySelector('[data-share-url]')).toBeNull();
+  });
+
+  it('opens one named Brain fallback for unavailable or failed native sharing', async () => {
+    setNativeShare(undefined);
     const { component, fixture, page } = await setup();
+    const trigger = page.querySelector<HTMLButtonElement>('[data-share-open]')!;
+
+    trigger.click();
+    await fixture.whenStable();
+
+    const dialog = shareDialog();
+    const panel = dialog.querySelector<HTMLElement>('section')!;
+    const input = dialog.querySelector<HTMLInputElement>('[data-share-url]')!;
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(dialog.getAttribute('aria-labelledby')).toBe('share-dialog-title');
+    expect(dialog.getAttribute('aria-describedby')).toBe('share-dialog-description');
+    expect(input.getAttribute('aria-label')).toBe('Öffentliche Profiladresse');
+    expect(document.activeElement).toBe(input);
+    expect(input.selectionStart).toBe(0);
+    expect(input.selectionEnd).toBe(input.value.length);
+    expect(panel.className).toContain('w-[calc(100vw-32px)]');
+    expect(panel.className).toContain('max-w-lg');
+    expect(panel.className).toContain('rounded-2xl');
+    expect(panel.className).toContain('bg-white');
+    expect(panel.className).toContain('p-5');
+    expect(panel.className).toContain('shadow-2xl');
+    expect(dialog.querySelector('.mt-5.flex.flex-col.gap-3.sm\\:flex-row')).toBeTruthy();
+
     await component['shareProfile']();
     await fixture.whenStable();
-    const dialog = page.querySelector<HTMLElement>('[aria-labelledby="share-dialog-title"]')!;
+    expect(
+      [...document.querySelectorAll('[role="dialog"]')].filter((element) =>
+        element.querySelector('[data-share-url]'),
+      ),
+    ).toHaveLength(1);
+
+    dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await fixture.whenStable();
+    expect(document.querySelector('[data-share-url]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+
+    const nativeShare = vi.fn().mockRejectedValue(new Error('not available'));
+    setNativeShare(nativeShare);
+    trigger.click();
+    await fixture.whenStable();
+    expect(nativeShare).toHaveBeenCalledOnce();
+    expect(shareDialog()).toBeTruthy();
+
+    document.querySelector<HTMLElement>('.cdk-overlay-backdrop')!.click();
+    await fixture.whenStable();
+    expect(document.querySelector('[data-share-url]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('shares only the canonical public URL and provides an honest copy fallback', async () => {
+    const clipboard = { writeText: vi.fn().mockResolvedValue(undefined) };
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: clipboard });
+    setNativeShare(undefined);
+    const { fixture, page } = await setup();
+    page.querySelector<HTMLButtonElement>('[data-share-open]')!.click();
+    await fixture.whenStable();
+    const dialog = shareDialog();
     const value = dialog.querySelector<HTMLInputElement>('input')!.value;
     expect(value).toMatch(/\/garages\/fiktive-werkstatt$/);
     expect(value).not.toMatch(/places|symptom|PRIVATE/);
-    await component['copyShareUrl']();
+    dialog.querySelector<HTMLButtonElement>('button[appButton]')!.click();
+    await fixture.whenStable();
     expect(clipboard.writeText).toHaveBeenCalledWith(value);
-    expect(component['shareState']()).toBe('copied');
+    expect(dialog.querySelector('[role="status"]')?.textContent).toContain('Link kopiert.');
     clipboard.writeText.mockRejectedValueOnce(new Error('denied'));
-    await component['copyShareUrl']();
-    expect(component['shareState']()).toBe('error');
+    dialog.querySelector<HTMLButtonElement>('button[appButton]')!.click();
+    await fixture.whenStable();
+    expect(dialog.querySelector('[role="status"]')?.textContent).toContain(
+      'Kopiere den markierten Link manuell.',
+    );
     const input = dialog.querySelector<HTMLInputElement>('input')!;
     expect(input.selectionStart).toBe(0);
     expect(input.selectionEnd).toBe(value.length);
+  });
+
+  it('ignores late native-share results after a profile change', async () => {
+    let resolveShare!: () => void;
+    const nativeShare = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveShare = resolve;
+        }),
+    );
+    setNativeShare(nativeShare);
+    const first = await setup();
+    const pendingRouteShare = first.component['shareProfile']();
+    await Promise.resolve();
+    expect(nativeShare).toHaveBeenCalledOnce();
+
+    first.route.paramMap.next(convertToParamMap({ garageId: 'other-garage' }));
+    resolveShare();
+    await pendingRouteShare;
+    await first.fixture.whenStable();
+    expect(document.querySelector('[data-share-url]')).toBeNull();
+    expect(first.component['shareOpen']()).toBe(false);
+  });
+
+  it('ignores late native-share results after destroy', async () => {
+    let resolveDestroyedShare!: () => void;
+    setNativeShare(
+      vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveDestroyedShare = resolve;
+          }),
+      ),
+    );
+    const second = await setup();
+    const pendingDestroyedShare = second.component['shareProfile']();
+    await Promise.resolve();
+    second.fixture.destroy();
+    resolveDestroyedShare();
+    await pendingDestroyedShare;
+    expect(second.component['shareOpen']()).toBe(false);
+    expect(document.querySelector('[data-share-url]')).toBeNull();
   });
 
   it('uses honest empty states and withholds invalid external contact links', async () => {
