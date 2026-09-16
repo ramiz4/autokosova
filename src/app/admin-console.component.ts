@@ -36,10 +36,6 @@ import {
 } from '../shared/administration';
 import type { VerificationChecklist } from '../shared/garage-onboarding';
 
-interface SupportEditor {
-  canLeave(): boolean;
-}
-
 @Component({
   selector: 'app-admin-console',
   imports: [
@@ -84,7 +80,7 @@ export class AdminConsoleComponent {
   readonly candidates = signal<readonly AdminUser[]>([]);
   readonly proof = signal('');
   readonly support = signal<AdminSupportContext | null>(null);
-  readonly editor = viewChild<SupportEditor>('supportEditor');
+  readonly editor = viewChild<GarageOnboardingComponent>('supportEditor');
   readonly reasons = ADMIN_REASON_CODES;
   readonly detailTabs = ['review', 'photos', 'team', 'support'] as const;
   readonly checks = ['phone', 'contactPerson', 'companyDocument', 'location'] as const;
