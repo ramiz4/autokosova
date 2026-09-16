@@ -1,7 +1,8 @@
-import { Component, computed, effect, inject, input, output } from '@angular/core';
+import { Component, computed, effect, inject, input, output, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LanguageService } from './language.service';
 import { ButtonDirective } from './ui/button.directive';
+import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
 import { staffLabel } from '../shared/staff-copy';
 import type { StaffCaseDetail, ModerationReasonCode } from '../shared/moderation';
 import { type StaffCaseDecision, type StaffDecisionAction } from '../shared/staff-decision';
@@ -10,10 +11,11 @@ import { StaffDraftGuardService } from './staff-draft-guard.service';
 
 @Component({
   selector: 'app-staff-decision-form',
-  imports: [FormsModule, ButtonDirective],
+  imports: [FormsModule, ButtonDirective, ConfirmationDialogComponent],
   templateUrl: './staff-decision-form.component.html',
 })
 export class StaffDecisionFormComponent {
+  readonly confirmation = viewChild.required<ConfirmationDialogComponent>('confirmation');
   readonly detail = input.required<StaffCaseDetail>();
   readonly busy = input(false);
   readonly stale = input(false);
@@ -107,7 +109,7 @@ export class StaffDecisionFormComponent {
         this.reason !== '',
     );
   }
-  submit(): void {
+  async submit(): Promise<void> {
     if (!this.valid()) return;
     const action = this.action as StaffDecisionAction;
     const revision = this.detail().revision;
@@ -137,14 +139,20 @@ export class StaffDecisionFormComponent {
               : (this.reason as ModerationReasonCode),
       };
     if (
-      ['publish_review', 'reject_review', 'reject', 'temporarily_hide', 'restore'].includes(
-        action,
-      ) &&
-      !window.confirm(
-        `${this.label(action)}?\n\n${this.detail().label}\n${this.label('effect_' + action)}`,
+      ['publish_review', 'reject_review', 'reject', 'temporarily_hide', 'restore'].includes(action)
+    ) {
+      const detail = this.detail();
+      if (
+        !(await this.confirmation().ask({
+          title: this.label(action),
+          description: `${this.label(action)}?\n\n${detail.label}\n${this.label('effect_' + action)}`,
+          confirmLabel: this.label(action),
+          cancelLabel: this.label('back'),
+        }))
       )
-    )
-      return;
+        return;
+      if (detail !== this.detail() || !this.valid()) return;
+    }
     this.submitted.emit(decision);
   }
 }

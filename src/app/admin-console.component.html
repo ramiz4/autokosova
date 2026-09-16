@@ -1,4 +1,5 @@
 <app-staff-layout [admin]="allowed()" [active]="$any(section)">
+  <app-confirmation-dialog #confirmation />
   <h1 tabindex="-1" class="text-3xl font-bold">{{ label(section) }}</h1>
   <p class="mt-2 max-w-3xl text-muted">{{ label('intro') }}</p>
   @if (account.state() === 'guest') {

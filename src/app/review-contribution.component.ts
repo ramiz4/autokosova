@@ -10,22 +10,25 @@ import {
   input,
   output,
   signal,
+  viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AccountSessionService } from './account-session.service';
 import { LanguageService } from './language.service';
 import { ButtonDirective } from './ui/button.directive';
+import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
 import { reviewLabel } from '../shared/review-copy';
 import type { PublicGarageReview, ReviewUpdateKind } from '../shared/reviews';
 import { ReviewHttpError, reviewChecked, reviewCsrf, reviewError } from './review-http';
 
 @Component({
   selector: 'app-review-contribution',
-  imports: [FormsModule, ButtonDirective],
+  imports: [FormsModule, ButtonDirective, ConfirmationDialogComponent],
   templateUrl: './review-contribution.component.html',
   host: { '(window:beforeunload)': 'beforeUnload($event)' },
 })
 export class ReviewContributionComponent {
+  readonly confirmation = viewChild.required<ConfirmationDialogComponent>('confirmation');
   readonly reviewId = input.required<string>();
   readonly garageId = input.required<string>();
   readonly mode = input<'response' | 'update'>('response');
@@ -55,6 +58,7 @@ export class ReviewContributionComponent {
   constructor() {
     effect(() => {
       this.account.dataContext();
+      this.confirmation().cancelPending();
       this.reviewId();
       this.response();
       this.generation++;
@@ -100,8 +104,20 @@ export class ReviewContributionComponent {
       event.returnValue = '';
     }
   }
-  cancel(): void {
-    if (this.busy() || (this.dirty() && !window.confirm(this.label('discard')))) return;
+  async cancel(): Promise<void> {
+    if (this.busy()) return;
+    const context = this.account.dataContext();
+    if (
+      this.dirty() &&
+      !(await this.confirmation().ask({
+        title: this.label('discard'),
+        description: this.label('discard'),
+        confirmLabel: this.label('discard'),
+        cancelLabel: this.label('cancel'),
+      }))
+    )
+      return;
+    if (context !== this.account.dataContext() || this.busy()) return;
     this.editing.set(false);
     this.text = '';
     this.dirtyChange.emit(false);
@@ -115,9 +131,19 @@ export class ReviewContributionComponent {
       !this.dirty()
     )
       return;
-    if (!window.confirm(this.label('publicConfirm'))) return;
+    const context = this.account.dataContext();
+    if (
+      !(await this.confirmation().ask({
+        title: this.label('savePublic'),
+        description: this.label('publicConfirm'),
+        confirmLabel: this.label('savePublic'),
+        cancelLabel: this.label('cancel'),
+      }))
+    )
+      return;
+    if (context !== this.account.dataContext() || this.busy() || !this.canWrite() || !this.dirty())
+      return;
     const generation = this.generation,
-      context = this.account.dataContext(),
       mode = this.mode();
     this.busy.set(true);
     this.error.set('');

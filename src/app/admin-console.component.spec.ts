@@ -156,7 +156,7 @@ it('requires deliberate operator attestation and all explicit retention values',
   expect(component.validPolicy()).toBe(false);
   component.approvalConfirmed = true;
   expect(component.validPolicy()).toBe(true);
-  vi.spyOn(window, 'confirm').mockReturnValue(false);
+  vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(false);
   await component.savePolicy();
   expect(fetch).not.toHaveBeenCalled();
 });
@@ -183,9 +183,9 @@ it('uses equality for a reverted review draft and leaves a cancelled context unt
   expect(component.dirty()).toBe(initial !== 'verified');
   component.verification.phone = initial;
   expect(component.dirty()).toBe(false);
-  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  const confirm = vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(false);
   component.reviewReason = 'missing_information';
-  expect(component.canLeave('/admin/garages?garageId=another')).toBe(false);
+  await expect(component.canLeave('/admin/garages?garageId=another')).resolves.toBe(false);
   expect(component.detail()?.id).toBe('demo-admin-test');
   expect(confirm).toHaveBeenCalledOnce();
 });
@@ -251,7 +251,7 @@ it('ignores a stale candidate search so it cannot replace the newer selection li
 
 it('submits exactly the deletion policy that the administrator confirmed', async () => {
   const { component, fetch } = await render('privacy');
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(true);
   fetch.mockClear();
   fetch
     .mockResolvedValueOnce(new Response(null, { status: 204 }))
@@ -284,7 +284,7 @@ it('refreshes privacy during its own save and does not report a stale policy as 
   component.publicReviewHandling = 'delete';
   for (const key of component.durations) component.days[key] = 30;
   component.approvalConfirmed = true;
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(true);
   fetch.mockClear();
   fetch
     .mockResolvedValueOnce(new Response(null, { status: 204 }))

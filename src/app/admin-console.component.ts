@@ -20,6 +20,7 @@ import { GarageOnboardingComponent } from './garage-onboarding.component';
 import { ButtonDirective } from './ui/button.directive';
 import { AdminAccountComboboxComponent } from './admin-account-combobox.component';
 import { AdminDraftGuardService } from './admin-draft-guard.service';
+import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
 import { adminLabel } from '../shared/admin-copy';
 import {
   ADMIN_REASON_CODES,
@@ -45,6 +46,7 @@ import type { VerificationChecklist } from '../shared/garage-onboarding';
     GarageOnboardingComponent,
     ButtonDirective,
     AdminAccountComboboxComponent,
+    ConfirmationDialogComponent,
   ],
   templateUrl: './admin-console.component.html',
   host: { '(window:beforeunload)': 'beforeUnload($event)' },
@@ -81,6 +83,7 @@ export class AdminConsoleComponent {
   readonly proof = signal('');
   readonly support = signal<AdminSupportContext | null>(null);
   readonly editor = viewChild<GarageOnboardingComponent>('supportEditor');
+  readonly confirmation = viewChild.required<ConfirmationDialogComponent>('confirmation');
   readonly reasons = ADMIN_REASON_CODES;
   readonly detailTabs = ['review', 'photos', 'team', 'support'] as const;
   readonly checks = ['phone', 'contactPerson', 'companyDocument', 'location'] as const;
@@ -143,6 +146,7 @@ export class AdminConsoleComponent {
       const context = this.account.dataContext(),
         ready = this.ready(),
         allowed = this.allowed();
+      this.confirmation().cancelPending();
       this.generation++;
       this.reads++;
       this.controller.abort();
@@ -180,16 +184,25 @@ export class AdminConsoleComponent {
   loginUrl() {
     return '/auth/login?returnTo=' + encodeURIComponent(this.safeReturnTo());
   }
-  canLeave(targetUrl?: string): boolean {
+  async canLeave(targetUrl?: string): Promise<boolean> {
     if (this.busy()) return false;
     if (targetUrl && this.isReadOnlyContextNavigation(targetUrl)) return true;
-    if (!(this.editor()?.canLeave() ?? true)) return false;
+    if (!(await (this.editor()?.canLeave() ?? true))) return false;
     if (!this.dirty() && !this.policyDirty()) return true;
-    if (!window.confirm(this.label('discard'))) return false;
+    if (!(await this.confirm(this.label('discard'), this.label('discard')))) return false;
+    if (this.busy() || (!this.dirty() && !this.policyDirty())) return false;
     // The user has explicitly discarded this snapshot. A second route guard must not ask again.
     this.garageBaseline = this.garageSnapshot();
     this.policyBaseline = this.policySnapshot();
     return true;
+  }
+  private confirm(description: string, confirmLabel: string): Promise<boolean> {
+    return this.confirmation().ask({
+      title: confirmLabel,
+      description,
+      confirmLabel,
+      cancelLabel: this.label('back'),
+    });
   }
   beforeUnload(event: BeforeUnloadEvent) {
     if (this.busy() || this.dirty() || this.policyDirty()) {
@@ -390,7 +403,7 @@ export class AdminConsoleComponent {
     navigate = true,
     ownMutation = false,
   ): Promise<void> {
-    if ((this.busy() && !ownMutation) || (navigate && !this.canLeave())) return;
+    if ((this.busy() && !ownMutation) || (navigate && !(await this.canLeave()))) return;
     if (!this.detail()) {
       this.returnGarageId = id;
       if (navigate) this.returnScrollY = this.document.defaultView?.scrollY ?? 0;
@@ -443,8 +456,8 @@ export class AdminConsoleComponent {
       if (generation === this.generation && read === this.reads) this.loading.set(false);
     }
   }
-  back() {
-    if (!this.canLeave()) return;
+  async back() {
+    if (!(await this.canLeave())) return;
     this.detail.set(null);
     this.proof.set('');
     this.support.set(null);
@@ -532,8 +545,13 @@ export class AdminConsoleComponent {
   async decide(decision: 'published' | 'rejected' | 'suspended' | 'restore') {
     const reason = decision === 'published' ? 'company_verified' : this.decisionReason;
     const detail = this.detail();
-    if (!detail || !reason || !window.confirm(this.decisionConfirmation(detail.name, decision)))
+    if (
+      !detail ||
+      !reason ||
+      !(await this.confirm(this.decisionConfirmation(detail.name, decision), this.label(decision)))
+    )
       return;
+    if (this.detail() !== detail || this.busy() || !this.allowed() || this.stale()) return;
     await this.garageMutation(
       'decision',
       reason,
@@ -615,7 +633,21 @@ export class AdminConsoleComponent {
     const detail = this.detail();
     if (!detail || !userId || !this.memberReason) return;
     const target = this.memberLabel(userId);
-    if (!window.confirm(this.membershipConfirmation(detail.name, target, role, state))) return;
+    if (
+      !(await this.confirm(
+        this.membershipConfirmation(detail.name, target, role, state),
+        this.label('save'),
+      ))
+    )
+      return;
+    if (
+      this.detail() !== detail ||
+      this.busy() ||
+      !this.allowed() ||
+      this.stale() ||
+      !this.memberReason
+    )
+      return;
     await this.garageMutation(
       'membership',
       this.memberReason,
@@ -624,17 +656,28 @@ export class AdminConsoleComponent {
     );
   }
   async transfer() {
+    const detail = this.detail();
+    if (!detail || !this.fromUserId || !this.targetUserId || this.fromUserId === this.targetUserId)
+      return;
     if (
-      !this.fromUserId ||
-      !this.targetUserId ||
-      this.fromUserId === this.targetUserId ||
-      !window.confirm(
+      !(await this.confirm(
         this.transferConfirmation(
-          this.detail()?.name ?? '',
+          detail.name,
           this.memberLabel(this.fromUserId),
           this.memberLabel(this.targetUserId),
         ),
-      )
+        this.label('transfer'),
+      ))
+    )
+      return;
+    if (
+      this.detail() !== detail ||
+      this.busy() ||
+      !this.allowed() ||
+      this.stale() ||
+      !this.fromUserId ||
+      !this.targetUserId ||
+      this.fromUserId === this.targetUserId
     )
       return;
     await this.garageMutation(
@@ -648,9 +691,22 @@ export class AdminConsoleComponent {
     );
   }
   async setPhoto(id: string, approved: boolean) {
+    const detail = this.detail();
     if (
+      !detail ||
       !this.photoReason ||
-      !window.confirm(this.photoConfirmation(this.detail()?.name ?? '', approved))
+      !(await this.confirm(
+        this.photoConfirmation(detail.name, approved),
+        this.label(approved ? 'approvePhoto' : 'rejectPhoto'),
+      ))
+    )
+      return;
+    if (
+      this.detail() !== detail ||
+      this.busy() ||
+      !this.allowed() ||
+      this.stale() ||
+      !this.photoReason
     )
       return;
     await this.garageMutation(
@@ -784,10 +840,20 @@ export class AdminConsoleComponent {
     });
   }
   async submitSupport() {
+    const detail = this.detail();
+    const reference = this.requestReference.trim();
     if (
-      !this.detail() ||
-      this.requestReference.trim().length < 5 ||
-      !window.confirm(this.label('supportHint'))
+      !detail ||
+      reference.length < 5 ||
+      !(await this.confirm(this.label('supportHint'), this.label('save')))
+    )
+      return;
+    if (
+      this.detail() !== detail ||
+      this.busy() ||
+      !this.allowed() ||
+      this.stale() ||
+      this.requestReference.trim() !== reference
     )
       return;
     await this.garageMutation(
@@ -841,7 +907,7 @@ export class AdminConsoleComponent {
     };
   }
   async openPrivacyRequest(id: string): Promise<void> {
-    if (!/^[A-Za-z0-9_-]{1,200}$/.test(id) || !this.canLeave()) return;
+    if (!/^[A-Za-z0-9_-]{1,200}$/.test(id) || !(await this.canLeave())) return;
     await this.router.navigate([], {
       relativeTo: this.route,
       queryParams: this.privacyContextParams(id),
@@ -862,7 +928,12 @@ export class AdminConsoleComponent {
     return `${this.link('privacy')}?${query}`;
   }
   async savePolicy() {
-    if (!this.validPolicy() || !window.confirm(this.label('approvalAttestation'))) return;
+    if (
+      !this.validPolicy() ||
+      !(await this.confirm(this.label('approvalAttestation'), this.label('savePolicy')))
+    )
+      return;
+    if (!this.validPolicy() || this.busy() || !this.allowed() || this.stale()) return;
     await this.mutate(
       '/api/admin/lifecycle/retention-policy',
       {
@@ -898,11 +969,13 @@ export class AdminConsoleComponent {
   async processDeletion(id: string, version?: string) {
     if (
       !version ||
-      !window.confirm(
+      !(await this.confirm(
         this.label('deletionConfirm') + '\n' + this.label('policyVersion') + ': ' + version,
-      )
+        this.label('delete'),
+      ))
     )
       return;
+    if (this.busy() || !this.allowed() || this.stale()) return;
     await this.mutate(
       '/api/admin/lifecycle/data-deletion-requests/' + encodeURIComponent(id) + '/process',
       { policyVersion: version },
@@ -916,7 +989,8 @@ export class AdminConsoleComponent {
     );
   }
   async revokeSessions(id: string) {
-    if (!window.confirm(this.label('sessionConfirm'))) return;
+    if (!(await this.confirm(this.label('sessionConfirm'), this.label('save')))) return;
+    if (this.busy() || !this.allowed() || this.stale()) return;
     await this.mutate(
       '/api/admin/management/users/' + encodeURIComponent(id) + '/revoke-sessions',
       {},

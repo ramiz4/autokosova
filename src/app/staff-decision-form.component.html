@@ -1,4 +1,5 @@
 @if (actions().length) {
+  <app-confirmation-dialog #confirmation />
   <form data-decision-form class="mt-6 border-t border-slate-200 pt-6" (ngSubmit)="submit()">
     <fieldset [disabled]="busy() || stale()" class="grid max-w-xl gap-4">
       <legend class="mb-4 text-xl font-bold">{{ label('decision') }}</legend>
