@@ -302,26 +302,26 @@ bewusste Löschgrenze: [Demo-Konten und Datenbesitz](docs/development/DEMO-ACCOU
 
 Ein Moderator ohne konfigurierte Zuordnung bekommt keine fremden Fälle. Sein regulärer erfolgreicher Login trägt die verifizierte Rolle in das eingeschränkte Zuweisungsverzeichnis ein; deshalb für die erste manuelle Demo zuerst Moderator anmelden, abmelden, danach Admin anmelden. Bei mehreren Konten werden die fremden Daten nach Logout nicht weiterverwendet. Eine geänderte bestehende Demo-Bindung wird abgewiesen statt Datensätze einem anderen Konto zuzuschreiben.
 
-| Fiktiver Szenarioschlüssel     | Rolle und Ausgang                  | Aktion / erwartetes Ergebnis                                                         |
-| ------------------------------ | ---------------------------------- | ------------------------------------------------------------------------------------ |
-| `demo-staff-review-unassigned` | Admin, unzugewiesen                | Fall ansehen, verifizierten Moderator wählen und zuweisen.                           |
-| `demo-staff-review-assigned`   | Zugeordneter Moderator, in Prüfung | Fall ansehen, privaten fiktiven Nachweis öffnen, drei Prüfpunkte bearbeiten und begründet entscheiden.                      |
-| `demo-staff-review-mismatch`   | Zugeordneter Moderator             | Lesbarer, aber absichtlich unpassender Nachweis; keine positive Prüfung vortäuschen. |
-| `demo-staff-review-blocked`    | Zugeordneter Moderator             | Gesperrter synthetischer Scanstatus; kein Dateiinhalt und keine Veröffentlichung.    |
-| `demo-staff-review-foreign`    | Andere fiktive Identität           | Für den regulären Moderator weder Liste noch Detail/Datei zugänglich.                |
-| `demo-staff-review-escalated`  | Admin                              | Gespeicherte Eskalation in der Gesamtübersicht sehen.                                |
+| Fiktiver Szenarioschlüssel     | Rolle und Ausgang                  | Aktion / erwartetes Ergebnis                                                                           |
+| ------------------------------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `demo-staff-review-unassigned` | Admin, unzugewiesen                | Fall ansehen, verifizierten Moderator wählen und zuweisen.                                             |
+| `demo-staff-review-assigned`   | Zugeordneter Moderator, in Prüfung | Fall ansehen, privaten fiktiven Nachweis öffnen, drei Prüfpunkte bearbeiten und begründet entscheiden. |
+| `demo-staff-review-mismatch`   | Zugeordneter Moderator             | Lesbarer, aber absichtlich unpassender Nachweis; keine positive Prüfung vortäuschen.                   |
+| `demo-staff-review-blocked`    | Zugeordneter Moderator             | Gesperrter synthetischer Scanstatus; kein Dateiinhalt und keine Veröffentlichung.                      |
+| `demo-staff-review-foreign`    | Andere fiktive Identität           | Für den regulären Moderator weder Liste noch Detail/Datei zugänglich.                                  |
+| `demo-staff-review-escalated`  | Admin                              | Gespeicherte Eskalation in der Gesamtübersicht sehen.                                                  |
 
 Zusätzliche, eindeutig fiktive Moderationsfälle werden nur bei der erstmaligen Anlage ergänzt:
 
-| Szenario-ID | Vorbereiteter Zustand | Erwartetes Ergebnis |
-| --- | --- | --- |
-| `demo-staff-review-waiting` | Rückfrage offen | Nachweisprüfung oder begründete Ablehnung; kein behaupteter Nachrichtenversand. |
-| `demo-staff-review-appeal` | Widerspruch gegen frühere Ablehnung einer anderen fiktiven Person | Unabhängige Prüfung und neue Entscheidung, alte Historie bleibt. |
-| `demo-staff-review-own-appeal` | Widerspruch gegen Entscheidung desselben Moderators | Keine Entscheidung; begründet an Admin übergeben. |
-| `demo-staff-review-reported-report` | Gemeldete veröffentlichte Bewertung | Inhaltsprüfung, vorläufig ausblenden und zulässig wiederherstellen. |
-| `demo-staff-review-restore-report` | Im selben Fall ausgeblendete Bewertung | Wiederherstellung nur bei weiterhin gültiger Freigabe. |
-| `demo-staff-review-removed-report` | Zurückgezogene Bewertung | Keine Wiederherstellung. |
-| `demo-staff-profile-report` | Separates fiktives veröffentlichtes Profil | Text und öffentliche Demo-Bilder prüfen; Ausblenden ist keine Unternehmensprüfung. |
+| Szenario-ID                         | Vorbereiteter Zustand                                             | Erwartetes Ergebnis                                                                |
+| ----------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `demo-staff-review-waiting`         | Rückfrage offen                                                   | Nachweisprüfung oder begründete Ablehnung; kein behaupteter Nachrichtenversand.    |
+| `demo-staff-review-appeal`          | Widerspruch gegen frühere Ablehnung einer anderen fiktiven Person | Unabhängige Prüfung und neue Entscheidung, alte Historie bleibt.                   |
+| `demo-staff-review-own-appeal`      | Widerspruch gegen Entscheidung desselben Moderators               | Keine Entscheidung; begründet an Admin übergeben.                                  |
+| `demo-staff-review-reported-report` | Gemeldete veröffentlichte Bewertung                               | Inhaltsprüfung, vorläufig ausblenden und zulässig wiederherstellen.                |
+| `demo-staff-review-restore-report`  | Im selben Fall ausgeblendete Bewertung                            | Wiederherstellung nur bei weiterhin gültiger Freigabe.                             |
+| `demo-staff-review-removed-report`  | Zurückgezogene Bewertung                                          | Keine Wiederherstellung.                                                           |
+| `demo-staff-profile-report`         | Separates fiktives veröffentlichtes Profil                        | Text und öffentliche Demo-Bilder prüfen; Ausblenden ist keine Unternehmensprüfung. |
 
 Listen sind nach Priorität und Eingangszeit geordnet und paginiert; Status, Fallart und Priorität sind filterbar. Admins können zusätzlich eskalierte Fälle filtern. Ein leeres Moderatorkonto erhält niemals die globale Liste. Nicht verfügbare Bilder oder einzeln zu entfernende Antworten ohne eigenen abgesicherten Bearbeitungsvertrag werden an Admin eskaliert, nicht durch Löschen unbeteiligter Bewertungen ersetzt.
 
@@ -332,3 +332,13 @@ Alle Nachweise sind klar markierte synthetische Textdateien, keine echten Rechnu
 Normales Neuladen, App-Neustart und erneuter Seed erhalten Zuweisungen, Entscheidungen, Eskalationen, vorhandene Kunden-/Werkstattdaten und Löschungen. Ausgangszustand nur mit einer frischen isolierten Worktree-DB oder einer ausdrücklich gewählten vorhandenen Reset-Funktion herstellen; der Start führt keinen Reset aus.
 
 Automatisierter Nachweis: `npm run test:staff:browser` nach dem Build, mit lokaler isolierter `DATABASE_URL` und Chrome/Chromium (`CHROME_BIN` bei abweichendem Installationspfad). Der Test erstellt nur seine eigene flüchtige Test-Schema-/Browserumgebung, nutzt den signierenden OIDC-Testprovider und löscht anschliessend ausschliesslich diese Testressourcen. `test/staff-foundation-postgres.test.ts` und `test/moderation-workspace-postgres.test.ts` prüfen zusätzlich einen Runtime-Benutzer ohne Tabellenbesitz/RLS-Bypass. Die Moderator-Formulare werden in DE/SQ/EN bei 390/1280 px mit tatsächlichen Browseraktionen geprüft; `staff-decision-form.component.spec.ts` ergänzt Pflichtfelder, Abbruch und Eingabeerhalt. Tatsächliche externe Testkonto-Anmeldung wird nicht aus diesen synthetischen Ergebnissen abgeleitet.
+
+## Kundenbewertung und Werkstattantwort lokal prüfen
+
+`npm run dev:demo-workflows` verwendet zusätzlich zur Staff-Basis die vorhandene freigegebene Kunden-/Werkstatt-Kontozuordnung. `demo-customer-review-pending` ist eine eigene eingereichte Bewertung; `demo-customer-review-published` eine fiktive veröffentlichte Bewertung für Kundenupdates. Der bestehende Moderatorbestand bleibt erhalten. Ein erneuter Seed setzt Entscheidungen, Änderungen oder Löschungen nicht zurück.
+
+Durchlauf: Im veröffentlichten Demo-Profil „Bewertung schreiben“ wählen, regulär anmelden, fiktiven Beispielnachweis über den sichtbaren Link speichern und als `.txt` hochladen. Ausschliesslich die bereitgestellten fiktiven Bytes werden angenommen; keine echten Rechnungen verwenden. Vier Kriterien, Leistung und Besuchsmonat erfassen und zur Prüfung einreichen. In `/reviews` erscheint zunächst der tatsächliche Prüfstatus, nicht eine angebliche Veröffentlichung.
+
+Danach Admin zuweisen → Moderator Nachweis prüfen und begründet entscheiden → Kundenstatus/öffentliche Anzeige prüfen. Ein berechtigtes Werkstattkonto kann im öffentlichen Bewertungsabschnitt antworten; der Autor kann in seinen Bewertungsdetails Reklamation/Nacharbeit ergänzen. Beide Aktionen verändern die Originalbewertung nicht. Ohne lokale Dateifreigabe sind Uploads erkennbar nicht verfügbar. Echte Ablage-, Scan- und Aufbewahrungsfreigaben werden durch diesen Demoablauf nicht ersetzt.
+
+Automatisierte Abnahme: `npm run verify` mit lokaler DB, `npm run test:staff:browser` und `npm run test:e2e`. Letzteres enthält zusätzlich die Pflichtfälle `review-workflow` und `review-boundaries` auf Desktop/Mobil. Screenshots/Testreports enthalten nur synthetische Daten; Kontozugangsdaten bleiben in der freigegebenen lokalen Verwaltung.

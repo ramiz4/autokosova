@@ -23,6 +23,8 @@ export type AppRoute =
   | 'profile'
   | 'inquiries'
   | 'favorites'
+  | 'reviews'
+  | 'review-new'
   | 'admin'
   | 'moderation'
   | PublicPageId;
@@ -122,6 +124,8 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
     profile: '/profile',
     inquiries: '/inquiries',
     favorites: '/favorites',
+    reviews: '/reviews',
+    'review-new': `/garages/${encodeURIComponent(parameter ?? '')}/reviews/new`,
     admin: '/admin',
     moderation: '/moderation',
     onboarding: '/garages/new',
@@ -137,6 +141,9 @@ function identifyRoute(path: string): { readonly parameter?: string; readonly ro
   if (normalized === '/') return { route: 'home' };
   if (normalized === '/admin') return { route: 'admin' };
   if (normalized === '/moderation') return { route: 'moderation' };
+  if (normalized === '/reviews') return { route: 'reviews' };
+  const newReview = normalized.match(/^\/garages\/([A-Za-z0-9_-]+)\/reviews\/new$/);
+  if (newReview) return { route: 'review-new', parameter: newReview[1] };
   if (normalized === '/profile') return { route: 'profile' };
   if (normalized === '/favorites') return { route: 'favorites' };
   if (normalized === '/inquiries') return { route: 'inquiries' };

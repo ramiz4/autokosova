@@ -275,7 +275,12 @@ export class AccessError extends Error {
   constructor(
     readonly statusCode: number,
     message: string,
-    readonly code?: 'csrf_invalid',
+    readonly code?:
+      | 'csrf_invalid'
+      | 'review_invalid'
+      | 'self_review'
+      | 'evidence_already_used'
+      | 'demo_document_required',
   ) {
     super(message);
   }
