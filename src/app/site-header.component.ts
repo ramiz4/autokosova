@@ -134,8 +134,9 @@ export class SiteHeaderComponent {
   }
 
   protected toggleMenu(): void {
+    const wasOpen = this.navigationOpen();
     this.closePanels();
-    this.panel.set(this.navigationOpen() ? null : 'navigation');
+    this.panel.set(wasOpen ? null : 'navigation');
   }
 
   protected closePanels(): void {
