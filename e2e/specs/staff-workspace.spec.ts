@@ -25,9 +25,14 @@ test('staff-context preserves authorized case context across navigation, drafts,
   await page.reload();
   await expect(page.locator('[data-staff-case]')).toBeVisible();
   await page.locator('input[name="garageMatches"]').check();
-  await page.locator('app-language-switcher summary').press('Enter');
-  await page.getByRole('link', { name: 'English' }).press('Enter');
-  await page.locator('[data-confirmation-cancel]').click();
+  await page.getByRole('button', { name: 'Sprache auswählen', exact: true }).press('Enter');
+  // Locale links are full document navigations, protected by the browser's beforeunload dialog.
+  const languageDialog = page.waitForEvent('dialog');
+  const languageNavigation = page.getByRole('link', { name: 'English' }).press('Enter');
+  const unload = await languageDialog;
+  expect(unload.type()).toBe('beforeunload');
+  await unload.dismiss();
+  await languageNavigation;
   await expect(page).toHaveURL(app.origin + deep);
   await expect(page.locator('input[name="garageMatches"]')).toBeChecked();
   await expect(page.locator('[data-staff-case]')).toBeVisible();
