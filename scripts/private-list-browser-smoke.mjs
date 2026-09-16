@@ -142,7 +142,7 @@ try {
   async function refresh(trigger) {
     const completed = await app.evaluate('window.__privateLists.completed');
     await app.evaluate('window.__privateLists.paused = true; window.__privateLists.revision++');
-    if (trigger === 'menu') await app.click('button[aria-controls="account-menu"]');
+    if (trigger === 'menu') await app.click('[data-account-trigger]');
     else
       await app.evaluate(
         'window.dispatchEvent(new Event("blur")); window.dispatchEvent(new Event("focus")); window.dispatchEvent(new Event("focus"));',
@@ -158,7 +158,7 @@ try {
       'revalidation response',
     );
     await delay(180);
-    if (trigger === 'menu') await app.click('button[aria-controls="account-menu"]');
+    if (trigger === 'menu') await app.click('[data-account-trigger]');
     await delay(50);
   }
   const listCounts = () =>

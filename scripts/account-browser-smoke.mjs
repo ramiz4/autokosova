@@ -228,14 +228,16 @@ try {
   await command('Emulation.setFocusEmulationEnabled', { enabled: true });
   await mkdir(screenshots, { recursive: true });
   // Hold the actual session refresh and inspect every animation frame, not just its final state.
-  async function openStableAccountMenu() {
+  async function openStableAccountMenu(keyboardOpen = true) {
     let release;
     accountResponseGate = new Promise((resolve) => (release = resolve));
     const requestsBefore = accountRequests;
     const repliesBefore = accountReplies;
     try {
-      await evaluate(`document.querySelector('[data-account-trigger]').focus()`);
-      await key('Enter', 13);
+      if (keyboardOpen) {
+        await evaluate(`document.querySelector('[data-account-trigger]').focus()`);
+        await key('Enter', 13);
+      } else await evaluate(`document.querySelector('button[brnOverlayTrigger]').click()`);
       await until(
         () =>
           evaluate(
@@ -362,7 +364,7 @@ try {
       assert.equal(await evaluate("document.querySelector('[data-account-details]').open"), true);
       await key('Enter', 13);
       assert.equal(await evaluate("document.querySelector('[data-account-details]').open"), false);
-      await openStableAccountMenu();
+      await openStableAccountMenu(false);
       await until(
         () => evaluate(`!!document.querySelector('[data-account-name]')`),
         'keyboard account menu opening',
