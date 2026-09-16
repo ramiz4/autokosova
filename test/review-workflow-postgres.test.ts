@@ -164,7 +164,35 @@ test(
       const own = await reviews.getOwnReview(author, saved.id);
       assert.equal(own.text, input.text);
       assert.equal(own.caseStatus, 'submitted');
-      assert.equal((await reviews.listOwnReviewPage(author, 1)).reviews.length, 1);
+      const secondProof = await files.createVisitEvidence(
+        author,
+        randomUUID(),
+        staffDemoFixtures['visit-valid'],
+      );
+      const second = await reviews.createReview(author, {
+        ...payload,
+        evidenceFileId: secondProof.fileId,
+        text: 'DEMO – Suchtext für den privaten Listenvertrag.',
+        visitMonth: '2026-07',
+      });
+      await seed.query(
+        "UPDATE garage_review SET submitted_at=CASE id WHEN $1 THEN '2026-01-01T10:00:00Z'::timestamptz WHEN $2 THEN '2026-02-01T10:00:00Z'::timestamptz END WHERE id=ANY($3::text[])",
+        [saved.id, second.id, [saved.id, second.id]],
+      );
+      const ownPage = await reviews.listOwnReviewPage(author, 1);
+      assert.equal(ownPage.reviews.length, 2);
+      assert.equal(ownPage.total, 2);
+      const searched = await reviews.listOwnReviewPage(author, {
+        query: 'listenvertrag',
+        publicationState: 'submitted',
+        sort: 'submitted_asc',
+      });
+      assert.deepEqual(
+        searched.reviews.map((review) => review.id),
+        [second.id],
+      );
+      assert.equal(searched.total, 1);
+      assert.equal((await reviews.listOwnReviewPage(author, 1)).reviews.length, 2);
       await assert.rejects(reviews.getOwnReview(other, saved.id));
       assert.equal((await reviews.listOwnReviewPage(admin, 1)).reviews.length, 0);
       assert.equal(JSON.stringify(own).includes('assignedModerator'), false);
@@ -286,6 +314,16 @@ test(
             .statusCode,
           400,
         );
+        const filtered = await app.inject({
+          url: '/api/me/reviews?query=listenvertrag&publicationState=submitted&sort=submitted_asc',
+          headers: headers(session),
+        });
+        assert.equal(filtered.statusCode, 200);
+        assert.deepEqual(
+          filtered.json().reviews.map((review: { id: string }) => review.id),
+          [second.id],
+        );
+        assert.equal(filtered.json().total, 1);
         assert.equal((await app.inject({ url: '/api/me/review-evidence/sample' })).statusCode, 401);
         const mine = await app.inject({
           url: '/api/me/reviews/' + saved.id,

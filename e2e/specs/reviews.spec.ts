@@ -53,7 +53,8 @@ test('review-workflow submits evidence, assigns, verifies, publishes, replies an
   ).json();
   expect(publicBefore.reviews.some((r: { id: string }) => r.id === review.id)).toBe(false);
   await page.getByRole('link', { name: 'Meine Bewertungen', exact: true }).last().click();
-  await page.locator(`[data-review-id="${review.id}"] [data-open-own-review]`).click();
+  await page.locator(`[data-review-id="${review.id}"] [data-review-menu]`).click();
+  await page.locator('[role="menu"] [data-open-own-review]').click();
   await expect(page.locator('[data-own-review-status]')).toHaveText('Eingereicht');
   await page.locator('[data-open-own-evidence]').click();
   await expect(page.locator('[data-own-evidence]')).toContainText('DEMO – kein echter Nachweis');
@@ -133,7 +134,8 @@ test('review-workflow submits evidence, assigns, verifies, publishes, replies an
   await logout(page, app.origin);
   await app.login(page, 'customer');
   await page.goto(app.origin + '/reviews');
-  await page.locator(`[data-review-id="${review.id}"] [data-open-own-review]`).click();
+  await page.locator(`[data-review-id="${review.id}"] [data-review-menu]`).click();
+  await page.locator('[role="menu"] [data-open-own-review]').click();
   await expect(page.locator('[data-own-review-status]')).toHaveText('Veröffentlicht');
   await page.locator('[data-start-contribution]').click();
   await page

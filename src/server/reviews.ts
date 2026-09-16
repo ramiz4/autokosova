@@ -2,6 +2,7 @@ import type { FileGrant, Principal } from './access';
 import type {
   OwnReview,
   OwnReviewDetail,
+  OwnReviewListFilter,
   OwnReviewPage,
   PublicGarageReview,
   PublicReviewPage,
@@ -14,7 +15,10 @@ export * from '../shared/reviews';
 
 export interface ReviewStore {
   close?(): Promise<void>;
-  listOwnReviewPage?(principal: Principal, page: number): Promise<OwnReviewPage> | OwnReviewPage;
+  listOwnReviewPage?(
+    principal: Principal,
+    filter: OwnReviewListFilter | number,
+  ): Promise<OwnReviewPage> | OwnReviewPage;
   getOwnReview?(principal: Principal, reviewId: string): Promise<OwnReviewDetail> | OwnReviewDetail;
   listPublicReviewPage?(
     garageId: string,

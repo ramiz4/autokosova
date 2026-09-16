@@ -9,6 +9,7 @@ import {
   REVIEW_LIMITS,
   REVIEW_PAGE_SIZE,
   type OwnReviewDetail,
+  type OwnReviewListFilter,
   type OwnReviewPage,
   type PublicReviewPage,
 } from '../shared/reviews';
@@ -466,7 +467,12 @@ export class PostgresReviewStore implements ReviewStore {
     }
   }
 
-  async listOwnReviewPage(principal: Principal, page: number): Promise<OwnReviewPage> {
+  async listOwnReviewPage(
+    principal: Principal,
+    filter: OwnReviewListFilter | number = {},
+  ): Promise<OwnReviewPage> {
+    const normalized = typeof filter === 'number' ? { page: filter } : filter;
+    const page = normalized.page ?? 1;
     validatePage(page);
     const client = await this.pool.connect();
     try {
@@ -478,12 +484,15 @@ export class PostgresReviewStore implements ReviewStore {
         undefined,
         REVIEW_PAGE_SIZE + 1,
         (page - 1) * REVIEW_PAGE_SIZE,
+        normalized,
       );
+      const total = await this.ownReviewCount(client, principal, normalized);
       await client.query('COMMIT');
       return {
         reviews: rows.slice(0, REVIEW_PAGE_SIZE),
         page,
         hasMore: rows.length > REVIEW_PAGE_SIZE,
+        total,
       };
     } catch (error) {
       await client.query('ROLLBACK');
@@ -514,7 +523,11 @@ export class PostgresReviewStore implements ReviewStore {
     reviewId: string | undefined,
     limit: number,
     offset: number,
+    filter: OwnReviewListFilter = {},
   ): Promise<OwnReviewDetail[]> {
+    const query = filter.query?.trim() || null;
+    const state = filter.publicationState ?? null;
+    const order = filter.sort === 'submitted_asc' ? 'ASC' : 'DESC';
     const result = await client.query<
       ReviewRow & {
         review_text: string;
@@ -534,8 +547,10 @@ export class PostgresReviewStore implements ReviewStore {
        LEFT JOIN public_garage_profile g ON g.id=r.garage_id
        LEFT JOIN moderation_case c ON c.id='review:'||r.id AND c.kind='review_submission'
        WHERE r.author_user_id=$1 AND ($2::text IS NULL OR r.id=$2)
-       ORDER BY r.submitted_at DESC,r.id LIMIT $3 OFFSET $4`,
-      [principal.userId, reviewId ?? null, limit, offset],
+         AND ($3::text IS NULL OR r.publication_state=$3)
+         AND ($4::text IS NULL OR concat_ws(' ',g.name,r.service_category_id,r.review_text) ILIKE '%' || $4 || '%')
+       ORDER BY r.submitted_at ${order},r.id ${order} LIMIT $5 OFFSET $6`,
+      [principal.userId, reviewId ?? null, state, query, limit, offset],
     );
     const updates = result.rows.length
       ? await client.query<{
@@ -566,6 +581,23 @@ export class PostgresReviewStore implements ReviewStore {
           createdAt: u.created_at.toISOString(),
         })),
     }));
+  }
+  private async ownReviewCount(
+    client: pg.PoolClient,
+    principal: Principal,
+    filter: OwnReviewListFilter,
+  ): Promise<number> {
+    const query = filter.query?.trim() || null;
+    const state = filter.publicationState ?? null;
+    const result = await client.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+       FROM garage_review r LEFT JOIN public_garage_profile g ON g.id=r.garage_id
+       WHERE r.author_user_id=$1
+         AND ($2::text IS NULL OR r.publication_state=$2)
+         AND ($3::text IS NULL OR concat_ws(' ',g.name,r.service_category_id,r.review_text) ILIKE '%' || $3 || '%')`,
+      [principal.userId, state, query],
+    );
+    return Number(result.rows[0]?.count ?? 0);
   }
   async listPublicReviewPage(
     garageId: string,

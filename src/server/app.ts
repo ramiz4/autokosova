@@ -1136,18 +1136,35 @@ export function createServer(options: ServerOptions = {}) {
         querystring: {
           type: 'object',
           additionalProperties: false,
-          properties: { page: { type: 'integer', minimum: 1, maximum: 10000 } },
+          properties: {
+            page: { type: 'integer', minimum: 1, maximum: 10000 },
+            query: { type: 'string', maxLength: 120 },
+            publicationState: {
+              type: 'string',
+              enum: [
+                'submitted',
+                'under_review',
+                'published',
+                'temporarily_hidden',
+                'rejected',
+                'withdrawn',
+              ],
+            },
+            sort: { type: 'string', enum: ['submitted_desc', 'submitted_asc'] },
+          },
         },
       },
     },
     async (request, reply) => {
       try {
         const principal = requirePrincipal(request);
-        if (!reviewStore.listOwnReviewPage)
-          return { reviews: await reviewStore.listOwnReviews(principal), page: 1, hasMore: false };
+        if (!reviewStore.listOwnReviewPage) {
+          const reviews = await reviewStore.listOwnReviews(principal);
+          return { reviews, page: 1, hasMore: false, total: reviews.length };
+        }
         const data = await reviewStore.listOwnReviewPage(
           principal,
-          (request.query as { page?: number }).page ?? 1,
+          request.query as import('../shared/reviews').OwnReviewListFilter,
         );
         requirePrincipal(request);
         return data;
