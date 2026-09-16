@@ -42,8 +42,17 @@ describe.each(['', 'sq', 'en'])('Account menu icons for /%s', (locale) => {
       const page = fixture.nativeElement as HTMLElement;
       const internal = role === 'admin' || role === 'moderator';
       expect(page.querySelector('#desktop-navigation') === null).toBe(internal);
-      expect(page.querySelector('#mobile-navigation') === null).toBe(internal);
-      expect(page.querySelector('.mobile-menu-toggle') === null).toBe(internal);
+      const navigationTrigger = page.querySelector<HTMLButtonElement>(
+        'button.mobile-menu-toggle[brnOverlayTrigger]',
+      );
+      expect(navigationTrigger === null).toBe(internal);
+      if (!internal) {
+        expect(navigationTrigger!.getAttribute('aria-expanded')).toBe('false');
+        expect(navigationTrigger!.getAttribute('aria-controls')).toMatch(/^brn-overlay-\d+$/);
+        expect(
+          document.getElementById(navigationTrigger!.getAttribute('aria-controls')!),
+        ).toBeNull();
+      }
       expect(page.querySelector('app-language-switcher lucide-icon')).not.toBeNull();
       page.querySelector<HTMLButtonElement>('button[data-account-trigger]')!.click();
       await fixture.whenStable();

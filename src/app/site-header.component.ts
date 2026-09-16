@@ -23,9 +23,11 @@ import { NgTemplateOutlet } from '@angular/common';
 import { AccountSessionService } from './account-session.service';
 
 import { NavigationStart, Router, RouterLink } from '@angular/router';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import type { ConnectedPosition } from '@angular/cdk/overlay';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { filter } from 'rxjs';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs';
+import { BrnOverlay, BrnOverlayContent, BrnOverlayTrigger } from '@spartan-ng/brain/overlay';
 import { LanguageService } from './language.service';
 import { LanguageSwitcherComponent } from './language-switcher.component';
 import { ButtonDirective } from './ui/button.directive';
@@ -34,10 +36,12 @@ import { SiteHeaderAccountPanelComponent } from './site-header-account-panel.com
 
 @Component({
   selector: 'app-site-header',
-  host: { '(document:pointerdown)': 'dismissNavigationOutside($event)' },
   imports: [
     RouterLink,
     NgTemplateOutlet,
+    BrnOverlay,
+    BrnOverlayContent,
+    BrnOverlayTrigger,
     LanguageSwitcherComponent,
     ButtonDirective,
     LucideIconComponent,
@@ -83,9 +87,14 @@ export class SiteHeaderComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly headerAnchor = viewChild.required<ElementRef<HTMLElement>>('headerAnchor');
   private readonly accountPanel = viewChild<SiteHeaderAccountPanelComponent>('accountPanel');
+  private readonly navigationOverlay = viewChild<BrnOverlay>('navigationOverlay');
   protected readonly language = inject(LanguageService);
-  private readonly element = inject(ElementRef<HTMLElement>);
-  private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
+  private readonly desktopNavigation = toSignal(
+    inject(BreakpointObserver)
+      .observe('(min-width: 1280px)')
+      .pipe(map((breakpoint) => breakpoint.matches)),
+    { initialValue: false },
+  );
   protected readonly menuIcon = computed<LucideIcon>(() =>
     this.navigationOpen() ? this.XIcon : this.MenuIcon,
   );
@@ -98,7 +107,9 @@ export class SiteHeaderComponent {
       const measure = () => {
         this.headerWidth.set(header.getBoundingClientRect().width);
         this.accountPanel()?.updatePosition();
+        this.navigationOverlay()?.updatePosition();
       };
+      this.navigationOverlay()?.setOrigin(header);
       measure();
       if (typeof ResizeObserver === 'undefined') return;
       const observer = new ResizeObserver(measure);
@@ -111,6 +122,21 @@ export class SiteHeaderComponent {
         this.accountPanel()?.closePanel();
         this.panel.set(null);
       }
+    });
+    let sessionKey: string | undefined;
+    effect(() => {
+      const identity = this.account.identity();
+      const nextSessionKey = [
+        this.account.state(),
+        this.account.signedIn(),
+        identity?.userId ?? '',
+        identity?.roles?.join(',') ?? '',
+      ].join(':');
+      if (sessionKey !== undefined && sessionKey !== nextSessionKey) this.closePanels();
+      sessionKey = nextSessionKey;
+    });
+    effect(() => {
+      if (this.desktopNavigation() && this.navigationOpen()) this.closeNavigation();
     });
     this.router.events
       .pipe(
@@ -133,10 +159,14 @@ export class SiteHeaderComponent {
     }
   }
 
-  protected toggleMenu(): void {
-    const wasOpen = this.navigationOpen();
-    this.closePanels();
-    this.panel.set(wasOpen ? null : 'navigation');
+  protected onNavigationState(state: 'open' | 'closed'): void {
+    if (state === 'open') {
+      const newlyOpened = !this.navigationOpen();
+      this.panel.set('navigation');
+      if (newlyOpened) this.accountPanel()?.closePanel();
+    } else if (this.navigationOpen()) {
+      this.panel.set(null);
+    }
   }
 
   protected closePanels(): void {
@@ -144,20 +174,8 @@ export class SiteHeaderComponent {
     this.panel.set(null);
   }
 
-  protected closeNavigation(restoreFocus = false): void {
-    const wasOpen = this.navigationOpen();
+  protected closeNavigation(): void {
     this.panel.set(null);
-    if (restoreFocus && wasOpen) this.menuButton()?.nativeElement.focus();
-  }
-
-  protected dismissNavigationOutside(event: PointerEvent): void {
-    if (
-      this.navigationOpen() &&
-      event.target instanceof Node &&
-      !this.element.nativeElement.contains(event.target)
-    ) {
-      this.closeNavigation();
-    }
   }
 
   protected loginUrl(register = false): string {

@@ -15,6 +15,22 @@ afterEach(() => vi.unstubAllGlobals());
 const accountPanel = () => document.querySelector<HTMLElement>('[data-account-panel]');
 const accountStateHandler = (component: SiteHeaderComponent) =>
   component as unknown as { onAccountState(state: 'open' | 'closed'): void };
+const navigationTrigger = (page: HTMLElement) =>
+  page.querySelector<HTMLButtonElement>('button.mobile-menu-toggle[brnOverlayTrigger]')!;
+const navigationPanel = (page: HTMLElement) => {
+  const trigger = navigationTrigger(page);
+  return document
+    .getElementById(trigger.getAttribute('aria-controls') ?? '')
+    ?.querySelector<HTMLElement>('nav');
+};
+async function openNavigation(fixture: { whenStable(): Promise<void> }, page: HTMLElement) {
+  const trigger = navigationTrigger(page);
+  if (!navigationPanel(page)) {
+    trigger.click();
+    await fixture.whenStable();
+  }
+  return navigationPanel(page)!;
+}
 
 describe('Header account actions', () => {
   it.each(['', 'sq', 'en'])(
@@ -31,7 +47,11 @@ describe('Header account actions', () => {
       await vi.waitFor(() => expect(TestBed.inject(AccountSessionService).state()).toBe('guest'));
       await fixture.whenStable();
       const page = fixture.nativeElement as HTMLElement;
-      const links = Array.from(page.querySelectorAll<HTMLAnchorElement>('a[href^="/auth/login"]'));
+      const mobile = await openNavigation(fixture, page);
+      const links = [
+        ...page.querySelectorAll<HTMLAnchorElement>('a[href^="/auth/login"]'),
+        ...mobile.querySelectorAll<HTMLAnchorElement>('a[href^="/auth/login"]'),
+      ];
       expect(links).toHaveLength(4);
       const expectedLocale = locale || 'de';
       for (const [index, link] of links.entries()) {
@@ -44,15 +64,15 @@ describe('Header account actions', () => {
       expect(page.querySelector('[aria-live]')).toBeNull();
       expect(page.querySelector('nav [aria-disabled="true"]')).toBeNull();
       expect(accountPanel()).toBeNull();
-      const menuItems = (selector: string) =>
-        Array.from(page.querySelectorAll<HTMLAnchorElement>(selector)).map((link) => ({
+      const menuItems = (container: ParentNode) =>
+        Array.from(container.querySelectorAll<HTMLAnchorElement>('a.nav-link')).map((link) => ({
           text: link.textContent!.trim(),
           href: link.getAttribute('href'),
         }));
-      const desktop = menuItems('#desktop-navigation a.nav-link');
-      const mobile = menuItems('#mobile-navigation a.nav-link');
+      const desktop = menuItems(page.querySelector('#desktop-navigation')!);
+      const mobileItems = menuItems(mobile);
       expect(desktop).toHaveLength(3);
-      expect(mobile).toEqual(desktop);
+      expect(mobileItems).toEqual(desktop);
       expect(desktop.map((item) => item.href)).toEqual([
         locale ? `/${locale}/inquiry` : '/inquiry',
         locale ? `/${locale}/garages` : '/garages',
@@ -76,10 +96,13 @@ describe('Active navigation', () => {
     fixture.componentRef.setInput('compact', true);
     fixture.componentRef.setInput('active', active);
     await fixture.whenStable();
+    const page = fixture.nativeElement as HTMLElement;
+    const mobile = await openNavigation(fixture, page);
     const links = [
-      ...(fixture.nativeElement as HTMLElement).querySelectorAll<HTMLAnchorElement>(
-        'nav a.nav-link[aria-current="page"]',
+      ...page.querySelectorAll<HTMLAnchorElement>(
+        '#desktop-navigation a.nav-link[aria-current="page"]',
       ),
+      ...mobile.querySelectorAll<HTMLAnchorElement>('a.nav-link[aria-current="page"]'),
     ];
     expect(links).toHaveLength(2);
     expect(links.every((link) => link.getAttribute('href') === href)).toBe(true);
@@ -108,19 +131,17 @@ it('dismisses the floating menu with an outside pointer action', async () => {
   const fixture = TestBed.createComponent(SiteHeaderComponent);
   await fixture.whenStable();
   const page = fixture.nativeElement as HTMLElement;
-  const toggle = page.querySelector<HTMLButtonElement>(
-    'button[aria-controls="mobile-navigation"]',
-  )!;
-  toggle.click();
+  const toggle = navigationTrigger(page);
+  await openNavigation(fixture, page);
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  toggle.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
   await fixture.whenStable();
   expect(toggle.getAttribute('aria-expanded')).toBe('true');
-  toggle.dispatchEvent(new Event('pointerdown', { bubbles: true }));
-  await fixture.whenStable();
-  expect(toggle.getAttribute('aria-expanded')).toBe('true');
-  document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+  document.body.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+  document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   await fixture.whenStable();
   expect(toggle.getAttribute('aria-expanded')).toBe('false');
-  expect(page.querySelector<HTMLElement>('#mobile-navigation')!.hidden).toBe(true);
+  expect(navigationPanel(page)).toBeUndefined();
 });
 
 it('closes native navigation on its second activation', async () => {
@@ -131,14 +152,13 @@ it('closes native navigation on its second activation', async () => {
   const fixture = TestBed.createComponent(SiteHeaderComponent);
   await fixture.whenStable();
   const page = fixture.nativeElement as HTMLElement;
-  const toggle = page.querySelector<HTMLButtonElement>('.mobile-menu-toggle')!;
-  toggle.click();
-  await fixture.whenStable();
+  const toggle = navigationTrigger(page);
+  await openNavigation(fixture, page);
   expect(toggle.getAttribute('aria-expanded')).toBe('true');
   toggle.click();
   await fixture.whenStable();
   expect(toggle.getAttribute('aria-expanded')).toBe('false');
-  expect(page.querySelector<HTMLElement>('#mobile-navigation')!.hidden).toBe(true);
+  expect(navigationPanel(page)).toBeUndefined();
 });
 
 it('keeps the native navigation open when a delayed account close arrives', async () => {
@@ -162,15 +182,13 @@ it('keeps the native navigation open when a delayed account close arrives', asyn
   await fixture.whenStable();
   expect(accountPanel()).not.toBeNull();
 
-  const navigation = page.querySelector<HTMLButtonElement>('.mobile-menu-toggle')!;
-  navigation.click();
-  await fixture.whenStable();
-  expect(page.querySelector<HTMLElement>('#mobile-navigation')!.hidden).toBe(false);
+  await openNavigation(fixture, page);
+  expect(navigationPanel(page)).toBeDefined();
   expect(accountPanel()).toBeNull();
 
   accountStateHandler(fixture.componentInstance).onAccountState('closed');
   await fixture.whenStable();
-  expect(page.querySelector<HTMLElement>('#mobile-navigation')!.hidden).toBe(false);
+  expect(navigationPanel(page)).toBeDefined();
 });
 
 it('uses the nonmodal overlay contract for the labelled account panel', async () => {
@@ -333,9 +351,12 @@ it.each(['', 'sq', 'en'])(
       await fixture.whenStable();
       await vi.waitFor(() => expect(TestBed.inject(AccountSessionService).state()).toBe('guest'));
       await fixture.whenStable();
-      const links = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLAnchorElement>(
-        'a[href^="/auth/login"]',
-      );
+      const page = fixture.nativeElement as HTMLElement;
+      const mobile = await openNavigation(fixture, page);
+      const links = [
+        ...page.querySelectorAll<HTMLAnchorElement>('a[href^="/auth/login"]'),
+        ...mobile.querySelectorAll<HTMLAnchorElement>('a[href^="/auth/login"]'),
+      ];
       expect(links).toHaveLength(4);
       for (const link of links) {
         const url = new URL(link.href);

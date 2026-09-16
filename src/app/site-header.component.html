@@ -6,7 +6,6 @@
       ? 'relative z-20 mx-auto max-w-340 px-4 py-1.5 text-ink sm:px-6'
       : 'relative z-20 mx-auto max-w-340 rounded-2xl border border-white/80 bg-white/97 px-4 py-3 text-ink shadow-xl shadow-black/10 sm:px-6 xl:rounded-[18px] xl:py-4'
   "
-  (keydown.escape)="closeNavigation(true)"
 >
   <div class="flex min-h-13 items-center justify-between gap-3">
     <a
@@ -82,42 +81,52 @@
         </div>
       }
       @if (!internalShell()) {
-        <button
-          #menuButton
-          type="button"
-          class="mobile-menu-toggle flex size-11 items-center justify-center rounded-lg hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand xl:hidden"
-          [attr.aria-label]="language.t(navigationOpen() ? 'nav.close' : 'nav.open')"
-          [attr.aria-expanded]="navigationOpen()"
-          aria-controls="mobile-navigation"
-          (click)="toggleMenu()"
+        <brn-overlay
+          #navigationOverlay="brnOverlay"
+          class="contents"
+          [attachTo]="headerAnchor"
+          [attachPositions]="headerPositions"
+          [autoFocus]="true"
+          [closeOnOutsidePointerEvents]="true"
+          [hasBackdrop]="false"
+          [role]="null"
+          scrollStrategy="reposition"
+          [state]="navigationOpen() ? 'open' : 'closed'"
+          (stateChanged)="onNavigationState($event)"
         >
-          <lucide-icon [name]="menuIcon()" class="size-6" />
-        </button>
+          <button
+            type="button"
+            brnOverlayTrigger
+            class="mobile-menu-toggle flex size-11 items-center justify-center rounded-lg hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand xl:hidden"
+            [attr.aria-label]="language.t(navigationOpen() ? 'nav.close' : 'nav.open')"
+          >
+            <lucide-icon [name]="menuIcon()" class="size-6" />
+          </button>
+          <ng-template brnOverlayContent>
+            <nav
+              [style.width.px]="headerWidth()"
+              class="site-menu-surface max-h-[calc(100dvh-10rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/80 p-4 shadow-xl shadow-slate-900/10 sm:p-5 xl:hidden"
+              [attr.aria-label]="language.t('nav.mobile')"
+            >
+              <div class="grid gap-1">
+                <ng-container [ngTemplateOutlet]="publicNavigation" />
+                @if (account.state() === 'guest') {
+                  <div class="mt-2 grid grid-cols-2 gap-3">
+                    <a appButton="outline" size="compact" [href]="loginUrl()">{{
+                      language.t('nav.login')
+                    }}</a
+                    ><a appButton size="compact" [href]="loginUrl(true)">{{
+                      language.t('nav.register')
+                    }}</a>
+                  </div>
+                }
+              </div>
+            </nav>
+          </ng-template>
+        </brn-overlay>
       }
     </div>
   </div>
-  @if (!internalShell()) {
-    <nav
-      id="mobile-navigation"
-      [hidden]="!navigationOpen()"
-      class="site-menu-surface absolute inset-x-0 top-full mt-2 max-h-[calc(100dvh-10rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/80 p-4 shadow-xl shadow-slate-900/10 sm:p-5 xl:hidden"
-      [attr.aria-label]="language.t('nav.mobile')"
-    >
-      <div class="grid gap-1">
-        <ng-container [ngTemplateOutlet]="publicNavigation" />
-        @if (account.state() === 'guest') {
-          <div class="mt-2 grid grid-cols-2 gap-3">
-            <a appButton="outline" size="compact" [href]="loginUrl()">{{
-              language.t('nav.login')
-            }}</a
-            ><a appButton size="compact" [href]="loginUrl(true)">{{
-              language.t('nav.register')
-            }}</a>
-          </div>
-        }
-      </div>
-    </nav>
-  }
 </header>
 <ng-template #publicNavigation>
   <a
