@@ -66,7 +66,7 @@ try {
       );
       await page.locator('lucide-icon svg').first().waitFor({ state: 'attached' });
       if (width < 1280) {
-        const toggle = page.locator('button[aria-controls="mobile-navigation"]');
+        const toggle = page.locator('button.mobile-menu-toggle');
         await toggle.click();
         await toggle.locator('svg.lucide-x').waitFor();
         await toggle.click();
