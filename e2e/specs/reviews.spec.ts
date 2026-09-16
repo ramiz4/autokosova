@@ -72,6 +72,9 @@ test('review-workflow submits evidence, assigns, verifies, publishes, replies an
   await expect(row()).toBeVisible();
   await expect(row()).toContainText('Bewertung prüfen und freigeben');
   await expect(row().locator('[data-open-case]')).toHaveText('Bewertung prüfen');
+  await expect(page.locator('[data-staff-list]')).toHaveAttribute('aria-busy', 'false');
+  await expect(page.locator('[data-admin-overview]')).toBeVisible();
+  await expect(page.locator('[data-admin-overview] a').first()).toBeVisible();
   await layout(page, info, 'review-approval-queue');
   await row().getByRole('button', { name: 'Bewertung prüfen', exact: true }).click();
   await page.locator('#staff-assignee').selectOption(app.subjects.moderator);

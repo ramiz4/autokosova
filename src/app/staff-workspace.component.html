@@ -8,7 +8,7 @@
       <section class="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm" data-admin-overview>
         @if (overview.pendingGarages > 0) {
           <a
-            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            class="inline-flex min-h-11 min-w-11 items-center font-semibold text-brand-dark underline-offset-4 hover:underline"
             [routerLink]="language.link('admin-section', 'garages')"
             [queryParams]="{ status: 'pending_review' }"
             >{{ overview.pendingGarages }} {{ adminLabel('pendingGarages') }}</a
@@ -16,7 +16,7 @@
         }
         @if (overview.unassignedCases > 0) {
           <a
-            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            class="inline-flex min-h-11 min-w-11 items-center font-semibold text-brand-dark underline-offset-4 hover:underline"
             [routerLink]="language.link('admin')"
             [queryParams]="{ queue: 'todo', unassigned: 'true' }"
             >{{ overview.unassignedCases }} {{ adminLabel('unassignedCases') }}</a
@@ -24,7 +24,7 @@
         }
         @if (overview.escalatedCases > 0) {
           <a
-            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            class="inline-flex min-h-11 min-w-11 items-center font-semibold text-brand-dark underline-offset-4 hover:underline"
             [routerLink]="language.link('admin')"
             [queryParams]="{ queue: 'todo', escalated: 'true' }"
             >{{ overview.escalatedCases }} {{ adminLabel('escalatedCases') }}</a
@@ -32,7 +32,7 @@
         }
         @if (overview.pendingDeletions > 0) {
           <a
-            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            class="inline-flex min-h-11 min-w-11 items-center font-semibold text-brand-dark underline-offset-4 hover:underline"
             [routerLink]="language.link('admin-section', 'privacy')"
             [queryParams]="{ status: 'submitted' }"
             >{{ overview.pendingDeletions }} {{ adminLabel('pendingDeletions') }}</a
@@ -40,7 +40,7 @@
         }
         @if (overview.blockedDeletions > 0) {
           <a
-            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            class="inline-flex min-h-11 min-w-11 items-center font-semibold text-brand-dark underline-offset-4 hover:underline"
             [routerLink]="language.link('admin-section', 'privacy')"
             [queryParams]="{ status: 'blocked' }"
             >{{ overview.blockedDeletions }} {{ adminLabel('blockedDeletions') }}</a
