@@ -168,6 +168,46 @@ it('opens the selected profile without accidentally choosing the first and keeps
   expect(page.querySelector('[data-delete-garage]')).toBeNull();
 });
 
+it('renders the existing-garage editor as one accessible form with public-only preview data', async () => {
+  const { fixture, component, page } = await setup();
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: 'owned',
+          profile: { ...profile, contactPerson: 'PRIVATE PERSON', contactPhone: '+999PRIVATE' },
+          canDelete: true,
+          publicationState: 'published',
+          verification: { location: 'not_checked' },
+        }),
+      ),
+    ),
+  );
+  await component['open']('owned');
+  fixture.detectChanges();
+
+  expect(page.querySelectorAll('form')).toHaveLength(1);
+  expect(page.querySelector('.garage-editor-form')).not.toBeNull();
+  expect(page.querySelector('.editor-section-nav')).not.toBeNull();
+  expect(page.querySelectorAll('.editor-section-nav button')).toHaveLength(3);
+  expect(page.querySelector('.editor-sidebar')).not.toBeNull();
+  expect(page.querySelector('.editor-sidebar')?.textContent).toContain(profile.name);
+  expect(page.querySelector('.editor-sidebar')?.textContent).not.toContain('PRIVATE PERSON');
+  expect(page.querySelector('.editor-sidebar')?.textContent).not.toContain('+999PRIVATE');
+  expect(page.querySelector('form [data-garage-danger]')).toBeNull();
+  expect(page.querySelector('.editor-sidebar [data-garage-danger]')).not.toBeNull();
+
+  const name = page.querySelector<HTMLInputElement>('#garage-name')!;
+  name.value = 'Öffentliche Vorschau';
+  name.dispatchEvent(new Event('input', { bubbles: true }));
+  await fixture.whenStable();
+  expect(page.querySelector('.editor-preview-unsaved')).not.toBeNull();
+  expect(page.querySelector('.editor-sidebar')?.textContent).toContain('Öffentliche Vorschau');
+  page.querySelectorAll<HTMLButtonElement>('.editor-section-nav button')[1].click();
+  expect(component['activeSection']).toBe('garage-contact');
+});
+
 it('uses the server-confirmed publication state after submission instead of guessing a transition', async () => {
   const { fixture, component, page } = await setup();
   component['garageId'] = 'owned';

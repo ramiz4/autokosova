@@ -1,6 +1,297 @@
 :host {
   display: block;
 }
+.editor-back {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0061ff;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.editor-back:focus-visible,
+.editor-section-nav button:focus-visible,
+.editor-danger-card button:focus-visible {
+  outline: 2px solid #0061ff;
+  outline-offset: 3px;
+}
+.editor-back:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.editor-intro {
+  margin: 8px 0 0;
+  color: #536d98;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.editor-illustration {
+  position: absolute;
+  top: -12px;
+  right: 0;
+  width: min(35%, 250px);
+  height: auto;
+  pointer-events: none;
+}
+.editor-section-nav {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 28px 0 18px;
+}
+.editor-section-nav button {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  min-width: 0;
+  padding: 7px 4px 11px;
+  border: 0;
+  border-bottom: 2px solid #cfe0fa;
+  background: transparent;
+  color: #536d98;
+  text-align: left;
+  cursor: pointer;
+}
+.editor-section-nav button.active {
+  border-color: #0061ff;
+  color: #07143e;
+}
+.editor-section-nav span {
+  grid-row: span 2;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid #cfe0fa;
+  border-radius: 999px;
+  color: #536d98;
+  font-size: 14px;
+  font-weight: 750;
+}
+.editor-section-nav button.active span {
+  border-color: #0061ff;
+  background: #0061ff;
+  color: #fff;
+  box-shadow: 0 5px 12px rgb(0 97 255 / 22%);
+}
+.editor-section-nav strong {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.editor-section-nav small {
+  overflow-wrap: anywhere;
+  font-size: 10px;
+  line-height: 1.35;
+}
+.garage-editor-form {
+  min-width: 0;
+  padding: 26px 28px 20px;
+  border: 1px solid #e2eaf5;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 12px 34px rgb(28 70 128 / 7%);
+}
+.garage-editor-form .onboarding-section {
+  scroll-margin-top: 88px;
+}
+.garage-editor-form .onboarding-section:focus {
+  outline: 0;
+}
+.garage-editor-form .onboarding-section:focus .step-number {
+  outline: 3px solid rgb(0 97 255 / 22%);
+  outline-offset: 3px;
+}
+.garage-editor-form .onboarding-section + .onboarding-section {
+  margin-top: 28px;
+}
+.editor-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin: 26px -28px -20px;
+  padding: 16px 28px max(16px, env(safe-area-inset-bottom));
+  background: rgb(255 255 255 / 96%);
+  box-shadow: 0 -8px 20px rgb(25 67 120 / 5%);
+  backdrop-filter: blur(8px);
+}
+.editor-sidebar {
+  min-width: 0;
+  align-self: start;
+  display: grid;
+  gap: 16px;
+}
+.editor-sidebar-card {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid #e2eaf5;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgb(28 70 128 / 6%);
+}
+.editor-card-heading {
+  display: flex;
+  gap: 10px;
+}
+.editor-card-heading > span {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  background: #edf5ff;
+  color: #0061ff;
+}
+.editor-card-heading h2,
+.editor-tip-card h2,
+.editor-danger-card h2 {
+  margin: 0;
+  color: #07143e;
+  font-size: 14px;
+  font-weight: 750;
+}
+.editor-card-heading p,
+.editor-tip-card p,
+.editor-danger-card p {
+  margin: 4px 0 0;
+  color: #536d98;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.editor-preview-unsaved {
+  margin: 12px 0 0;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: #fff8e8;
+  color: #795400;
+  font-size: 11px;
+  font-weight: 650;
+}
+.editor-preview-fallback {
+  display: grid;
+  width: 100%;
+  height: 114px;
+  place-items: center;
+  margin: 14px 0;
+  overflow: hidden;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #eaf4ff, #cce7ff);
+  color: #0061ff;
+}
+.editor-preview-card h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #07143e;
+  font-size: 17px;
+  line-height: 1.25;
+}
+.editor-preview-place {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  color: #536d98;
+  font-size: 12px;
+}
+.editor-preview-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+.editor-preview-chips span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #edf5ff;
+  color: #0950b9;
+  font-size: 11px;
+}
+.editor-private-note {
+  display: flex;
+  gap: 7px;
+  margin: 14px 0 0;
+  padding-top: 13px;
+  border-top: 1px solid #e8eef7;
+  color: #536d98;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.editor-private-note svg {
+  flex: 0 0 auto;
+  color: #0061ff;
+}
+.editor-meta-card {
+  display: grid;
+  gap: 14px;
+}
+.editor-meta-card p {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  color: #0061ff;
+}
+.editor-meta-card p > span {
+  color: #536d98;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.editor-meta-card strong {
+  display: block;
+  margin-top: 2px;
+  color: #07143e;
+  font-size: 12px;
+  font-weight: 650;
+}
+.editor-tip-card {
+  display: flex;
+  gap: 10px;
+  background: #f0f7ff;
+  border-color: #ddecff;
+  color: #0061ff;
+}
+.editor-tip-card > svg {
+  flex: 0 0 auto;
+}
+.editor-danger-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 10px;
+  border-color: #ffd7dc;
+  background: #fff8f8;
+  color: #e11d48;
+}
+.editor-danger-card h2 {
+  color: #be123c;
+}
+.editor-danger-card p {
+  color: #a94a5d;
+}
+.editor-danger-card button {
+  grid-column: 1 / -1;
+  min-height: 42px;
+  margin-top: 4px;
+  border: 1px solid #fb7185;
+  border-radius: 8px;
+  background: #fff;
+  color: #be123c;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.editor-danger-card button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
 .onboarding-section {
   min-width: 0;
   padding: 0;
@@ -75,6 +366,29 @@
   display: none;
 }
 @media (max-width: 639px) {
+  .editor-illustration {
+    display: none;
+  }
+  .editor-section-nav {
+    grid-template-columns: 1fr;
+    gap: 3px;
+    margin-top: 20px;
+  }
+  .editor-section-nav button {
+    grid-template-columns: 32px minmax(0, 1fr);
+    padding: 8px 0;
+  }
+  .editor-section-nav small {
+    display: none;
+  }
+  .garage-editor-form {
+    padding: 20px 16px 16px;
+    border-radius: 13px;
+  }
+  .editor-actions {
+    margin: 22px -16px -16px;
+    padding: 13px 16px max(13px, env(safe-area-inset-bottom));
+  }
   .onboarding-section + .onboarding-section {
     padding-top: 24px;
   }
