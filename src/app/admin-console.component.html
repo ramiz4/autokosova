@@ -358,11 +358,13 @@
               <div class="grid gap-2 font-semibold">
                 <span>{{ label('memberTarget') }}</span>
                 <app-admin-account-combobox
-                  id="target-user"
+                  inputId="target-user"
+                  [disabled]="busy() || stale()"
+                  [emptyLabel]="label('empty')"
                   [label]="label('memberTarget')"
                   [items]="candidates()"
                   [query]="candidateQuery"
-                  (queryChange)="candidateQuery = $event; findCandidates()"
+                  (queryChange)="changeCandidateQuery($event)"
                   (selected)="selectCandidate($event)"
                 />
                 @if (targetUserId) {

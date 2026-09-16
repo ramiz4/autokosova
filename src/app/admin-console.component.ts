@@ -469,6 +469,12 @@ export class AdminConsoleComponent {
       approved,
     });
   }
+  changeCandidateQuery(value: string): void {
+    this.candidateQuery = value;
+    this.targetUserId = '';
+    this.candidates.set([]);
+    void this.findCandidates();
+  }
   selectCandidate(account: AdminUser) {
     this.targetUserId = account.id;
     this.candidateQuery = account.label;
