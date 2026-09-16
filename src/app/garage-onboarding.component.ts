@@ -147,6 +147,7 @@ export class GarageOnboardingComponent {
   protected ownedLoading = false;
   protected ownedLoaded = false;
   protected editing = false;
+  protected activeSection = 'garage-basics';
   private readonly workspaceTitle = viewChild<ElementRef<HTMLElement>>('workspaceTitle');
   protected get managing(): boolean {
     return (
@@ -215,6 +216,32 @@ export class GarageOnboardingComponent {
   }
   protected get unchanged(): boolean {
     return JSON.stringify(this.form) === this.savedSnapshot;
+  }
+  protected get previewUnsaved(): boolean {
+    return !!this.garageId && !this.unchanged;
+  }
+  protected get previewServices(): string[] {
+    return this.form.serviceCategoryIds.map((id) => this.language.serviceLabel(id));
+  }
+  protected get previewMakes(): string[] {
+    return this.form.vehicleMakeIds.map((id) => VEHICLE_MAKE_LABELS[id] ?? id);
+  }
+  protected get previewLanguages(): string[] {
+    return this.form.languages.map((id) => garageOptionLabels[this.language.language][id] ?? id);
+  }
+  protected get previewPlace(): string {
+    return this.places.find((place) => place.id === this.form.placeId)?.label ?? '';
+  }
+  protected navigateToSection(id: string): void {
+    this.activeSection = id;
+    if (!this.browser) return;
+    const target = document.getElementById(id);
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      block: 'start',
+    });
   }
   protected get saveDisabled(): boolean {
     return (
