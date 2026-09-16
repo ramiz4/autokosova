@@ -20,7 +20,8 @@ test(
     await client.connect();
     try {
       const garageRows = await client.query<{ count: string }>(
-        "SELECT count(*)::text AS count FROM public_garage_profile WHERE id LIKE 'demo-%'",
+        'SELECT count(*)::text AS count FROM public_garage_profile WHERE id = ANY($1::text[])',
+        [demoGarages.map((garage) => garage.id)],
       );
       const reviewRows = await client.query<{ count: string }>(
         `SELECT count(*)::text AS count
@@ -47,6 +48,16 @@ test(
       );
 
       assert.equal(garageRows.rows[0].count, String(demoGarages.length));
+      // The administration workflow intentionally adds one published synthetic membership garage;
+      // submitted/incomplete/suspended admin scenarios must remain absent from the public view.
+      const adminPublic = await client.query<{ id: string }>(
+        "SELECT id FROM public_garage_profile WHERE id LIKE 'demo-admin-%' ORDER BY id",
+      );
+      assert.deepEqual(
+        adminPublic.rows.map((g) => g.id),
+        ['demo-admin-garage-members'],
+      );
+
       assert.equal(reviewRows.rows[0].count, String(demoWorkflowReviews.length));
       assert.equal(requestRows.rows[0].count, String(demoWorkflowRequests.length));
       assert.equal(publicReviews.length, 2);

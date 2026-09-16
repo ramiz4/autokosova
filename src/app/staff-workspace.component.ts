@@ -106,6 +106,7 @@ export class StaffWorkspaceComponent {
       this.loading.set(false);
       this.busy.set(false);
       this.moderatorId = '';
+      this.filterAssignee = '';
       if (context && ready && allowed) untracked(() => void this.load());
     });
     effect(() =>
@@ -188,7 +189,7 @@ export class StaffWorkspaceComponent {
     }
   }
   async open(id: string): Promise<void> {
-    if (this.busy()) return;
+    if (this.busy() || this.loading()) return;
     const generation = this.generation,
       context = this.account.dataContext(),
       version = ++this.detailVersion;

@@ -370,7 +370,7 @@
           {{ isAdmin() ? copy().empty : label('emptyMine') }}
         </p>
       }
-      <div data-staff-list class="grid gap-4">
+      <div data-staff-list [attr.aria-busy]="loading()" class="grid gap-4">
         @for (item of cases(); track item.id) {
           <article
             data-staff-row
