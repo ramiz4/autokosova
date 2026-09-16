@@ -533,6 +533,7 @@ export class SearchHandoffComponent {
         this.browser &&
         wasWide &&
         !isWide &&
+        !this.filtersOpen() &&
         this.filterContent()?.nativeElement.contains(this.document.activeElement)
       )
         this.filterToggle()?.nativeElement.focus();

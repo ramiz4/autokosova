@@ -16,33 +16,36 @@ test('search-filter-disclosure keeps Brain state, focus and filter URLs responsi
   const vehicleMake = form.locator('select[name="vehicleMake"]');
   await expect(trigger).toHaveAttribute('aria-expanded', 'false');
   await expect(form).toHaveAttribute('hidden', '');
-  await expect(form).toHaveAttribute('inert', '');
+  await expect(form).toHaveJSProperty('inert', true);
   expect(await form.ariaSnapshot()).not.toContain('combobox');
 
   await trigger.focus();
   await page.keyboard.press('Enter');
   await expect(trigger).toHaveAttribute('aria-expanded', 'true');
   await expect(form).toBeVisible();
-  await expect(form).not.toHaveAttribute('inert', '');
+  await expect(form).toHaveJSProperty('inert', false);
   await expect(vehicleMake).toHaveValue('skoda');
   await page.keyboard.press('Space');
   await expect(trigger).toHaveAttribute('aria-expanded', 'false');
   await expect(form).toHaveAttribute('hidden', '');
+  await expect(form).toHaveJSProperty('inert', true);
   await page.keyboard.press('Tab');
   await expect(vehicleMake).not.toBeFocused();
 
   await page.setViewportSize({ width: 1280, height: 900 });
   await expect(trigger).toHaveAttribute('aria-expanded', 'true');
   await expect(form).toBeVisible();
-  await expect(form).not.toHaveAttribute('inert', '');
+  await expect(form).toHaveJSProperty('inert', false);
   await vehicleMake.focus();
   await expect(vehicleMake).toBeFocused();
   await page.setViewportSize({ width: 1279, height: 900 });
   await expect(trigger).toBeFocused();
   await expect(form).toHaveAttribute('hidden', '');
+  await expect(form).toHaveJSProperty('inert', true);
 
   await page.keyboard.press('Enter');
   await expect(form).toBeVisible();
+  await expect(form).toHaveJSProperty('inert', false);
   await vehicleMake.selectOption('audi');
   await form.locator('button[type="submit"]').click();
   await expect(page).toHaveURL(
@@ -51,8 +54,13 @@ test('search-filter-disclosure keeps Brain state, focus and filter URLs responsi
 
   await page.setViewportSize({ width: 1280, height: 900 });
   await expect(form).toBeVisible();
+  await expect(form).toHaveJSProperty('inert', false);
+  await vehicleMake.focus();
+  await expect(vehicleMake).toBeFocused();
   await page.setViewportSize({ width: 1279, height: 900 });
   await expect(form).toBeVisible();
+  await expect(form).toHaveJSProperty('inert', false);
+  await expect(vehicleMake).toBeFocused();
   await form.locator('button[type="button"]').last().click();
   await expect(page).toHaveURL(/\?all=true$/);
   await expect(vehicleMake).toHaveValue('');
