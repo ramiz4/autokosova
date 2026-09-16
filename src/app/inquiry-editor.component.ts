@@ -222,6 +222,10 @@ export class InquiryEditorComponent implements OnInit {
     if (await this.saved.mutate(this.request(), { kind: 'update', input })) {
       this.form.markAsPristine();
       this.finishClose();
-    }
+    } else this.restoreFocusAfterFailedWrite();
+  }
+  private restoreFocusAfterFailedWrite(): void {
+    if (this.document.activeElement !== this.document.body) return;
+    this.document.querySelector<HTMLElement>('[data-inquiry-editor] #edit-symptom')?.focus();
   }
 }
