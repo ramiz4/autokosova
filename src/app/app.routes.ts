@@ -7,8 +7,11 @@ import { RepairRequestComponent } from './repair-request.component';
 import { SearchHandoffComponent } from './search-handoff.component';
 import { GarageProfileComponent } from './garage-profile.component';
 import { StaffDraftGuardService } from './staff-draft-guard.service';
+import { AdminDraftGuardService } from './admin-draft-guard.service';
 
 const staffDraftNavigationGuard = () => inject(StaffDraftGuardService).confirmDiscard();
+const adminDraftNavigationGuard = (_: unknown, state: { url: string }) =>
+  inject(AdminDraftGuardService).confirmContextChange(state.url);
 
 export const routes: Routes = [
   ...localizedRoutes(''),
@@ -44,6 +47,8 @@ function localizedRoutes(prefix: string): Routes {
       path: `${childPrefix}admin/${section}`,
       pathMatch: 'full' as const,
       data: { adminSection: section, ownsFooter: true },
+      runGuardsAndResolvers: 'always' as const,
+      canActivate: [adminDraftNavigationGuard],
       canDeactivate: [
         (component: import('./admin-console.component').AdminConsoleComponent | null) =>
           component?.canLeave() ?? true,

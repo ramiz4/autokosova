@@ -117,6 +117,11 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Reason for partial review',
     'Arsyeja për kontroll të pjesshëm',
   ],
+  decisionReason: [
+    'Grund für diese Entscheidung',
+    'Reason for this decision',
+    'Arsyeja për këtë vendim',
+  ],
   photoReason: [
     'Grund für Fotoentscheidung',
     'Reason for photo decision',
@@ -131,6 +136,11 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Die vier Prüfpunkte müssen bewusst bestätigt sein.',
     'All four checks must be deliberately confirmed.',
     'Të katër kontrollet duhet të konfirmohen me vetëdije.',
+  ],
+  'publishBlocker.checks': [
+    'Die vier Prüfpunkte müssen für diese Entscheidung bestätigt sein.',
+    'All four checks must be verified for this decision.',
+    'Të katër kontrollet duhet të verifikohen për këtë vendim.',
   ],
   'publishBlocker.state': [
     'Diese Werkstatt ist nicht zur Veröffentlichung eingereicht.',
@@ -168,6 +178,11 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Anëtarësimi juaj aktiv kërkon shqyrtim të pavarur.',
   ],
   saveChecks: ['Prüfstand speichern', 'Save verification', 'Ruaj verifikimin'],
+  saveChecksOptional: [
+    'Teilprüfung speichern (optional, noch nicht veröffentlichen)',
+    'Save partial review (optional, do not publish yet)',
+    'Ruaj shqyrtimin e pjesshëm (opsionale, mos publiko ende)',
+  ],
   company_verified: ['Unternehmensprüfung', 'Company check', 'Kontroll biznesi'],
   missing_information: ['Fehlende Angaben', 'Missing information', 'Informacion i munguar'],
   ownership_change: [
@@ -350,6 +365,50 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Voraussetzungen erneut prüfen',
     'Recheck prerequisites',
     'Rikontrollo kushtet',
+  ],
+  refreshDone: [
+    'Voraussetzungen wurden mit dem aktuellen Serverstand geprüft.',
+    'Prerequisites were checked against the current server state.',
+    'Kushtet u kontrolluan me gjendjen aktuale të serverit.',
+  ],
+  requestUnavailable: [
+    'Dieser Löschauftrag ist nicht mehr verfügbar. Zur Liste zurückkehren und aktuellen Stand prüfen.',
+    'This deletion request is no longer available. Return to the list and check the current state.',
+    'Kjo kërkesë për fshirje nuk është më e disponueshme. Kthehuni te lista dhe kontrolloni gjendjen aktuale.',
+  ],
+  verificationSaved: [
+    'Prüfung gespeichert; noch nicht veröffentlicht.',
+    'Verification saved; not published yet.',
+    'Verifikimi u ruajt; ende nuk është publikuar.',
+  ],
+  garagePublished: ['Werkstatt veröffentlicht.', 'Garage published.', 'Servisi u publikua.'],
+  garageRejected: ['Aufnahme abgelehnt.', 'Registration rejected.', 'Regjistrimi u refuzua.'],
+  garageSuspended: [
+    'Werkstatt administrativ gesperrt.',
+    'Garage suspended administratively.',
+    'Servisi u pezullua administrativisht.',
+  ],
+  garageRestored: [
+    'Administrative Sperre aufgehoben.',
+    'Administrative suspension lifted.',
+    'Pezullimi administrativ u hoq.',
+  ],
+  photoApproved: ['Foto freigegeben.', 'Photo approved.', 'Fotoja u miratua.'],
+  photoRejected: ['Foto abgelehnt.', 'Photo rejected.', 'Fotoja u refuzua.'],
+  membershipSaved: [
+    'Teamzuordnung gespeichert.',
+    'Team membership saved.',
+    'Anëtarësimi i ekipit u ruajt.',
+  ],
+  ownershipTransferred: [
+    'Eigentum übertragen.',
+    'Ownership transferred.',
+    'Pronësia u transferua.',
+  ],
+  deletionProcessed: [
+    'Löschauftrag gemäss der angezeigten Policy-Version ausgeführt; physische Dateilöschungen können ausstehen.',
+    'Deletion request executed under the shown policy version; physical file deletion may still be pending.',
+    'Kërkesa për fshirje u zbatua sipas versionit të shfaqur; fshirjet fizike mund të jenë ende në pritje.',
   ],
   processDeletion: [
     'Freigegebenen Löschauftrag ausführen',

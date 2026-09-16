@@ -25,6 +25,7 @@ export interface AdminGarageDecision extends AdminRevision {
 }
 export type AdminGaragePublishBlocker =
   | 'state'
+  | 'checks'
   | 'moderation_hidden'
   | 'profile'
   | 'point'
@@ -34,6 +35,9 @@ export type AdminGaragePublishBlocker =
 export interface AdminGaragePrerequisites {
   readonly publishable: boolean;
   readonly blockers: readonly AdminGaragePublishBlocker[];
+  /** Restore uses the same evidence checks but a different allowed state. */
+  readonly restorable: boolean;
+  readonly restoreBlockers: readonly AdminGaragePublishBlocker[];
 }
 export interface AdminGarageSummary {
   readonly id: string;

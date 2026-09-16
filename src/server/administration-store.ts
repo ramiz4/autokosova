@@ -193,14 +193,30 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
       const ownInterest = members.some(
         (member) => member.userId === principal.userId && member.state === 'active',
       );
-      const blockers: AdminGaragePublishBlocker[] = [];
-      if (base.publicationState !== 'pending_review') blockers.push('state');
-      if (row.moderation_hidden_case_id) blockers.push('moderation_hidden');
-      if (!validGarageProfile(base.profile, base.profile)) blockers.push('profile');
-      if (!base.profile.locationPoint) blockers.push('point');
-      if (!availableProof) blockers.push('company_document');
-      if (!activeOwner.rowCount) blockers.push('owner_account');
-      if (ownInterest) blockers.push('interest');
+      const evidenceBlockers: AdminGaragePublishBlocker[] = [];
+      if (!validGarageProfile(base.profile, base.profile)) evidenceBlockers.push('profile');
+      if (!base.profile.locationPoint) evidenceBlockers.push('point');
+      if (!availableProof) evidenceBlockers.push('company_document');
+      if (!activeOwner.rowCount) evidenceBlockers.push('owner_account');
+      if (ownInterest) evidenceBlockers.push('interest');
+      if (Object.values(base.verification).some((state) => state !== 'verified'))
+        evidenceBlockers.push('checks');
+      const blockers: AdminGaragePublishBlocker[] = [
+        ...(base.publicationState === 'pending_review' ? [] : ['state' as const]),
+        ...(row.moderation_hidden_case_id ? ['moderation_hidden' as const] : []),
+        ...evidenceBlockers,
+      ];
+      const restoreBlockers: AdminGaragePublishBlocker[] = [
+        ...(!(
+          base.publicationState === 'suspended' &&
+          row.admin_suspended &&
+          !row.moderation_hidden_case_id
+        )
+          ? ['state' as const]
+          : []),
+        ...(row.moderation_hidden_case_id ? ['moderation_hidden' as const] : []),
+        ...evidenceBlockers,
+      ];
       return {
         id: base.id,
         name: base.profile.name,
@@ -223,7 +239,12 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
             ? { previewPath: localDemoPhotoPath('demo-admin-fixture', p.fixture_key)! }
             : {}),
         })),
-        prerequisites: { publishable: blockers.length === 0, blockers },
+        prerequisites: {
+          publishable: blockers.length === 0,
+          blockers,
+          restorable: restoreBlockers.length === 0,
+          restoreBlockers,
+        },
       };
     });
   }
@@ -525,7 +546,8 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
       "SELECT 1 FROM membership WHERE garage_id=$1 AND user_id=$2 AND state='active' FOR SHARE",
       [id, principal.userId],
     );
-    if (own.rowCount) throw new AccessError(403, 'A member cannot verify their own garage');
+    if (own.rowCount)
+      throw new AccessError(403, 'A member cannot verify their own garage', 'admin_blocked');
   }
   private async membershipAudit(
     client: pg.PoolClient,

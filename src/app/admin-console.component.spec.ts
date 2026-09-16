@@ -48,7 +48,12 @@ const garage: AdminGarageDetail = {
     location: 'not_checked',
   },
   adminSuspended: false,
-  prerequisites: { publishable: false, blockers: ['company_document', 'owner_account', 'point'] },
+  prerequisites: {
+    publishable: false,
+    blockers: ['company_document', 'owner_account', 'point'],
+    restorable: false,
+    restoreBlockers: ['state', 'company_document', 'owner_account', 'point'],
+  },
   members: [],
   documents: [],
   photos: [],
@@ -158,23 +163,53 @@ it('requires deliberate operator attestation and all explicit retention values',
 it('keeps the loaded revision and unsaved checks on a conflict, with no success claim', async () => {
   const { component, fetch } = await render('garages');
   component.detail.set(garage);
-  component.reason = 'company_verified';
+  component.reviewReason = 'company_verified';
   component.verification.phone = 'verified';
-  component.dirty = true;
   fetch.mockClear();
   fetch.mockResolvedValue(new Response('{}', { status: 409 }));
   await component.saveVerification();
   expect(component.detail()?.revision).toBe(7);
   expect(component.verification.phone).toBe('verified');
-  expect(component.dirty).toBe(true);
+  expect(component.dirty()).toBe(true);
   expect(component.stale()).toBe(true);
   expect(component.success()).toBe('');
   expect(component.error()).not.toBe('');
 });
+it('uses equality for a reverted review draft and leaves a cancelled context untouched', async () => {
+  const { component } = await render('garages');
+  await component.openGarage('demo-admin-test', 'review', false);
+  const initial = component.verification.phone;
+  component.verification.phone = 'verified';
+  expect(component.dirty()).toBe(initial !== 'verified');
+  component.verification.phone = initial;
+  expect(component.dirty()).toBe(false);
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  component.reviewReason = 'missing_information';
+  expect(component.canLeave('/admin/garages?garageId=another')).toBe(false);
+  expect(component.detail()?.id).toBe('demo-admin-test');
+  expect(confirm).toHaveBeenCalledOnce();
+});
+it('keeps the mutation busy until its authoritative garage read completes', async () => {
+  const { component, fetch } = await render('garages');
+  await component.openGarage('demo-admin-test', 'review', false);
+  component.reviewReason = 'company_verified';
+  let finishRead!: (value: Response) => void;
+  fetch.mockClear();
+  fetch
+    .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    .mockImplementationOnce(() => new Promise<Response>((resolve) => (finishRead = resolve)));
+  const saving = component.saveVerification();
+  await vi.waitFor(() => expect(component.busy()).toBe(true));
+  await component.saveVerification();
+  expect(fetch.mock.calls.filter(([url]) => String(url).endsWith('/verification'))).toHaveLength(1);
+  finishRead(new Response(JSON.stringify(garage)));
+  await saving;
+  expect(component.busy()).toBe(false);
+});
 it('prevents duplicate writes and discards a late result after logout', async () => {
   const { component, account, fetch, fixture } = await render('garages');
   component.detail.set(garage);
-  component.reason = 'company_verified';
+  component.reviewReason = 'company_verified';
   component.latitude = 42.67;
   component.longitude = 21.16;
   component.query = 'private fixture query';
@@ -196,6 +231,7 @@ it('prevents duplicate writes and discards a late result after logout', async ()
 });
 it('ignores a stale candidate search so it cannot replace the newer selection list', async () => {
   const { component, fetch } = await render('users');
+  component.detailTab = 'team';
   let first!: (r: Response) => void;
   fetch
     .mockImplementationOnce(() => new Promise<Response>((r) => (first = r)))

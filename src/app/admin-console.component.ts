@@ -11,7 +11,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AccountSessionService } from './account-session.service';
 import { LanguageService } from './language.service';
@@ -19,6 +19,7 @@ import { StaffLayoutComponent } from './staff-layout.component';
 import { GarageOnboardingComponent } from './garage-onboarding.component';
 import { ButtonDirective } from './ui/button.directive';
 import { AdminAccountComboboxComponent } from './admin-account-combobox.component';
+import { AdminDraftGuardService } from './admin-draft-guard.service';
 import { adminLabel } from '../shared/admin-copy';
 import {
   ADMIN_REASON_CODES,
@@ -53,6 +54,7 @@ export class AdminConsoleComponent {
   readonly language = inject(LanguageService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly draftGuard = inject(AdminDraftGuardService);
   readonly section = this.route.snapshot.data['adminSection'] as string;
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
@@ -96,17 +98,10 @@ export class AdminConsoleComponent {
   requestReference = '';
   memberRole: 'owner' | 'editor' = 'editor';
   reviewReason: AdminReasonCode | '' = '';
+  decisionReason: AdminReasonCode | '' = '';
   photoReason: AdminReasonCode | '' = '';
   memberReason: AdminReasonCode | '' = '';
-  supportReason: AdminReasonCode | '' = '';
   detailTab: (typeof this.detailTabs)[number] = 'review';
-  /** Temporary test-facing alias; UI actions use their own local reason fields. */
-  get reason(): AdminReasonCode | '' {
-    return this.reviewReason;
-  }
-  set reason(value: AdminReasonCode | '') {
-    this.reviewReason = value;
-  }
   verification: { -readonly [K in keyof VerificationChecklist]: VerificationChecklist[K] } = {
     phone: 'not_checked',
     contactPerson: 'not_checked',
@@ -126,25 +121,21 @@ export class AdminConsoleComponent {
     reportRetentionDays: null,
     auditLogRetentionDays: null,
   };
-  dirty = false;
   editingPosition = false;
   private generation = 0;
   private reads = 0;
   private controller = new AbortController();
   private policyBaseline = '';
+  private garageBaseline = '';
+  private routeContext = '';
+  private currentParams: ParamMap | null = null;
+  private disconnectDraftGuard: (() => void) | null = null;
   constructor() {
     afterNextRender(() => {
       this.ready.set(true);
       void this.account.refresh();
-      const garageId = this.route.snapshot.queryParamMap?.get('garageId');
-      const tab = this.route.snapshot.queryParamMap?.get('tab');
-      if (
-        this.section === 'garages' &&
-        garageId &&
-        /^[A-Za-z0-9_-]{1,200}$/.test(garageId) &&
-        this.detailTabs.includes(tab as (typeof this.detailTabs)[number])
-      )
-        this.detailTab = tab as (typeof this.detailTabs)[number];
+      this.disconnectDraftGuard = this.draftGuard.connect((target) => this.canLeave(target));
+      this.route.queryParamMap?.subscribe((params) => this.applyRouteContext(params));
     });
     effect(() => {
       const context = this.account.dataContext(),
@@ -158,16 +149,14 @@ export class AdminConsoleComponent {
       this.restoreSafeFilter();
       if (context && ready && allowed)
         untracked(() => {
-          const garageId = this.route.snapshot.queryParamMap?.get('garageId');
-          if (this.section === 'garages' && garageId && /^[A-Za-z0-9_-]{1,200}$/.test(garageId))
-            void this.openGarage(garageId, this.detailTab);
-          else void this.load();
+          void this.applyRouteContext(this.route.snapshot.queryParamMap);
         });
     });
     effect(() => this.language.setPageText(this.label(this.section), this.label('intro'), true));
     inject(DestroyRef).onDestroy(() => {
       this.generation++;
       this.controller.abort();
+      this.disconnectDraftGuard?.();
       this.clear();
     });
   }
@@ -185,20 +174,20 @@ export class AdminConsoleComponent {
           ? { status: this.status }
           : {};
     void this.router.navigate([], { relativeTo: this.route, queryParams });
-    void this.load(1);
   }
   loginUrl() {
-    return '/auth/login?returnTo=' + encodeURIComponent(this.link(this.section));
+    return '/auth/login?returnTo=' + encodeURIComponent(this.safeReturnTo());
   }
-  canLeave(): boolean {
+  canLeave(targetUrl?: string): boolean {
+    if (targetUrl && this.isReadOnlyContextNavigation(targetUrl)) return true;
     return (
       !this.busy() &&
       (this.editor()?.canLeave() ?? true) &&
-      ((!this.dirty && !this.policyDirty()) || window.confirm(this.label('discard')))
+      ((!this.dirty() && !this.policyDirty()) || window.confirm(this.label('discard')))
     );
   }
   beforeUnload(event: BeforeUnloadEvent) {
-    if (this.busy() || this.dirty || this.policyDirty()) {
+    if (this.busy() || this.dirty() || this.policyDirty()) {
       event.preventDefault();
       event.returnValue = '';
     }
@@ -221,11 +210,10 @@ export class AdminConsoleComponent {
     this.loading.set(false);
     this.busy.set(false);
     this.stale.set(false);
-    this.dirty = false;
     this.reviewReason = '';
+    this.decisionReason = '';
     this.photoReason = '';
     this.memberReason = '';
-    this.supportReason = '';
     this.targetUserId = '';
     this.fromUserId = '';
     this.requestReference = '';
@@ -243,6 +231,53 @@ export class AdminConsoleComponent {
     for (const key of this.durations) this.days[key] = null;
     this.policyOpen = false;
     this.policyBaseline = this.policySnapshot();
+    this.garageBaseline = this.garageSnapshot();
+    this.routeContext = '';
+  }
+  /** Equality, not a sticky event, is the draft contract for all admin inputs. */
+  dirty(): boolean {
+    return this.garageSnapshot() !== this.garageBaseline;
+  }
+  private garageSnapshot(): string {
+    return JSON.stringify({
+      verification: this.verification,
+      latitude: this.latitude,
+      longitude: this.longitude,
+      reviewReason: this.reviewReason,
+      decisionReason: this.decisionReason,
+      photoReason: this.photoReason,
+      memberReason: this.memberReason,
+      targetUserId: this.targetUserId,
+      fromUserId: this.fromUserId,
+      memberRole: this.memberRole,
+      requestReference: this.requestReference,
+    });
+  }
+  private captureGarageBaseline(): void {
+    const reviewReason = this.reviewReason,
+      decisionReason = this.decisionReason,
+      photoReason = this.photoReason,
+      memberReason = this.memberReason,
+      targetUserId = this.targetUserId,
+      fromUserId = this.fromUserId,
+      memberRole = this.memberRole,
+      requestReference = this.requestReference;
+    this.reviewReason = '';
+    this.decisionReason = '';
+    this.photoReason = '';
+    this.memberReason = '';
+    this.targetUserId = '';
+    this.memberRole = 'editor';
+    this.requestReference = '';
+    this.garageBaseline = this.garageSnapshot();
+    this.reviewReason = reviewReason;
+    this.decisionReason = decisionReason;
+    this.photoReason = photoReason;
+    this.memberReason = memberReason;
+    this.targetUserId = targetUserId;
+    this.fromUserId = fromUserId;
+    this.memberRole = memberRole;
+    this.requestReference = requestReference;
   }
   private restoreSafeFilter(): void {
     if (this.section !== 'garages' && this.section !== 'privacy') return;
@@ -250,8 +285,40 @@ export class AdminConsoleComponent {
       this.route.snapshot.queryParamMap?.get('status') ??
       (this.section === 'privacy' ? 'submitted' : '');
   }
-  async load(page = 1): Promise<void> {
-    if (!this.allowed() || this.busy()) return;
+  private applyRouteContext(params: ParamMap): void {
+    if (!this.ready() || !this.allowed() || !this.account.dataContext()) return;
+    this.currentParams = params;
+    const garageId = params.get('garageId') ?? '';
+    const tab = params.get('tab');
+    const page = Number(params.get('page') ?? '1');
+    const validPage = Number.isSafeInteger(page) && page >= 1 && page <= 10000 ? page : 1;
+    const validGarage = /^[A-Za-z0-9_-]{1,200}$/.test(garageId);
+    const validTab = this.detailTabs.includes(tab as (typeof this.detailTabs)[number])
+      ? (tab as (typeof this.detailTabs)[number])
+      : 'review';
+    const context = `${garageId}|${validTab}|${params.get('requestId') ?? ''}|${params.get('status') ?? ''}|${validPage}`;
+    if (context === this.routeContext) return;
+    this.routeContext = context;
+    this.status = params.get('status') ?? (this.section === 'privacy' ? 'submitted' : '');
+    if (this.section === 'garages' && validGarage) {
+      if (this.detail()?.id === garageId) {
+        this.page.set(validPage);
+        this.detailTab = validTab;
+        if (validTab === 'team') void this.findCandidates();
+        return;
+      }
+      void this.openGarage(garageId, validTab, false);
+      return;
+    }
+    if (this.detail()) {
+      this.detail.set(null);
+      this.proof.set('');
+      this.support.set(null);
+    }
+    void this.load(validPage);
+  }
+  async load(page = 1, ownMutation = false): Promise<void> {
+    if (!this.allowed() || (this.busy() && !ownMutation)) return;
     const generation = this.generation,
       read = ++this.reads;
     this.loading.set(true);
@@ -261,7 +328,7 @@ export class AdminConsoleComponent {
     if (this.status && this.section === 'garages') q.set('status', this.status);
     if (this.status && this.section === 'privacy') q.set('status', this.status);
     if (this.section === 'privacy') {
-      const requestId = this.route.snapshot.queryParamMap?.get('requestId');
+      const requestId = this.currentParam('requestId');
       if (requestId && /^[A-Za-z0-9_-]{1,200}$/.test(requestId)) q.set('requestId', requestId);
     }
     try {
@@ -281,7 +348,11 @@ export class AdminConsoleComponent {
         this.candidates.set(data.items);
       }
       if (section === 'garages') this.garages.set(data.items);
-      if (section === 'privacy') this.privacy.set(data);
+      if (section === 'privacy') {
+        this.privacy.set(data);
+        if (this.currentParam('requestId') && !data.selected)
+          this.error.set(this.label('requestUnavailable'));
+      }
       if (section === 'audit') this.events.set(data.items);
       if (section === 'catalog') this.catalog.set(data);
       if (section === 'users') {
@@ -300,8 +371,10 @@ export class AdminConsoleComponent {
   async openGarage(
     id: string,
     tab: (typeof this.detailTabs)[number] = this.detailTab,
+    navigate = true,
+    ownMutation = false,
   ): Promise<void> {
-    if (this.busy() || !this.canLeave()) return;
+    if ((this.busy() && !ownMutation) || (navigate && !this.canLeave())) return;
     const generation = this.generation,
       read = ++this.reads;
     this.loading.set(true);
@@ -316,23 +389,20 @@ export class AdminConsoleComponent {
       this.detail.set(value);
       this.stale.set(false);
       this.detailTab = tab;
-      this.reviewReason = '';
-      this.photoReason = '';
-      this.memberReason = '';
-      this.supportReason = '';
-      this.dirty = false;
-      this.requestReference = '';
       for (const key of this.checks)
         this.verification[key] = value.verification[key] ?? 'not_checked';
       this.latitude = value.profile.locationPoint?.latitude ?? null;
       this.longitude = value.profile.locationPoint?.longitude ?? null;
-      this.fromUserId =
-        value.members.find((m) => m.role === 'owner' && m.state === 'active')?.userId ?? '';
+      const owners = value.members.filter((m) => m.role === 'owner' && m.state === 'active');
+      if (!ownMutation || !owners.some((owner) => owner.userId === this.fromUserId))
+        this.fromUserId = owners.length === 1 ? owners[0].userId : '';
+      this.captureGarageBaseline();
       if (tab === 'team') await this.findCandidates();
-      void this.router.navigate([], {
-        relativeTo: this.route,
-        queryParams: this.garageContextParams(value.id, tab),
-      });
+      if (navigate)
+        void this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: this.garageContextParams(value.id, tab),
+        });
       afterNextRender(
         () => this.document.querySelector<HTMLElement>('[data-admin-detail-heading]')?.focus(),
         { injector: this.injector },
@@ -348,7 +418,6 @@ export class AdminConsoleComponent {
     this.detail.set(null);
     this.proof.set('');
     this.support.set(null);
-    this.dirty = false;
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: this.status ? { status: this.status } : {},
@@ -356,7 +425,7 @@ export class AdminConsoleComponent {
     void this.load(this.page());
   }
   setDetailTab(tab: (typeof this.detailTabs)[number]) {
-    if (tab === this.detailTab || !this.canLeave()) return;
+    if (tab === this.detailTab) return;
     this.detailTab = tab;
     const current = this.detail();
     if (current) {
@@ -368,7 +437,7 @@ export class AdminConsoleComponent {
     }
   }
   private garageContextParams(id: string, tab: (typeof this.detailTabs)[number]) {
-    const returnRequest = this.route.snapshot.queryParamMap?.get('returnRequest');
+    const returnRequest = this.currentParam('returnRequest');
     return {
       garageId: id,
       tab,
@@ -386,7 +455,11 @@ export class AdminConsoleComponent {
           '/api/admin/management/users?query=' + encodeURIComponent(this.candidateQuery),
         ),
       );
-      if (generation === this.generation && request === this.candidateRead)
+      if (
+        generation === this.generation &&
+        request === this.candidateRead &&
+        this.detailTab === 'team'
+      )
         this.candidates.set(result.items.filter((u) => u.status === 'active'));
     } catch (error) {
       if (generation === this.generation && request === this.candidateRead) this.failure(error);
@@ -395,23 +468,41 @@ export class AdminConsoleComponent {
   async saveVerification() {
     const detail = this.detail();
     if (!detail || !this.reviewReason) return;
-    await this.garageMutation('verification', this.reviewReason, {
-      verification: this.verification,
-      ...(this.latitude !== null && this.longitude !== null
-        ? { locationPoint: { latitude: this.latitude, longitude: this.longitude } }
-        : {}),
-    });
+    await this.garageMutation(
+      'verification',
+      this.reviewReason,
+      {
+        verification: this.verification,
+        ...(this.pointChanged() && this.latitude !== null && this.longitude !== null
+          ? { locationPoint: { latitude: this.latitude, longitude: this.longitude } }
+          : {}),
+      },
+      'verificationSaved',
+    );
   }
   async decide(decision: 'published' | 'rejected' | 'suspended' | 'restore') {
-    const reason = decision === 'published' ? 'company_verified' : this.reviewReason;
-    if (!reason || !window.confirm(this.label('decisionConfirm'))) return;
-    await this.garageMutation('decision', reason, {
-      decision,
-      verification: this.verification,
-      ...(this.editingPosition && this.latitude !== null && this.longitude !== null
-        ? { locationPoint: { latitude: this.latitude, longitude: this.longitude } }
-        : {}),
-    });
+    const reason = decision === 'published' ? 'company_verified' : this.decisionReason;
+    const detail = this.detail();
+    if (!detail || !reason || !window.confirm(this.decisionConfirmation(detail.name, decision)))
+      return;
+    await this.garageMutation(
+      'decision',
+      reason,
+      {
+        decision,
+        verification: this.verification,
+        ...(this.pointChanged() && this.latitude !== null && this.longitude !== null
+          ? { locationPoint: { latitude: this.latitude, longitude: this.longitude } }
+          : {}),
+      },
+      decision === 'published'
+        ? 'garagePublished'
+        : decision === 'rejected'
+          ? 'garageRejected'
+          : decision === 'suspended'
+            ? 'garageSuspended'
+            : 'garageRestored',
+    );
   }
   canPublish(detail: AdminGarageDetail): boolean {
     return (
@@ -420,12 +511,43 @@ export class AdminConsoleComponent {
       this.publishBlockers(detail).length === 0 &&
       this.latitude !== null &&
       this.longitude !== null &&
+      (!this.pointChanged() || this.validEditedPoint()) &&
       this.checks.every((check) => this.verification[check] === 'verified')
     );
   }
   publishBlockers(detail: AdminGarageDetail) {
-    const correctedPoint =
-      this.editingPosition &&
+    const correctedPoint = this.pointChanged() && this.validEditedPoint();
+    const blockers = detail.prerequisites.blockers.filter(
+      (blocker) =>
+        (blocker !== 'point' || !correctedPoint) &&
+        (blocker !== 'checks' ||
+          !this.checks.every((check) => this.verification[check] === 'verified')),
+    );
+    return this.pointChanged() && !this.validEditedPoint() && !blockers.includes('point')
+      ? [...blockers, 'point']
+      : blockers;
+  }
+  restoreBlockers(detail: AdminGarageDetail) {
+    const blockers = detail.prerequisites.restoreBlockers.filter(
+      (blocker) =>
+        blocker !== 'checks' ||
+        !this.checks.every((check) => this.verification[check] === 'verified'),
+    );
+    return this.pointChanged() && !this.validEditedPoint() && !blockers.includes('point')
+      ? [...blockers, 'point']
+      : blockers;
+  }
+  canRestore(detail: AdminGarageDetail): boolean {
+    return !this.busy() && !this.stale() && this.restoreBlockers(detail).length === 0;
+  }
+  private pointChanged(): boolean {
+    const point = this.detail()?.profile.locationPoint;
+    return (
+      (point?.latitude ?? null) !== this.latitude || (point?.longitude ?? null) !== this.longitude
+    );
+  }
+  private validEditedPoint(): boolean {
+    return (
       this.latitude !== null &&
       this.longitude !== null &&
       Number.isFinite(this.latitude) &&
@@ -433,9 +555,7 @@ export class AdminConsoleComponent {
       this.latitude >= -90 &&
       this.latitude <= 90 &&
       this.longitude >= -180 &&
-      this.longitude <= 180;
-    return detail.prerequisites.blockers.filter(
-      (blocker) => blocker !== 'point' || !correctedPoint,
+      this.longitude <= 180
     );
   }
   async member(
@@ -443,31 +563,55 @@ export class AdminConsoleComponent {
     role = this.memberRole,
     state: 'active' | 'revoked' = 'active',
   ) {
-    if (!userId || !this.memberReason || !window.confirm(this.label('membershipConfirm'))) return;
-    await this.garageMutation('membership', this.memberReason, { userId, role, state });
+    const detail = this.detail();
+    if (!detail || !userId || !this.memberReason) return;
+    const target = this.memberLabel(userId);
+    if (!window.confirm(this.membershipConfirmation(detail.name, target, role, state))) return;
+    await this.garageMutation(
+      'membership',
+      this.memberReason,
+      { userId, role, state },
+      'membershipSaved',
+    );
   }
   async transfer() {
     if (
       !this.fromUserId ||
       !this.targetUserId ||
       this.fromUserId === this.targetUserId ||
-      !window.confirm(this.label('transferHint'))
+      !window.confirm(
+        this.transferConfirmation(
+          this.detail()?.name ?? '',
+          this.memberLabel(this.fromUserId),
+          this.memberLabel(this.targetUserId),
+        ),
+      )
     )
       return;
-    await this.garageMutation('ownership', 'ownership_change', {
-      fromUserId: this.fromUserId,
-      toUserId: this.targetUserId,
-    });
+    await this.garageMutation(
+      'ownership',
+      'ownership_change',
+      {
+        fromUserId: this.fromUserId,
+        toUserId: this.targetUserId,
+      },
+      'ownershipTransferred',
+    );
   }
   async setPhoto(id: string, approved: boolean) {
     if (
       !this.photoReason ||
-      !window.confirm(this.label(approved ? 'approvePhoto' : 'rejectPhoto') + '?')
+      !window.confirm(this.photoConfirmation(this.detail()?.name ?? '', approved))
     )
       return;
-    await this.garageMutation('photos/' + encodeURIComponent(id) + '/decision', this.photoReason, {
-      approved,
-    });
+    await this.garageMutation(
+      'photos/' + encodeURIComponent(id) + '/decision',
+      this.photoReason,
+      {
+        approved,
+      },
+      approved ? 'photoApproved' : 'photoRejected',
+    );
   }
   changeCandidateQuery(value: string): void {
     this.candidateQuery = value;
@@ -483,6 +627,7 @@ export class AdminConsoleComponent {
     action: string,
     reason: AdminReasonCode,
     body: Record<string, unknown>,
+    result: string,
   ) {
     const detail = this.detail();
     if (!detail) return;
@@ -490,10 +635,58 @@ export class AdminConsoleComponent {
       '/api/admin/management/garages/' + encodeURIComponent(detail.id) + '/' + action,
       { ...body, revision: detail.revision, reason },
       async () => {
-        this.dirty = false;
-        await this.openGarage(detail.id, this.detailTab);
+        this.clearSubmittedGarageInput(action);
+        await this.openGarage(detail.id, this.detailTab, false, true);
+        this.success.set(this.label(result));
+        this.focusResult();
       },
     );
+  }
+  private clearSubmittedGarageInput(action: string): void {
+    if (action === 'verification') this.reviewReason = '';
+    if (action === 'decision') this.decisionReason = '';
+    if (action.startsWith('photos/')) this.photoReason = '';
+    if (action === 'membership') {
+      this.memberReason = '';
+      this.targetUserId = '';
+    }
+    if (action === 'ownership') this.targetUserId = '';
+    if (action === 'submit') this.requestReference = '';
+  }
+  memberLabel(userId: string): string {
+    return (
+      this.detail()?.members.find((member) => member.userId === userId)?.label ??
+      this.candidates().find((candidate) => candidate.id === userId)?.label ??
+      this.label('unavailable')
+    );
+  }
+  activeOwners(detail: AdminGarageDetail) {
+    return detail.members.filter((member) => member.role === 'owner' && member.state === 'active');
+  }
+  private decisionConfirmation(
+    name: string,
+    decision: 'published' | 'rejected' | 'suspended' | 'restore',
+  ) {
+    const subject = `„${name}“`;
+    if (decision === 'published')
+      return `${subject}: ${this.label('publish')}? ${this.label('company_verified')}.`;
+    if (decision === 'rejected') return `${subject}: ${this.label('reject')}?`;
+    if (decision === 'suspended') return `${subject}: ${this.label('suspend')}?`;
+    return `${subject}: ${this.label('restore')}?`;
+  }
+  private membershipConfirmation(
+    name: string,
+    target: string,
+    role: string,
+    state: string,
+  ): string {
+    return `„${name}“: ${target} → ${this.label(role)} (${this.label(state)})?`;
+  }
+  private transferConfirmation(name: string, source: string, target: string): string {
+    return `„${name}“: ${source} → ${target}. ${this.label('transferHint')}`;
+  }
+  private photoConfirmation(name: string, approved: boolean): string {
+    return `„${name}“: ${this.label(approved ? 'approvePhoto' : 'rejectPhoto')}?`;
   }
   async openDocument(fileId: string) {
     const detail = this.detail();
@@ -546,14 +739,18 @@ export class AdminConsoleComponent {
       !window.confirm(this.label('supportHint'))
     )
       return;
-    await this.garageMutation('submit', 'documented_support', {
-      requestReference: this.requestReference.trim(),
-    });
+    await this.garageMutation(
+      'submit',
+      'documented_support',
+      {
+        requestReference: this.requestReference.trim(),
+      },
+      'verificationSaved',
+    );
   }
   async supportSaved(id: string) {
     this.support.set(null);
-    this.dirty = false;
-    await this.openGarage(id);
+    await this.openGarage(id, this.detailTab, false, true);
     this.success.set(this.label('saved'));
   }
   validPolicy() {
@@ -583,10 +780,8 @@ export class AdminConsoleComponent {
       days: this.days,
     });
   }
-  private privacyContextParams(
-    requestId = this.route.snapshot.queryParamMap?.get('requestId') ?? '',
-  ) {
-    const focus = this.route.snapshot.queryParamMap?.get('focus');
+  private privacyContextParams(requestId = this.currentParam('requestId') ?? '') {
+    const focus = this.currentParam('focus');
     return {
       ...(this.status ? { status: this.status } : {}),
       ...(this.page() > 1 ? { page: this.page() } : {}),
@@ -600,16 +795,15 @@ export class AdminConsoleComponent {
       relativeTo: this.route,
       queryParams: this.privacyContextParams(id),
     });
-    await this.load(this.page());
   }
   privacyGarageUrl(garageId: string, requestId: string): string {
     return `${this.link('garages')}?garageId=${encodeURIComponent(garageId)}&tab=team&returnRequest=${encodeURIComponent(requestId)}`;
   }
   privacyReturnUrl(): string | null {
-    const requestId = this.route.snapshot.queryParamMap?.get('returnRequest');
+    const requestId = this.currentParam('returnRequest');
     if (!requestId || !/^[A-Za-z0-9_-]{1,200}$/.test(requestId)) return null;
-    const page = this.route.snapshot.queryParamMap?.get('page');
-    const status = this.route.snapshot.queryParamMap?.get('status');
+    const page = this.currentParam('page');
+    const status = this.currentParam('status');
     const query = new URLSearchParams({ requestId, focus: 'privacy-context' });
     if (page && /^\d{1,5}$/.test(page)) query.set('page', page);
     if (status && ['submitted', 'blocked', 'completed'].includes(status))
@@ -627,7 +821,6 @@ export class AdminConsoleComponent {
         ...this.days,
       },
       async () => {
-        this.dirty = false;
         this.approvalConfirmed = false;
         this.policyBaseline = this.policySnapshot();
         await this.load(this.page());
@@ -638,7 +831,11 @@ export class AdminConsoleComponent {
     await this.mutate(
       '/api/admin/management/privacy/' + encodeURIComponent(id) + '/refresh',
       {},
-      () => this.load(this.page()),
+      async () => {
+        await this.load(this.page(), true);
+        this.success.set(this.label('refreshDone'));
+        this.focusResult();
+      },
     );
   }
   async processDeletion(id: string, version?: string) {
@@ -653,11 +850,9 @@ export class AdminConsoleComponent {
       '/api/admin/lifecycle/data-deletion-requests/' + encodeURIComponent(id) + '/process',
       { policyVersion: version },
       async () => {
-        await this.load(this.page());
-        afterNextRender(
-          () => this.document.querySelector<HTMLElement>('[data-privacy-result]')?.focus(),
-          { injector: this.injector },
-        );
+        await this.load(this.page(), true);
+        this.success.set(this.label('deletionProcessed'));
+        this.focusResult();
       },
     );
   }
@@ -690,8 +885,6 @@ export class AdminConsoleComponent {
       });
       if (!response.ok) throw await this.responseError(response);
       if (generation !== this.generation) return;
-      this.success.set(this.label('saved'));
-      this.busy.set(false);
       await after();
     } catch (error) {
       if (generation === this.generation) this.failure(error);
@@ -727,8 +920,8 @@ export class AdminConsoleComponent {
       this.account.invalidate();
       return;
     }
-    if (status === 403) {
-      this.clear();
+    if (status === 403 && code !== 'admin_blocked') {
+      this.invalidateContext();
       this.error.set(this.label('denied'));
       return;
     }
@@ -751,6 +944,58 @@ export class AdminConsoleComponent {
                 : status === 422 || status === 400
                   ? this.label('invalid')
                   : this.label('error'),
+    );
+  }
+  private currentParam(name: string): string | null {
+    return this.currentParams?.get(name) ?? this.route.snapshot.queryParamMap?.get(name) ?? null;
+  }
+  private invalidateContext(): void {
+    this.generation++;
+    this.reads++;
+    this.candidateRead++;
+    this.controller.abort();
+    this.controller = new AbortController();
+    this.clear();
+  }
+  private safeReturnTo(): string {
+    const tree = this.router.parseUrl(this.router.url);
+    const path =
+      tree.root.children['primary']?.segments.map((segment) => segment.path).join('/') ?? '';
+    if (!/^(?:(?:sq|en)\/)?admin\/(?:garages|users|privacy|audit|catalog|support)$/.test(path))
+      return this.link(this.section);
+    const allowed = new Set([
+      'garageId',
+      'tab',
+      'requestId',
+      'status',
+      'page',
+      'focus',
+      'returnRequest',
+    ]);
+    const query = Object.entries(tree.queryParams).filter(
+      ([key, value]) => allowed.has(key) && typeof value === 'string',
+    );
+    const params = new URLSearchParams(query as [string, string][]);
+    return '/' + path + (params.size ? '?' + params : '');
+  }
+  private focusResult(): void {
+    afterNextRender(
+      () =>
+        this.document
+          .querySelector<HTMLElement>('[data-admin-result], [data-privacy-result]')
+          ?.focus(),
+      { injector: this.injector },
+    );
+  }
+  private isReadOnlyContextNavigation(targetUrl: string): boolean {
+    const target = this.router.parseUrl(targetUrl);
+    const path =
+      target.root.children['primary']?.segments.map((segment) => segment.path).join('/') ?? '';
+    if (!new RegExp(`^(?:(?:sq|en)/)?admin/${this.section}$`).test(path)) return false;
+    const garageId = target.queryParams['garageId'];
+    if (this.section === 'privacy') return true;
+    return (
+      this.section === 'garages' && typeof garageId === 'string' && garageId === this.detail()?.id
     );
   }
 }

@@ -12,7 +12,13 @@ async function openGarage(page: Page, id: string) {
   await page.locator('[data-admin-search]').click();
   await page.locator(`[data-admin-garage-id="${id}"] [data-admin-open-garage]`).click();
   await expect(page.locator('[data-admin-garage]')).toBeVisible();
+  await openReviewEditor(page);
   await expect(page.locator('[data-admin-reason]')).toBeEnabled();
+}
+async function openReviewEditor(page: Page) {
+  const editor = page.locator('[data-admin-garage] details').first();
+  if (!(await editor.evaluate((element) => (element as HTMLDetailsElement).open)))
+    await editor.locator('summary').click();
 }
 async function reason(page: Page, value: string, selector = '[data-admin-reason]') {
   await page.locator(selector).selectOption(value);
@@ -59,11 +65,12 @@ test('admin-workflow verifies garages, checks evidence, decides photos, suspends
     .toBe('approved');
   await expect(page.locator('[data-admin-reason]')).toHaveValue('');
   await page.locator('[data-admin-tab="review"]').click();
-  await reason(page, 'policy_violation');
+  await openReviewEditor(page);
+  await reason(page, 'policy_violation', '[data-admin-decision-reason]');
   await confirm(page, '[data-suspend-garage]');
   await expect(page.locator('[data-restore-garage]')).toBeVisible();
   expect((await page.request.get(app.origin + '/api/public/garages/' + id)).status()).toBe(404);
-  await reason(page, 'company_verified');
+  await reason(page, 'company_verified', '[data-admin-decision-reason]');
   await confirm(page, '[data-restore-garage]');
   await expect(page.locator('[data-suspend-garage]')).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('admin-garage.png'), fullPage: true });
@@ -96,7 +103,7 @@ test('admin-workflow verifies garages, checks evidence, decides photos, suspends
     .toBe('owner');
   await page.locator('[data-admin-back]').click();
   await openGarage(page, 'demo-admin-garage-incomplete');
-  await reason(page, 'missing_information');
+  await reason(page, 'missing_information', '[data-admin-decision-reason]');
   await confirm(page, '[data-reject-garage]');
   await expect
     .poll(
