@@ -51,13 +51,13 @@ export async function readyGarages(page: Page): Promise<void> {
   await expect(page.locator('[data-garages-loading]')).toHaveCount(0);
 }
 export async function logout(page: Page, origin: string): Promise<void> {
-  await page.locator('[aria-controls="account-menu"]').click();
+  await page.locator('[data-account-trigger]').click();
   await page
-    .locator('#account-menu')
+    .locator('[data-account-panel]')
     .getByRole('button', { name: /Abmelden|Sign out|Dil/ })
     .click();
   await expect.poll(async () => (await page.request.get(origin + '/api/me')).status()).toBe(401);
-  await expect(page.locator('#account-menu')).toHaveCount(0);
+  await expect(page.locator('[data-account-panel]')).toHaveCount(0);
 }
 
 export async function createInquiry(
@@ -107,8 +107,8 @@ export async function createInquiry(
   expect(id).toMatch(/^[a-zA-Z0-9_-]+$/);
   onCreated(id);
   await expect(form.getByRole('status')).toContainText(text.saved);
-  await page.locator('[aria-controls="account-menu"]').click();
-  await page.locator('[data-account-inquiries]').click();
+  await page.locator('[data-account-trigger]').click();
+  await page.locator('[data-account-panel] [data-account-inquiries]').click();
   await readyInquiries(page);
   await expect(card(page, id)).toContainText(symptom);
   return id;
