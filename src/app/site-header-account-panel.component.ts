@@ -12,6 +12,7 @@ import {
 } from '@lucide/angular';
 import {
   Component,
+  ElementRef,
   afterNextRender,
   inject,
   input,
@@ -61,10 +62,12 @@ export class SiteHeaderAccountPanelComponent {
   protected readonly logoutError = signal(false);
   private readonly router = inject(Router);
   private readonly overlay = viewChild.required<BrnOverlay>('accountOverlay');
+  private readonly trigger = viewChild.required<ElementRef<HTMLButtonElement>>('accountTrigger');
 
   constructor() {
     afterNextRender(() => {
       this.overlay().setOrigin(this.headerAnchor());
+      this.trigger().nativeElement.focus({ preventScroll: true });
       this.overlay().open();
     });
   }

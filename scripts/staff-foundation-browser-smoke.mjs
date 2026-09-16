@@ -63,8 +63,8 @@ try {
     );
   }
   async function logout() {
-    await browser.click('button[aria-controls="account-menu"]');
-    await browser.click('#account-menu > button');
+    await browser.click('[data-account-trigger]');
+    await browser.click('[data-account-panel] > button');
     await until(
       () =>
         browser.evaluate(

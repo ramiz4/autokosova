@@ -166,7 +166,7 @@ try {
       });
       await browser.navigate(path, ready);
       await count(4);
-      await keyboard('button[aria-controls="account-menu"]');
+      await keyboard('[data-account-trigger]');
       await until(
         () => evaluate(`!!document.querySelector('[data-account-favorites]')`),
         'account menu link',
@@ -187,7 +187,7 @@ try {
       await until(
         () =>
           evaluate(
-            `!document.querySelector('#account-menu') && document.activeElement.matches('button[aria-controls="account-menu"]')`,
+            `!document.querySelector('[data-account-panel]') && document.activeElement.matches('button[brnOverlayTrigger]')`,
           ),
         'Escape restores focus',
       );
@@ -295,14 +295,14 @@ try {
         'operator profile to favorites',
       );
       await count(1);
-      await keyboard('button[aria-controls="account-menu"]');
+      await keyboard('[data-account-trigger]');
       await until(
-        () => evaluate(`!!document.querySelector('#account-menu [data-account-favorites]')`),
+        () => evaluate(`!!document.querySelector('[data-account-panel] [data-account-favorites]')`),
         'operator favorites menu',
       );
       assert.deepEqual(
         await evaluate(
-          `(()=>{const menu=document.querySelector('#account-menu');const link=menu.querySelector('[data-account-favorites]');return {count:menu.querySelectorAll('[data-account-favorites]').length,href:link.getAttribute('href'),active:link.getAttribute('aria-current'),business:!!menu.querySelector('[data-account-garages]'),inquiries:!!menu.querySelector('[data-account-inquiries]')};})()`,
+          `(()=>{const menu=document.querySelector('[data-account-panel]');const link=menu.querySelector('[data-account-favorites]');return {count:menu.querySelectorAll('[data-account-favorites]').length,href:link.getAttribute('href'),active:link.getAttribute('aria-current'),business:!!menu.querySelector('[data-account-garages]'),inquiries:!!menu.querySelector('[data-account-inquiries]')};})()`,
         ),
         {
           count: 1,
@@ -312,7 +312,9 @@ try {
           inquiries: false,
         },
       );
-      await evaluate(`document.querySelector('#account-menu [data-account-favorites]').focus()`);
+      await evaluate(
+        `document.querySelector('[data-account-panel] [data-account-favorites]').focus()`,
+      );
       assert.ok(
         await evaluate(
           `document.activeElement.matches(':focus-visible') && parseFloat(getComputedStyle(document.activeElement).outlineWidth)>=2`,
@@ -324,14 +326,14 @@ try {
       await until(
         () =>
           evaluate(
-            `!document.querySelector('#account-menu') && document.activeElement.matches('[aria-controls="account-menu"]')`,
+            `!document.querySelector('[data-account-panel]') && document.activeElement.matches('button[brnOverlayTrigger]')`,
           ),
         'operator Escape and focus return',
       );
-      await keyboard('button[aria-controls="account-menu"]');
-      await keyboard('#account-menu [data-account-favorites]');
+      await keyboard('[data-account-trigger]');
+      await keyboard('[data-account-panel] [data-account-favorites]');
       await until(
-        () => evaluate(`!document.querySelector('#account-menu') && (${ready})`),
+        () => evaluate(`!document.querySelector('[data-account-panel]') && (${ready})`),
         'operator menu selection closes',
       );
       console.log(`Operator favorites navigation passed: ${locale} ${width}px`);
@@ -408,13 +410,13 @@ try {
     'last removal gives empty state',
   );
   assert.deepEqual(await sqlIds(), []);
-  await keyboard('button[aria-controls="account-menu"]');
+  await keyboard('[data-account-trigger]');
   await until(
     () => evaluate(`!!document.querySelector('[data-account-favorites]')`),
     'logout menu',
   );
   await evaluate(
-    `[...document.querySelectorAll('#account-menu button')].find(button=>button.textContent.includes('Abmelden')).click()`,
+    `[...document.querySelectorAll('[data-account-panel] button')].find(button=>button.textContent.includes('Abmelden')).click()`,
   );
   await until(() => evaluate(`location.pathname === '/'`), 'logout');
   await browser.navigate('/sq/favorites', `!!document.querySelector('[data-favorites-login]')`);
