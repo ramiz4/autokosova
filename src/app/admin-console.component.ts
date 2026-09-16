@@ -70,6 +70,7 @@ export class AdminConsoleComponent {
   readonly garages = signal<readonly AdminGarageSummary[]>([]);
   readonly detail = signal<AdminGarageDetail | null>(null);
   readonly privacy = signal<AdminPrivacy | null>(null);
+  readonly selectedPrivacy = computed(() => this.privacy()?.selected ?? null);
   readonly events = signal<readonly AdminAuditEvent[]>([]);
   readonly catalog = signal<AdminCatalog | null>(null);
   readonly overview = signal<AdminOverview | null>(null);
@@ -118,6 +119,7 @@ export class AdminConsoleComponent {
   approvalReference = '';
   publicReviewHandling: '' | 'delete' | 'retain_anonymized' = '';
   approvalConfirmed = false;
+  policyOpen = false;
   days: Record<(typeof this.durations)[number], number | null> = {
     reviewEvidenceRetentionDays: null,
     repairRequestRetentionDays: null,
@@ -129,6 +131,7 @@ export class AdminConsoleComponent {
   private generation = 0;
   private reads = 0;
   private controller = new AbortController();
+  private policyBaseline = '';
   constructor() {
     afterNextRender(() => {
       this.ready.set(true);
@@ -175,7 +178,12 @@ export class AdminConsoleComponent {
     return this.language.link('admin') + '/' + section;
   }
   applyStatusFilter(): void {
-    const queryParams = this.status ? { status: this.status } : {};
+    const queryParams =
+      this.section === 'privacy'
+        ? this.privacyContextParams()
+        : this.status
+          ? { status: this.status }
+          : {};
     void this.router.navigate([], { relativeTo: this.route, queryParams });
     void this.load(1);
   }
@@ -186,11 +194,11 @@ export class AdminConsoleComponent {
     return (
       !this.busy() &&
       (this.editor()?.canLeave() ?? true) &&
-      (!this.dirty || window.confirm(this.label('discard')))
+      ((!this.dirty && !this.policyDirty()) || window.confirm(this.label('discard')))
     );
   }
   beforeUnload(event: BeforeUnloadEvent) {
-    if (this.busy() || this.dirty) {
+    if (this.busy() || this.dirty || this.policyDirty()) {
       event.preventDefault();
       event.returnValue = '';
     }
@@ -233,10 +241,14 @@ export class AdminConsoleComponent {
     this.approvalReference = '';
     this.publicReviewHandling = '';
     for (const key of this.durations) this.days[key] = null;
+    this.policyOpen = false;
+    this.policyBaseline = this.policySnapshot();
   }
   private restoreSafeFilter(): void {
     if (this.section !== 'garages' && this.section !== 'privacy') return;
-    this.status = this.route.snapshot.queryParamMap?.get('status') ?? '';
+    this.status =
+      this.route.snapshot.queryParamMap?.get('status') ??
+      (this.section === 'privacy' ? 'submitted' : '');
   }
   async load(page = 1): Promise<void> {
     if (!this.allowed() || this.busy()) return;
@@ -247,6 +259,11 @@ export class AdminConsoleComponent {
     const q = new URLSearchParams({ page: String(page) });
     if (this.query) q.set('query', this.query);
     if (this.status && this.section === 'garages') q.set('status', this.status);
+    if (this.status && this.section === 'privacy') q.set('status', this.status);
+    if (this.section === 'privacy') {
+      const requestId = this.route.snapshot.queryParamMap?.get('requestId');
+      if (requestId && /^[A-Za-z0-9_-]{1,200}$/.test(requestId)) q.set('requestId', requestId);
+    }
     try {
       const section = this.section === 'support' ? 'users' : this.section;
       const data = await this.json<
@@ -544,6 +561,55 @@ export class AdminConsoleComponent {
       )
     );
   }
+  policyDirty(): boolean {
+    return this.policySnapshot() !== this.policyBaseline;
+  }
+  policyChanged(): void {
+    // Kept as a template target: equality against the baseline, rather than a sticky flag,
+    // is what protects tab, query, language and browser navigation.
+  }
+  private policySnapshot(): string {
+    return JSON.stringify({
+      version: this.policyVersion,
+      approval: this.approvalReference,
+      handling: this.publicReviewHandling,
+      confirmed: this.approvalConfirmed,
+      days: this.days,
+    });
+  }
+  private privacyContextParams(
+    requestId = this.route.snapshot.queryParamMap?.get('requestId') ?? '',
+  ) {
+    const focus = this.route.snapshot.queryParamMap?.get('focus');
+    return {
+      ...(this.status ? { status: this.status } : {}),
+      ...(this.page() > 1 ? { page: this.page() } : {}),
+      ...(requestId && /^[A-Za-z0-9_-]{1,200}$/.test(requestId) ? { requestId } : {}),
+      ...(focus === 'privacy-context' ? { focus } : {}),
+    };
+  }
+  async openPrivacyRequest(id: string): Promise<void> {
+    if (!/^[A-Za-z0-9_-]{1,200}$/.test(id) || !this.canLeave()) return;
+    await this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: this.privacyContextParams(id),
+    });
+    await this.load(this.page());
+  }
+  privacyGarageUrl(garageId: string, requestId: string): string {
+    return `${this.link('garages')}?garageId=${encodeURIComponent(garageId)}&tab=team&returnRequest=${encodeURIComponent(requestId)}`;
+  }
+  privacyReturnUrl(): string | null {
+    const requestId = this.route.snapshot.queryParamMap?.get('returnRequest');
+    if (!requestId || !/^[A-Za-z0-9_-]{1,200}$/.test(requestId)) return null;
+    const page = this.route.snapshot.queryParamMap?.get('page');
+    const status = this.route.snapshot.queryParamMap?.get('status');
+    const query = new URLSearchParams({ requestId, focus: 'privacy-context' });
+    if (page && /^\d{1,5}$/.test(page)) query.set('page', page);
+    if (status && ['submitted', 'blocked', 'completed'].includes(status))
+      query.set('status', status);
+    return `${this.link('privacy')}?${query}`;
+  }
   async savePolicy() {
     if (!this.validPolicy() || !window.confirm(this.label('approvalAttestation'))) return;
     await this.mutate(
@@ -557,6 +623,7 @@ export class AdminConsoleComponent {
       async () => {
         this.dirty = false;
         this.approvalConfirmed = false;
+        this.policyBaseline = this.policySnapshot();
         await this.load(this.page());
       },
     );
@@ -579,7 +646,13 @@ export class AdminConsoleComponent {
     await this.mutate(
       '/api/admin/lifecycle/data-deletion-requests/' + encodeURIComponent(id) + '/process',
       { policyVersion: version },
-      () => this.load(this.page()),
+      async () => {
+        await this.load(this.page());
+        afterNextRender(
+          () => this.document.querySelector<HTMLElement>('[data-privacy-result]')?.focus(),
+          { injector: this.injector },
+        );
+      },
     );
   }
   async revokeSessions(id: string) {
@@ -657,15 +730,21 @@ export class AdminConsoleComponent {
       this.detail.set(null);
       this.proof.set('');
     }
-    if (status === 409) this.stale.set(true);
+    if (code === 'admin_conflict' || (status === 409 && !code)) this.stale.set(true);
     this.error.set(
-      code === 'admin_conflict' || status === 409
+      code === 'admin_conflict'
         ? this.label('conflict')
-        : code === 'admin_blocked'
-          ? this.label('publishBlocked')
-          : status === 422 || status === 400
-            ? this.label('invalid')
-            : this.label('error'),
+        : code === 'privacy_policy_changed'
+          ? this.label('privacyPolicyChanged')
+          : code === 'privacy_policy_missing'
+            ? this.label('privacyPolicyMissing')
+            : code === 'privacy_ownership_blocked'
+              ? this.label('privacyOwnershipBlocked')
+              : code === 'admin_blocked'
+                ? this.label('publishBlocked')
+                : status === 422 || status === 400
+                  ? this.label('invalid')
+                  : this.label('error'),
     );
   }
 }

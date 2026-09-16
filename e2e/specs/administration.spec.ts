@@ -179,7 +179,7 @@ test('admin-boundaries checks staff separation, takeover, policy gates and local
   await expect(page.locator('[data-admin-deletions]')).toBeVisible();
   const request = page.locator('[data-deletion-id="demo-admin-deletion-policy"]');
   await expect(request.locator('[data-process-deletion]')).toHaveCount(0);
-  await page.locator('main details summary').click();
+  await page.locator('[data-policy-secondary] button').click();
   await expect(page.locator('[data-save-policy]')).toBeDisabled();
   await page.locator('[name="policyVersion"]').fill('SYNTHETIC-E2E-ONLY');
   await page
@@ -196,10 +196,12 @@ test('admin-boundaries checks staff separation, takeover, policy gates and local
   await expect(page.locator('[data-save-policy]')).toBeDisabled();
   await page.locator('[name="approvalConfirmed"]').check();
   await confirm(page, '[data-save-policy]');
-  await expect(request.locator('[data-process-deletion]')).toBeVisible();
-  await confirm(page, '[data-deletion-id="demo-admin-deletion-policy"] [data-process-deletion]');
-  await expect(request).toContainText(adminLabel('completed', 'de'));
-  await expect(request.locator('[data-process-deletion]')).toHaveCount(0);
+  await request.getByRole('button', { name: adminLabel('open', 'de'), exact: true }).click();
+  const selected = page.locator('[data-privacy-context]');
+  await expect(selected.locator('[data-process-deletion]')).toBeVisible();
+  await confirm(page, '[data-privacy-context] [data-process-deletion]');
+  await expect(selected).toContainText(adminLabel('completed', 'de'));
+  await expect(selected.locator('[data-process-deletion]')).toHaveCount(0);
   for (const language of ['de', 'sq', 'en'] as const) {
     const prefix = language === 'de' ? '' : '/' + language;
     await app.login(page, 'admin', language, prefix + '/admin/users');

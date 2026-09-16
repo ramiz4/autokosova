@@ -57,7 +57,12 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
-async function render(section = 'users', locale: AppLanguage = 'de', role = 'admin') {
+async function render(
+  section = 'users',
+  locale: AppLanguage = 'de',
+  role = 'admin',
+  query: Record<string, string> = {},
+) {
   const account = {
     state: signal('ready'),
     identity: signal({ userId: 'synthetic-admin', roles: [role], garageMemberships: [] }),
@@ -86,7 +91,15 @@ async function render(section = 'users', locale: AppLanguage = 'de', role = 'adm
     imports: [AdminConsoleComponent],
     providers: [
       provideRouter([]),
-      { provide: ActivatedRoute, useValue: { snapshot: { data: { adminSection: section } } } },
+      {
+        provide: ActivatedRoute,
+        useValue: {
+          snapshot: {
+            data: { adminSection: section },
+            queryParamMap: { get: (key: string) => query[key] ?? null },
+          },
+        },
+      },
       { provide: AccountSessionService, useValue: account },
       {
         provide: LanguageService,
@@ -211,4 +224,19 @@ it('submits exactly the deletion policy that the administrator confirmed', async
   const [path, options] = fetch.mock.calls[0];
   expect(path).toContain('/synthetic-request/process');
   expect(JSON.parse(options.body)).toEqual({ policyVersion: 'SYNTHETIC-CONFIRMED' });
+});
+
+it('keeps only a technical selected request in the URL and detects policy edits by equality', async () => {
+  const { component, fetch } = await render('privacy', 'de', 'admin', {
+    requestId: 'synthetic-request',
+    focus: 'privacy-context',
+  });
+  expect(
+    fetch.mock.calls.some(([url]) => String(url).includes('requestId=synthetic-request')),
+  ).toBe(true);
+  expect(component.policyDirty()).toBe(false);
+  component.policyVersion = 'SYNTHETIC-V1';
+  expect(component.policyDirty()).toBe(true);
+  component.policyVersion = '';
+  expect(component.policyDirty()).toBe(false);
 });

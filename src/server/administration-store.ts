@@ -22,6 +22,7 @@ import {
   type AdminRevision,
   type AdminGarageDecision,
   type AdminPrivacy,
+  type AdminPrivacyRequest,
   type AdminAuditEvent,
   type AdminCatalog,
   type AdminCatalogItem,
@@ -32,6 +33,30 @@ export interface AdminFilter {
   readonly page?: number;
   readonly query?: string;
   readonly status?: string;
+  readonly requestId?: string;
+}
+interface PrivacyRow {
+  readonly id: string;
+  readonly user_id: string;
+  readonly policy_version: string | null;
+  readonly status: AdminPrivacyRequest['status'];
+  readonly created_at: Date;
+  readonly label: string;
+  readonly ownerships: number;
+  readonly owned_garages: readonly { readonly id: string; readonly name: string }[];
+  readonly pending_files: number;
+  readonly file_objects: number;
+  readonly garage_reviews: number;
+  readonly content_reports: number;
+  readonly runnable: boolean;
+  readonly bound_version: string | null;
+  readonly bound_approval_reference: string | null;
+  readonly bound_review_handling: 'delete' | 'retain_anonymized' | null;
+  readonly bound_review_days: number | null;
+  readonly bound_request_days: number | null;
+  readonly bound_report_days: number | null;
+  readonly bound_audit_days: number | null;
+  readonly bound_configured_at: Date | null;
 }
 
 /** Administrative views reuse existing tables and the verified role check. No role editor. */
@@ -41,12 +66,12 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
   }
   async overview(principal: Principal): Promise<AdminOverview> {
     return this.adminTransaction(principal, async (client) => {
-      const result = await client.query<AdminOverview>(`SELECT
+      const result = await client.query<AdminOverview>(`${this.privacyReadinessCte()} SELECT
         (SELECT count(*)::integer FROM garage WHERE publication_state='pending_review' AND deleted_at IS NULL) AS "pendingGarages",
         (SELECT count(*)::integer FROM moderation_case WHERE kind IN ('report','review_submission') AND assigned_moderator_user_id IS NULL AND status IN ('submitted','assigned') AND escalation_reason IS NULL) AS "unassignedCases",
         (SELECT count(*)::integer FROM moderation_case WHERE escalation_reason IS NOT NULL AND status IN ('submitted','assigned')) AS "escalatedCases",
-        (SELECT count(*)::integer FROM data_deletion_request WHERE status='submitted') AS "pendingDeletions",
-        (SELECT count(*)::integer FROM data_deletion_request WHERE status IN ('blocked_by_policy','manual_content_decision_required')) AS "blockedDeletions"`);
+        (SELECT count(*)::integer FROM privacy_readiness WHERE runnable) AS "pendingDeletions",
+        (SELECT count(*)::integer FROM privacy_readiness WHERE status<>'completed' AND NOT runnable) AS "blockedDeletions"`);
       return result.rows[0];
     });
   }
@@ -215,51 +240,112 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
     const page = checkedPage(filter.page);
     if (filter.status && !['submitted', 'blocked', 'completed'].includes(filter.status))
       throw new AccessError(400, 'Invalid deletion request status');
+    const requestId = checkedPrivacyRequestId(filter.requestId);
     return this.adminTransaction(principal, async (client) => {
       const policies = await client.query(
         'SELECT * FROM lifecycle_policy ORDER BY configured_at DESC,version DESC LIMIT 1',
       );
       const p = policies.rows[0];
-      const requests = await client.query(
-        `SELECT d.*,COALESCE(s.display_name,d.user_id) AS label,
-        (SELECT count(*)::integer FROM membership WHERE user_id=d.user_id AND state='active' AND role='owner') AS ownerships,
-        (SELECT count(*)::integer FROM object_deletion_task t JOIN file_object f ON f.id=t.file_id WHERE f.owner_user_id=d.user_id AND t.completed_at IS NULL) AS pending_files
-        FROM data_deletion_request d LEFT JOIN staff_identity s ON s.user_id=d.user_id
-        WHERE ($1::text IS NULL OR ($1='submitted' AND d.status='submitted')
-          OR ($1='blocked' AND d.status IN ('blocked_by_policy','manual_content_decision_required'))
-          OR ($1='completed' AND d.status='completed'))
-        ORDER BY d.created_at,d.id LIMIT $2 OFFSET $3`,
-        [filter.status || null, ADMIN_PAGE_SIZE + 1, (page - 1) * ADMIN_PAGE_SIZE],
+      const requests = await this.privacyRows(
+        client,
+        filter.status,
+        ADMIN_PAGE_SIZE + 1,
+        (page - 1) * ADMIN_PAGE_SIZE,
       );
+      const selected = requestId
+        ? (await this.privacyRows(client, undefined, 1, 0, requestId)).rows[0]
+        : undefined;
       return {
         page,
         hasMore: requests.rows.length > ADMIN_PAGE_SIZE,
-        requests: requests.rows.slice(0, ADMIN_PAGE_SIZE).map((r) => ({
-          id: r.id,
-          userId: r.user_id,
-          label: r.label,
-          status: r.status,
-          createdAt: r.created_at.toISOString(),
-          ...(r.policy_version ? { policyVersion: r.policy_version } : {}),
-          activeOwnerships: r.ownerships,
-          pendingFileDeletions: r.pending_files,
-        })),
-        ...(p
-          ? {
-              policy: {
-                version: p.version,
-                operatorApprovalReference: p.operator_approval_reference,
-                publicReviewHandling: p.public_review_handling,
-                reviewEvidenceRetentionDays: p.review_evidence_retention_days,
-                repairRequestRetentionDays: p.repair_request_retention_days,
-                reportRetentionDays: p.report_retention_days,
-                auditLogRetentionDays: p.audit_log_retention_days,
-                configuredAt: p.configured_at.toISOString(),
-              },
-            }
-          : {}),
+        requests: requests.rows.slice(0, ADMIN_PAGE_SIZE).map((row) => this.privacyRequest(row)),
+        ...(selected ? { selected: this.privacyRequest(selected) } : {}),
+        ...(p ? { policy: this.policyProjection(p) } : {}),
       };
     });
+  }
+  /** One read-only readiness definition powers both overview counts and bounded request views. */
+  private privacyReadinessCte(): string {
+    return `WITH privacy_readiness AS (
+      SELECT d.id,d.user_id,d.policy_version,d.status,d.created_at,
+       EXISTS(SELECT 1 FROM lifecycle_policy lp WHERE lp.version=d.policy_version) AS has_bound_policy,
+       EXISTS(SELECT 1 FROM membership m WHERE m.user_id=d.user_id AND m.role='owner' AND m.state='active') AS has_active_ownership,
+       (d.status='submitted' AND EXISTS(SELECT 1 FROM lifecycle_policy lp WHERE lp.version=d.policy_version)
+        AND NOT EXISTS(SELECT 1 FROM membership m WHERE m.user_id=d.user_id AND m.role='owner' AND m.state='active')) AS runnable
+      FROM data_deletion_request d
+    )`;
+  }
+  private async privacyRows(
+    client: pg.PoolClient,
+    status: string | undefined,
+    limit: number,
+    offset: number,
+    requestId?: string,
+  ) {
+    return client.query<PrivacyRow>(
+      `${this.privacyReadinessCte()}
+      SELECT r.*,COALESCE(s.display_name,r.user_id) AS label,
+       (SELECT count(*)::integer FROM membership m WHERE m.user_id=r.user_id AND m.role='owner' AND m.state='active') AS ownerships,
+       COALESCE((SELECT json_agg(garage_row ORDER BY garage_row.name,garage_row.id) FROM (
+          SELECT g.id,g.name FROM membership m JOIN garage g ON g.id=m.garage_id
+          WHERE m.user_id=r.user_id AND m.role='owner' AND m.state='active' ORDER BY g.name,g.id LIMIT 20
+       ) garage_row),'[]'::json) AS owned_garages,
+       (SELECT count(*)::integer FROM object_deletion_task t JOIN file_object f ON f.id=t.file_id WHERE f.owner_user_id=r.user_id AND t.completed_at IS NULL) AS pending_files,
+       (SELECT count(*)::integer FROM file_object f WHERE f.owner_user_id=r.user_id AND f.retention_state='active') AS file_objects,
+       (SELECT count(*)::integer FROM garage_review gr WHERE gr.author_user_id=r.user_id) AS garage_reviews,
+       (SELECT count(*)::integer FROM content_report cr WHERE cr.reporter_user_id=r.user_id) AS content_reports,
+       lp.version AS bound_version,lp.operator_approval_reference AS bound_approval_reference,lp.public_review_handling AS bound_review_handling,
+       lp.review_evidence_retention_days AS bound_review_days,lp.repair_request_retention_days AS bound_request_days,
+       lp.report_retention_days AS bound_report_days,lp.audit_log_retention_days AS bound_audit_days,lp.configured_at AS bound_configured_at
+      FROM privacy_readiness r LEFT JOIN staff_identity s ON s.user_id=r.user_id LEFT JOIN lifecycle_policy lp ON lp.version=r.policy_version
+      WHERE ($1::text IS NULL OR ($1='submitted' AND r.runnable) OR ($1='blocked' AND r.status<>'completed' AND NOT r.runnable) OR ($1='completed' AND r.status='completed'))
+       AND ($2::text IS NULL OR r.id=$2)
+      ORDER BY r.created_at,r.id LIMIT $3 OFFSET $4`,
+      [status ?? null, requestId ?? null, limit, offset],
+    );
+  }
+  private policyProjection(row: Record<string, unknown>) {
+    return {
+      version: row['version'] as string,
+      operatorApprovalReference: row['operator_approval_reference'] as string,
+      publicReviewHandling: row['public_review_handling'] as 'delete' | 'retain_anonymized',
+      reviewEvidenceRetentionDays: row['review_evidence_retention_days'] as number,
+      repairRequestRetentionDays: row['repair_request_retention_days'] as number,
+      reportRetentionDays: row['report_retention_days'] as number,
+      auditLogRetentionDays: row['audit_log_retention_days'] as number,
+      configuredAt: (row['configured_at'] as Date).toISOString(),
+    };
+  }
+  private privacyRequest(r: PrivacyRow): AdminPrivacyRequest {
+    const boundPolicy = r.bound_version
+      ? {
+          version: r.bound_version,
+          operatorApprovalReference: r.bound_approval_reference!,
+          publicReviewHandling: r.bound_review_handling!,
+          reviewEvidenceRetentionDays: r.bound_review_days!,
+          repairRequestRetentionDays: r.bound_request_days!,
+          reportRetentionDays: r.bound_report_days!,
+          auditLogRetentionDays: r.bound_audit_days!,
+          configuredAt: r.bound_configured_at!.toISOString(),
+        }
+      : undefined;
+    return {
+      id: r.id,
+      userId: r.user_id,
+      label: r.label,
+      status: r.status,
+      createdAt: r.created_at.toISOString(),
+      ...(r.policy_version ? { policyVersion: r.policy_version } : {}),
+      activeOwnerships: r.ownerships,
+      ownedGarages: r.owned_garages,
+      pendingFileDeletions: r.pending_files,
+      fileObjectCount: r.file_objects,
+      garageReviewCount: r.garage_reviews,
+      contentReportCount: r.content_reports,
+      ownerOnlyObjectTypes: ['vehicles', 'repair_requests', 'garage_favorites'],
+      runnable: r.runnable,
+      ...(boundPolicy ? { boundPolicy } : {}),
+    };
   }
   async auditPage(principal: Principal, filter: AdminFilter): Promise<AdminPage<AdminAuditEvent>> {
     const page = checkedPage(filter.page),
@@ -621,16 +707,24 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
         "SELECT 1 FROM membership WHERE user_id=$1 AND role='owner' AND state='active' FOR SHARE",
         [row.user_id],
       );
-      const policy = await client.query<{ version: string }>(
-        'SELECT version FROM lifecycle_policy ORDER BY configured_at DESC,version DESC LIMIT 1',
-      );
+      // A request with an immutable binding never silently switches to a newer policy. Only a
+      // no-policy request can acquire today's configured version via this explicit action.
+      const policy =
+        row.status === 'blocked_by_policy'
+          ? await client.query<{ version: string }>(
+              'SELECT version FROM lifecycle_policy ORDER BY configured_at DESC,version DESC LIMIT 1',
+            )
+          : await client.query<{ version: string }>(
+              'SELECT version FROM lifecycle_policy WHERE version=(SELECT policy_version FROM data_deletion_request WHERE id=$1)',
+              [id],
+            );
       const status = owners.rowCount
         ? 'manual_content_decision_required'
         : policy.rowCount
           ? 'submitted'
           : 'blocked_by_policy';
       await client.query(
-        'UPDATE data_deletion_request SET status=$2,policy_version=$3 WHERE id=$1',
+        'UPDATE data_deletion_request SET status=$2,policy_version=COALESCE(policy_version,$3) WHERE id=$1',
         [id, status, policy.rows[0]?.version ?? null],
       );
       await client.query(
@@ -757,6 +851,12 @@ function checkedPage(page = 1): number {
 function checkedQuery(query = ''): string {
   if (typeof query !== 'string' || query.length > 120) throw new AccessError(400, 'Invalid search');
   return query.trim();
+}
+function checkedPrivacyRequestId(value: unknown): string | undefined {
+  if (value === undefined) return;
+  if (typeof value !== 'string' || !/^[A-Za-z0-9_-]{1,200}$/.test(value))
+    throw new AccessError(400, 'Invalid deletion request');
+  return value;
 }
 function escapeLike(query: string): string {
   return query.replace(/[\\%_]/g, '\\$&');

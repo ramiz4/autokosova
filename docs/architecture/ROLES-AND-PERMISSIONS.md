@@ -142,10 +142,12 @@ Private Adminantworten verwenden `no-store`, Rollen-/Sitzungskontext wird nach L
 
 ### Ergänzende Integritätsprüfungen der Administration
 
-`DATA-1/2`: Der Admin-Client übermittelt beim bestätigten Löschvorgang die angezeigte `policyVersion`.
+`DATA-1/2`: Der Admin-Client übermittelt beim bestätigten Löschvorgang die angezeigte, am Antrag gebundene `policyVersion`.
 Der persistente HTTP-Vertrag verlangt sie; `processPersonalDataDeletion` vergleicht sie unter der
 Zeilensperre mit der am Antrag gebundenen Policy. Abweichungen ergeben `409` ohne Löschung.
-Wiederholtes Speichern derselben unveränderten Policy-Version ist idempotent, veränderte Werte
+Die Readiness-Zähler und der begrenzte Privacy-Listenfilter verwenden dasselbe aktuelle
+Prädikat: `submitted`, gebundene vorhandene Policy und kein aktives Werkstatteigentum. Ein später
+entstandenes Eigentum macht den Auftrag wieder blockiert; ein GET verändert ihn nicht. Wiederholtes Speichern derselben unveränderten Policy-Version ist idempotent, veränderte Werte
 benötigen eine neue freigegebene Version. Der Seed aktiviert weiterhin keine Policy.
 
 `MEMBER-1/2`: Mitgliedschaftsänderungen und Eigentumsübergaben schreiben zusätzlich zur Garage-Aktion

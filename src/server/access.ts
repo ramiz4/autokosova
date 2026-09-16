@@ -287,7 +287,10 @@ export class AccessError extends Error {
       | 'case_assignment_lost'
       | 'admin_conflict'
       | 'admin_blocked'
-      | 'admin_revoked',
+      | 'admin_revoked'
+      | 'privacy_policy_changed'
+      | 'privacy_policy_missing'
+      | 'privacy_ownership_blocked',
   ) {
     super(message);
   }

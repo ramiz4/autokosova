@@ -381,6 +381,47 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Physical file deletions still pending',
     'Fshirjet fizike janë në pritje',
   ],
+  pendingFilesMeaning: [
+    'Der Datenbankvorgang ist abgeschlossen; externe Dateilöschungen bestätigt erst der Storage-Worker.',
+    'The database operation is complete; the storage worker still has to confirm external file deletion.',
+    'Veprimi në bazën e të dhënave përfundoi; punëtori i ruajtjes duhet të konfirmojë fshirjen e skedarëve.',
+  ],
+  privacyRunnable: ['Jetzt ausführbar', 'Ready to execute', 'Gati për ekzekutim'],
+  technicalRequest: ['Technische Anfrage-ID', 'Technical request ID', 'ID teknike e kërkesës'],
+  boundPolicy: ['Gebundene Regel', 'Bound policy', 'Rregulli i lidhur'],
+  latestPolicy: [
+    'Zuletzt konfigurierte Regel',
+    'Latest configured policy',
+    'Rregulli i fundit i konfiguruar',
+  ],
+  ownerOnlyTypes: [
+    'Betroffene private Objektarten: Fahrzeuge, Anfragen und Favoriten. Diese bleiben außerhalb der Admin-Leseansicht.',
+    'Affected private object types: vehicles, requests and favorites. They remain outside the admin read view.',
+    'Llojet private të prekura: automjete, kërkesa dhe të preferuara. Ato mbeten jashtë pamjes së leximit të adminit.',
+  ],
+  fileObjects: ['Private Dateien', 'Private files', 'Skedarë privatë'],
+  garageReviews: ['Bewertungen', 'Reviews', 'Vlerësime'],
+  contentReports: ['Meldungen', 'Reports', 'Raporte'],
+  privacyPolicyChanged: [
+    'Die gebundene Regel hat sich geändert. Aktuelle Regel bewusst prüfen und erneut bestätigen.',
+    'The bound policy changed. Review the current policy deliberately and confirm again.',
+    'Rregulli i lidhur ndryshoi. Kontrolloni me vetëdije rregullin aktual dhe konfirmoni përsëri.',
+  ],
+  privacyPolicyMissing: [
+    'Für diese Anfrage fehlt eine gebundene freigegebene Regel. Regel bewusst prüfen und Voraussetzungen aktualisieren.',
+    'This request has no bound approved policy. Review policy deliberately and refresh prerequisites.',
+    'Kjo kërkesë nuk ka rregull të lidhur të miratuar. Kontrolloni rregullin dhe rifreskoni kushtet.',
+  ],
+  privacyOwnershipBlocked: [
+    'Aktives Werkstatteigentum blockiert die Löschung. Eigentum zuerst im verlinkten Team-Kontext klären, dann Voraussetzungen aktualisieren.',
+    'Active garage ownership blocks deletion. Resolve ownership in the linked team context, then refresh prerequisites.',
+    'Pronësia aktive e servisit bllokon fshirjen. Zgjidhni pronësinë në kontekstin e ekipit dhe rifreskoni kushtet.',
+  ],
+  returnDeletionRequest: [
+    'Zurück zum Löschauftrag',
+    'Return to deletion request',
+    'Kthehu te kërkesa për fshirje',
+  ],
   catalogHint: [
     'Pflege im versionierten Repository-Prozess: Quelle/Lizenz prüfen, stabile IDs erhalten, referenzierte Werte stilllegen statt löschen. Kein Laufzeit-Editor.',
     'Maintain through the versioned repository process: check source/license, retain stable IDs, retire referenced values rather than deleting. No runtime editor.',

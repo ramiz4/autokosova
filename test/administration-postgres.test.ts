@@ -386,6 +386,16 @@ test(
           ['blocked_by_policy', 'manual_content_decision_required'].includes(r.status),
         ),
       );
+      const ownershipContext = await adminStore.privacy(a, {
+        requestId: 'demo-admin-deletion-ownership',
+      });
+      assert.equal(ownershipContext.selected?.runnable, false);
+      assert.ok(ownershipContext.selected?.ownedGarages.length);
+      assert.deepEqual(ownershipContext.selected?.ownerOnlyObjectTypes, [
+        'vehicles',
+        'repair_requests',
+        'garage_favorites',
+      ]);
       await assert.rejects(lifecycle.processPersonalDataDeletion(a, 'demo-admin-deletion-policy'));
       const policy = {
         version: 'SYNTHETIC-TEST-ONLY',
@@ -446,6 +456,26 @@ test(
       );
       assert.equal((await lifecycle.exportPersonalData(a)).repairRequests.length, 0);
       await adminStore.refreshDeletion(a, 'demo-admin-deletion-policy');
+      const readyContext = await adminStore.privacy(a, {
+        requestId: 'demo-admin-deletion-policy',
+      });
+      assert.equal(readyContext.selected?.runnable, true);
+      assert.equal(readyContext.selected?.boundPolicy?.version, policy.version);
+      assert.equal((await adminStore.overview(a)).pendingDeletions >= 1, true);
+      // Readiness is current, not a stale stored label: a new ownership blocker removes the
+      // request from the runnable filter/count without giving this admin a customer read path.
+      await seed.query(
+        "INSERT INTO membership(user_id,garage_id,role,state,granted_by) VALUES('demo-admin-erase-requester','demo-admin-garage-members','owner','active','admin-regression') ON CONFLICT(user_id,garage_id) DO UPDATE SET role='owner',state='active'",
+      );
+      const changedOwnership = await adminStore.privacy(a, {
+        status: 'blocked',
+        requestId: 'demo-admin-deletion-policy',
+      });
+      assert.equal(changedOwnership.selected?.runnable, false);
+      await seed.query(
+        "UPDATE membership SET state='revoked' WHERE user_id='demo-admin-erase-requester' AND garage_id='demo-admin-garage-members'",
+      );
+      await adminStore.refreshDeletion(a, 'demo-admin-deletion-policy');
       const deletion = await lifecycle.processPersonalDataDeletion(a, 'demo-admin-deletion-policy');
       assert.equal(deletion.userId, 'demo-admin-erase-requester');
       for (const table of ['vehicle', 'repair_request', 'garage_favorite']) {
@@ -466,6 +496,11 @@ test(
         ).rowCount,
         0,
       );
+      const completedContext = await adminStore.privacy(a, {
+        requestId: 'demo-admin-deletion-policy',
+      });
+      assert.equal(completedContext.selected?.status, 'completed');
+      assert.equal(completedContext.selected?.pendingFileDeletions, 1);
       assert.equal(
         (
           await seed.query(

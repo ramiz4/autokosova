@@ -91,14 +91,27 @@ export interface AdminOverview {
   readonly blockedDeletions: number;
 }
 export interface AdminPrivacy {
-  readonly requests: readonly (DataDeletionRequest & {
-    readonly label: string;
-    readonly activeOwnerships: number;
-    readonly pendingFileDeletions: number;
-  })[];
+  readonly requests: readonly AdminPrivacyRequest[];
   readonly page: number;
   readonly hasMore: boolean;
+  /** A direct, re-authorized technical request selection; it is never a search term. */
+  readonly selected?: AdminPrivacyRequest;
+  /** Latest configured metadata only. A request always shows its separately bound policy. */
   readonly policy?: RetentionPolicy;
+}
+/** Limited admin projection. Owner-only vehicles, requests and favorites are intentionally types only. */
+export interface AdminPrivacyRequest extends DataDeletionRequest {
+  readonly label: string;
+  readonly activeOwnerships: number;
+  readonly ownedGarages: readonly { readonly id: string; readonly name: string }[];
+  readonly pendingFileDeletions: number;
+  readonly fileObjectCount: number;
+  readonly garageReviewCount: number;
+  readonly contentReportCount: number;
+  readonly ownerOnlyObjectTypes: readonly ('vehicles' | 'repair_requests' | 'garage_favorites')[];
+  readonly boundPolicy?: RetentionPolicy;
+  /** Derived from current DB facts; never persisted as another request state. */
+  readonly runnable: boolean;
 }
 export interface AdminAuditEvent {
   readonly id: string;

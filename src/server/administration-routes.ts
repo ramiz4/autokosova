@@ -27,6 +27,7 @@ export function registerAdministrationRoutes(
     properties: {
       page: { type: 'integer', minimum: 1, maximum: 10000 },
       query: { type: 'string', maxLength: 120 },
+      requestId: { type: 'string', maxLength: 200, pattern: '^[A-Za-z0-9_-]{1,200}$' },
       status: { type: 'string', maxLength: 40 },
     },
   };
