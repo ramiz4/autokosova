@@ -4,6 +4,8 @@ import { until } from './inquiries-test-browser.mjs';
 /** Uses the existing signed OIDC/application/DB harness, never mocked decision responses. */
 export async function checkModerationWorkspace({ browser, client, login, output }) {
   async function open(id, locale = 'de') {
+    // The list shell renders before its asynchronous rows/hasMore. Reading disabled during
+    // that interval would mistake a pending page for the end of the authorized queue.
     await browser.evaluate('window.__oldModerationDocument=true');
     await browser.command('Page.navigate', {
       url: browser.origin + (locale === 'de' ? '' : '/' + locale) + '/moderation',
@@ -11,7 +13,7 @@ export async function checkModerationWorkspace({ browser, client, login, output 
     await until(
       () =>
         browser.evaluate(
-          '!window.__oldModerationDocument && !!document.querySelector("[data-staff-list]")',
+          `!window.__oldModerationDocument && !!document.querySelector('[data-staff-list][aria-busy="false"] [data-staff-row]')`,
         ),
       'moderation list',
     );
@@ -37,7 +39,7 @@ export async function checkModerationWorkspace({ browser, client, login, output 
       await until(
         () =>
           browser.evaluate(
-            `document.querySelector('[data-staff-list]')?.textContent!==${JSON.stringify(rows)}`,
+            `!!document.querySelector('[data-staff-list][aria-busy="false"] [data-staff-row]') && document.querySelector('[data-staff-list]')?.textContent!==${JSON.stringify(rows)}`,
           ),
         'next authorized case page',
       );

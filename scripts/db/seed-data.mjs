@@ -1,3 +1,4 @@
+import { seedAdminDemo } from './admin-demo.mjs';
 import { seedReviewWorkflowDemo } from './review-demo.mjs';
 import { seedStaffDemo, readStaffDemoConfig } from './staff-demo.mjs';
 import { isManagedDemoEntity, readDemoAccountConfig, seedDemoAccounts } from './demo-accounts.mjs';
@@ -97,6 +98,7 @@ export async function seedDatabase(client, profile, environment = process.env) {
       await seedDemoWorkflowData(client);
       await seedDemoAccounts(client, accounts);
       await seedStaffDemo(client, environment);
+      await seedAdminDemo(client, environment);
       await seedReviewWorkflowDemo(client, accounts);
     }
 

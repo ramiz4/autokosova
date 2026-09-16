@@ -23,6 +23,7 @@ export type AppRoute =
   | 'profile'
   | 'inquiries'
   | 'favorites'
+  | 'admin-section'
   | 'reviews'
   | 'review-new'
   | 'admin'
@@ -124,6 +125,11 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
     profile: '/profile',
     inquiries: '/inquiries',
     favorites: '/favorites',
+    'admin-section':
+      '/admin/' +
+      (['garages', 'users', 'privacy', 'audit', 'catalog', 'support'].includes(parameter ?? '')
+        ? parameter
+        : 'garages'),
     reviews: '/reviews',
     'review-new': `/garages/${encodeURIComponent(parameter ?? '')}/reviews/new`,
     admin: '/admin',
@@ -139,6 +145,8 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
 function identifyRoute(path: string): { readonly parameter?: string; readonly route: AppRoute } {
   const normalized = path.replace(/^\/(?:sq|en)(?=\/|$)/, '') || '/';
   if (normalized === '/') return { route: 'home' };
+  const admin = normalized.match(/^\/admin\/(garages|users|privacy|audit|catalog|support)$/);
+  if (admin) return { route: 'admin-section', parameter: admin[1] };
   if (normalized === '/admin') return { route: 'admin' };
   if (normalized === '/moderation') return { route: 'moderation' };
   if (normalized === '/reviews') return { route: 'reviews' };

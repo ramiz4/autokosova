@@ -1,3 +1,9 @@
+import { assertCurrentStaffIdentity } from './staff-identity';
+import {
+  validAdminDecision,
+  type AdminRevision,
+  type AdminGarageDecision,
+} from '../shared/administration';
 import { randomUUID } from 'node:crypto';
 import type { OwnGarageMembership } from '../shared/account';
 import pg from 'pg';
@@ -10,6 +16,7 @@ import {
 } from '../shared/garage-onboarding';
 
 export interface PrivateGarage {
+  readonly adminRevision?: number;
   readonly canDelete?: boolean;
   readonly id: string;
   readonly profile: GarageProfileInput;
@@ -43,6 +50,7 @@ export interface GarageOnboardingStore {
     garageId: string,
     decision: 'published' | 'rejected' | 'suspended',
     verification: VerificationChecklist,
+    context?: AdminGarageDecision,
   ): Maybe<void>;
   createAssistedGarage(
     principal: Principal,
@@ -56,7 +64,7 @@ export interface GarageOnboardingStore {
 // Onboarding uses the existing relational garage/point/membership model. No second position or
 // browser-side persistence is introduced. Each save and its audit event commit together.
 export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
-  private readonly pool: pg.Pool;
+  protected readonly pool: pg.Pool;
   constructor(url: string) {
     this.pool = new pg.Pool({ connectionString: url });
   }
@@ -117,15 +125,24 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
       throw new AccessError(422, 'Documented consent required');
     return this.create(principal, applicantUserId, profile, consent);
   }
-  private async create(
+  protected async create(
     principal: Principal,
     owner: string,
     profile: GarageProfileInput,
     consent: GarageConsent,
+    supportReference?: string,
   ) {
     if (!validGarageProfile(profile) || !consent.version.trim() || consent.version.length > 80)
       throw new AccessError(422, 'Invalid garage profile');
     return this.transaction(principal, async (client) => {
+      if (supportReference) {
+        await assertCurrentStaffIdentity(client, principal);
+        const applicant = await client.query(
+          "SELECT id FROM app_user WHERE id=$1 AND status='active' FOR SHARE",
+          [owner],
+        );
+        if (!applicant.rowCount) throw new AccessError(422, 'Select an existing active applicant');
+      }
       await this.ensureUser(client, owner);
       // Serialize the same normalized name/place so retries cannot create a second draft.
       await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
@@ -156,6 +173,11 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
         "INSERT INTO garage_verification(garage_id,phone_state,contact_person_state,company_document_state,location_state) VALUES($1,'not_checked','not_checked','not_checked','not_checked')",
         [id],
       );
+      if (supportReference)
+        await client.query(
+          'INSERT INTO garage_support_request(id,garage_id,request_reference,recorded_by_user_id) VALUES($1,$2,$3,$4)',
+          [randomUUID(), id, supportReference, principal.userId],
+        );
       await this.audit(client, principal, id, 'garage-registration-started');
       return { id, publicationState: 'draft' as const };
     });
@@ -198,6 +220,17 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
   ): Promise<void> {
     await this.transaction(principal, async (client) => {
       await this.authorize(client, principal, id);
+      if (principal.roles.has('admin')) {
+        const own = await client.query(
+          "SELECT 1 FROM membership WHERE garage_id=$1 AND user_id=$2 AND state='active'",
+          [id, principal.userId],
+        );
+        if (!own.rowCount)
+          throw new AccessError(
+            403,
+            'Administrative corrections require a documented support request',
+          );
+      }
       const existing = await this.read(client, id);
       if (existing.publicationState === 'suspended') throw new AccessError(409, 'Suspended garage');
       if (!validGarageProfile(profile, existing.profile))
@@ -219,10 +252,39 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
       await this.audit(client, principal, id, 'garage-profile-updated');
     });
   }
-  async submitGarageForReview(principal: Principal, id: string): Promise<void> {
+  async submitGarageForReview(
+    principal: Principal,
+    id: string,
+    context?: AdminRevision & { requestReference: string },
+  ): Promise<void> {
     await this.transaction(principal, async (client) => {
       await this.authorize(client, principal, id);
       const garage = await this.read(client, id);
+      if (context) {
+        await assertCurrentStaffIdentity(client, principal);
+        if (
+          !principal.roles.has('admin') ||
+          context.reason !== 'documented_support' ||
+          context.requestReference.trim().length < 5
+        )
+          throw new AccessError(403, 'A documented administrative request is required');
+        if (context.revision !== garage.adminRevision)
+          throw new AccessError(409, 'Garage changed before submission');
+        await client.query(
+          'INSERT INTO garage_support_request(id,garage_id,request_reference,recorded_by_user_id) VALUES($1,$2,$3,$4)',
+          [randomUUID(), id, context.requestReference.trim(), principal.userId],
+        );
+      } else if (principal.roles.has('admin')) {
+        const own = await client.query(
+          "SELECT 1 FROM membership WHERE garage_id=$1 AND user_id=$2 AND state='active'",
+          [id, principal.userId],
+        );
+        if (!own.rowCount)
+          throw new AccessError(
+            403,
+            'Administrative submission requires a documented support request',
+          );
+      }
       if (!validGarageProfile(garage.profile, garage.profile))
         throw new AccessError(422, 'Invalid garage profile');
       if (!['draft', 'rejected'].includes(garage.publicationState))
@@ -236,15 +298,38 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
     id: string,
     decision: 'published' | 'rejected' | 'suspended',
     verification: VerificationChecklist,
+    context?: AdminGarageDecision,
   ): Promise<void> {
     if (!principal.roles.has('admin')) throw new AccessError(403, 'Admin access denied');
     await this.transaction(principal, async (client) => {
       await this.authorize(client, principal, id);
       const garage = await this.read(client, id);
+      if (context) {
+        if (!validAdminDecision(context))
+          throw new AccessError(422, 'Invalid administrative decision');
+        await assertCurrentStaffIdentity(client, principal);
+        if (garage.adminRevision !== context.revision)
+          throw new AccessError(409, 'The garage changed; reload before deciding');
+      }
+      const state = await client.query<{
+        admin_suspended: boolean;
+        moderation_hidden_case_id: string | null;
+      }>('SELECT admin_suspended,moderation_hidden_case_id FROM garage WHERE id=$1', [id]);
+      const restoring = context?.decision === 'restore';
+      const adminSuspendingHidden =
+        context?.decision === 'suspended' &&
+        garage.publicationState === 'suspended' &&
+        !!state.rows[0]?.moderation_hidden_case_id;
       const valid =
         (garage.publicationState === 'pending_review' &&
           ['published', 'rejected'].includes(decision)) ||
-        (garage.publicationState === 'published' && decision === 'suspended');
+        (garage.publicationState === 'published' && decision === 'suspended') ||
+        adminSuspendingHidden ||
+        (restoring &&
+          decision === 'published' &&
+          garage.publicationState === 'suspended' &&
+          state.rows[0]?.admin_suspended &&
+          !state.rows[0]?.moderation_hidden_case_id);
       if (!valid) throw new AccessError(409, 'Invalid garage state');
       const involved = await client.query(
         "SELECT 1 FROM membership WHERE garage_id=$1 AND user_id=$2 AND state='active'",
@@ -259,6 +344,21 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
         )
       )
         throw new AccessError(422, 'All company verification checks are required');
+      if (context && decision === 'published') {
+        if (!validGarageProfile(garage.profile, garage.profile) || !garage.profile.locationPoint)
+          throw new AccessError(422, 'A complete profile and actual garage point are required');
+        const proof = await client.query(
+          `SELECT 1 FROM garage_verification_document d JOIN file_object f ON f.id=d.file_id
+          WHERE d.garage_id=$1 AND f.scan_state='clean' AND f.retention_state='active' FOR SHARE OF f`,
+          [id],
+        );
+        const owners = await client.query(
+          "SELECT 1 FROM membership m JOIN app_user u ON u.id=m.user_id WHERE m.garage_id=$1 AND m.role='owner' AND m.state='active' AND u.status='active' FOR SHARE OF m,u",
+          [id],
+        );
+        if (!proof.rowCount || !owners.rowCount)
+          throw new AccessError(422, 'Available company evidence and an active owner are required');
+      }
       await client.query(
         'UPDATE garage SET publication_state=$2,moderation_hidden_case_id=NULL WHERE id=$1',
         [id, decision],
@@ -274,10 +374,21 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
           principal.userId,
         ],
       );
+      if (context) {
+        await client.query(
+          'UPDATE garage SET admin_suspended=$2,admin_last_reason=$3 WHERE id=$1',
+          [id, decision === 'suspended', context.reason],
+        );
+        await this.audit(client, principal, id, 'admin-reason-' + context.reason);
+      }
       await this.audit(client, principal, id, 'garage-' + decision);
     });
   }
-  private async authorize(client: pg.PoolClient, principal: Principal, id: string): Promise<void> {
+  protected async authorize(
+    client: pg.PoolClient,
+    principal: Principal,
+    id: string,
+  ): Promise<void> {
     // Locks prevent membership revocation or another profile update from racing a save.
     const garage = await client.query(
       'SELECT id FROM garage WHERE id=$1 AND deleted_at IS NULL FOR UPDATE',
@@ -291,9 +402,9 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
     );
     if (!membership.rowCount) throw new AccessError(403, 'Garage access denied');
   }
-  private async read(client: pg.PoolClient, id: string): Promise<PrivateGarage> {
+  protected async read(client: pg.PoolClient, id: string): Promise<PrivateGarage> {
     const result = await client.query(
-      `SELECT w.id, w.publication_state AS "publicationState", c.consent_version AS "consentVersion",
+      `SELECT w.id, w.admin_revision AS "adminRevision", w.publication_state AS "publicationState", c.consent_version AS "consentVersion",
       jsonb_build_object('phone',v.phone_state,'contactPerson',v.contact_person_state,'companyDocument',v.company_document_state,'location',v.location_state) AS verification,
       jsonb_strip_nulls(jsonb_build_object('name',w.name,'placeId',w.place_id,'address',w.business_address,'contactPerson',w.contact_person,'contactPhone',w.contact_phone,'publicPhone',w.public_phone,'publicWhatsapp',w.public_whatsapp,'contactEmail',w.contact_email,'description',w.description,'languages',w.languages,'selfReportedSpecializations',w.self_reported_specializations,
       'serviceCategoryIds',ARRAY(SELECT service_category_id FROM garage_service_category WHERE garage_id=w.id ORDER BY service_category_id),
@@ -305,7 +416,7 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
     if (!result.rows[0]) throw new AccessError(404, 'Garage not found');
     return result.rows[0];
   }
-  private async writeProfile(
+  protected async writeProfile(
     client: pg.PoolClient,
     id: string,
     profile: GarageProfileInput,
@@ -359,7 +470,7 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
     );
     if (!active.rowCount) throw new AccessError(403, 'Account unavailable');
   }
-  private async audit(
+  protected async audit(
     client: pg.PoolClient,
     principal: Principal,
     id: string,
@@ -370,7 +481,7 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
       [randomUUID(), principal.userId, id, event],
     );
   }
-  private async transaction<T>(
+  protected async transaction<T>(
     principal: Principal,
     action: (client: pg.PoolClient) => Promise<T>,
   ): Promise<T> {

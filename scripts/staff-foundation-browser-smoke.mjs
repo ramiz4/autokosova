@@ -51,7 +51,7 @@ try {
     await until(
       () =>
         browser.evaluate(
-          `!window.__oldStaffDocument && location.pathname===${JSON.stringify(destination)} && !!document.querySelector('[data-staff-list]') && document.querySelectorAll('[data-staff-row]').length>0`,
+          `!window.__oldStaffDocument && location.pathname===${JSON.stringify(destination)} && document.querySelector('[data-staff-list]')?.getAttribute('aria-busy')==='false' && document.querySelectorAll('[data-staff-row]').length>0`,
         ),
       'signed OIDC staff landing ' + role,
     );

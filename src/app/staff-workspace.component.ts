@@ -1,3 +1,6 @@
+import { AdminNavigationComponent } from './admin-navigation.component';
+import { adminLabel } from '../shared/admin-copy';
+import type { AdminOverview } from '../shared/administration';
 import { StaffDecisionFormComponent } from './staff-decision-form.component';
 import type { StaffCaseDecision } from '../shared/staff-decision';
 import { DOCUMENT, DatePipe } from '@angular/common';
@@ -31,6 +34,7 @@ import {
 @Component({
   selector: 'app-staff-workspace',
   imports: [
+    AdminNavigationComponent,
     StaffDecisionFormComponent,
     SiteHeaderComponent,
     RouterLink,
@@ -54,6 +58,10 @@ export class StaffWorkspaceComponent {
       this.isAdmin() ||
       (!this.adminOnly && (this.account.identity()?.roles.includes('moderator') ?? false)),
   );
+  readonly adminOverview = signal<AdminOverview | null>(null);
+  adminLabel(key: string) {
+    return adminLabel(key, this.language.language);
+  }
   readonly ready = signal(false);
   readonly loading = signal(false);
   readonly busy = signal(false);
@@ -67,6 +75,7 @@ export class StaffWorkspaceComponent {
   readonly reasons = STAFF_ESCALATION_REASONS;
   readonly evidenceText = signal<string | null>(null);
   filterStatus = '';
+  filterAssignee = '';
   filterKind = '';
   filterPriority = '';
   onlyEscalated = false;
@@ -87,6 +96,7 @@ export class StaffWorkspaceComponent {
       this.generation++;
       this.controller?.abort();
       this.detailVersion++;
+      this.adminOverview.set(null);
       this.cases.set([]);
       this.detail.set(null);
       this.evidenceText.set(null);
@@ -96,6 +106,7 @@ export class StaffWorkspaceComponent {
       this.loading.set(false);
       this.busy.set(false);
       this.moderatorId = '';
+      this.filterAssignee = '';
       if (context && ready && allowed) untracked(() => void this.load());
     });
     effect(() =>
@@ -129,6 +140,7 @@ export class StaffWorkspaceComponent {
     this.error.set('');
     const query = new URLSearchParams({ page: String(page) });
     if (this.filterStatus) query.set('status', this.filterStatus);
+    if (this.isAdmin() && this.filterAssignee) query.set('assignedUserId', this.filterAssignee);
     if (this.filterKind) query.set('kind', this.filterKind);
     if (this.filterPriority) query.set('priority', this.filterPriority);
     if (this.onlyEscalated && this.isAdmin()) query.set('escalated', 'true');
@@ -155,6 +167,18 @@ export class StaffWorkspaceComponent {
       this.page.set(data.page);
       this.hasMore.set(data.hasMore);
       this.moderators.set(candidates?.moderators ?? []);
+      if (this.isAdmin()) {
+        const overview = await fetch('/api/admin/management/overview', {
+          credentials: 'same-origin',
+          cache: 'no-store',
+          signal: this.controller.signal,
+        });
+        if (overview.ok) {
+          const value = (await overview.json()) as AdminOverview;
+          if (generation === this.generation && context === this.account.dataContext())
+            this.adminOverview.set(value);
+        }
+      }
     } catch (error) {
       if (generation === this.generation && context === this.account.dataContext()) {
         this.cases.set([]);
@@ -165,7 +189,7 @@ export class StaffWorkspaceComponent {
     }
   }
   async open(id: string): Promise<void> {
-    if (this.busy()) return;
+    if (this.busy() || this.loading()) return;
     const generation = this.generation,
       context = this.account.dataContext(),
       version = ++this.detailVersion;
@@ -221,6 +245,11 @@ export class StaffWorkspaceComponent {
         ? '[data-case-id=' + JSON.stringify(this.previousCase) + '] [data-open-case]'
         : 'h1',
     );
+  }
+  async takeOver(): Promise<void> {
+    if (!this.isAdmin() || !this.detail()?.canAssign || this.detail()?.conflictOfInterest) return;
+    this.moderatorId = this.account.identity()?.userId ?? '';
+    await this.assign();
   }
   async assign(): Promise<void> {
     if (this.moderatorId) await this.mutate('assign', { moderatorUserId: this.moderatorId });

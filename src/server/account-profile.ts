@@ -42,7 +42,7 @@ export function accountProfileFromClaims(
   return profile;
 }
 export function isAccountPagePath(url: string): boolean {
-  return /^\/(?:sq\/|en\/)?(?:admin|moderation|profile|reviews|inquiries|favorites|garages\/[A-Za-z0-9_-]{1,128}\/reviews\/new)\/?$/.test(
+  return /^\/(?:sq\/|en\/)?(?:admin(?:\/(?:garages|users|privacy|audit|catalog|support))?|moderation|profile|reviews|inquiries|favorites|garages\/[A-Za-z0-9_-]{1,128}\/reviews\/new)\/?$/.test(
     url.split(/[?#]/, 1)[0],
   );
 }

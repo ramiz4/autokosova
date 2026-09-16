@@ -10,6 +10,8 @@ export const requiredCases = [
   'late-response',
   'review-workflow',
   'review-boundaries',
+  'admin-workflow',
+  'admin-boundaries',
 ];
 export const requiredProjects = ['desktop', 'mobile'];
 

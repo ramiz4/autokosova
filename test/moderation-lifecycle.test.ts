@@ -258,9 +258,17 @@ test('a policy-gated deletion exports and removes private data, sessions and upl
       method: 'GET',
       url: '/api/admin/lifecycle/data-deletion-requests',
     });
+    const stale = await app.inject({
+      headers: headers(admin, true),
+      method: 'POST',
+      payload: { policyVersion: 'older-policy' },
+      url: `/api/admin/lifecycle/data-deletion-requests/${requestId}/process`,
+    });
+    assert.equal(stale.statusCode, 409);
     const processed = await app.inject({
       headers: headers(admin, true),
       method: 'POST',
+      payload: { policyVersion: deletionQueue.json().requests[0].policyVersion },
       url: `/api/admin/lifecycle/data-deletion-requests/${requestId}/process`,
     });
     const oldSessionDenied = await app.inject({

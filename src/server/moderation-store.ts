@@ -494,6 +494,33 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
     }
     return this.transaction(admin, async (client) => {
       await this.ensureUser(client, admin.userId);
+      // DATA-2: retrying the same immutable policy must not reactivate requests or append
+      // another event. Reusing its version with different terms is a conflict, never an edit.
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        'lifecycle-policy:' + input.version,
+      ]);
+      const existing = await client.query<{
+        operator_approval_reference: string;
+        public_review_handling: string;
+        review_evidence_retention_days: number;
+        repair_request_retention_days: number;
+        report_retention_days: number;
+        audit_log_retention_days: number;
+        configured_at: Date;
+      }>('SELECT * FROM lifecycle_policy WHERE version=$1', [input.version]);
+      const previous = existing.rows[0];
+      if (previous) {
+        if (
+          previous.operator_approval_reference !== input.operatorApprovalReference ||
+          previous.public_review_handling !== input.publicReviewHandling ||
+          previous.review_evidence_retention_days !== input.reviewEvidenceRetentionDays ||
+          previous.repair_request_retention_days !== input.repairRequestRetentionDays ||
+          previous.report_retention_days !== input.reportRetentionDays ||
+          previous.audit_log_retention_days !== input.auditLogRetentionDays
+        )
+          throw new AccessError(409, 'Policy versions are immutable; use a new approved version');
+        return { ...input, configuredAt: previous.configured_at.toISOString() };
+      }
       const result = await client.query<{ readonly configured_at: Date }>(
         `INSERT INTO lifecycle_policy (
            version, operator_approval_reference, public_review_handling,
@@ -691,6 +718,7 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
   async processPersonalDataDeletion(
     admin: Principal,
     requestId: string,
+    expectedPolicyVersion?: string,
   ): Promise<DataDeletionCompletion> {
     this.requireAdmin(admin);
     return this.transaction(admin, async (client) => {
@@ -704,6 +732,12 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
       );
       const row = request.rows[0];
       if (!row) throw new AccessError(404, 'Data deletion request not found');
+      if (expectedPolicyVersion !== undefined && row.policy_version !== expectedPolicyVersion)
+        throw new AccessError(
+          409,
+          'The deletion policy changed; review and confirm the current policy',
+        );
+
       if (row.status !== 'submitted' || !row.policy_version) {
         throw new AccessError(409, 'Data deletion requires the configured operator policy');
       }
@@ -717,6 +751,14 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
       const userId = row.user_id;
       // Serialize account erasure with new favorites, which take a shared owner lock.
       await client.query('SELECT id FROM app_user WHERE id = $1 FOR UPDATE', [userId]);
+      // DATA-1: membership may have changed since the request was submitted. Never orphan a garage.
+      const ownerships = await client.query(
+        "SELECT 1 FROM membership WHERE user_id=$1 AND role='owner' AND state='active' FOR SHARE",
+        [userId],
+      );
+      if (ownerships.rowCount)
+        throw new AccessError(409, 'Resolve current garage ownership before erasure');
+
       const files = await client.query<{ readonly id: string; readonly storage_key: string }>(
         "SELECT id, storage_key FROM file_object WHERE owner_user_id = $1 AND retention_state = 'active'",
         [userId],
@@ -779,6 +821,9 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
           removableReviewIds,
         ]);
       }
+      // DATA-1: only this already authorized erasure assumes the target's owner context.
+      // Ordinary administrator reads still cannot browse customer requests or vehicles.
+      await client.query("SELECT set_config('app.user_id', $1, true)", [userId]);
       await client.query(
         `DELETE FROM repair_request_attachment
          WHERE repair_request_id IN (SELECT id FROM repair_request WHERE owner_user_id = $1)`,

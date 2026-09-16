@@ -88,6 +88,7 @@ export interface ModerationLifecycleStore {
   processPersonalDataDeletion(
     admin: Principal,
     requestId: string,
+    expectedPolicyVersion?: string,
   ): Promise<DataDeletionCompletion | void> | DataDeletionCompletion | void;
   requestPersonalDataDeletion(
     principal: Principal,
