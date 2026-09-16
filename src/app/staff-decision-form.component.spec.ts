@@ -3,6 +3,7 @@ import { StaffDecisionFormComponent } from './staff-decision-form.component';
 import { LanguageService } from './language.service';
 import type { StaffCaseDetail } from '../shared/moderation';
 import type { StaffCaseDecision } from '../shared/staff-decision';
+import { staffCopy, staffLabel } from '../shared/staff-copy';
 
 const detail: StaffCaseDetail = {
   id: 'review:synthetic-review',
@@ -155,4 +156,115 @@ it('opens an action without inventing a draft, but protects its entered rejectio
   component.rejectionReason = '';
   component.emitDirty();
   expect(dirty.at(-1)).toBe(false);
+});
+
+it.each([
+  ['de', 'Bewertung prüfen und freigeben', 'Bewertung freigeben', 'Ablehnung bestätigen'],
+  ['en', 'Check and approve review', 'Approve review', 'Confirm rejection'],
+  ['sq', 'Shqyrto dhe mirato vlerësimin', 'Mirato vlerësimin', 'Konfirmo refuzimin'],
+] as const)(
+  'explains review approval and its prerequisites before the action in %s',
+  async (language, caseLabel, approvalLabel, rejectionLabel) => {
+    const { fixture, component, page, decisions } = await render(language);
+    expect(staffCopy(language).review_submission).toBe(caseLabel);
+    expect(staffLabel('confirmReviewRejection', language)).toBe(rejectionLabel);
+    expect(page.querySelector('legend')!.textContent).toContain(
+      staffLabel('reviewDecision', language),
+    );
+    const approve = page.querySelector<HTMLButtonElement>('[data-publish-review]')!;
+    const hint = page.querySelector('[data-review-publish-hint]')!;
+    expect(approve.textContent!.trim()).toBe(approvalLabel);
+    expect(approve.getAttribute('aria-describedby')).toBe(hint.id);
+    expect(approve.disabled).toBe(true);
+    expect(hint.textContent).toContain(staffLabel('reviewChecksRequired', language));
+    const confirm = vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(false);
+    const checks = Array.from(page.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'));
+    for (const checkbox of checks.slice(0, 2)) {
+      checkbox.click();
+      await fixture.whenStable();
+      expect(approve.disabled).toBe(true);
+    }
+    checks[2].click();
+    await fixture.whenStable();
+    expect(approve.disabled).toBe(false);
+    expect(hint.textContent).toContain(staffLabel('effect_publish_review', language));
+    expect(decisions).toHaveLength(0);
+    approve.click();
+    await fixture.whenStable();
+    expect(confirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: approvalLabel,
+        confirmLabel: approvalLabel,
+        description: expect.stringContaining(staffLabel('effect_publish_review', language)),
+      }),
+    );
+    expect(decisions).toHaveLength(0);
+    confirm.mockResolvedValue(true);
+    approve.click();
+    await fixture.whenStable();
+    expect(decisions).toEqual([
+      {
+        action: 'publish_review',
+        revision: 7,
+        checklist: { garageMatches: true, serviceMatches: true, visitMonthMatches: true },
+      },
+    ]);
+  },
+);
+
+it('explains missing evidence and never enables approval even when all checks are selected', async () => {
+  const { fixture, component, page } = await render('de', { ...detail, evidenceAvailable: false });
+  component.garageMatches = component.serviceMatches = component.visitMonthMatches = true;
+  fixture.detectChanges();
+  await fixture.whenStable();
+  expect(page.querySelector('[data-review-publish-hint]')!.textContent).toContain(
+    staffLabel('evidenceUnavailable', 'de'),
+  );
+  expect(page.querySelector<HTMLButtonElement>('[data-publish-review]')!.disabled).toBe(true);
+});
+
+it('distinguishes opening rejection from confirming a reasoned rejection', async () => {
+  const { fixture, component, page, decisions } = await render();
+  const reject = page.querySelector<HTMLButtonElement>('[data-reject-review]')!;
+  expect(reject.getAttribute('aria-expanded')).toBe('false');
+  reject.click();
+  await fixture.whenStable();
+  expect(reject.getAttribute('aria-expanded')).toBe('true');
+  expect(decisions).toHaveLength(0);
+  const submit = page.querySelector<HTMLButtonElement>('[data-submit-decision]')!;
+  expect(submit.textContent!.trim()).toBe('Ablehnung bestätigen');
+  expect(submit.disabled).toBe(true);
+  expect(page.querySelector('[data-review-rejection-effect]')!.textContent).toContain(
+    staffLabel('effect_reject_review', 'de'),
+  );
+  const reason = page.querySelector<HTMLSelectElement>('#review-rejection-reason')!;
+  reason.value = 'evidence_not_sufficient';
+  reason.dispatchEvent(new Event('change'));
+  await fixture.whenStable();
+  expect(submit.disabled).toBe(false);
+  vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(true);
+  submit.click();
+  await fixture.whenStable();
+  expect(decisions).toEqual([
+    {
+      action: 'reject_review',
+      revision: 7,
+      rejectionReason: 'evidence_not_sufficient',
+      checklist: { garageMatches: false, serviceMatches: false, visitMonthMatches: false },
+    },
+  ]);
+});
+
+it('does not present a content report as a review approval', async () => {
+  const { page } = await render('de', {
+    ...detail,
+    kind: 'report',
+    allowedActions: ['approve', 'request_information'],
+  });
+  expect(page.querySelector('legend')!.textContent!.trim()).toBe('Entscheidung');
+  expect(page.querySelector('[data-review-publish-hint]')).toBeNull();
+  expect(page.querySelector('[data-publish-review]')).toBeNull();
+  expect(page.querySelector('[data-action="approve"]')!.textContent!.trim()).toBe(
+    'Meldung ohne Verstoss abschliessen',
+  );
 });

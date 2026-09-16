@@ -2,7 +2,15 @@
   <app-confirmation-dialog #confirmation />
   <form data-decision-form class="mt-6 border-t border-slate-200 pt-6" (ngSubmit)="submit()">
     <fieldset [disabled]="busy() || stale()" class="grid max-w-xl gap-4">
-      <legend class="mb-4 text-xl font-bold">{{ label('decision') }}</legend>
+      <legend class="mb-4 text-xl font-bold">
+        {{
+          label(
+            actions().includes('publish_review') || actions().includes('reject_review')
+              ? 'reviewDecision'
+              : 'decision'
+          )
+        }}
+      </legend>
       @if (detail().openAppeal) {
         <p class="rounded-lg bg-amber-50 p-3">{{ label('independentAppeal') }}</p>
       }
@@ -36,16 +44,30 @@
               class="h-5 w-5 shrink-0"
             />{{ label('visitMonthMatches') }}</label
           >
-          @if (!detail().evidenceAvailable) {
-            <p class="text-sm text-amber-900">{{ label('evidenceUnavailable') }}</p>
-          }
         </fieldset>
+        <p
+          id="review-publish-hint"
+          data-review-publish-hint
+          aria-live="polite"
+          class="text-sm text-muted"
+        >
+          {{
+            label(
+              !detail().evidenceAvailable
+                ? 'evidenceUnavailable'
+                : garageMatches && serviceMatches && visitMonthMatches
+                  ? 'effect_publish_review'
+                  : 'reviewChecksRequired'
+            )
+          }}
+        </p>
         <div class="flex flex-wrap gap-3" data-review-actions>
           @if (actions().includes('publish_review')) {
             <button
               [appButton]="action === 'reject_review' ? 'outline' : 'primary'"
               type="button"
               data-publish-review
+              aria-describedby="review-publish-hint"
               [disabled]="!publishValid()"
               (click)="choose('publish_review')"
             >
@@ -57,6 +79,7 @@
               appButton="outline"
               type="button"
               data-reject-review
+              [attr.aria-expanded]="action === 'reject_review'"
               (click)="choose('reject_review')"
             >
               {{ label('reject_review') }}
@@ -84,6 +107,9 @@
         }
       }
       @if (action === 'reject_review') {
+        <p data-review-rejection-effect class="text-sm text-muted">
+          {{ label('effect_reject_review') }}
+        </p>
         <label class="grid gap-2 font-semibold" for="review-rejection-reason"
           >{{ label('reason') }}
           <select
@@ -121,7 +147,7 @@
       }
       @if (action === 'reject_review' || action === 'reject' || action === 'temporarily_hide') {
         <button appButton data-submit-decision type="submit" [disabled]="!valid()">
-          {{ label(action) }}
+          {{ label(action === 'reject_review' ? 'confirmReviewRejection' : action) }}
         </button>
       }
       @if (actions().includes('request_information')) {

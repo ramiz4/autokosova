@@ -26,20 +26,18 @@ test('staff-context preserves authorized case context across navigation, drafts,
   await expect(page.locator('[data-staff-case]')).toBeVisible();
   await page.locator('input[name="garageMatches"]').check();
   await page.locator('app-language-switcher summary').press('Enter');
-  await page.locator('[data-confirmation-cancel]').click();
   await page.getByRole('link', { name: 'English' }).press('Enter');
+  await page.locator('[data-confirmation-cancel]').click();
   await expect(page).toHaveURL(app.origin + deep);
   await expect(page.locator('input[name="garageMatches"]')).toBeChecked();
   await expect(page.locator('[data-staff-case]')).toBeVisible();
 
-  const adminLogin = app.login(
-    page,
-    'admin',
-    'de',
-    '/admin/cases/review:demo-staff-review-unassigned',
-  );
-  await page.locator('[data-confirmation-confirm]').click();
-  await adminLogin;
+  // A full OIDC navigation unloads the document; only this browser-owned boundary is native.
+  page.once('dialog', async (dialog) => {
+    expect(dialog.type()).toBe('beforeunload');
+    await dialog.accept();
+  });
+  await app.login(page, 'admin', 'de', '/admin/cases/review:demo-staff-review-unassigned');
   await expect(page.locator('#staff-assignee')).toContainText('E2E admin');
   await expect(page.locator('[data-take-case]')).toBeEnabled();
   await page.locator('[data-take-case]').click();

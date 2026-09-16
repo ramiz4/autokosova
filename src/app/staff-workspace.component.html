@@ -6,10 +6,13 @@
   <p class="mt-2 max-w-3xl text-muted">{{ adminOnly ? copy().adminIntro : copy().ownIntro }}</p>
   @if (isAdmin()) {
     @if (adminOnly && adminOverview(); as overview) {
-      <section class="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm" data-admin-overview>
+      <section
+        class="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:flex sm:flex-wrap"
+        data-admin-overview
+      >
         @if (overview.pendingGarages > 0) {
           <a
-            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            class="inline-flex min-h-11 min-w-11 items-center font-semibold text-brand-dark underline-offset-4 hover:underline"
             [routerLink]="language.link('admin-section', 'garages')"
             [queryParams]="{ status: 'pending_review' }"
             >{{ overview.pendingGarages }} {{ adminLabel('pendingGarages') }}</a
@@ -17,7 +20,7 @@
         }
         @if (overview.unassignedCases > 0) {
           <a
-            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            class="inline-flex min-h-11 min-w-11 items-center font-semibold text-brand-dark underline-offset-4 hover:underline"
             [routerLink]="language.link('admin')"
             [queryParams]="{ queue: 'todo', unassigned: 'true' }"
             >{{ overview.unassignedCases }} {{ adminLabel('unassignedCases') }}</a
@@ -25,7 +28,7 @@
         }
         @if (overview.escalatedCases > 0) {
           <a
-            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            class="inline-flex min-h-11 min-w-11 items-center font-semibold text-brand-dark underline-offset-4 hover:underline"
             [routerLink]="language.link('admin')"
             [queryParams]="{ queue: 'todo', escalated: 'true' }"
             >{{ overview.escalatedCases }} {{ adminLabel('escalatedCases') }}</a
@@ -33,7 +36,7 @@
         }
         @if (overview.pendingDeletions > 0) {
           <a
-            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            class="inline-flex min-h-11 min-w-11 items-center font-semibold text-brand-dark underline-offset-4 hover:underline"
             [routerLink]="language.link('admin-section', 'privacy')"
             [queryParams]="{ status: 'submitted' }"
             >{{ overview.pendingDeletions }} {{ adminLabel('pendingDeletions') }}</a
@@ -41,7 +44,7 @@
         }
         @if (overview.blockedDeletions > 0) {
           <a
-            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            class="inline-flex min-h-11 min-w-11 items-center font-semibold text-brand-dark underline-offset-4 hover:underline"
             [routerLink]="language.link('admin-section', 'privacy')"
             [queryParams]="{ status: 'blocked' }"
             >{{ overview.blockedDeletions }} {{ adminLabel('blockedDeletions') }}</a
@@ -188,9 +191,21 @@
             </button>
           </form>
         }
+        @if (
+          current.kind === 'review_submission' &&
+          !current.conflictOfInterest &&
+          !resultAvailable() &&
+          (current.allowedActions?.includes('publish_review') ||
+            current.allowedActions?.includes('reject_review'))
+        ) {
+          <p data-review-guidance class="mt-6 max-w-3xl rounded-xl bg-blue-50 p-4 text-brand-dark">
+            {{ label('reviewGuidance') }}
+          </p>
+        }
         @if (current.review; as review) {
           <div class="mt-6 grid gap-6 border-t border-slate-200 pt-6 lg:grid-cols-2">
             <div class="grid gap-3">
+              <h3 class="font-bold">{{ label('reviewContent') }}</h3>
               <p>{{ copy().visit }}: {{ review.visitMonth }}</p>
               <p>{{ copy().service }}: {{ language.serviceLabel(review.serviceCategoryId) }}</p>
               <p class="whitespace-pre-wrap break-words">{{ review.text }}</p>
@@ -225,7 +240,7 @@
               </p>
             </div>
             <aside class="rounded-xl bg-slate-50 p-4" data-evidence-panel>
-              <h3 class="font-bold">{{ copy().evidence }}</h3>
+              <h3 class="font-bold">{{ label('reviewEvidence') }}</h3>
               @if (current.evidenceAvailable) {
                 <button
                   data-evidence
@@ -370,6 +385,15 @@
               {{ copy().myCases }}
             </button>
           }
+          <button
+            [appButton]="filterKind === 'review_submission' ? 'primary' : 'outline'"
+            type="button"
+            data-review-filter
+            [attr.aria-pressed]="filterKind === 'review_submission'"
+            (click)="toggleReviews()"
+          >
+            {{ label('reviewFilter') }}
+          </button>
           <button
             appButton="outline"
             type="button"
@@ -542,7 +566,15 @@
               [disabled]="loading()"
               (click)="open(item)"
             >
-              {{ copy().open }}
+              {{
+                item.kind === 'review_submission'
+                  ? label(
+                      item.status === 'resolved' || item.status === 'rejected'
+                        ? 'viewReview'
+                        : 'openReview'
+                    )
+                  : copy().open
+              }}
             </button>
           </article>
         }
