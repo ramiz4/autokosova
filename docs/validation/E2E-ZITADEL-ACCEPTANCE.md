@@ -1,5 +1,33 @@
 # Echte ZITADEL-Abnahme – Issue #119
 
+## Gezielte Logout-Korrektur nach Providerabgleich (16.09.2026)
+
+Der Nutzer hat die dokumentierten Post-Logout-Callbacks für 4200 und 4000 beim Testclient
+ergänzt. Der CI-Client wurde mit dem gezeigten Client abgeglichen. Lauf 35075024855 löste
+1Password-Felder erfolgreich auf und bestand beide Logins, Profile, CRUD und Kontentrennung;
+er meldete noch unspezifisch `logout-callback-missing`.
+
+Diagnoselauf **35078681829** auf Integrationscommit `6c436701451d886a536a44675db75cd6904d1198`
+bestätigte dieselben fachlichen Schritte samt Cleanup und grenzte den Fehler eindeutig auf
+`logout-account-selection` ein. Provider-Konfiguration und Secrets wurden nicht geändert.
+Der Runner verwendet für die Sitzungsauswahl jetzt den aus dem frisch verifizierten
+OIDC-/UserInfo-Profil zurückgelieferten `username` (`preferred_username`), nicht den eventuell
+abgekürzten Anmeldenamen aus der Eingabekonfiguration. Subject, Kontotyp und Rollen werden
+weiter vor Verwendung geprüft; fehlende oder mehrdeutige Auswahl scheitert geschlossen.
+
+Die frühere synthetische Auswahlprüfung verwendete `page.route()` auf einem HTTP-Redirect-Ziel;
+der Handler wurde dort nicht aufgerufen. Dieser Nachweis war deshalb unzureichend. Der
+signierende Testprovider liefert jetzt echte HTTP-Weiterleitungen und eine echte Formularauswahl.
+Der Regressionstest prüft den tatsächlich gezählten eigenen Auswahl-POST, die Verweigerung bei
+kurzem statt kanonischem Namen und die anschließende Rückkehr mit verifizierter Identität.
+Keine erfolgreichen Anwendungsantworten oder Provideranmeldungen werden im Live-Modus ersetzt.
+
+Der zwischenzeitliche Mitarbeiterbereich #123 ist integriert, beide bestehenden und alle neuen
+Pflichtfälle bleiben erhalten: 17 Szenarien auf Desktop/Mobil, insgesamt 34. Die vollständigen
+abschließenden PR-/Main-Berichte werden vor Abschluss gegen Commit, Lauf und Inventar geprüft
+und im PR dokumentiert. Der Korrekturcode allein ist kein bestandener Live-Nachweis.
+
+
 ## Aktuelle Korrektur – Automation ohne manuelle Approvals (16.09.2026)
 
 Nutzerauftrag: keine manuellen CI-Freigaben; fehlgeschlagenen Lauf beheben. Die ältere

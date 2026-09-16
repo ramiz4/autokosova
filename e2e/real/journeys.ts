@@ -31,10 +31,14 @@ export async function signIn(
     (url) => url.origin === config.origin && !url.pathname.startsWith('/auth/'),
     { timeout: 90_000 },
   );
-  const identity = await (await api(page, config.origin, '/api/me')).json();
+  const response = await api(page, config.origin, '/api/me');
+  expect(response.status()).toBe(200);
+  const identity: OwnAccount = await response.json();
   expect(identity.userId).toBe(account.subject);
   expect(identity.accountType).toBe(account.kind);
   expect(identity.roles).toEqual(['customer']);
+  expect(identity.username).toBeTruthy();
+  return identity;
 }
 
 export async function checkProfile(page: Page, origin: string, kind: 'customer' | 'garage') {
@@ -100,7 +104,7 @@ export async function fullLogout(
     endSessionEndpoint: string;
     logoutConfirmSelector?: string;
   },
-  login?: string,
+  username?: string,
 ) {
   let endpointSeen = false,
     callbackSeen = false,
@@ -173,12 +177,13 @@ export async function fullLogout(
         timeout: 45_000,
       });
       if (accountSelection(new URL(page.url()))) {
+        // Use the verified preferred_username, not the potentially abbreviated login input.
         // ZITADEL Login V2 presents one button per session. Select only the account under test.
         // Never click a generic provider button, another account, or a post-logout login link.
-        if (!login) throw new LogoutFailure('logout-account-selection');
+        if (!username) throw new LogoutFailure('logout-account-selection');
         const account = page
           .getByRole('button')
-          .filter({ has: page.getByText(login, { exact: true }) });
+          .filter({ has: page.getByText(username, { exact: true }) });
         await expect(account)
           .toHaveCount(1)
           .catch(() => {

@@ -78,8 +78,9 @@ async function main() {
     browser = await chromium.launch({ headless: !config.headed, env: processEnvironment() });
     const customer = await accountPage();
     const garage = await accountPage();
+    let customerUsername: string | undefined, garageUsername: string | undefined;
     await step('customer-login', async () => {
-      await signIn(customer, config, config.accounts[0]);
+      customerUsername = (await signIn(customer, config, config.accounts[0])).username;
       await expect(customer).toHaveURL(config.origin + '/inquiries');
       await readyInquiries(customer);
       result.accounts.push('customer');
@@ -101,7 +102,7 @@ async function main() {
     await step('customer-toggle', () => toggleInquiry(customer, config.origin, inquiryId));
     const inquiry = await (await api(customer, config.origin, requestPath(inquiryId))).json();
     await step('garage-login', async () => {
-      await signIn(garage, config, config.accounts[1]);
+      garageUsername = (await signIn(garage, config, config.accounts[1])).username;
       await expect(garage).toHaveURL(config.origin + '/garages/new');
       await readyGarages(garage);
       result.accounts.push('garage');
@@ -180,11 +181,12 @@ async function main() {
         beforeGarages,
       );
     });
-    await step('garage-logout', () => fullLogout(garage, config, config.accounts[1].login));
-    await step('customer-logout', () => fullLogout(customer, config, config.accounts[0].login));
+    await step('garage-logout', () => fullLogout(garage, config, garageUsername));
+    await step('customer-logout', () => fullLogout(customer, config, customerUsername));
     // Same browser context, without clearing cookies/storage: reject unintended account reuse.
     await step('account-switch', async () => {
-      await signIn(customer, config, config.accounts[1]);
+      const switched = await signIn(customer, config, config.accounts[1]);
+      expect(switched.username).toBe(garageUsername);
       await expect(customer).toHaveURL(config.origin + '/garages/new');
       await readyGarages(customer);
       expect(
@@ -197,7 +199,7 @@ async function main() {
         (await (await api(customer, config.origin, '/api/me/repair-requests')).json()).requests,
       ).toEqual([]);
     });
-    await step('switched-logout', () => fullLogout(customer, config, config.accounts[1].login));
+    await step('switched-logout', () => fullLogout(customer, config, garageUsername));
   } catch (error) {
     if (error instanceof LogoutFailure) result.stage = error.stage;
     // Fixed stage retained; no arbitrary error messages or personal data.

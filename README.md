@@ -180,8 +180,8 @@ Die Suite baut die App und prüft Kunden-/Werkstatt-CRUD, Kontentrennung, Fehler
 Desktop/Mobil und einen echten Anwendungsneustart. Sie verwendet eigene Testdatenbanken und
 den signierenden Test-OIDC; laufende App und echte Konten werden nicht verändert.
 Der Check `e2e-acceptance` läuft vor dem Merge im PR und danach auf `main`.
-Details zu Abnahmeinventar, lokalen Einzeltests, Secret-freiem CI und der derzeit fehlenden
-administrativen Merge-Sperre: [E2E-ACCEPTANCE.md](docs/development/E2E-ACCEPTANCE.md).
+Details zu Abnahmeinventar, lokalen Einzeltests, Secret-freiem CI und den eingerichteten
+Required Checks: [E2E-ACCEPTANCE.md](docs/development/E2E-ACCEPTANCE.md).
 Der separate Check `e2e-zitadel` ergänzt in #119 die echte Provider-Gesamtabnahme. Er erfordert
 ein geschütztes Environment und einen dedizierten lesenden 1Password-Service-Account; fehlende
 Voraussetzungen ergeben keinen grünen Skip. Die funktionale Abnahme aus #112 bleibt unverändert.

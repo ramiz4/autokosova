@@ -44,7 +44,7 @@ Gefilterte lokale Läufe sind ausdrücklich Diagnose, keine vollständige Abnahm
 
 ## Verbindliche Szenarien
 
-Das aktuelle Pflichtinventar in `scripts/e2e/policy.mjs` enthält 14 unabhängige Szenarien, jeweils Desktop 1280×900 und Mobil 390×844; Menü-/Sprachprüfungen zusätzlich bei 360/430 px:
+Das aktuelle Pflichtinventar in `scripts/e2e/policy.mjs` enthält 17 unabhängige Szenarien, jeweils Desktop 1280×900 und Mobil 390×844; Menü-/Sprachprüfungen zusätzlich bei 360/430 px:
 
 | ID | Nachweis |
 |---|---|
@@ -215,6 +215,12 @@ CRUD-Hilfen: Bearbeiten/Reload, Anfrage-Aktivierung, Entwurfsstatus und bestäti
 Abwesenheit aus Verwaltung/öffentlicher Suche. Fremde direkte GET-/PUT-/PATCH-/DELETE-Anfragen
 müssen verweigert werden und greifen ausschließlich die zusätzlichen Testobjekte an. Der
 anschließende Kontowechsel verwendet denselben Browserkontext **ohne Cookie-/Storage-Reset**.
+
+Für die gehostete Logout-Sitzungsauswahl wird der frisch verifizierte `preferred_username`
+verwendet, nicht der möglicherweise abgekürzte Eingabe-Login. Nur eine exakt zugehörige
+Sitzungsschaltfläche darf gewählt werden; fehlende/mehrdeutige Treffer sind ein eigener Fehler.
+Die Regression verwendet tatsächliche HTTP-Weiterleitungen und überprüfte Auswahl-POSTs,
+nicht einen wirkungslosen Route-Mock auf einem Redirect-Ziel.
 
 Vollständiger Logout muss Navigation zum konfigurierten End-Session-Endpunkt, die Rückkehr über
 `/auth/logout/callback` und danach eine unauthentifizierte App zeigen. Ein lokaler Status 401

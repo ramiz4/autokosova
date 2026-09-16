@@ -236,6 +236,8 @@ bereitgestellt, ihre Subjects ausschließlich in der eigenen zufälligen Test-DB
 Passwörter gehören nur in den Browser-Testprozess, nicht in App, Build oder Seeds. Kontotyp,
 Anwendungsrollen und konkrete Memberships bleiben getrennte Prüfungen. Der echte Browserlauf
 muss zusätzlich Provider-End-Session, Callback und Kontowechsel nachweisen.
+Die gehostete Logout-Auswahl verwendet den frisch verifizierten kanonischen Benutzernamen,
+nicht einen möglicherweise abgekürzten Anmeldenamen aus dem Test-Secret.
 
 Seit dem Nutzerauftrag vom 16.09.2026 erfolgt die CI ohne manuelle Environment-Approvals.
 Automatische Prüfung der benannten vertrauenswürdigen Konten, aktuellen Schreibrechte,
