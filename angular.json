@@ -59,6 +59,14 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "headless-foundation-pilot": {
+              "fileReplacements": [
+                {
+                  "replace": "src/app/app.routes.ts",
+                  "with": "src/app/app.routes.headless-foundation-pilot.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
