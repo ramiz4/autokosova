@@ -16,6 +16,7 @@ import {
   type LucideIcon,
 } from '@lucide/angular';
 import { reviewLabel } from '../shared/review-copy';
+import { accountProfileCopy } from '../shared/account-profile-copy';
 import { accountType } from '../shared/account';
 import { Component, afterNextRender, effect, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
@@ -68,7 +69,13 @@ export class AccountProfileComponent {
   private readonly router = inject(Router);
 
   constructor() {
-    effect(() => this.language.setPage('account.profileTitle', 'account.description', true));
+    effect(() =>
+      this.language.setPageText(
+        this.t('account.profileTitle'),
+        this.t('account.description'),
+        true,
+      ),
+    );
     effect(() => {
       this.account.dataContext();
       this.copyState.set({ username: 'idle', userId: 'idle' });
@@ -76,6 +83,13 @@ export class AccountProfileComponent {
     afterNextRender(() => {
       void this.account.refresh();
     });
+  }
+
+  protected t(key: string): string {
+    const profileText = (
+      accountProfileCopy[this.language.language] as Readonly<Record<string, string>>
+    )[key];
+    return profileText ?? this.language.t(key);
   }
 
   protected loginUrl(): string {

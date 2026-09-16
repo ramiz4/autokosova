@@ -4,7 +4,7 @@ import { Meta } from '@angular/platform-browser';
 import { AccountProfileComponent } from './account-profile.component';
 import { AccountSessionService } from './account-session.service';
 import { LanguageService, routePath } from './language.service';
-import { accountCopy } from '../shared/account-copy';
+import { accountProfileCopy as accountCopy } from '../shared/account-profile-copy';
 import { accountName, type OwnAccount } from '../shared/account';
 import { routes } from './app.routes';
 
