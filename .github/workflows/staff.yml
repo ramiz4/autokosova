@@ -1,12 +1,18 @@
 name: Staff foundation
 on:
-  pull_request:
-  push:
-    branches: [main]
+  schedule:
+    # Daily at 00:47 UTC (02:47 Zurich summer / 01:47 winter).
+    - cron: '47 0 * * *'
+
 permissions:
   contents: read
+concurrency:
+  group: staff-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   staff-browser:
+    if: ${{ github.event_name == 'schedule' && github.ref == 'refs/heads/main' && github.repository == 'ramiz4/autokosova' }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     services:
@@ -27,6 +33,8 @@ jobs:
       DATABASE_URL: postgresql://autokosova:autokosova@127.0.0.1:5432/autokosova
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
