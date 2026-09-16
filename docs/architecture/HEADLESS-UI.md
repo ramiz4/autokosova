@@ -1,85 +1,87 @@
-# Headless UI foundation — proposed and blocked
+# Headless UI foundation
 
-**Status: PROPOSED / BLOCKED.** This document records the checked baseline for
-GitHub issue #128. It is not an architecture approval, a package allowlist, or
-evidence that a Headless UI pilot works. No Spartan or Angular CDK package is a
-direct dependency in this revision.
+**Status: IMPLEMENTED PILOT / awaiting review and merge.** GitHub issue #128
+records the user approval for the current pure Brain line and the narrow,
+unstyled CDK menu exception. This document fixes the resulting contract; it
+does not authorize any child issue before this Foundation is reviewed and
+integrated into `main`.
 
-## Scope and decision gate
+## Approved, exact dependency contract
 
-The original `@spartan-ng/ui-*-brain` package allowlist must remain in force
-until the user records an actual decision in issue #128. The proposed modern
-variant needs explicit approval for all of the following before any dependency
-or application import is added:
+| Package | Pinned version | Reason |
+| --- | --- | --- |
+| `@spartan-ng/brain` | `1.4.1` | Approved current Headless primitives. |
+| `@angular/cdk` | `22.1.6` | Exact Angular-22-compatible overlay and menu infrastructure. |
+| `clsx` | `2.1.1` | Required Brain peer. |
+| `tw-animate-css` | `1.4.0` | Required Brain peer; no stylesheet is imported. |
 
-1. `@spartan-ng/brain` with an exact version and all required peer versions.
-2. Whether direct, unstyled `@angular/cdk/menu` is an allowed exception for
-   the menu work; Brain 1.4.1 has no `./menu` export.
-3. The exact import/style allowlist and the pilot acceptance evidence.
+`luxon` is an optional Brain peer and is intentionally not installed. The
+lockfile resolves Angular 22.1.6, RxJS 7.8.2 and Tailwind 4.3.3. Brain 1.4.1
+declares Angular/CDK/Common/Forms peers `>=21.0.0 <23.0.0`; CDK 22.1.6 declares
+Angular Common/Core/Forms/Platform Browser peers `^22.0.0 || ^23.0.0`.
 
-Choosing the legacy packages, the modern Brain package, or a direct CDK menu
-from peer ranges alone is not permitted. The architecture guard deliberately
-allows no new Spartan or direct CDK imports while this is blocked.
+Only `@spartan-ng/brain/dialog`, `alert-dialog`, `overlay`, `popover` and
+`collapsible` are allowed Brain entry points. There is no Brain `menu` export:
+the only direct CDK UI API allowed is `@angular/cdk/menu` for the Foundation
+fixture and issue #137. CDK overlay, layout and a11y infrastructure may be
+imported only where required by approved Brain usage.
 
-## Verified package evidence, not a runtime result
+The architecture test enforces these exact pins and imports. It forbids legacy
+`@spartan-ng/ui-*-brain`, all Helm packages and `hlm-*` code, the exported
+`hlm-tailwind-preset.css`, foreign theme/reset imports and Angular Material.
+No `tw-animate-css` stylesheet is imported.
 
-On 2026-09-16, the public npm metadata and the published Brain 1.4.1 tarball
-were read without installing it in this project:
+## Fixture-only pilot
 
-- `@spartan-ng/brain@1.4.1` declares Angular/CDK/Common/Forms peers
-  `>=21.0.0 <23.0.0`, plus `clsx`, `rxjs`, `tailwindcss`, and
-  `tw-animate-css`; `luxon` is optional. Peer satisfaction is not a compiled
-  or browser compatibility proof.
-- The locked application resolves Angular 22.1.6. Public
-  `@angular/cdk@22.1.6` metadata declares Angular Common/Core/Forms/Platform
-  Browser peers `^22.0.0 || ^23.0.0`, so an exact 22.1.6 CDK candidate is
-  compatible at metadata level only.
-- Brain exports `./dialog`, `./alert-dialog`, `./overlay`, `./popover` and
-  `./collapsible`, but not `./menu`. It also exports
-  `./hlm-tailwind-preset.css`; that stylesheet remains prohibited here.
-- The published `BrnPopover` overrides connected-position selection and its
-  trigger writes `aria-haspopup="dialog"`. Field and header anchors therefore
-  require the generic Overlay proposal from the issue, not an assumed generic
-  Popover behavior. This still needs rendered-DOM verification.
+`/__foundation-ui-pilot` is an unlinked, English-named internal fixture route;
+it contains only synthetic labels and no application data, forms or product
+workflow. Its component is lazy-loaded so normal routes do not load the pilot
+entry directly. It verifies the real installed APIs rather than copied
+blueprints:
 
-No Brain or CDK package was added. `npm ci` materialized only dependencies
-already pinned in the existing lockfile; it did not compile or render any
-Brain API.
+- Brain Dialog has a labelled modal portal, its own backdrop and normal return
+  focus. It disables outside-pointer dismissal so an opened native dialog does
+  not accidentally dismiss the portal below it.
+- Generic Brain Overlay is nonmodal (`role=null`, no backdrop, no autofocus)
+  and uses explicit below/above connected positions. This is the anchor basis
+  for future field/header work; normal Brain Popover is deliberately not used
+  because its trigger always announces `aria-haspopup=dialog` and overrides
+  the generic position selection.
+- Brain Collapsible exposes its real `aria-expanded` and content relationship.
+- The unstyled CDK menu uses native buttons, `cdkMenu`, `cdkMenuItem` and
+  keyboard focus restore. It is not a product action menu and does not grant a
+  broader CDK-widget allowance.
 
-## Existing baseline to preserve
+The existing global tokens remain unchanged: `brand #0061ff`, `brand-dark
+#0038c9`, `ink #07143e`, `muted #536d98`, `sky-accent #68c6ff` and the Arial
+font stack. The existing native inquiry dialog SCSS is untouched.
 
-The dispatch baseline is `d47fc5a74b5d8c159fdd46cdd3b9bec90c49b904`. Its
-global tokens in `src/tailwind.css` are unchanged:
+On the rebased Lucide baseline, the production initial browser bundle changed
+from 663.71 kB raw / 140.87 kB estimated transfer to 675.12 kB / 142.42 kB.
+The 131.39-kB raw Foundation fixture remains a lazy entry. The existing 500-kB
+initial warning is deliberately not relaxed.
 
-| Token | Value |
-| --- | --- |
-| `brand` | `#0061ff` |
-| `brand-dark` | `#0038c9` |
-| `ink` | `#07143e` |
-| `muted` | `#536d98` |
-| `sky-accent` | `#68c6ff` |
-| `font-sans` | `Arial, Helvetica, sans-serif` |
+## Evidence and limits
 
-`src/app/inquiry-dialog.scss` contains the current native-dialog contract:
-`20px` radius, `min(760px, calc(100vw - 24px))` width, `#07143e85`
-backdrop, `0 24px 100px #07143e35` shadow, and sticky header/footer. It is
-owned by the dialog children; this Foundation preparation does not migrate it.
+`npm run test:headless-foundation:browser` builds on the production SSR output,
+reads the fixture HTML before client execution, then uses Chromium to prove
+successful hydration (no page errors), CDK portal anchoring, nonmodal overlay
+semantics, Dialog focus restoration, keyboard-driven menu focus/escape return,
+Collapsible ARIA state, and a native `:modal` dialog above an open Brain portal.
+It uses no screenshot, trace, video, user, credential or database data.
 
-The current application uses native `<dialog>` for the inquiry editor and
-delete confirmation, plus local application overlay/menu code elsewhere. A
-future pilot must verify real SSR/hydration output, CDK portal anchoring,
-keyboard behavior, focus restoration, nested overlays, nonmodal semantics,
-and native-dialog top-layer interaction. These checks are intentionally not
-claimed by this document.
+The pilot does not migrate product dialogs, popovers, filters or menus. Each
+child must retain its own authorization, form, localization, responsive and
+workflow tests. Screen-reader testing, broader visual/reflow coverage and the
+release gate remain work for the named downstream issues after this PR is
+reviewed and merged.
 
 ## Non-negotiable constraints
 
-- No `@spartan-ng/*-helm`, `@spartan-ng/helm`, copied/generated `hlm-*`,
-  `hlm-tailwind-preset.css`, foreign theme/reset imports, or Angular Material.
-- No global UI queue/state, timer-based focus repair, package-generation
-  mixing, `--force`, or `--legacy-peer-deps`.
-- Local standalone imports only after approval; preserve zoneless SSR and
-  hydration, existing tokens, forms, authorization, URLs, and localized copy.
-- The architecture guard in `test/headless-ui-architecture.test.ts` is an
-  independently useful regression check. When a decision is approved, update
-  its explicit allowlist in the same reviewed change before adding imports.
+- No Helm, HLM copies/generators/presets, legacy/modern mixing, Material,
+  foreign theme/reset, package-force flags or global custom dialog state/queue.
+- Use standalone local imports, signals and OnPush where applicable; preserve
+  zoneless SSR/hydration, existing tokens, forms/CVA, URLs, roles, CSRF, RLS
+  and revisions.
+- The fixture route is not a product API. Do not link it, add product copy or
+  turn it into a shared UI abstraction.

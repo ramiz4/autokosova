@@ -18,7 +18,7 @@ async function sourceFiles(directory: string): Promise<string[]> {
   return files.flat();
 }
 
-test('Headless foundation remains blocked and forbids Helm, Material, and unapproved UI imports', async () => {
+test('Headless foundation admits only the approved Brain and CDK menu packages', async () => {
   const packageJson = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as {
     dependencies?: Record<string, string>;
     devDependencies?: Record<string, string>;
@@ -28,20 +28,23 @@ test('Headless foundation remains blocked and forbids Helm, Material, and unappr
   const lockfile = await readFile(join(root, 'package-lock.json'), 'utf8');
 
   assert.deepEqual(
-    dependencyNames.filter((name) => name.startsWith('@spartan-ng/') || name === '@angular/cdk'),
-    [],
-    'Issue #128 has no approved Spartan or direct CDK dependency yet',
+    dependencyNames
+      .filter((name) => name.startsWith('@spartan-ng/') || name === '@angular/cdk')
+      .sort(),
+    ['@angular/cdk', '@spartan-ng/brain'],
   );
+  assert.equal(dependencies['@angular/cdk'], '22.1.6');
+  assert.equal(dependencies['@spartan-ng/brain'], '1.4.1');
+  assert.equal(dependencies.clsx, '2.1.1');
+  assert.equal(dependencies['tw-animate-css'], '1.4.0');
   assert.deepEqual(
     dependencyNames.filter((name) => name.startsWith('@angular/material')),
     [],
     'Angular Material is outside the Headless foundation',
   );
-  assert.equal(
-    /node_modules\/@spartan-ng\/(?:helm|ui-[^'"\s]*-helm)(?:[/'"]|$)/.test(lockfile),
-    false,
-    'the lockfile must not admit a Helm package transitively',
-  );
+  assert.match(lockfile, /"node_modules\/@angular\/cdk":\s*\{\s*"version": "22\.1\.6"/);
+  assert.match(lockfile, /"node_modules\/@spartan-ng\/brain":\s*\{\s*"version": "1\.4\.1"/);
+  assert.doesNotMatch(lockfile, /node_modules\/@spartan-ng\/(?:helm|ui-[^'"\s]*-helm)(?:[/'"]|$)/);
 
   const files = await sourceFiles('src');
   const forbidden = [
@@ -54,11 +57,15 @@ test('Headless foundation remains blocked and forbids Helm, Material, and unappr
 
   for (const file of files) {
     const source = await readFile(join(root, file), 'utf8');
-    assert.equal(
-      /@spartan-ng\/(?:brain|ui-[^'"\s]*)|@angular\/cdk\//.test(source),
-      false,
-      `${file} must not add an unapproved Headless/CDK import`,
-    );
+    for (const match of source.matchAll(/(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g)) {
+      const specifier = match[1];
+      if (!specifier.startsWith('@spartan-ng/') && !specifier.startsWith('@angular/cdk/')) continue;
+      assert.match(
+        specifier,
+        /^@spartan-ng\/brain\/(?:dialog|alert-dialog|overlay|popover|collapsible)$|^@angular\/cdk\/(?:menu|overlay|layout|a11y)$/,
+        `${file} imports an unapproved Headless/CDK entry point: ${specifier}`,
+      );
+    }
     for (const pattern of forbidden)
       assert.equal(
         pattern.test(source),
@@ -66,4 +73,18 @@ test('Headless foundation remains blocked and forbids Helm, Material, and unappr
         `${file} violates the Headless UI policy: ${pattern}`,
       );
   }
+
+  const pilot = await readFile(
+    join(root, 'src/app/headless-foundation-pilot.component.ts'),
+    'utf8',
+  );
+  for (const primitive of [
+    'BrnDialog',
+    'BrnOverlay',
+    'BrnCollapsible',
+    'CdkMenu',
+    'ChangeDetectionStrategy.OnPush',
+  ])
+    assert.match(pilot, new RegExp(primitive));
+  assert.doesNotMatch(pilot, /@spartan-ng\/brain\/hlm-tailwind-preset\.css|tw-animate-css/);
 });
