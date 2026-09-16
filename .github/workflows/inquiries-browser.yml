@@ -1,6 +1,7 @@
 name: Inquiries browser
 
 on:
+  workflow_dispatch:
   schedule:
     # Daily at 00:32 UTC (02:32 Zurich summer / 01:32 winter).
     - cron: '32 0 * * *'
@@ -14,7 +15,7 @@ concurrency:
 
 jobs:
   inquiries-browser:
-    if: ${{ github.event_name == 'schedule' && github.ref == 'refs/heads/main' && github.repository == 'ramiz4/autokosova' }}
+    if: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && github.repository == 'ramiz4/autokosova' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

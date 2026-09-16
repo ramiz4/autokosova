@@ -13,6 +13,7 @@ const schedules = new Map([
   ['staff.yml', 47],
   ['e2e-zitadel.yml', 57],
 ]);
+const manualReleaseGate = new Set(['e2e.yml', 'inquiries-browser.yml']);
 const main = {
   event_name: 'schedule',
   ref: 'refs/heads/main',
@@ -20,12 +21,15 @@ const main = {
 };
 
 for (const [file, minute] of schedules) {
-  test(`${file}: scheduled only, guarded main snapshot, bounded non-cancelling jobs`, async () => {
+  test(`${file}: guarded main snapshot, bounded non-cancelling jobs`, async () => {
     const source = await readFile(new URL(file, directory), 'utf8');
     const trigger = source.match(/^on:\n([\s\S]*?)(?=^[a-z][\w-]*:)/m)?.[1];
     assert.ok(trigger, 'explicit on block required');
     const uncommented = trigger.replace(/^\s*#[^\n]*\n/gm, '').trim();
-    assert.equal(uncommented, `schedule:\n    - cron: '${minute} 0 * * *'`);
+    const expectedTrigger = manualReleaseGate.has(file)
+      ? `workflow_dispatch:\n  schedule:\n    - cron: '${minute} 0 * * *'`
+      : `schedule:\n    - cron: '${minute} 0 * * *'`;
+    assert.equal(uncommented, expectedTrigger);
     assert.match(source, /^concurrency:\n  group: .+\n  cancel-in-progress: false$/m);
     const jobSource = source.split('\njobs:\n')[1];
     assert.ok(jobSource, 'workflow jobs required');
@@ -42,11 +46,18 @@ for (const [file, minute] of schedules) {
         true,
         name,
       );
+      if (manualReleaseGate.has(file)) {
+        assert.equal(
+          allowed({ ...main, event_name: 'workflow_dispatch' }, () => true),
+          true,
+          `${name}: workflow_dispatch`,
+        );
+      }
       for (const patch of [
         { event_name: 'pull_request' },
         { event_name: 'pull_request_target' },
         { event_name: 'push' },
-        { event_name: 'workflow_dispatch' },
+        ...(manualReleaseGate.has(file) ? [] : [{ event_name: 'workflow_dispatch' }]),
         { event_name: 'workflow_call' },
         { ref: 'refs/heads/feature' },
         { ref: 'refs/heads/develop' },
