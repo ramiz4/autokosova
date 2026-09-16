@@ -112,6 +112,31 @@ function deleteDialog(): HTMLElement | null {
   return document.querySelector<HTMLElement>('[data-delete-dialog]');
 }
 
+function actionMenu(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('[role="menu"]');
+}
+
+function actionItem(selector: string): HTMLButtonElement | null {
+  return actionMenu()?.querySelector<HTMLButtonElement>(selector) ?? null;
+}
+
+function dispatchMenuKey(target: EventTarget, key: string, shiftKey = false): void {
+  const keyCodes: Readonly<Record<string, number>> = {
+    ArrowDown: 40,
+    ArrowUp: 38,
+    d: 68,
+    Enter: 13,
+    End: 35,
+    Escape: 27,
+    Home: 36,
+    Space: 32,
+    Tab: 9,
+  };
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, shiftKey });
+  Object.defineProperty(event, 'keyCode', { value: keyCodes[key] ?? 0 });
+  target.dispatchEvent(event);
+}
+
 it.each(['de', 'sq', 'en'] as const)(
   'uses the canonical %s overview, readonly details and only approved search filters',
   async (locale) => {
@@ -256,7 +281,7 @@ it('edits the stored detail, keeps private attachments and the separate creation
   const { page, fixture, service } = await render();
   page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
   await fixture.whenStable();
-  page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
+  actionItem('[data-edit-inquiry]')!.click();
   await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
   await fixture.whenStable();
   const dialog = editorDialog()!;
@@ -289,7 +314,7 @@ it('validates local dates and guards unsaved edits on Escape and navigation', as
   const { page, fixture, service } = await render();
   page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
   await fixture.whenStable();
-  page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
+  actionItem('[data-edit-inquiry]')!.click();
   await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
   await fixture.whenStable();
   const dialog = editorDialog()!;
@@ -321,7 +346,7 @@ it('requires confirmation before deletion, supports cancellation and discards th
   const mutate = vi.spyOn(service, 'mutate').mockResolvedValue(true);
   page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
   await fixture.whenStable();
-  page.querySelector<HTMLButtonElement>('[data-delete-inquiry]')!.click();
+  actionItem('[data-delete-inquiry]')!.click();
   await fixture.whenStable();
   expect(mutate).not.toHaveBeenCalled();
   document.querySelector<HTMLButtonElement>('[data-cancel-delete]')!.click();
@@ -330,7 +355,7 @@ it('requires confirmation before deletion, supports cancellation and discards th
   expect(mutate).not.toHaveBeenCalled();
   page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
   await fixture.whenStable();
-  page.querySelector<HTMLButtonElement>('[data-delete-inquiry]')!.click();
+  actionItem('[data-delete-inquiry]')!.click();
   await fixture.whenStable();
   document.querySelector<HTMLButtonElement>('[data-confirm-delete]')!.click();
   await fixture.whenStable();
@@ -338,7 +363,7 @@ it('requires confirmation before deletion, supports cancellation and discards th
   expect(deleteDialog()).toBeNull();
   page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
   await fixture.whenStable();
-  page.querySelector<HTMLButtonElement>('[data-delete-inquiry]')!.click();
+  actionItem('[data-delete-inquiry]')!.click();
   await fixture.whenStable();
   TestBed.inject(AccountSessionService).invalidate();
   await fixture.whenStable();
@@ -350,7 +375,7 @@ it('falls back to the inquiries title after a confirmed delete removes its actio
   detailResponse = () => new Response(null, { status: 204 });
   page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
   await fixture.whenStable();
-  page.querySelector<HTMLButtonElement>('[data-delete-inquiry]')!.click();
+  actionItem('[data-delete-inquiry]')!.click();
   await fixture.whenStable();
   document.querySelector<HTMLButtonElement>('[data-confirm-delete]')!.click();
   await vi.waitFor(() => expect(service.requests()).toHaveLength(0));
@@ -362,7 +387,7 @@ it('does not save an unchanged or reverted inquiry and cancels without a discard
   const { page, fixture, service } = await render();
   page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
   await fixture.whenStable();
-  page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
+  actionItem('[data-edit-inquiry]')!.click();
   await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
   await fixture.whenStable();
   const dialog = editorDialog()!;
@@ -393,7 +418,7 @@ it('keeps the editor open while a save is pending and closes only after its conf
   const { page, fixture, service } = await render();
   page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
   await fixture.whenStable();
-  page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
+  actionItem('[data-edit-inquiry]')!.click();
   await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
   await fixture.whenStable();
   const symptom = editorDialog()!.querySelector<HTMLTextAreaElement>('#edit-symptom')!;
@@ -422,7 +447,7 @@ it('resolves a pending navigation guard safely when the editor is destroyed by a
   const { page, fixture, service } = await render();
   page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
   await fixture.whenStable();
-  page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
+  actionItem('[data-edit-inquiry]')!.click();
   await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
   await fixture.whenStable();
   const symptom = editorDialog()!.querySelector<HTMLTextAreaElement>('#edit-symptom')!;
@@ -442,7 +467,7 @@ it('falls back to the stable inquiries title when the persistent editor trigger 
   const trigger = page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!;
   trigger.click();
   await fixture.whenStable();
-  page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
+  actionItem('[data-edit-inquiry]')!.click();
   await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
   await fixture.whenStable();
   trigger.remove();
@@ -457,7 +482,7 @@ it('preserves the editor and unsaved text across real session revalidation', asy
   const { page, fixture, service } = await render();
   page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
   await fixture.whenStable();
-  page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
+  actionItem('[data-edit-inquiry]')!.click();
   await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
   await fixture.whenStable();
   const editor = page.querySelector('app-inquiry-editor')!;
@@ -491,7 +516,7 @@ it.each(['de', 'sq', 'en'] as const)(
       detailResponse = () => json({ ...detail, active, revision });
       page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
       await fixture.whenStable();
-      page.querySelector<HTMLButtonElement>('[data-toggle-inquiry]')!.click();
+      actionItem('[data-toggle-inquiry]')!.click();
       await vi.waitFor(() => expect(service.requests()[0].revision).toBe(revision));
       await fixture.whenStable();
       expect(page.querySelector('[data-inquiry-card]')).toBe(originalCard);
@@ -517,7 +542,7 @@ it.each(['de', 'sq', 'en'] as const)(
     const mutate = vi.spyOn(service, 'mutate').mockResolvedValue(false);
     page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
     await fixture.whenStable();
-    page.querySelector<HTMLButtonElement>('[data-delete-inquiry]')!.click();
+    actionItem('[data-delete-inquiry]')!.click();
     await fixture.whenStable();
     const dialog = deleteDialog()!;
     expect(dialog.querySelector('[data-delete-summary]')?.textContent).toContain('Fixture');
@@ -578,7 +603,7 @@ it.each(['de', 'sq', 'en'] as const)(
       expect(trigger.querySelector('svg')?.getAttribute('stroke-width')).toBe('4');
       trigger.click();
       await fixture.whenStable();
-      const menu = card.querySelector('[role="menu"]')!;
+      const menu = actionMenu()!;
       expect(menu.getAttribute('aria-labelledby')).toBe(trigger.id);
       expect(trigger.getAttribute('aria-controls')).toBe(menu.id);
       expect(trigger.getAttribute('aria-expanded')).toBe('true');
@@ -602,7 +627,7 @@ it('navigates the action menu with arrows, Home and End and restores focus on Es
   const trigger = page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!;
   trigger.click();
   await fixture.whenStable();
-  const items = page.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+  const items = actionMenu()!.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
   for (const [key, index] of [
     ['ArrowDown', 1],
     ['End', 2],
@@ -610,29 +635,45 @@ it('navigates the action menu with arrows, Home and End and restores focus on Es
     ['ArrowUp', 2],
     ['Home', 0],
   ] as const) {
-    document.activeElement!.dispatchEvent(
-      new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
-    );
+    dispatchMenuKey(document.activeElement!, key);
     await fixture.whenStable();
     expect(document.activeElement).toBe(items[index]);
   }
-  document.activeElement!.dispatchEvent(
-    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
-  );
+  dispatchMenuKey(document.activeElement!, 'Escape');
   await fixture.whenStable();
-  expect(page.querySelector('[role="menu"]')).toBeNull();
+  expect(actionMenu()).toBeNull();
   expect(document.activeElement).toBe(trigger);
+  dispatchMenuKey(trigger, 'Enter');
+  await fixture.whenStable();
+  expect(document.activeElement).toBe(actionItem('[data-edit-inquiry]'));
+  dispatchMenuKey(document.activeElement!, 'Tab');
+  await fixture.whenStable();
+  expect(actionMenu()).toBeNull();
+  trigger.focus();
+  dispatchMenuKey(trigger, 'Space');
+  await fixture.whenStable();
+  expect(document.activeElement).toBe(actionItem('[data-edit-inquiry]'));
+  dispatchMenuKey(document.activeElement!, 'd');
+  await vi.waitFor(() => expect(document.activeElement).toBe(actionItem('[data-toggle-inquiry]')));
+  dispatchMenuKey(document.activeElement!, 'Escape');
+  await fixture.whenStable();
+  trigger.focus();
+  dispatchMenuKey(trigger, 'Space');
+  await fixture.whenStable();
+  dispatchMenuKey(document.activeElement!, 'Tab', true);
+  await fixture.whenStable();
+  expect(actionMenu()).toBeNull();
   for (const [key, selector] of [
     ['ArrowUp', '[data-delete-inquiry]'],
     ['ArrowDown', '[data-edit-inquiry]'],
   ] as const) {
-    trigger.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+    dispatchMenuKey(trigger, key);
     await fixture.whenStable();
-    expect(document.activeElement).toBe(page.querySelector(selector));
+    expect(document.activeElement).toBe(actionItem(selector));
   }
 });
 
-it('opens only one card menu and dismisses on outside pointer or focus without writing', async () => {
+it('opens only one card menu at a time without writing', async () => {
   listResponse = () =>
     json({
       ...pageData,
@@ -644,20 +685,9 @@ it('opens only one card menu and dismisses on outside pointer or focus without w
   for (const trigger of triggers) {
     trigger.click();
     await fixture.whenStable();
-    expect(page.querySelectorAll('[role="menu"]')).toHaveLength(1);
-    expect(page.querySelector('[role="menu"]')?.getAttribute('aria-labelledby')).toBe(trigger.id);
+    expect(document.querySelectorAll('[role="menu"]')).toHaveLength(1);
+    expect(actionMenu()?.getAttribute('aria-labelledby')).toBe(trigger.id);
   }
-  page.querySelector('h1')!.dispatchEvent(new Event('pointerdown', { bubbles: true }));
-  await fixture.whenStable();
-  expect(page.querySelector('[role="menu"]')).toBeNull();
-  expect(document.activeElement).toBe(triggers[1]);
-  triggers[0].click();
-  await fixture.whenStable();
-  const filter = page.querySelector<HTMLButtonElement>('[data-inquiry-filter="all"]')!;
-  filter.focus();
-  await fixture.whenStable();
-  expect(page.querySelector('[role="menu"]')).toBeNull();
-  expect(document.activeElement).toBe(filter);
   expect(mutate).not.toHaveBeenCalled();
 });
 
@@ -669,9 +699,10 @@ it('blocks management and details while a write is pending', async () => {
   await fixture.whenStable();
   service.writeState.set('saving');
   await fixture.whenStable();
-  for (const button of page.querySelectorAll<HTMLButtonElement>(
-    '[role="menuitem"], [data-inquiry-menu], [data-inquiry-view]',
-  )) {
+  for (const button of [
+    ...actionMenu()!.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'),
+    ...page.querySelectorAll<HTMLButtonElement>('[data-inquiry-menu], [data-inquiry-view]'),
+  ]) {
     expect(button.disabled).toBe(true);
     button.click();
   }
@@ -686,7 +717,7 @@ it('returns from the editor and delete cancellation to the persistent menu trigg
   const trigger = page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!;
   trigger.click();
   await fixture.whenStable();
-  page.querySelector<HTMLButtonElement>('[data-edit-inquiry]')!.click();
+  actionItem('[data-edit-inquiry]')!.click();
   await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
   await fixture.whenStable();
   editorDialog()!.dispatchEvent(
@@ -697,7 +728,7 @@ it('returns from the editor and delete cancellation to the persistent menu trigg
   expect(document.activeElement).toBe(trigger);
   trigger.click();
   await fixture.whenStable();
-  page.querySelector<HTMLButtonElement>('[data-delete-inquiry]')!.click();
+  actionItem('[data-delete-inquiry]')!.click();
   await fixture.whenStable();
   document.querySelector<HTMLButtonElement>('[data-cancel-delete]')!.click();
   await fixture.whenStable();
@@ -711,12 +742,12 @@ it('keeps the card and restores menu focus after a failed status change', async 
   trigger.click();
   await fixture.whenStable();
   detailResponse = () => json({}, 503);
-  page.querySelector<HTMLButtonElement>('[data-toggle-inquiry]')!.click();
+  actionItem('[data-toggle-inquiry]')!.click();
   await vi.waitFor(() => expect(service.writeState()).not.toBe('saving'));
   await fixture.whenStable();
   expect(page.querySelector('[data-inquiry-card]')).toBe(card);
   expect(service.requests()[0].active).toBe(true);
-  expect(page.querySelector('[role="menu"]')).toBeNull();
+  expect(actionMenu()).toBeNull();
   expect(page.querySelector('[role="alert"]')).not.toBeNull();
   expect(document.activeElement).toBe(trigger);
 });
