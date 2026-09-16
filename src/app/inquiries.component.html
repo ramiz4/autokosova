@@ -491,7 +491,7 @@
         </div>
         @if (editingId() === saved.detail()?.id) {
           @if (saved.detail(); as detail) {
-            <app-inquiry-editor [request]="detail" (closed)="editingId.set(null)" />
+            <app-inquiry-editor [request]="detail" (closed)="editorClosed($event)" />
           }
         }
         @if (deleting(); as request) {

@@ -316,7 +316,9 @@ test('error-feedback preserves unsaved edits on network, conflict, permission an
     route.request().method() === 'PUT' ? route.abort('failed') : route.continue(),
   );
   await page.locator('[data-save-inquiry]').click();
-  await expect(page.locator('dialog [role="alert"]')).toContainText(inquiriesCopy.de.writeError);
+  await expect(page.locator('[data-inquiry-editor] [role="alert"]')).toContainText(
+    inquiriesCopy.de.writeError,
+  );
   await expect(page.locator('#edit-symptom')).toHaveValue('E2E UNSAVED TEXT');
   await page.unroute(target);
   const current: SavedRepairRequest = await (
@@ -335,7 +337,9 @@ test('error-feedback preserves unsaved edits on network, conflict, permission an
     ).status(),
   ).toBe(200);
   await page.locator('[data-save-inquiry]').click();
-  await expect(page.locator('dialog [role="alert"]')).toContainText(inquiriesCopy.de.conflict);
+  await expect(page.locator('[data-inquiry-editor] [role="alert"]')).toContainText(
+    inquiriesCopy.de.conflict,
+  );
   await expect(page.locator('#edit-symptom')).toHaveValue('E2E UNSAVED TEXT');
   expect((await (await api(page, app.origin, requestPath(inquiries[0]))).json()).symptom).toBe(
     current.symptom,
