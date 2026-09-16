@@ -17,7 +17,7 @@ test('staff-context preserves authorized case context across navigation, drafts,
   page.once('dialog', (dialog) => dialog.accept());
   await page.locator('[data-back-cases]').click();
   await expect(page.locator('[data-staff-list]')).toBeVisible();
-  await expect(page.locator('[data-open-case]').first()).toBeFocused();
+  await expect(page.locator(`[data-case-id="${assigned}"] [data-open-case]`)).toBeFocused();
 
   // Reload and a locale URL keep only bounded queue context, never private review text or drafts.
   await page.goto(app.origin + deep);
@@ -42,6 +42,8 @@ test('staff-context preserves authorized case context across navigation, drafts,
   // A current server change turns the old revision into a 409; the entered local check remains
   // visible until the reviewer deliberately reloads the authorized case.
   await app.login(page, 'moderator', 'de', deep);
+  await page.locator('[data-evidence]').click();
+  await expect(page.locator('[data-evidence-text]')).toContainText('DEMO');
   await page.locator('input[name="garageMatches"]').check();
   await page.locator('input[name="serviceMatches"]').check();
   await page.locator('input[name="visitMonthMatches"]').check();

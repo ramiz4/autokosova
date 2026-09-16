@@ -3,12 +3,12 @@ import { until } from './inquiries-test-browser.mjs';
 
 /** Uses the existing signed OIDC/application/DB harness, never mocked decision responses. */
 export async function checkModerationWorkspace({ browser, client, login, output }) {
-  async function open(id, locale = 'de') {
+  async function open(id, locale = 'de', queue = 'todo') {
     // The list shell renders before its asynchronous rows/hasMore. Reading disabled during
     // that interval would mistake a pending page for the end of the authorized queue.
     await browser.evaluate('window.__oldModerationDocument=true');
     await browser.command('Page.navigate', {
-      url: browser.origin + (locale === 'de' ? '' : '/' + locale) + '/moderation',
+      url: browser.origin + (locale === 'de' ? '' : '/' + locale) + '/moderation?queue=' + queue,
     });
     await until(
       () =>
@@ -128,7 +128,7 @@ export async function checkModerationWorkspace({ browser, client, login, output 
       .rowCount,
     0,
   );
-  await open('demo-staff-review-reported-report');
+  await open('demo-staff-review-reported-report', 'de', 'done');
   await confirmSubmit(true, '[data-action="restore"]');
   assert.equal(await state('demo-staff-review-reported'), 'published');
   await open('demo-staff-profile-report');
@@ -142,7 +142,7 @@ export async function checkModerationWorkspace({ browser, client, login, output 
   await browser.click('[data-action="temporarily_hide"]');
   await browser.fill('#moderation-reason', 'policy_violation');
   await confirmSubmit();
-  await open('demo-staff-profile-report');
+  await open('demo-staff-profile-report', 'de', 'done');
   await confirmSubmit(true, '[data-action="restore"]');
   await open('review:demo-staff-review-own-appeal');
   assert.equal(await browser.evaluate('!!document.querySelector("[data-decision-form]")'), false);
@@ -156,7 +156,7 @@ export async function checkModerationWorkspace({ browser, client, login, output 
   assert.equal(await state('demo-staff-review-appeal'), 'published');
   for (const locale of ['de', 'sq', 'en']) {
     await login('moderator', locale);
-    await open('review:demo-staff-review-waiting', locale);
+    await open('review:demo-staff-review-waiting', locale, 'waiting');
     await browser.click('[data-reject-review]');
     for (const width of [1280, 390]) {
       await browser.command('Emulation.setDeviceMetricsOverride', {

@@ -165,9 +165,16 @@ export class PostgresStaffWorkspace {
         [caseId],
       );
       const content = await readStaffCaseContent(client, row);
+      // Detail reads use the locked case row, not the list query's joined identity projection.
+      const assignee = row.assigned_moderator_user_id
+        ? await client.query<{ display_name: string }>(
+            'SELECT display_name FROM staff_identity WHERE user_id=$1',
+            [row.assigned_moderator_user_id],
+          )
+        : undefined;
       const openAppeal = row.appeal_against_user_id !== null && activeStatuses.includes(row.status);
       return {
-        ...summary(row),
+        ...summary({ ...row, assigned_label: assignee?.rows[0]?.display_name }),
         label: content.garage?.name || content.review?.garageName || '',
         ...(report.rows[0]
           ? {

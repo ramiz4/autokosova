@@ -110,6 +110,8 @@ try {
     () => browser.evaluate(`!!document.querySelector('[data-escalate]')`),
     'assigned moderation detail',
   );
+  await browser.click('[data-escalate-panel] summary');
+  await browser.fill('#staff-escalation', 'requires_admin');
   const pending = browser.click('[data-escalate]');
   await new Promise((resolve) => setTimeout(resolve, 150));
   await browser.command('Page.handleJavaScriptDialog', { accept: true });

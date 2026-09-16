@@ -410,7 +410,12 @@ export class StaffWorkspaceComponent {
   }
   back(): void {
     if (this.busy()) return;
-    if (this.route.snapshot.paramMap.get('caseId')) void this.router.navigateByUrl(this.listUrl());
+    const id = this.route.snapshot.paramMap.get('caseId');
+    const context = this.account.dataContext();
+    if (id) {
+      if (context) this.returnContext.remember(context, id);
+      void this.router.navigateByUrl(this.listUrl());
+    }
   }
   async decide(input: StaffCaseDecision): Promise<void> {
     if (input.revision !== this.detail()?.revision) return;
@@ -531,7 +536,7 @@ export class StaffWorkspaceComponent {
     body: Record<string, unknown>,
   ): Promise<void> {
     const detail = this.detail();
-    if (!detail || this.busy()) return;
+    if (!detail || this.busy() || this.stale()) return;
     const generation = this.generation,
       context = this.account.dataContext();
     this.busy.set(true);
@@ -605,7 +610,10 @@ export class StaffWorkspaceComponent {
       () => {
         this.document.defaultView?.scrollTo({ top: restore.scrollY });
         const selector = `[data-case-id=${JSON.stringify(restore.caseId)}] [data-open-case]`;
-        this.focus(this.document.querySelector(selector) ? selector : 'h1');
+        const target =
+          this.document.querySelector<HTMLElement>(selector) ??
+          this.document.querySelector<HTMLElement>('h1');
+        target?.focus({ preventScroll: restore.scrollY > 0 });
       },
       { injector: this.injector },
     );
@@ -712,7 +720,10 @@ export class StaffWorkspaceComponent {
       this.error.set(this.copy().conflict);
       return;
     }
-    if (freshRead) this.success.set('');
+    if (freshRead) {
+      this.success.set('');
+      if (this.detail()) this.stale.set(true);
+    }
     this.error.set(status === 422 ? this.label('invalidDecision') : this.copy().error);
   }
 }

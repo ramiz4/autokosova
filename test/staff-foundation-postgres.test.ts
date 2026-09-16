@@ -111,6 +111,9 @@ test(
       );
       const assigned = await store.getStaffCase(moderator, id);
       assert.equal(assigned.canEscalate, true);
+      assert.equal(assigned.assignedModeratorLabel, 'DEMO Moderator');
+      assert.equal((await store.getStaffCase(admin, id)).assignedModeratorLabel, 'DEMO Moderator');
+      assert.equal(assigned.assignedModeratorUserId, moderator.userId);
       assert.equal(assigned.review?.text.startsWith('DEMO'), true);
       files = new LocalDemoFileStore(source.toString(), {
         NODE_ENV: 'test',

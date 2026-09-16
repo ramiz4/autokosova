@@ -1,5 +1,5 @@
 <app-staff-layout [admin]="isAdmin()" active="overview">
-  <h1 tabindex="-1" class="text-3xl font-bold tracking-tight">
+  <h1 tabindex="-1" tabindex="-1" class="text-3xl font-bold tracking-tight">
     {{ adminOnly ? copy().cases : copy().myCases }}
   </h1>
   <p class="mt-2 max-w-3xl text-muted">{{ adminOnly ? copy().adminIntro : copy().ownIntro }}</p>
@@ -101,6 +101,11 @@
         <p class="mt-2">
           {{ copy().status }}: <strong data-case-status>{{ label(current.status) }}</strong>
         </p>
+        <p data-case-assignee class="mt-2 text-sm text-muted">
+          {{
+            current.assignedModeratorLabel || current.assignedModeratorUserId || copy().unassigned
+          }}
+        </p>
         <p class="mt-2 text-sm text-muted">
           {{ copy().created }}: {{ current.createdAt | date: 'dd.MM.yyyy HH:mm' }}
         </p>
@@ -145,9 +150,6 @@
                 {{ adminLabel('takeOver') }}
               </button>
             }
-            <p data-case-assignee class="text-sm text-muted">
-              {{ current.assignedModeratorLabel || copy().unassigned }}
-            </p>
             <label class="font-semibold" for="staff-assignee">{{ adminLabel('caseWorker') }}</label>
             <select
               id="staff-assignee"
