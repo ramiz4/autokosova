@@ -185,9 +185,11 @@ npm run test:e2e
 Die Suite baut die App und prüft Kunden-/Werkstatt-CRUD, Kontentrennung, Fehler, drei Sprachen,
 Desktop/Mobil und einen echten Anwendungsneustart. Sie verwendet eigene Testdatenbanken und
 den signierenden Test-OIDC; laufende App und echte Konten werden nicht verändert.
-Der Check `e2e-acceptance` läuft vor dem Merge im PR und danach auf `main`.
-Details zu Abnahmeinventar, lokalen Einzeltests, Secret-freiem CI und den eingerichteten
-Required Checks: [E2E-ACCEPTANCE.md](docs/development/E2E-ACCEPTANCE.md).
+Alle acht E2E-/Browser-Workflows laufen seit #158 nur nachts auf `main`, täglich gestaffelt
+zwischen 00:17 und 00:57 UTC (Zürich: Sommer 02:17–02:57, Winter 01:17–01:57). Keine PR-,
+Push- oder manuellen Workflow-Trigger. PRs verlangen weiterhin `verify` und `development-start`;
+schnelle E2E-Typ-/Policytests bleiben in `verify`. Details zu Zeitplan, Abnahmeinventar,
+lokalen Einzeltests und den eingerichteten Required Checks: [E2E-ACCEPTANCE.md](docs/development/E2E-ACCEPTANCE.md).
 Der separate Check `e2e-zitadel` ergänzt in #119 die echte Provider-Gesamtabnahme. Er erfordert
 ein geschütztes Environment und einen dedizierten lesenden 1Password-Service-Account; fehlende
 Voraussetzungen ergeben keinen grünen Skip. Die funktionale Abnahme aus #112 bleibt unverändert.
