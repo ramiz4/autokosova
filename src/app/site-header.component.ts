@@ -4,7 +4,7 @@ import { accountType } from '../shared/account';
 import { NgTemplateOutlet } from '@angular/common';
 import { afterNextRender } from '@angular/core';
 import { AccountSessionService } from './account-session.service';
-import { Component, ElementRef, inject, input, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, inject, input, signal, viewChild } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { LanguageService } from './language.service';
 import { LanguageSwitcherComponent } from './language-switcher.component';
@@ -40,6 +40,10 @@ export class SiteHeaderComponent {
     | 'reviews'
     | undefined
   >();
+  /** Staff shells retain account/language controls but never expose customer navigation. */
+  protected readonly internalShell = computed(
+    () => this.active() === 'admin' || this.active() === 'moderation',
+  );
   protected readonly account = inject(AccountSessionService);
   protected readonly accountType = accountType;
   protected readonly staffCopy = staffCopy;

@@ -21,6 +21,7 @@ export interface AdminRevision {
 export interface AdminGarageDecision extends AdminRevision {
   readonly decision: 'published' | 'rejected' | 'suspended' | 'restore';
   readonly verification: VerificationChecklist;
+  readonly locationPoint?: { readonly latitude: number; readonly longitude: number };
 }
 export interface AdminGarageSummary {
   readonly id: string;
@@ -129,7 +130,7 @@ export function validAdminDecision(value: unknown): value is AdminGarageDecision
   const check = input['verification'];
   return (
     Object.keys(input).every((key) =>
-      ['revision', 'reason', 'decision', 'verification'].includes(key),
+      ['revision', 'reason', 'decision', 'verification', 'locationPoint'].includes(key),
     ) &&
     ['published', 'rejected', 'suspended', 'restore'].includes(String(input['decision'])) &&
     !!check &&
@@ -139,6 +140,11 @@ export function validAdminDecision(value: unknown): value is AdminGarageDecision
       ['not_checked', 'verified', 'failed'].includes(
         String((check as Record<string, unknown>)[key]),
       ),
-    )
+    ) &&
+    (input['locationPoint'] === undefined ||
+      (!!input['locationPoint'] &&
+        typeof input['locationPoint'] === 'object' &&
+        Number.isFinite((input['locationPoint'] as Record<string, unknown>)['latitude']) &&
+        Number.isFinite((input['locationPoint'] as Record<string, unknown>)['longitude'])))
   );
 }

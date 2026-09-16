@@ -93,6 +93,9 @@ export class PostgresStaffWorkspace {
           AND c.kind IN ('report','review_submission')))
           AND ($3::text IS NULL OR c.kind=$3) AND ($4::text IS NULL OR c.status=$4)
           AND (NOT $10::boolean OR c.status IN ('submitted','assigned','waiting_for_subject'))
+          AND ($11::text IS NULL OR ($11='todo' AND c.status IN ('submitted','assigned'))
+            OR ($11='waiting' AND c.status='waiting_for_subject')
+            OR ($11='done' AND c.status IN ('resolved','rejected')))
           AND ($5::text IS NULL OR c.priority=$5) AND ($6::boolean IS NULL OR (c.escalation_reason IS NOT NULL)=$6)
           AND ($9::text IS NULL OR c.assigned_moderator_user_id=$9)
         ORDER BY (c.priority='high') DESC,c.created_at,c.id LIMIT $7 OFFSET $8`,
@@ -107,6 +110,7 @@ export class PostgresStaffWorkspace {
           (page - 1) * pageSize,
           filter.assignedUserId ?? null,
           filter.actionable === true,
+          filter.queue ?? null,
         ],
       );
       return {

@@ -1,7 +1,7 @@
 <div class="border-b border-slate-200 bg-white">
   <app-site-header [compact]="true" active="admin" />
 </div>
-<main id="main-content" class="mx-auto max-w-6xl px-4 py-8 text-ink sm:px-6 sm:py-12">
+<main id="main-content" class="mx-auto max-w-7xl px-4 py-5 text-ink sm:px-6 sm:py-8">
   <h1 tabindex="-1" class="text-3xl font-bold">{{ label(section) }}</h1>
   <p class="mt-3 max-w-3xl text-muted">{{ label('intro') }}</p>
   @if (account.state() === 'guest') {

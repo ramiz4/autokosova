@@ -79,6 +79,7 @@ export class StaffWorkspaceComponent {
   readonly evidenceText = signal<string | null>(null);
   filterStatus = '';
   actionableOnly = true;
+  queue: '' | 'todo' | 'waiting' | 'done' = 'todo';
   filterAssignee = '';
   filterKind = '';
   filterPriority = '';
@@ -104,6 +105,9 @@ export class StaffWorkspaceComponent {
     this.filterAssignee = query.get('assignedUserId') ?? '';
     this.onlyEscalated = query.get('escalated') === 'true';
     this.actionableOnly = query.get('actionable') !== 'false';
+    const requestedQueue = query.get('queue');
+    this.queue =
+      requestedQueue === 'waiting' || requestedQueue === 'done' ? requestedQueue : 'todo';
     effect(() => {
       const context = this.account.dataContext();
       const ready = this.ready();
@@ -143,6 +147,9 @@ export class StaffWorkspaceComponent {
   label(value: string): string {
     return staffLabel(value, this.language.language);
   }
+  queueLabel(value: 'todo' | 'waiting' | 'done'): string {
+    return this.copy()[value];
+  }
   loginUrl(): string {
     return (
       '/auth/login?returnTo=' +
@@ -159,7 +166,7 @@ export class StaffWorkspaceComponent {
     this.error.set('');
     const query = new URLSearchParams({ page: String(page) });
     if (this.filterStatus) query.set('status', this.filterStatus);
-    if (this.actionableOnly && !this.filterStatus) query.set('actionable', 'true');
+    if (this.queue && !this.filterStatus) query.set('queue', this.queue);
     if (this.isAdmin() && this.filterAssignee) query.set('assignedUserId', this.filterAssignee);
     if (this.filterKind) query.set('kind', this.filterKind);
     if (this.filterPriority) query.set('priority', this.filterPriority);
@@ -215,12 +222,29 @@ export class StaffWorkspaceComponent {
     if (this.filterPriority) queryParams['priority'] = this.filterPriority;
     if (this.isAdmin() && this.filterAssignee) queryParams['assignedUserId'] = this.filterAssignee;
     if (this.isAdmin() && this.onlyEscalated) queryParams['escalated'] = 'true';
-    if (!this.actionableOnly) queryParams['actionable'] = 'false';
+    if (this.queue !== 'todo') queryParams['queue'] = this.queue;
     void this.router.navigate([], { relativeTo: this.route, queryParams });
     void this.load();
   }
+  setQueue(queue: '' | 'todo' | 'waiting' | 'done'): void {
+    this.queue = queue;
+    this.filterStatus = '';
+    this.applyFilters();
+  }
   async open(id: string, updateUrl = true): Promise<void> {
     if (this.busy() || this.loading()) return;
+    if (updateUrl && !this.route.snapshot.paramMap.get('caseId')) {
+      const query = this.router.url.includes('?')
+        ? this.router.url.slice(this.router.url.indexOf('?'))
+        : '';
+      void this.router.navigateByUrl(
+        this.language.link(this.adminOnly ? 'admin' : 'moderation') +
+          '/cases/' +
+          encodeURIComponent(id) +
+          query,
+      );
+      return;
+    }
     const generation = this.generation,
       context = this.account.dataContext(),
       version = ++this.detailVersion;
@@ -245,12 +269,6 @@ export class StaffWorkspaceComponent {
       ) {
         this.detail.set(data);
         this.previousCase = id;
-        if (updateUrl && !this.route.snapshot.paramMap.get('caseId'))
-          void this.router.navigateByUrl(
-            this.language.link(this.adminOnly ? 'admin' : 'moderation') +
-              '/cases/' +
-              encodeURIComponent(id),
-          );
         this.focus('[data-case-heading]');
         this.moderatorId = data.assignedModeratorUserId ?? '';
       }
@@ -265,17 +283,22 @@ export class StaffWorkspaceComponent {
     this.detailVersion++;
     this.detail.set(null);
     this.evidenceText.set(null);
-    if (this.route.snapshot.paramMap.get('caseId'))
-      void this.router.navigateByUrl(this.language.link(this.adminOnly ? 'admin' : 'moderation'));
+    if (this.route.snapshot.paramMap.get('caseId')) void this.router.navigateByUrl(this.listUrl());
     void this.load(this.page()).then(() => this.focusList());
   }
   async decide(input: StaffCaseDecision): Promise<void> {
     if (input.revision !== this.detail()?.revision) return;
     await this.mutate('decide', input);
   }
-  nextEligibleCase(): void {
+  async nextEligibleCase(): Promise<void> {
     this.resultAvailable.set(false);
-    this.back();
+    this.detail.set(null);
+    this.evidenceText.set(null);
+    await this.load(1);
+    const next = this.cases()[0];
+    if (next) await this.open(next.id, false);
+    else if (this.route.snapshot.paramMap.get('caseId'))
+      await this.router.navigateByUrl(this.listUrl());
   }
   private focus(selector: string): void {
     afterNextRender(() => this.document.querySelector<HTMLElement>(selector)?.focus(), {
@@ -386,9 +409,7 @@ export class StaffWorkspaceComponent {
         this.evidenceText.set(null);
         await this.load(this.page());
         if (this.route.snapshot.paramMap.get('caseId'))
-          await this.router.navigateByUrl(
-            this.language.link(this.adminOnly ? 'admin' : 'moderation'),
-          );
+          await this.router.navigateByUrl(this.listUrl());
         this.focusList();
       }
     } catch (error) {
@@ -397,6 +418,12 @@ export class StaffWorkspaceComponent {
     } finally {
       if (generation === this.generation) this.busy.set(false);
     }
+  }
+  private listUrl(): string {
+    const query = this.router.url.includes('?')
+      ? this.router.url.slice(this.router.url.indexOf('?'))
+      : '';
+    return this.language.link(this.adminOnly ? 'admin' : 'moderation') + query;
   }
   private async json<T>(response: Response): Promise<T> {
     if (!response.ok) throw response.status;

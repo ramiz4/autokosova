@@ -305,7 +305,13 @@ export class AdminConsoleComponent {
   }
   async decide(decision: 'published' | 'rejected' | 'suspended' | 'restore') {
     if (!this.reason || !window.confirm(this.label('decisionConfirm'))) return;
-    await this.garageMutation('decision', { decision, verification: this.verification });
+    await this.garageMutation('decision', {
+      decision,
+      verification: this.verification,
+      ...(this.editingPosition && this.latitude !== null && this.longitude !== null
+        ? { locationPoint: { latitude: this.latitude, longitude: this.longitude } }
+        : {}),
+    });
   }
   canPublish(detail: AdminGarageDetail): boolean {
     return (
@@ -313,6 +319,11 @@ export class AdminConsoleComponent {
       this.reason !== '' &&
       detail.documents.some((document) => document.available) &&
       detail.members.some((member) => member.role === 'owner' && member.state === 'active') &&
+      this.latitude !== null &&
+      this.longitude !== null &&
+      !detail.members.some(
+        (member) => member.userId === this.account.identity()?.userId && member.state === 'active',
+      ) &&
       this.checks.every((check) => this.verification[check] === 'verified')
     );
   }

@@ -15,9 +15,10 @@ import { REVIEW_REJECTION_REASONS, type ReviewRejectionReason } from '../shared/
 export class StaffDecisionFormComponent {
   readonly detail = input.required<StaffCaseDetail>();
   readonly busy = input(false);
+  readonly completed = input(false);
   readonly submitted = output<StaffCaseDecision>();
   readonly language = inject(LanguageService);
-  readonly actions = computed(() => this.detail().allowedActions ?? []);
+  readonly actions = computed(() => (this.completed() ? [] : (this.detail().allowedActions ?? [])));
   readonly rejectionReasons = REVIEW_REJECTION_REASONS;
   readonly violationReasons = [
     'policy_violation',

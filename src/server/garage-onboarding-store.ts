@@ -337,6 +337,10 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
       );
       if (involved.rowCount)
         throw new AccessError(403, 'A garage member cannot approve their own garage');
+      const profile = {
+        ...garage.profile,
+        ...(context?.locationPoint ? { locationPoint: context.locationPoint } : {}),
+      };
       if (
         decision === 'published' &&
         ['phone', 'contactPerson', 'companyDocument', 'location'].some(
@@ -345,7 +349,7 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
       )
         throw new AccessError(422, 'All company verification checks are required');
       if (context && decision === 'published') {
-        if (!validGarageProfile(garage.profile, garage.profile) || !garage.profile.locationPoint)
+        if (!validGarageProfile(profile, garage.profile) || !profile.locationPoint)
           throw new AccessError(422, 'A complete profile and actual garage point are required');
         const proof = await client.query(
           `SELECT 1 FROM garage_verification_document d JOIN file_object f ON f.id=d.file_id
@@ -359,6 +363,11 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
         if (!proof.rowCount || !owners.rowCount)
           throw new AccessError(422, 'Available company evidence and an active owner are required');
       }
+      if (context?.locationPoint)
+        await client.query(
+          "UPDATE garage SET location_point=ST_SetSRID(ST_MakePoint($3,$2),4326)::geography,location_source='operator_entered' WHERE id=$1",
+          [id, context.locationPoint.latitude, context.locationPoint.longitude],
+        );
       await client.query(
         'UPDATE garage SET publication_state=$2,moderation_hidden_case_id=NULL WHERE id=$1',
         [id, decision],

@@ -40,7 +40,7 @@ function localizedRoutes(prefix: string): Routes {
     ...['garages', 'users', 'privacy', 'audit', 'catalog', 'support'].map((section) => ({
       path: `${childPrefix}admin/${section}`,
       pathMatch: 'full' as const,
-      data: { adminSection: section },
+      data: { adminSection: section, ownsFooter: true },
       canDeactivate: [
         (component: import('./admin-console.component').AdminConsoleComponent | null) =>
           component?.canLeave() ?? true,
@@ -51,14 +51,14 @@ function localizedRoutes(prefix: string): Routes {
       {
         path: `${childPrefix}${path}/cases/:caseId`,
         pathMatch: 'full' as const,
-        data: { adminOnly: path === 'admin' },
+        data: { adminOnly: path === 'admin', ownsFooter: true },
         loadComponent: () =>
           import('./staff-workspace.component').then((m) => m.StaffWorkspaceComponent),
       },
       {
         path: `${childPrefix}${path}`,
         pathMatch: 'full' as const,
-        data: { adminOnly: path === 'admin' },
+        data: { adminOnly: path === 'admin', ownsFooter: true },
         loadComponent: () =>
           import('./staff-workspace.component').then((m) => m.StaffWorkspaceComponent),
       },
