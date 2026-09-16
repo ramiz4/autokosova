@@ -131,6 +131,17 @@ export class InquiriesComponent {
     this.editingId.set(request.id);
     await this.saved.openDetail(request.id);
   }
+  protected editorClosed(id: string): void {
+    this.editingId.set(null);
+    afterNextRender(
+      () => {
+        const trigger = this.document.getElementById(`actions-trigger-${id}`);
+        if (trigger instanceof HTMLElement && trigger.isConnected) return;
+        this.document.querySelector<HTMLElement>('#inquiries-title')?.focus();
+      },
+      { injector: this.injector },
+    );
+  }
   protected toggleActions(id: string, event: Event): void {
     if (this.actionsId() === id) this.closeActions(true);
     else this.openActions(id, event);
