@@ -30,6 +30,7 @@ test('privacy-context opens a bounded ownership blocker, returns from team conte
   await page.locator('[name="publicReviewHandling"]').selectOption('delete');
   await page.locator('[name="approvalConfirmed"]').check();
   await confirm(page, '[data-save-policy]');
+  await expect(page.locator('[data-admin-result]')).toContainText(adminLabel('policySaved', 'de'));
 
   await page.locator('[name="deletionStatus"]').selectOption('blocked');
   const blocked = page.locator('[data-deletion-id="demo-admin-deletion-ownership"]');

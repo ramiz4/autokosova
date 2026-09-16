@@ -276,3 +276,39 @@ it('keeps only a technical selected request in the URL and detects policy edits 
   component.policyVersion = '';
   expect(component.policyDirty()).toBe(false);
 });
+
+it('refreshes privacy during its own save and does not report a stale policy as current', async () => {
+  const { component, fetch } = await render('privacy');
+  component.policyVersion = 'SYNTHETIC';
+  component.approvalReference = 'SYNTHETIC NOT REAL APPROVAL';
+  component.publicReviewHandling = 'delete';
+  for (const key of component.durations) component.days[key] = 30;
+  component.approvalConfirmed = true;
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  fetch.mockClear();
+  fetch
+    .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ requests: [], policy: { version: 'SYNTHETIC' }, page: 1, hasMore: false }),
+      ),
+    );
+  await component.savePolicy();
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(component.privacy()?.policy?.version).toBe('SYNTHETIC');
+  expect(component.success()).toBe(adminLabel('policySaved', 'de'));
+  expect(component.policyDirty()).toBe(false);
+});
+
+it('does not announce a fresh garage state after a failed post-write read', async () => {
+  const { component, fetch } = await render('garages');
+  await component.openGarage('demo-admin-test', 'review', false);
+  component.reviewReason = 'company_verified';
+  fetch
+    .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    .mockResolvedValueOnce(new Response('{}', { status: 503 }));
+  await component.saveVerification();
+  expect(component.error()).not.toBe('');
+  expect(component.success()).toBe('');
+  expect(component.stale()).toBe(true);
+});

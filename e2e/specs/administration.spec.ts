@@ -1,6 +1,7 @@
 import { test, expect } from '../support/application';
 import type { Page } from '@playwright/test';
 import { adminLabel } from '../../src/shared/admin-copy';
+import { staffSection } from '../support/journeys';
 import { onboardingCopy } from '../../src/shared/onboarding-copy';
 
 async function confirm(page: Page, selector: string) {
@@ -16,7 +17,7 @@ async function openGarage(page: Page, id: string) {
   await expect(page.locator('[data-admin-reason]')).toBeEnabled();
 }
 async function openReviewEditor(page: Page) {
-  const editor = page.locator('[data-admin-garage] details').first();
+  const editor = page.locator('[data-review-save]');
   if (!(await editor.evaluate((element) => (element as HTMLDetailsElement).open)))
     await editor.locator('summary').click();
 }
@@ -30,7 +31,7 @@ test('admin-workflow verifies garages, checks evidence, decides photos, suspends
 }, testInfo) => {
   await app.login(page, 'admin');
   await expect(page.locator('[data-admin-overview]')).toBeVisible();
-  await page.locator('app-admin-navigation a[href="/admin/garages"]').click();
+  await staffSection(page, 'garages');
   await expect(page.locator('[data-admin-garage-list]')).toBeVisible();
   const id = 'demo-admin-garage-pending';
   await openGarage(page, id);
@@ -63,7 +64,7 @@ test('admin-workflow verifies garages, checks evidence, decides photos, suspends
           .photos[0].visibility,
     )
     .toBe('approved');
-  await expect(page.locator('[data-admin-reason]')).toHaveValue('');
+  await expect(page.locator('[name="photoReason"]')).toHaveValue('');
   await page.locator('[data-admin-tab="review"]').click();
   await openReviewEditor(page);
   await reason(page, 'policy_violation', '[data-admin-decision-reason]');
@@ -118,7 +119,8 @@ test('admin-workflow verifies garages, checks evidence, decides photos, suspends
     )
     .toBe('rejected');
   // Reuse the ordinary garage editor through a documented support request, not impersonation.
-  await page.locator('app-admin-navigation a[href="/admin/support"]').click();
+  await staffSection(page, 'garages');
+  await page.locator('[data-assist-garage]').click();
   await page.locator('[data-support-applicant]').selectOption('demo-admin-owner');
   await page.locator('[data-support-reference]').fill('SYNTHETIC-SUPPORT-REQUEST');
   await page.locator('[data-start-support]').click();
@@ -180,9 +182,9 @@ test('admin-boundaries checks staff separation, takeover, policy gates and local
   await page.locator('[data-take-case]').click();
   await expect(page.locator('[data-staff-case]')).toBeVisible();
   await expect(page.locator('[data-case-heading]')).toContainText('DEMO');
-  await expect(page.locator('[data-case-assignee]')).toContainText('Admin');
+  await expect(page.locator('[data-case-assignee]')).toContainText('E2E admin');
   await expect(page.locator('[data-take-case]')).toHaveCount(0);
-  await page.locator('app-admin-navigation a[href="/admin/privacy"]').click();
+  await staffSection(page, 'privacy');
   await expect(page.locator('[data-admin-deletions]')).toBeVisible();
   const request = page.locator('[data-deletion-id="demo-admin-deletion-policy"]');
   await expect(request.locator('[data-process-deletion]')).toHaveCount(0);
@@ -203,6 +205,7 @@ test('admin-boundaries checks staff separation, takeover, policy gates and local
   await expect(page.locator('[data-save-policy]')).toBeDisabled();
   await page.locator('[name="approvalConfirmed"]').check();
   await confirm(page, '[data-save-policy]');
+  await expect(page.locator('[data-admin-result]')).toContainText(adminLabel('policySaved', 'de'));
   await request.getByRole('button', { name: adminLabel('open', 'de'), exact: true }).click();
   const selected = page.locator('[data-privacy-context]');
   await expect(selected.locator('[data-process-deletion]')).toBeVisible();

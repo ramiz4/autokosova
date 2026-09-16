@@ -330,7 +330,7 @@ export class StaffWorkspaceComponent {
     if (typeof item !== 'string' && this.adminOnly && item.kind === 'data_deletion') {
       await this.router.navigateByUrl(
         this.language.link('admin-section', 'privacy') +
-          `?status=${encodeURIComponent(item.status)}`,
+          `?requestId=${encodeURIComponent(item.subjectId)}`,
       );
       return;
     }

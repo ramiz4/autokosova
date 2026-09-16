@@ -1,41 +1,51 @@
 <app-staff-layout [admin]="isAdmin()" active="overview">
-  <h1 tabindex="-1" tabindex="-1" class="text-3xl font-bold tracking-tight">
+  <h1 tabindex="-1" class="text-3xl font-bold tracking-tight">
     {{ adminOnly ? copy().cases : copy().myCases }}
   </h1>
   <p class="mt-2 max-w-3xl text-muted">{{ adminOnly ? copy().adminIntro : copy().ownIntro }}</p>
   @if (isAdmin()) {
     @if (adminOnly && adminOverview(); as overview) {
       <section class="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm" data-admin-overview>
-        <a
-          class="font-semibold text-brand-dark underline-offset-4 hover:underline"
-          [routerLink]="language.link('admin-section', 'garages')"
-          [queryParams]="{ status: 'pending_review' }"
-          >{{ overview.pendingGarages }} {{ adminLabel('pendingGarages') }}</a
-        >
-        <a
-          class="font-semibold text-brand-dark underline-offset-4 hover:underline"
-          [routerLink]="language.link('admin')"
-          [queryParams]="{ queue: 'todo', unassigned: 'true' }"
-          >{{ overview.unassignedCases }} {{ adminLabel('unassignedCases') }}</a
-        >
-        <a
-          class="font-semibold text-brand-dark underline-offset-4 hover:underline"
-          [routerLink]="language.link('admin')"
-          [queryParams]="{ queue: 'todo', escalated: 'true' }"
-          >{{ overview.escalatedCases }} {{ adminLabel('escalatedCases') }}</a
-        >
-        <a
-          class="font-semibold text-brand-dark underline-offset-4 hover:underline"
-          [routerLink]="language.link('admin-section', 'privacy')"
-          [queryParams]="{ status: 'submitted' }"
-          >{{ overview.pendingDeletions }} {{ adminLabel('pendingDeletions') }}</a
-        >
-        <a
-          class="font-semibold text-brand-dark underline-offset-4 hover:underline"
-          [routerLink]="language.link('admin-section', 'privacy')"
-          [queryParams]="{ status: 'blocked' }"
-          >{{ overview.blockedDeletions }} {{ adminLabel('blockedDeletions') }}</a
-        >
+        @if (overview.pendingGarages > 0) {
+          <a
+            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            [routerLink]="language.link('admin-section', 'garages')"
+            [queryParams]="{ status: 'pending_review' }"
+            >{{ overview.pendingGarages }} {{ adminLabel('pendingGarages') }}</a
+          >
+        }
+        @if (overview.unassignedCases > 0) {
+          <a
+            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            [routerLink]="language.link('admin')"
+            [queryParams]="{ queue: 'todo', unassigned: 'true' }"
+            >{{ overview.unassignedCases }} {{ adminLabel('unassignedCases') }}</a
+          >
+        }
+        @if (overview.escalatedCases > 0) {
+          <a
+            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            [routerLink]="language.link('admin')"
+            [queryParams]="{ queue: 'todo', escalated: 'true' }"
+            >{{ overview.escalatedCases }} {{ adminLabel('escalatedCases') }}</a
+          >
+        }
+        @if (overview.pendingDeletions > 0) {
+          <a
+            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            [routerLink]="language.link('admin-section', 'privacy')"
+            [queryParams]="{ status: 'submitted' }"
+            >{{ overview.pendingDeletions }} {{ adminLabel('pendingDeletions') }}</a
+          >
+        }
+        @if (overview.blockedDeletions > 0) {
+          <a
+            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            [routerLink]="language.link('admin-section', 'privacy')"
+            [queryParams]="{ status: 'blocked' }"
+            >{{ overview.blockedDeletions }} {{ adminLabel('blockedDeletions') }}</a
+          >
+        }
       </section>
     }
   }
@@ -278,7 +288,13 @@
           <section class="mt-5 rounded-xl bg-emerald-50 p-4 text-emerald-900" role="status">
             <p>{{ copy().success }}</p>
             @if (nextAvailable()) {
-              <button appButton="outline" type="button" class="mt-3" (click)="nextEligibleCase()">
+              <button
+                data-next-case
+                appButton="outline"
+                type="button"
+                class="mt-3"
+                (click)="nextEligibleCase()"
+              >
                 {{ copy().next }}
               </button>
             }
@@ -334,7 +350,7 @@
         <div class="flex flex-wrap items-center gap-2" data-queue-tabs>
           @for (item of ['todo', 'waiting', 'done']; track item) {
             <button
-              appButton="outline"
+              [appButton]="queue === item ? 'primary' : 'outline'"
               type="button"
               [attr.aria-pressed]="queue === item"
               (click)="setQueue($any(item))"
@@ -351,6 +367,7 @@
             appButton="outline"
             type="button"
             data-appeal-filter
+            [class.font-extrabold]="onlyAppeal"
             [attr.aria-pressed]="onlyAppeal"
             (click)="toggleAppeals()"
           >
@@ -437,11 +454,45 @@
                 (change)="applyFilters()"
               />{{ copy().appeals }}</label
             >
-            <button appButton="outline" type="button" class="self-end" (click)="resetFilters()">
-              {{ copy().reset }}
-            </button>
           </form>
         </details>
+        @if (
+          filterKind ||
+          filterPriority ||
+          filterAssignee ||
+          filterStatus ||
+          onlyEscalated ||
+          onlyUnassigned ||
+          onlyAppeal ||
+          queue !== 'todo'
+        ) {
+          <div data-active-filters class="mt-2 flex flex-wrap items-center gap-3 text-sm">
+            @if (filterKind) {
+              <span>{{ label(filterKind) }}</span>
+            }
+            @if (filterPriority) {
+              <span>{{ label(filterPriority) }}</span>
+            }
+            @if (filterStatus) {
+              <span>{{ label(filterStatus) }}</span>
+            }
+            @if (filterAssignee) {
+              <span>{{ adminLabel('caseWorker') }}</span>
+            }
+            @if (onlyEscalated) {
+              <span>{{ copy().escalation }}</span>
+            }
+            @if (onlyUnassigned) {
+              <span>{{ copy().unassigned }}</span>
+            }
+            @if (onlyAppeal) {
+              <span>{{ copy().appeals }}</span>
+            }
+            <button data-reset-filters appButton="outline" type="button" (click)="resetFilters()">
+              {{ copy().reset }}
+            </button>
+          </div>
+        }
       </section>
       @if (!loading() && !error() && !cases().length) {
         <p data-staff-empty class="rounded-xl border border-slate-200 bg-white p-6">
@@ -482,7 +533,7 @@
               type="button"
               class="self-center"
               [disabled]="loading()"
-              (click)="open(item.id)"
+              (click)="open(item)"
             >
               {{ copy().open }}
             </button>

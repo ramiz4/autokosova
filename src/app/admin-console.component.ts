@@ -128,6 +128,8 @@ export class AdminConsoleComponent {
   private policyBaseline = '';
   private garageBaseline = '';
   private routeContext = '';
+  private returnGarageId = '';
+  private returnScrollY = 0;
   private currentParams: ParamMap | null = null;
   private disconnectDraftGuard: (() => void) | null = null;
   constructor() {
@@ -179,12 +181,15 @@ export class AdminConsoleComponent {
     return '/auth/login?returnTo=' + encodeURIComponent(this.safeReturnTo());
   }
   canLeave(targetUrl?: string): boolean {
+    if (this.busy()) return false;
     if (targetUrl && this.isReadOnlyContextNavigation(targetUrl)) return true;
-    return (
-      !this.busy() &&
-      (this.editor()?.canLeave() ?? true) &&
-      ((!this.dirty() && !this.policyDirty()) || window.confirm(this.label('discard')))
-    );
+    if (!(this.editor()?.canLeave() ?? true)) return false;
+    if (!this.dirty() && !this.policyDirty()) return true;
+    if (!window.confirm(this.label('discard'))) return false;
+    // The user has explicitly discarded this snapshot. A second route guard must not ask again.
+    this.garageBaseline = this.garageSnapshot();
+    this.policyBaseline = this.policySnapshot();
+    return true;
   }
   beforeUnload(event: BeforeUnloadEvent) {
     if (this.busy() || this.dirty() || this.policyDirty()) {
@@ -233,6 +238,8 @@ export class AdminConsoleComponent {
     this.policyBaseline = this.policySnapshot();
     this.garageBaseline = this.garageSnapshot();
     this.routeContext = '';
+    this.returnGarageId = '';
+    this.returnScrollY = 0;
   }
   /** Equality, not a sticky event, is the draft contract for all admin inputs. */
   dirty(): boolean {
@@ -301,6 +308,7 @@ export class AdminConsoleComponent {
     this.routeContext = context;
     this.status = params.get('status') ?? (this.section === 'privacy' ? 'submitted' : '');
     if (this.section === 'garages' && validGarage) {
+      this.page.set(validPage);
       if (this.detail()?.id === garageId) {
         this.page.set(validPage);
         this.detailTab = validTab;
@@ -347,9 +355,17 @@ export class AdminConsoleComponent {
         this.users.set(data.items);
         this.candidates.set(data.items);
       }
-      if (section === 'garages') this.garages.set(data.items);
+      if (section === 'garages') {
+        this.garages.set(data.items);
+        this.restoreGarageFocus();
+      }
       if (section === 'privacy') {
         this.privacy.set(data);
+        if (data.selected)
+          afterNextRender(
+            () => this.document.querySelector<HTMLElement>('[data-privacy-context]')?.focus(),
+            { injector: this.injector },
+          );
         if (this.currentParam('requestId') && !data.selected)
           this.error.set(this.label('requestUnavailable'));
       }
@@ -370,11 +386,15 @@ export class AdminConsoleComponent {
   }
   async openGarage(
     id: string,
-    tab: (typeof this.detailTabs)[number] = this.detailTab,
+    tab: (typeof this.detailTabs)[number] = 'review',
     navigate = true,
     ownMutation = false,
   ): Promise<void> {
     if ((this.busy() && !ownMutation) || (navigate && !this.canLeave())) return;
+    if (!this.detail()) {
+      this.returnGarageId = id;
+      if (navigate) this.returnScrollY = this.document.defaultView?.scrollY ?? 0;
+    }
     const generation = this.generation,
       read = ++this.reads;
     this.loading.set(true);
@@ -389,6 +409,16 @@ export class AdminConsoleComponent {
       this.detail.set(value);
       this.stale.set(false);
       this.detailTab = tab;
+      if (!ownMutation) {
+        this.reviewReason = '';
+        this.decisionReason = '';
+        this.photoReason = '';
+        this.memberReason = '';
+        this.targetUserId = '';
+        this.candidateQuery = '';
+        this.memberRole = 'editor';
+        this.requestReference = '';
+      }
       for (const key of this.checks)
         this.verification[key] = value.verification[key] ?? 'not_checked';
       this.latitude = value.profile.locationPoint?.latitude ?? null;
@@ -420,13 +450,32 @@ export class AdminConsoleComponent {
     this.support.set(null);
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: this.status ? { status: this.status } : {},
+      queryParams: {
+        ...(this.status ? { status: this.status } : {}),
+        ...(this.page() > 1 ? { page: this.page() } : {}),
+      },
     });
-    void this.load(this.page());
+  }
+  private restoreGarageFocus(): void {
+    if (this.detail() || !this.returnGarageId) return;
+    const id = this.returnGarageId,
+      scrollY = this.returnScrollY;
+    this.returnGarageId = '';
+    afterNextRender(
+      () => {
+        const selector = `[data-admin-garage-id=${JSON.stringify(id)}] [data-admin-open-garage]`;
+        this.document.defaultView?.scrollTo({ top: scrollY });
+        (
+          this.document.querySelector<HTMLElement>(selector) ??
+          this.document.querySelector<HTMLElement>('h1')
+        )?.focus({ preventScroll: scrollY > 0 });
+      },
+      { injector: this.injector },
+    );
   }
   setDetailTab(tab: (typeof this.detailTabs)[number]) {
     if (tab === this.detailTab) return;
-    this.detailTab = tab;
+    if (this.busy()) return;
     const current = this.detail();
     if (current) {
       if (tab === 'team') void this.findCandidates();
@@ -637,8 +686,10 @@ export class AdminConsoleComponent {
       async () => {
         this.clearSubmittedGarageInput(action);
         await this.openGarage(detail.id, this.detailTab, false, true);
-        this.success.set(this.label(result));
-        this.focusResult();
+        if (!this.error()) {
+          this.success.set(this.label(result));
+          this.focusResult();
+        } else if (this.detail()) this.stale.set(true);
       },
     );
   }
@@ -823,7 +874,11 @@ export class AdminConsoleComponent {
       async () => {
         this.approvalConfirmed = false;
         this.policyBaseline = this.policySnapshot();
-        await this.load(this.page());
+        await this.load(this.page(), true);
+        if (!this.error()) {
+          this.success.set(this.label('policySaved'));
+          this.focusResult();
+        }
       },
     );
   }
@@ -833,8 +888,10 @@ export class AdminConsoleComponent {
       {},
       async () => {
         await this.load(this.page(), true);
-        this.success.set(this.label('refreshDone'));
-        this.focusResult();
+        if (!this.error()) {
+          this.success.set(this.label('refreshDone'));
+          this.focusResult();
+        }
       },
     );
   }
@@ -851,8 +908,10 @@ export class AdminConsoleComponent {
       { policyVersion: version },
       async () => {
         await this.load(this.page(), true);
-        this.success.set(this.label('deletionProcessed'));
-        this.focusResult();
+        if (!this.error()) {
+          this.success.set(this.label('deletionProcessed'));
+          this.focusResult();
+        }
       },
     );
   }
@@ -991,7 +1050,11 @@ export class AdminConsoleComponent {
     const target = this.router.parseUrl(targetUrl);
     const path =
       target.root.children['primary']?.segments.map((segment) => segment.path).join('/') ?? '';
-    if (!new RegExp(`^(?:(?:sq|en)/)?admin/${this.section}$`).test(path)) return false;
+    const current = this.router.parseUrl(this.router.url);
+    const currentPath =
+      current.root.children['primary']?.segments.map((segment) => segment.path).join('/') ?? '';
+    // Locale changes recreate this component; only same-path query navigation retains RAM drafts.
+    if (path !== currentPath) return false;
     const garageId = target.queryParams['garageId'];
     if (this.section === 'privacy') return true;
     return (

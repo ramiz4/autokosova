@@ -1,6 +1,13 @@
 import type { AppLanguage } from './i18n';
 import { staffLabel } from './staff-copy';
 const labels: Readonly<Record<string, readonly [string, string, string]>> = {
+  security: ['Sicherheitsaktionen', 'Security actions', 'Veprimet e sigurisë'],
+  workspaceSection: ['Arbeitsbereich', 'Workspace section', 'Seksioni i punës'],
+  policySaved: [
+    'Aufbewahrungsregel gespeichert; Aufträge neu geprüft.',
+    'Retention policy saved; requests refreshed.',
+    'Rregulli i ruajtjes u ruajt; kërkesat u rifreskuan.',
+  ],
   takeOver: ['Fall selbst übernehmen', 'Take over case', 'Merr përsipër rastin'],
   caseWorker: ['Bearbeiter', 'Case worker', 'Përgjegjësi i rastit'],
   administration: ['Administration', 'Administration', 'Administrimi'],

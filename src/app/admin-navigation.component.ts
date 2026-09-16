@@ -35,7 +35,7 @@ type Section = 'overview' | 'garages' | 'users' | 'privacy' | 'audit' | 'catalog
     </nav>
     <label class="block lg:hidden">
       <span class="mb-1 block text-sm font-semibold text-ink">{{
-        staffCopy(language.language).cases
+        adminLabel('workspaceSection')
       }}</span>
       <select
         data-staff-section-select
@@ -46,7 +46,9 @@ type Section = 'overview' | 'garages' | 'users' | 'privacy' | 'audit' | 'catalog
         @for (group of groups(); track group.label) {
           <optgroup [label]="group.label || adminLabel('administration')">
             @for (section of group.sections; track section) {
-              <option [value]="section">{{ label(section) }}</option>
+              <option [value]="section" [selected]="active() === section">
+                {{ label(section) }}
+              </option>
             }
           </optgroup>
         }
@@ -87,6 +89,9 @@ export class AdminNavigationComponent {
   }
   go(event: Event): void {
     const section = (event.target as HTMLSelectElement).value as Section;
-    void this.router.navigateByUrl(this.path(section));
+    const control = event.target as HTMLSelectElement;
+    void this.router.navigateByUrl(this.path(section)).then(() => {
+      control.value = this.active();
+    });
   }
 }

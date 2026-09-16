@@ -16,7 +16,7 @@
           class="mt-3"
           type="button"
           [disabled]="busy()"
-          (click)="detail() ? openGarage(detail()!.id) : load(page())"
+          (click)="detail() ? openGarage(detail()!.id, detailTab) : load(page())"
         >
           {{ label('retry') }}
         </button>
@@ -75,7 +75,7 @@
         }
         <dl class="mt-5 grid gap-3 sm:grid-cols-2">
           <div>
-            <dt class="text-sm text-muted">{{ label('location') }}</dt>
+            <dt class="text-sm text-muted">{{ label('locationValue') }}</dt>
             <dd class="break-words">
               {{ current.profile.address }} · {{ current.profile.placeId }}
             </dd>
@@ -89,7 +89,7 @@
             </dd>
           </div>
           <div>
-            <dt class="text-sm text-muted">{{ label('contactPerson') }}</dt>
+            <dt class="text-sm text-muted">{{ label('contactPersonValue') }}</dt>
             <dd class="break-words">
               {{ current.profile.contactPerson }} · {{ current.profile.contactPhone }}
             </dd>
@@ -104,6 +104,8 @@
               [attr.data-admin-tab]="tab"
               [attr.aria-current]="detailTab === tab ? 'page' : null"
               [class.bg-slate-100]="detailTab === tab"
+              [class.underline]="detailTab === tab"
+              [disabled]="busy()"
               (click)="setDetailTab(tab)"
             >
               {{ label(tab) }}
@@ -134,84 +136,91 @@
                 class="mt-4 max-w-full rounded-lg bg-slate-50 p-4 text-sm whitespace-pre-wrap break-words"
                 >{{ proof() }}</pre>
             }
-            <details class="mt-7 border-t border-slate-200 pt-6">
-              <summary class="cursor-pointer font-semibold text-brand-dark">
-                {{ label('saveChecksOptional') }}
-              </summary>
-              <form class="mt-4" (ngSubmit)="saveVerification()">
-                <fieldset [disabled]="busy()" class="grid gap-4 sm:grid-cols-2">
-                  <legend class="mb-4 text-xl font-bold">{{ label('verification') }}</legend>
-                  @for (key of checks; track key) {
-                    <label class="grid gap-2 font-semibold"
-                      >{{ label(key + 'Value') }}
-                      <select
-                        [name]="key"
-                        [attr.data-admin-check]="key"
-                        [(ngModel)]="verification[key]"
-                        class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
-                      >
-                        @for (state of ['not_checked', 'verified', 'failed']; track state) {
-                          <option [value]="state">{{ label(state) }}</option>
-                        }
-                      </select>
-                    </label>
-                  }
-                  <button
-                    appButton="outline"
-                    type="button"
-                    class="sm:col-span-2 justify-self-start"
-                    (click)="editingPosition = !editingPosition"
-                  >
-                    {{ editingPosition ? label('back') : label('correctPosition') }}
-                  </button>
-                  @if (editingPosition) {
-                    <label class="grid gap-2 font-semibold"
-                      >{{ label('latitude')
-                      }}<input
-                        type="number"
-                        name="latitude"
-                        step="any"
-                        min="-90"
-                        max="90"
-                        [(ngModel)]="latitude"
-                        (ngModelChange)="verification.location = 'not_checked'"
-                        class="min-h-11 rounded-lg border border-slate-300 px-3"
-                    /></label>
-                    <label class="grid gap-2 font-semibold"
-                      >{{ label('longitude')
-                      }}<input
-                        type="number"
-                        name="longitude"
-                        step="any"
-                        min="-180"
-                        max="180"
-                        [(ngModel)]="longitude"
-                        (ngModelChange)="verification.location = 'not_checked'"
-                        class="min-h-11 rounded-lg border border-slate-300 px-3"
-                    /></label>
-                    <p class="text-sm text-muted sm:col-span-2">{{ label('locationHint') }}</p>
-                  }
-                  <label class="grid gap-2 font-semibold sm:col-span-2"
-                    >{{ label('saveReason') }}
+            <form class="mt-7 border-t border-slate-200 pt-6" (ngSubmit)="saveVerification()">
+              <fieldset [disabled]="busy()" class="grid gap-4 sm:grid-cols-2">
+                <legend class="mb-4 text-xl font-bold">{{ label('verification') }}</legend>
+                @for (key of checks; track key) {
+                  <label class="grid gap-2 font-semibold"
+                    >{{ label(key + 'Value') }}
                     <select
-                      name="reviewReason"
-                      data-admin-reason
-                      [(ngModel)]="reviewReason"
-                      required
+                      [name]="key"
+                      [attr.data-admin-check]="key"
+                      [(ngModel)]="verification[key]"
                       class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
                     >
-                      <option value="">{{ label('choose') }}</option>
-                      @for (reason of reasons; track reason) {
-                        <option [value]="reason">{{ label(reason) }}</option>
+                      @for (state of ['not_checked', 'verified', 'failed']; track state) {
+                        <option [value]="state">{{ label(state) }}</option>
                       }
                     </select>
                   </label>
-                  <button data-save-checks appButton type="submit" [disabled]="!reviewReason">
-                    {{ label('saveChecks') }}
-                  </button>
-                </fieldset>
-              </form>
-            </details>
+                }
+                <button
+                  appButton="outline"
+                  type="button"
+                  class="sm:col-span-2 justify-self-start"
+                  (click)="editingPosition = !editingPosition"
+                >
+                  {{ editingPosition ? label('back') : label('correctPosition') }}
+                </button>
+                @if (editingPosition) {
+                  <label class="grid gap-2 font-semibold"
+                    >{{ label('latitude')
+                    }}<input
+                      type="number"
+                      name="latitude"
+                      step="any"
+                      min="-90"
+                      max="90"
+                      [(ngModel)]="latitude"
+                      (ngModelChange)="verification.location = 'not_checked'"
+                      class="min-h-11 rounded-lg border border-slate-300 px-3"
+                  /></label>
+                  <label class="grid gap-2 font-semibold"
+                    >{{ label('longitude')
+                    }}<input
+                      type="number"
+                      name="longitude"
+                      step="any"
+                      min="-180"
+                      max="180"
+                      [(ngModel)]="longitude"
+                      (ngModelChange)="verification.location = 'not_checked'"
+                      class="min-h-11 rounded-lg border border-slate-300 px-3"
+                  /></label>
+                  <p class="text-sm text-muted sm:col-span-2">{{ label('locationHint') }}</p>
+                }
+                <details data-review-save class="sm:col-span-2">
+                  <summary class="min-h-11 cursor-pointer py-3 font-semibold text-brand-dark">
+                    {{ label('saveChecksOptional') }}
+                  </summary>
+                  <div class="grid gap-3">
+                    <label class="grid gap-2 font-semibold sm:col-span-2"
+                      >{{ label('saveReason') }}
+                      <select
+                        name="reviewReason"
+                        data-admin-reason
+                        [(ngModel)]="reviewReason"
+                        required
+                        class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+                      >
+                        <option value="">{{ label('choose') }}</option>
+                        @for (reason of reasons; track reason) {
+                          <option [value]="reason">{{ label(reason) }}</option>
+                        }
+                      </select>
+                    </label>
+                    <button
+                      data-save-checks
+                      appButton="outline"
+                      type="submit"
+                      [disabled]="!reviewReason"
+                    >
+                      {{ label('saveChecks') }}
+                    </button>
+                  </div>
+                </details>
+              </fieldset>
+            </form>
             <div class="mt-5 flex flex-wrap gap-3">
               @if (
                 current.publicationState === 'pending_review' ||
@@ -561,6 +570,9 @@
         </form>
       }
       @if (section === 'garages') {
+        <a appButton="outline" data-assist-garage class="mb-4" [href]="link('support')">{{
+          label('startSupport')
+        }}</a>
         <div class="grid gap-4 sm:grid-cols-2" data-admin-garage-list>
           @for (item of garages(); track item.id) {
             <article
@@ -630,8 +642,10 @@
             </button>
           </section>
         } @else {
-          <section class="mb-5 rounded-xl bg-slate-50 p-5">
-            <h2 class="text-xl font-bold">{{ label('provider') }}</h2>
+          <details class="mb-5 rounded-xl bg-slate-50 p-4">
+            <summary class="min-h-11 cursor-pointer py-3 font-semibold">
+              {{ label('provider') }}
+            </summary>
             <p class="mt-3 text-sm">{{ label('providerHint') }}</p>
             <p class="mt-3 text-sm">{{ label('rolesHint') }}</p>
             @if (consoleUrl()) {
@@ -646,13 +660,13 @@
             } @else {
               <p class="mt-3 text-sm text-muted">{{ label('providerMissing') }}</p>
             }
-          </section>
-          <div class="grid gap-4" data-admin-users>
+          </details>
+          <div
+            class="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white"
+            data-admin-users
+          >
             @for (person of users(); track person.id) {
-              <article
-                class="rounded-xl border border-slate-200 bg-white p-5"
-                [attr.data-admin-user-id]="person.id"
-              >
+              <article class="p-4 sm:p-5" [attr.data-admin-user-id]="person.id">
                 <h2 class="text-xl font-bold break-words">{{ person.label }}</h2>
                 <p class="mt-2">
                   {{ label('accountType') }}: {{ label(person.accountType) }} ·
@@ -668,20 +682,31 @@
                 <ul class="mt-3 grid gap-2">
                   @for (membership of person.memberships; track membership.garageId) {
                     <li class="text-sm break-words">
-                      {{ membership.garageName }} · {{ label(membership.role) }} ·
-                      {{ label(membership.state) }}
+                      <a
+                        data-user-garage
+                        class="inline-flex min-h-11 items-center font-semibold text-brand-dark underline underline-offset-4"
+                        [href]="link('garages') + '?garageId=' + membership.garageId + '&tab=team'"
+                        >{{ membership.garageName }}</a
+                      >
+                      · {{ label(membership.role) }} · {{ label(membership.state) }}
                     </li>
                   }
                 </ul>
-                <button
-                  appButton="outline"
-                  class="mt-4"
-                  type="button"
-                  [disabled]="busy()"
-                  (click)="revokeSessions(person.id)"
-                >
-                  {{ label('sessions') }}
-                </button>
+                <details data-account-security class="mt-2">
+                  <summary
+                    class="min-h-11 cursor-pointer py-3 text-sm font-semibold text-brand-dark"
+                  >
+                    {{ label('security') }}
+                  </summary>
+                  <button
+                    appButton="outline"
+                    type="button"
+                    [disabled]="busy()"
+                    (click)="revokeSessions(person.id)"
+                  >
+                    {{ label('sessions') }}
+                  </button>
+                </details>
               </article>
             } @empty {
               @if (!loading() && !error()) {
@@ -698,6 +723,7 @@
             >{{ label('status') }}
             <select
               name="deletionStatus"
+              [disabled]="busy() || loading()"
               [(ngModel)]="status"
               (change)="applyStatusFilter()"
               class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"

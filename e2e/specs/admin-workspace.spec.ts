@@ -9,12 +9,13 @@ test('admin-context publishes the complete review in one confirmed write and kee
   page,
   app,
 }) => {
-  await app.login(page, 'admin', 'de', '/admin/garages');
-  await page.locator('[data-admin-query]').fill('demo-admin-garage-pending');
-  await page.locator('[data-admin-search]').click();
-  await page.locator('[data-admin-open-garage]').first().click();
-  const editor = page.locator('[data-admin-garage] details').first();
-  await editor.locator('summary').click();
+  await app.login(page, 'admin');
+  await page.locator('[data-case-id="garage:demo-admin-garage-pending"] [data-open-case]').click();
+  await expect(page).toHaveURL(/admin\/garages\?garageId=demo-admin-garage-pending/);
+  await expect(page.locator('[data-admin-garage]')).toBeVisible();
+  // The four checks are visible without an action selector or an intermediate save.
+  await expect(page.locator('[data-admin-check="phone"]')).toBeVisible();
+  await expect(page.locator('[data-review-save]')).not.toHaveAttribute('open');
   for (const key of ['phone', 'contactPerson', 'companyDocument', 'location'])
     await page.locator(`[data-admin-check="${key}"]`).selectOption('verified');
   const writes: string[] = [];
@@ -31,4 +32,8 @@ test('admin-context publishes the complete review in one confirmed write and kee
   await page.goBack();
   await expect(page).toHaveURL(/tab=review/);
   await expect(page.locator('[data-admin-tab="review"]')).toHaveAttribute('aria-current', 'page');
+  await page.locator('[data-admin-back]').click();
+  await expect(
+    page.locator('[data-admin-garage-id="demo-admin-garage-pending"] [data-admin-open-garage]'),
+  ).toBeFocused();
 });

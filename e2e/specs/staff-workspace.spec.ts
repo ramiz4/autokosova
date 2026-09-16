@@ -26,12 +26,13 @@ test('staff-context preserves authorized case context across navigation, drafts,
   await expect(page.locator('[data-staff-case]')).toBeVisible();
   await page.locator('input[name="garageMatches"]').check();
   page.once('dialog', (dialog) => dialog.dismiss());
-  await page.locator('app-language-switcher button').press('Enter');
+  await page.locator('app-language-switcher summary').press('Enter');
   await page.getByRole('link', { name: 'English' }).press('Enter');
   await expect(page).toHaveURL(app.origin + deep);
   await expect(page.locator('input[name="garageMatches"]')).toBeChecked();
   await expect(page.locator('[data-staff-case]')).toBeVisible();
 
+  page.once('dialog', (dialog) => dialog.accept());
   await app.login(page, 'admin', 'de', '/admin/cases/review:demo-staff-review-unassigned');
   await expect(page.locator('#staff-assignee')).toContainText('E2E admin');
   await expect(page.locator('[data-take-case]')).toBeEnabled();
@@ -63,4 +64,14 @@ test('staff-context preserves authorized case context across navigation, drafts,
   await expect(page.locator('[data-publish-review]')).toBeDisabled();
   await expect(page.getByRole('button', { name: /Aktuellen Stand prüfen/i })).toBeVisible();
   expect(caseDetail.revision).toBeGreaterThan(0);
+  await page.getByRole('button', { name: /Aktuellen Stand prüfen/i }).click();
+  await expect(page.locator('[data-publish-review]')).toBeEnabled();
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.locator('[data-publish-review]').click();
+  await expect(page.locator('[data-case-status]')).toContainText('Abgeschlossen');
+  await expect(page.locator('[data-next-case]')).toBeVisible();
+  const completedUrl = page.url();
+  await page.locator('[data-next-case]').click();
+  await expect(page).not.toHaveURL(completedUrl);
+  await expect(page.locator('[data-staff-case]')).toBeVisible();
 });

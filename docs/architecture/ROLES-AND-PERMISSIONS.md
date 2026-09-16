@@ -156,3 +156,7 @@ ist das JSON-Paar `[garageId, userId]`, der Ereignistyp nennt vorherige/neue Rol
 Dadurch bleibt die Übergabe auch nach späteren Zuordnungsänderungen nachvollziehbar; keine Namen,
 E-Mail-Adressen oder Support-Freitexte werden in das Audit kopiert.
 Nachweise: `test/administration-postgres.test.ts` und `src/app/admin-console.component.spec.ts`.
+
+### Aufgabenorientierte Interaktion
+
+Die gemeinsame Shell, technischen Detailziele, Entwurfs-/Konfliktgrenzen und der reproduzierbare synthetische Vorher-/Nachher-Nachweis sind in [Interner Arbeitsplatz](STAFF-WORKSPACE-UX.md) dokumentiert. Sie erweitern keine Rolle oder Objektberechtigung.
