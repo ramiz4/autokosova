@@ -624,58 +624,69 @@
     <app-favorite-notice [loginUrl]="favoriteLoginUrl()" />
   }
 
-  @if (galleryOpen() && profile) {
-    <section
-      class="fixed inset-0 z-[80] flex items-center justify-center overflow-hidden bg-slate-950/95 p-3 sm:p-8"
-      role="dialog"
-      aria-modal="true"
-      [attr.aria-label]="ui('profile.ui.photos')"
-      (keydown.escape)="closeGallery()"
-      (keydown.arrowleft)="moveGallery(-1)"
-      (keydown.arrowright)="moveGallery(1)"
-    >
-      <button
-        #galleryClose
-        type="button"
-        class="absolute top-3 right-3 flex size-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white"
-        [attr.aria-label]="ui('profile.ui.close')"
-        (click)="closeGallery()"
-      >
-        <lucide-icon [name]="XIcon" class="size-6" />
-      </button>
-      <button
-        type="button"
-        class="absolute left-2 flex size-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white sm:left-5"
-        [attr.aria-label]="ui('profile.ui.previousPhoto')"
-        (click)="moveGallery(-1)"
-      >
-        <lucide-icon [name]="ChevronLeftIcon" class="size-6" />
-      </button>
-      <figure class="flex max-h-full min-h-0 max-w-6xl flex-col">
-        <img
-          [src]="photoUrl(profile.photoIds[galleryIndex()])"
-          [alt]="ui('profile.ui.photoOf', { garage: profile.name })"
-          class="max-h-[80dvh] min-h-0 max-w-full rounded-xl object-contain"
-        />
-        <figcaption class="mt-3 shrink-0 text-center text-sm text-white">
-          {{
-            ui('profile.ui.photoPosition', {
-              current: galleryIndex() + 1,
-              total: profile.photoIds.length,
-            })
-          }}
-        </figcaption>
-      </figure>
-      <button
-        type="button"
-        class="absolute right-2 flex size-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white sm:right-5"
-        [attr.aria-label]="ui('profile.ui.nextPhoto')"
-        (click)="moveGallery(1)"
-      >
-        <lucide-icon [name]="ChevronRightIcon" class="size-6" />
-      </button>
-    </section>
-  }
+  <brn-dialog
+    [state]="galleryOpen() ? 'open' : 'closed'"
+    [autoFocus]="'[data-gallery-close]'"
+    [aria-label]="ui('profile.ui.photos')"
+    [restoreFocus]="galleryRestoreFocus()"
+    (stateChanged)="galleryStateChanged($event)"
+  >
+    <brn-dialog-overlay class="bg-slate-950/95" />
+    <ng-template brnDialogContent>
+      @if (profile; as garage) {
+        <section
+          class="relative flex h-dvh w-screen items-center justify-center overflow-hidden p-3 text-white sm:p-8"
+          (keydown.arrowleft)="$event.preventDefault(); moveGallery(-1)"
+          (keydown.arrowright)="$event.preventDefault(); moveGallery(1)"
+        >
+          <button
+            type="button"
+            brnDialogClose
+            data-gallery-close
+            class="absolute top-3 right-3 flex size-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white"
+            [attr.aria-label]="ui('profile.ui.close')"
+          >
+            <lucide-icon [name]="XIcon" class="size-6" />
+          </button>
+          <button
+            type="button"
+            class="absolute left-2 flex size-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white sm:left-5"
+            [attr.aria-label]="ui('profile.ui.previousPhoto')"
+            (click)="moveGallery(-1)"
+          >
+            <lucide-icon [name]="ChevronLeftIcon" class="size-6" />
+          </button>
+          <figure class="flex max-h-full min-h-0 max-w-6xl flex-col">
+            <img
+              [src]="photoUrl(garage.photoIds[galleryIndex()])"
+              [alt]="ui('profile.ui.photoOf', { garage: garage.name })"
+              class="max-h-[80dvh] min-h-0 max-w-full rounded-xl object-contain"
+            />
+            <figcaption
+              aria-live="polite"
+              aria-atomic="true"
+              class="mt-3 shrink-0 text-center text-sm text-white"
+            >
+              {{
+                ui('profile.ui.photoPosition', {
+                  current: galleryIndex() + 1,
+                  total: garage.photoIds.length,
+                })
+              }}
+            </figcaption>
+          </figure>
+          <button
+            type="button"
+            class="absolute right-2 flex size-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white sm:right-5"
+            [attr.aria-label]="ui('profile.ui.nextPhoto')"
+            (click)="moveGallery(1)"
+          >
+            <lucide-icon [name]="ChevronRightIcon" class="size-6" />
+          </button>
+        </section>
+      }
+    </ng-template>
+  </brn-dialog>
 
   @if (contactOpen() && profile) {
     <div

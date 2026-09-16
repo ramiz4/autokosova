@@ -1,7 +1,7 @@
 import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
-import { of } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 import { GarageProfileComponent } from './garage-profile.component';
 import { profileCopy } from '../shared/profile-copy';
 
@@ -53,8 +53,10 @@ function routeWith(
   query: Record<string, string> = {},
   fragment: string | null = null,
 ) {
+  const paramMap = new BehaviorSubject(convertToParamMap({ garageId }));
   return {
     fragment: of(fragment),
+    paramMap,
     snapshot: {
       fragment,
       paramMap: convertToParamMap({ garageId }),
@@ -86,6 +88,7 @@ async function setup(
   fragment: string | null = null,
 ) {
   const request = mockPublicRequests(profileResponse, reviews);
+  const route = routeWith((profileResponse as typeof profile).id, query, fragment);
   vi.stubGlobal('fetch', request);
   await TestBed.configureTestingModule({
     imports: [GarageProfileComponent],
@@ -93,7 +96,7 @@ async function setup(
       provideRouter([]),
       {
         provide: ActivatedRoute,
-        useValue: routeWith((profileResponse as typeof profile).id, query, fragment),
+        useValue: route,
       },
       { provide: PLATFORM_ID, useValue: 'browser' },
     ],
@@ -106,6 +109,7 @@ async function setup(
     fixture,
     page: fixture.nativeElement as HTMLElement,
     request,
+    route,
   };
 }
 
@@ -159,15 +163,34 @@ describe('GarageProfileComponent', () => {
     const trigger = page.querySelector<HTMLButtonElement>('#photos button')!;
     trigger.click();
     await fixture.whenStable();
-    const dialog = page.querySelector<HTMLElement>('[role="dialog"][aria-label="Fotos"]')!;
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"][aria-label="Fotos"]')!;
+    const panel = dialog.querySelector<HTMLElement>('section')!;
+    const close = dialog.querySelector<HTMLButtonElement>('[data-gallery-close]')!;
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(document.activeElement).toBe(close);
     expect(dialog.querySelector('figcaption')?.textContent).toContain('Foto 1 von 4');
-    dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    panel.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     await fixture.whenStable();
     expect(dialog.querySelector('figcaption')?.textContent).toContain('Foto 2 von 4');
-    dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    panel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await fixture.whenStable();
-    expect(page.querySelector('[role="dialog"][aria-label="Fotos"]')).toBeNull();
+    expect(document.querySelector('[role="dialog"][aria-label="Fotos"]')).toBeNull();
     expect(document.activeElement).toBe(trigger);
+  });
+
+  it('closes the Brain lightbox on a profile route change without restoring a removed trigger', async () => {
+    const { fixture, page, route } = await setup();
+    const trigger = page.querySelector<HTMLButtonElement>('#photos button')!;
+    trigger.click();
+    await fixture.whenStable();
+    expect(document.querySelector('[role="dialog"][aria-label="Fotos"]')).toBeTruthy();
+
+    trigger.remove();
+    route.paramMap.next(convertToParamMap({ garageId: 'other-garage' }));
+    await fixture.whenStable();
+
+    expect(document.querySelector('[role="dialog"][aria-label="Fotos"]')).toBeNull();
+    expect(document.activeElement).not.toBe(trigger);
   });
 
   it.each([1, 2])('renders each of %s published photos once without duplication', async (count) => {
