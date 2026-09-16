@@ -81,9 +81,16 @@ try {
   await trigger.click();
   await dialog.waitFor();
   await trigger.evaluate((element) => element.remove());
-  await page.goto(`${origin}/garages/gallery-other`);
-  await page.locator('app-garage-profile #photos button').first().waitFor();
-  assert.equal(await page.getByRole('dialog', { name: 'Fotos' }).count(), 0);
+  await page.evaluate(() => {
+    history.pushState({}, '', '/garages/gallery-other');
+    dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await page.waitForFunction(
+    () =>
+      location.pathname === '/garages/gallery-other' &&
+      !document.querySelector('[role="dialog"][aria-label="Fotos"]') &&
+      document.activeElement?.matches('[data-gallery-fallback]'),
+  );
   assert.deepEqual(errors, [], 'No browser runtime or hydration errors are permitted');
   console.log(
     JSON.stringify({

@@ -182,6 +182,8 @@ export class GarageProfileComponent {
   protected readonly galleryIndex = signal(0);
   protected readonly galleryOpen = signal(false);
   protected readonly galleryReturnFocus = signal<HTMLElement | null>(null);
+  protected readonly galleryRestoreFocus =
+    '[data-gallery-return-focus], body:not(:has([data-gallery-return-focus])) [data-gallery-fallback]';
   protected includeDetails = false;
   protected profile?: PublicGarageProfile;
   protected repairSummary = '';
@@ -329,9 +331,10 @@ export class GarageProfileComponent {
 
   protected openGallery(index: number, event: Event): void {
     if (!this.profile?.photoIds[index]) return;
-    this.galleryReturnFocus.set(
-      event.currentTarget instanceof HTMLElement ? event.currentTarget : null,
-    );
+    this.galleryReturnFocus()?.removeAttribute('data-gallery-return-focus');
+    const trigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    trigger?.setAttribute('data-gallery-return-focus', '');
+    this.galleryReturnFocus.set(trigger);
     this.galleryIndex.set(index);
     this.galleryOpen.set(true);
   }
@@ -344,11 +347,6 @@ export class GarageProfileComponent {
 
   protected closeGallery(): void {
     this.galleryOpen.set(false);
-  }
-
-  protected galleryRestoreFocus(): HTMLElement | boolean {
-    const trigger = this.galleryReturnFocus();
-    return trigger?.isConnected ? trigger : true;
   }
 
   protected galleryStateChanged(state: 'closed' | 'open'): void {

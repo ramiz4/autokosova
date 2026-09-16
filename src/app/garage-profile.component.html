@@ -7,6 +7,8 @@
   <main
     class="mx-auto max-w-[1352px] px-4 pt-4 pb-28 sm:px-6 lg:pb-10"
     aria-labelledby="profile-title"
+    data-gallery-fallback
+    tabindex="-1"
   >
     <div class="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
       <nav
@@ -628,7 +630,7 @@
     [state]="galleryOpen() ? 'open' : 'closed'"
     [autoFocus]="'[data-gallery-close]'"
     [aria-label]="ui('profile.ui.photos')"
-    [restoreFocus]="galleryRestoreFocus()"
+    [restoreFocus]="galleryRestoreFocus"
     (stateChanged)="galleryStateChanged($event)"
   >
     <brn-dialog-overlay class="bg-slate-950/95" />

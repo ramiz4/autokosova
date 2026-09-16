@@ -190,7 +190,7 @@ describe('GarageProfileComponent', () => {
     await fixture.whenStable();
 
     expect(document.querySelector('[role="dialog"][aria-label="Fotos"]')).toBeNull();
-    expect(document.activeElement).not.toBe(trigger);
+    expect(document.activeElement).toBe(page.querySelector('[data-gallery-fallback]'));
   });
 
   it.each([1, 2])('renders each of %s published photos once without duplication', async (count) => {
