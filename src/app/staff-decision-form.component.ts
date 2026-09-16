@@ -16,6 +16,7 @@ import { StaffDraftGuardService } from './staff-draft-guard.service';
 export class StaffDecisionFormComponent {
   readonly detail = input.required<StaffCaseDetail>();
   readonly busy = input(false);
+  readonly stale = input(false);
   readonly completed = input(false);
   readonly submitted = output<StaffCaseDecision>();
   readonly dirtyChange = output<boolean>();
@@ -54,7 +55,8 @@ export class StaffDecisionFormComponent {
     return staffLabel(value, this.language.language);
   }
   valid(): boolean {
-    if (!this.action || !this.actions().includes(this.action) || this.busy()) return false;
+    if (!this.action || !this.actions().includes(this.action) || this.busy() || this.stale())
+      return false;
     if (this.action === 'publish_review')
       return (
         this.garageMatches &&
@@ -74,7 +76,8 @@ export class StaffDecisionFormComponent {
       this.serviceMatches &&
       this.visitMonthMatches &&
       this.detail().evidenceAvailable === true &&
-      !this.busy()
+      !this.busy() &&
+      !this.stale()
     );
   }
   choose(action: StaffDecisionAction): void {

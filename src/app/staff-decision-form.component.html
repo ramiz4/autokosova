@@ -1,6 +1,6 @@
 @if (actions().length) {
   <form data-decision-form class="mt-6 border-t border-slate-200 pt-6" (ngSubmit)="submit()">
-    <fieldset [disabled]="busy()" class="grid max-w-xl gap-4">
+    <fieldset [disabled]="busy() || stale()" class="grid max-w-xl gap-4">
       <legend class="mb-4 text-xl font-bold">{{ label('decision') }}</legend>
       @if (detail().openAppeal) {
         <p class="rounded-lg bg-amber-50 p-3">{{ label('independentAppeal') }}</p>
@@ -63,17 +63,36 @@
           }
         </div>
       }
+      @if (actions().includes('request_information')) {
+        <div class="flex flex-wrap gap-3" data-secondary-review-actions>
+          <button
+            data-action="request_information"
+            appButton="outline"
+            type="button"
+            (click)="choose('request_information')"
+          >
+            {{ label('request_information') }}
+          </button>
+        </div>
+        @if (action === 'request_information') {
+          <p data-decision-effect class="text-sm text-muted">
+            {{ label('effect_request_information') }}
+          </p>
+        }
+      }
       @if (!(actions().includes('publish_review') || actions().includes('reject_review'))) {
         <div class="flex flex-wrap gap-3" data-report-actions>
           @for (item of actions(); track item) {
-            <button
-              [attr.data-action]="item"
-              [appButton]="item === 'approve' ? 'primary' : 'outline'"
-              type="button"
-              (click)="choose(item)"
-            >
-              {{ label(item) }}
-            </button>
+            @if (item !== 'request_information') {
+              <button
+                [attr.data-action]="item"
+                [appButton]="item === 'approve' ? 'primary' : 'outline'"
+                type="button"
+                (click)="choose(item)"
+              >
+                {{ label(item) }}
+              </button>
+            }
           }
         </div>
         @if (action) {

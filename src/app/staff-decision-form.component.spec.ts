@@ -101,6 +101,34 @@ it('requires a rejection reason, preserves input while busy changes, and resets 
   expect(component.action).toBe('');
   expect(component.rejectionReason).toBe('');
 });
+it('blocks a stale decision until a conscious current read while retaining all local proof checks', async () => {
+  const { fixture, component, page, decisions } = await render();
+  component.action = 'publish_review';
+  component.garageMatches = component.serviceMatches = component.visitMonthMatches = true;
+  fixture.componentRef.setInput('stale', true);
+  await fixture.whenStable();
+  expect(component.valid()).toBe(false);
+  expect(page.querySelector<HTMLButtonElement>('[data-publish-review]')!.disabled).toBe(true);
+  expect(component.garageMatches).toBe(true);
+  fixture.componentRef.setInput('stale', false);
+  await fixture.whenStable();
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  component.submit();
+  expect(decisions).toHaveLength(1);
+});
+it('keeps permitted information requests visible next to review decisions, including missing proof', async () => {
+  const { fixture, page } = await render('de', {
+    ...detail,
+    evidenceAvailable: false,
+    allowedActions: ['reject_review', 'request_information'],
+  });
+  await fixture.whenStable();
+  expect(
+    page.querySelector('[data-secondary-review-actions] [data-action="request_information"]'),
+  ).not.toBeNull();
+  expect(page.querySelector('[data-publish-review]')).toBeNull();
+  expect(page.querySelectorAll('input[type="checkbox"]')).toHaveLength(3);
+});
 it('reports a real draft, preserves it for an ordinary same-revision read and clears it on discard', async () => {
   const { fixture, component } = await render();
   const dirty: boolean[] = [];

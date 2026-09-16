@@ -1,4 +1,6 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
+import { staffLabel } from '../shared/staff-copy';
+import { LanguageService } from './language.service';
 
 /**
  * A deliberately tiny route boundary for in-memory staff drafts. It owns no draft data and is
@@ -6,6 +8,7 @@ import { Injectable, signal } from '@angular/core';
  */
 @Injectable({ providedIn: 'root' })
 export class StaffDraftGuardService {
+  private readonly language = inject(LanguageService);
   readonly dirty = signal(false);
   readonly discardVersion = signal(0);
 
@@ -15,7 +18,7 @@ export class StaffDraftGuardService {
 
   confirmDiscard(): boolean {
     if (!this.dirty()) return true;
-    if (!window.confirm('Discard unsaved case changes?')) return false;
+    if (!window.confirm(staffLabel('discardDraft', this.language.language))) return false;
     this.dirty.set(false);
     this.discardVersion.update((value) => value + 1);
     return true;

@@ -75,6 +75,9 @@ const de = {
   evidenceStatus: 'Nachweisstatus',
   reviewStatus: 'Bewertungsstatus',
   refreshHint: 'Zuweisungen und Entscheidungen werden vor jeder Aktion erneut geprüft.',
+  latestState: 'Aktuellen Stand prüfen',
+  noNext: 'Keine weitere passende Aufgabe. Dieses Ergebnis bleibt sichtbar.',
+  reassignHint: 'Eine neue Zuweisung ersetzt die aktuelle Zuständigkeit.',
 };
 type Copy = typeof de;
 const en: Copy = {
@@ -150,6 +153,9 @@ const en: Copy = {
   evidenceStatus: 'Evidence status',
   reviewStatus: 'Review status',
   refreshHint: 'Assignments and permissions are checked again before every action.',
+  latestState: 'Review latest state',
+  noNext: 'No further matching task. This result remains visible.',
+  reassignHint: 'A new assignment replaces the current owner.',
 };
 const sq: Copy = {
   admin: 'Administrimi',
@@ -225,12 +231,20 @@ const sq: Copy = {
   evidenceStatus: 'Statusi i dëshmisë',
   reviewStatus: 'Statusi i vlerësimit',
   refreshHint: 'Caktimet dhe lejet kontrollohen përsëri para çdo veprimi.',
+  latestState: 'Kontrollo gjendjen e fundit',
+  noNext: 'Nuk ka detyrë tjetër që përputhet. Ky rezultat mbetet i dukshëm.',
+  reassignHint: 'Caktimi i ri zëvendëson personin aktual përgjegjës.',
 };
 export function staffCopy(language: AppLanguage): Copy {
   return language === 'sq' ? sq : language === 'en' ? en : de;
 }
 
 const extraLabels: Readonly<Record<string, readonly [string, string, string]>> = {
+  discardDraft: [
+    'Ungespeicherte Falländerungen verwerfen?',
+    'Discard unsaved case changes?',
+    'Të hidhen poshtë ndryshimet e paruajtura të rastit?',
+  ],
   profilePhoto: [
     'Öffentliches Demo-Profilfoto',
     'Public demo profile photo',
@@ -356,6 +370,16 @@ const extraLabels: Readonly<Record<string, readonly [string, string, string]>> =
     'Fall wurde an die Administration übergeben.',
     'Case was referred to administration.',
     'Rasti u përcoll te administrimi.',
+  ],
+  caseAssignedTo: ['Fall zugewiesen an', 'Case assigned to', 'Rasti iu caktua'],
+  outcome_publish_review: ['Bewertung veröffentlicht', 'Review published', 'Vlerësimi u publikua'],
+  outcome_reject_review: ['Ablehnung gespeichert', 'Rejection saved', 'Refuzimi u ruajt'],
+  outcome_temporarily_hide: ['Inhalt ausgeblendet', 'Content hidden', 'Përmbajtja u fsheh'],
+  outcome_restore: ['Inhalt wiederhergestellt', 'Content restored', 'Përmbajtja u rikthye'],
+  outcome_request_information: [
+    'Rückfrage gespeichert; es wurde keine Nachricht versendet.',
+    'Information request recorded; no message was sent.',
+    'Kërkesa për informacion u ruajt; nuk u dërgua mesazh.',
   ],
   garageResponse: ['Werkstattantwort', 'Garage response', 'Përgjigjja e servisit'],
   updates: ['Nachträge des Kunden', 'Customer updates', 'Përditësimet e klientit'],

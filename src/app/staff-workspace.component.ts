@@ -21,6 +21,7 @@ import { AccountSessionService } from './account-session.service';
 import { LanguageService } from './language.service';
 import { StaffLayoutComponent } from './staff-layout.component';
 import { StaffDraftGuardService } from './staff-draft-guard.service';
+import { StaffReturnContextService } from './staff-return-context.service';
 import { ButtonDirective } from './ui/button.directive';
 import { staffCopy, staffLabel } from '../shared/staff-copy';
 import {
@@ -57,8 +58,7 @@ export class StaffWorkspaceComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly draftGuard = inject(StaffDraftGuardService);
-  private previousCase = '';
-  private listScrollY = 0;
+  private readonly returnContext = inject(StaffReturnContextService);
   readonly adminOnly = inject(ActivatedRoute).snapshot.data['adminOnly'] === true;
   readonly copy = computed(() => staffCopy(this.language.language));
   readonly isAdmin = computed(() => this.account.identity()?.roles.includes('admin') ?? false);
@@ -79,6 +79,8 @@ export class StaffWorkspaceComponent {
   readonly error = signal('');
   readonly success = signal('');
   readonly resultAvailable = signal(false);
+  readonly stale = signal(false);
+  readonly nextAvailable = signal(true);
   readonly cases = signal<readonly StaffCaseSummary[]>([]);
   readonly detail = signal<StaffCaseDetail | null>(null);
   readonly moderators = signal<readonly StaffModerator[]>([]);
@@ -97,13 +99,13 @@ export class StaffWorkspaceComponent {
   onlyUnassigned = false;
   onlyAppeal = false;
   moderatorId = '';
-  escalationReason: StaffEscalationReason = 'requires_admin';
+  escalationReason: StaffEscalationReason | '' = '';
   private generation = 0;
   private controller?: AbortController;
   private detailController?: AbortController;
   private detailVersion = 0;
   private assignmentInitial = '';
-  private escalationInitial: StaffEscalationReason = 'requires_admin';
+  private escalationInitial: StaffEscalationReason | '' = '';
   constructor() {
     afterNextRender(() => {
       this.ready.set(true);
@@ -162,11 +164,13 @@ export class StaffWorkspaceComponent {
       this.error.set('');
       this.success.set('');
       this.resultAvailable.set(false);
+      this.stale.set(false);
+      this.nextAvailable.set(true);
       this.loading.set(false);
       this.busy.set(false);
       this.moderatorId = '';
       this.assignmentInitial = '';
-      this.escalationInitial = 'requires_admin';
+      this.escalationInitial = '';
       if (context && ready && allowed)
         untracked(() => {
           const caseId = this.route.snapshot.paramMap.get('caseId');
@@ -246,6 +250,7 @@ export class StaffWorkspaceComponent {
       this.page.set(data.page);
       this.hasMore.set(data.hasMore);
       this.moderators.set(candidates?.moderators ?? []);
+      this.restoreListContext(context);
       if (this.isAdmin()) {
         const overview = await fetch('/api/admin/management/overview', {
           credentials: 'same-origin',
@@ -278,12 +283,21 @@ export class StaffWorkspaceComponent {
     if (this.onlyAppeal) queryParams['appeal'] = 'true';
     if (this.queue !== 'todo') queryParams['queue'] = this.queue;
     void this.router.navigate([], { relativeTo: this.route, queryParams });
-    void this.load();
   }
   setQueue(queue: '' | 'todo' | 'waiting' | 'done'): void {
     this.queue = queue;
     this.filterStatus = '';
     this.applyFilters();
+  }
+  toggleAppeals(): void {
+    this.onlyAppeal = !this.onlyAppeal;
+    this.applyFilters();
+  }
+  openMyCases(): void {
+    const query = this.router.url.includes('?')
+      ? this.router.url.slice(this.router.url.indexOf('?'))
+      : '';
+    void this.router.navigateByUrl(this.language.link('moderation') + query);
   }
   resetFilters(): void {
     this.filterStatus = '';
@@ -302,12 +316,28 @@ export class StaffWorkspaceComponent {
       queryParams: { page },
       queryParamsHandling: 'merge',
     });
-    void this.load(page);
   }
-  async open(id: string, updateUrl = true): Promise<void> {
+  async open(item: StaffCaseSummary | string, updateUrl = true): Promise<void> {
     if (this.busy()) return;
+    const id = typeof item === 'string' ? item : item.id;
+    if (typeof item !== 'string' && this.adminOnly && item.kind === 'garage_submission') {
+      await this.router.navigateByUrl(
+        this.language.link('admin-section', 'garages') +
+          `?garageId=${encodeURIComponent(item.subjectId)}&tab=review`,
+      );
+      return;
+    }
+    if (typeof item !== 'string' && this.adminOnly && item.kind === 'data_deletion') {
+      await this.router.navigateByUrl(
+        this.language.link('admin-section', 'privacy') +
+          `?status=${encodeURIComponent(item.status)}`,
+      );
+      return;
+    }
     if (updateUrl && this.route.snapshot.paramMap.get('caseId') !== id) {
-      this.listScrollY = this.document.defaultView?.scrollY ?? 0;
+      const context = this.account.dataContext();
+      if (context && !this.route.snapshot.paramMap.get('caseId'))
+        this.returnContext.remember(context, id, this.document.defaultView?.scrollY ?? 0);
       const query = this.router.url.includes('?')
         ? this.router.url.slice(this.router.url.indexOf('?'))
         : '';
@@ -319,16 +349,23 @@ export class StaffWorkspaceComponent {
       );
       return;
     }
+    await this.readCurrent(id, { focus: true, resetResult: true });
+  }
+  private async readCurrent(
+    id: string,
+    options: { readonly focus?: boolean; readonly resetResult?: boolean } = {},
+  ): Promise<boolean> {
     const context = this.account.dataContext(),
       version = ++this.detailVersion;
     this.detailController?.abort();
     this.detailController = new AbortController();
     this.loading.set(true);
     this.error.set('');
-    this.success.set('');
-    this.detail.set(null);
-    this.evidenceText.set(null);
-    this.moderatorId = '';
+    if (options.resetResult) {
+      this.success.set('');
+      this.resultAvailable.set(false);
+      this.nextAvailable.set(true);
+    }
     try {
       const [data, candidates] = await Promise.all([
         this.json<StaffCaseDetail>(
@@ -349,57 +386,75 @@ export class StaffWorkspaceComponent {
           : Promise.resolve(null),
       ]);
       if (version === this.detailVersion && context === this.account.dataContext()) {
+        const materialChanged =
+          this.detail()?.id !== data.id ||
+          this.detail()?.reviewMaterialVersion !== data.reviewMaterialVersion;
         this.detail.set(data);
         this.moderators.set(candidates?.moderators ?? []);
-        this.previousCase = id;
-        this.focus('[data-case-heading]');
+        if (materialChanged) this.evidenceText.set(null);
+        if (options.focus) this.focus('[data-case-heading]');
         this.moderatorId = data.assignedModeratorUserId ?? '';
         this.assignmentInitial = this.moderatorId;
-        this.escalationReason = 'requires_admin';
+        this.escalationReason = '';
         this.escalationInitial = this.escalationReason;
+        this.stale.set(false);
         this.syncDraftGuard();
+        return true;
       }
     } catch (error) {
-      if (version === this.detailVersion) this.failure(error);
+      if (version === this.detailVersion) this.failure(error, true);
     } finally {
       if (version === this.detailVersion) this.loading.set(false);
     }
+    return false;
   }
   back(): void {
     if (this.busy()) return;
-    if (this.route.snapshot.paramMap.get('caseId')) {
-      void this.router.navigateByUrl(this.listUrl()).then((left) => {
-        if (left)
-          void this.load(this.page()).then(() => {
-            this.document.defaultView?.scrollTo({ top: this.listScrollY });
-            this.focusList();
-          });
-      });
-    }
+    if (this.route.snapshot.paramMap.get('caseId')) void this.router.navigateByUrl(this.listUrl());
   }
   async decide(input: StaffCaseDecision): Promise<void> {
     if (input.revision !== this.detail()?.revision) return;
     await this.mutate('decide', input);
   }
   async nextEligibleCase(): Promise<void> {
-    await this.load(1);
-    const next = this.cases().find((item) => item.id !== this.detail()?.id);
-    if (next) await this.open(next.id, true);
-    else if (this.route.snapshot.paramMap.get('caseId'))
-      await this.router.navigateByUrl(this.listUrl());
-    else this.success.set(this.copy().empty);
+    const current = this.detail();
+    if (!current || this.busy()) return;
+    const context = this.account.dataContext();
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      let requestedPage = 1;
+      for (;;) {
+        const data = await this.json<StaffQueuePage>(
+          await fetch('/api/staff/cases?' + this.queueQuery(requestedPage), {
+            credentials: 'same-origin',
+            cache: 'no-store',
+          }),
+        );
+        if (context !== this.account.dataContext()) return;
+        const next = data.cases.find((item) => item.id !== current.id);
+        if (next) {
+          this.busy.set(false);
+          await this.open(next, true);
+          return;
+        }
+        if (!data.hasMore || requestedPage >= 10000) {
+          this.nextAvailable.set(false);
+          this.success.set(this.copy().noNext);
+          return;
+        }
+        requestedPage++;
+      }
+    } catch (error) {
+      if (context === this.account.dataContext()) this.failure(error);
+    } finally {
+      if (context === this.account.dataContext()) this.busy.set(false);
+    }
   }
   private focus(selector: string): void {
     afterNextRender(() => this.document.querySelector<HTMLElement>(selector)?.focus(), {
       injector: this.injector,
     });
-  }
-  private focusList(): void {
-    this.focus(
-      this.document.querySelector('[data-case-id=' + JSON.stringify(this.previousCase) + ']')
-        ? '[data-case-id=' + JSON.stringify(this.previousCase) + '] [data-open-case]'
-        : 'h1',
-    );
   }
   async takeOver(): Promise<void> {
     if (!this.isAdmin() || !this.detail()?.canAssign || this.detail()?.conflictOfInterest) return;
@@ -407,10 +462,21 @@ export class StaffWorkspaceComponent {
     await this.assign();
   }
   async assign(): Promise<void> {
-    if (this.moderatorId) await this.mutate('assign', { moderatorUserId: this.moderatorId });
+    const detail = this.detail();
+    if (!detail || !this.moderatorId) return;
+    if (
+      detail.assignedModeratorUserId &&
+      detail.assignedModeratorUserId !== this.moderatorId &&
+      !window.confirm(`${this.copy().reassignHint}\n\n${detail.label}`)
+    )
+      return;
+    await this.mutate('assign', { moderatorUserId: this.moderatorId });
   }
   async escalate(): Promise<void> {
-    if (window.confirm(`${this.copy().escalationConfirm}\n\n${this.detail()?.label ?? ''}`))
+    if (
+      this.escalationReason &&
+      window.confirm(`${this.copy().escalationConfirm}\n\n${this.detail()?.label ?? ''}`)
+    )
       await this.mutate('escalate', { reason: this.escalationReason });
   }
   async openEvidence(): Promise<void> {
@@ -488,14 +554,19 @@ export class StaffWorkspaceComponent {
       if (!response.ok) throw await this.httpError(response);
       if (generation !== this.generation || context !== this.account.dataContext()) return;
       if (action === 'assign') {
-        await this.open(detail.id, false);
+        if (!(await this.readCurrent(detail.id))) return;
+        this.success.set(
+          `${this.label('caseAssignedTo')} ${this.detail()?.assignedModeratorLabel ?? ''}`.trim(),
+        );
       } else if (action === 'decide') {
-        await this.open(detail.id, false);
+        if (!(await this.readCurrent(detail.id))) return;
         this.resultAvailable.set(true);
+        this.nextAvailable.set(true);
+        this.success.set(this.decisionOutcome(body));
       } else {
         this.clearPrivate();
+        this.success.set(this.label('outcome_escalate'));
       }
-      this.success.set(this.label('outcome_' + action));
     } catch (error) {
       if (generation === this.generation && context === this.account.dataContext())
         this.failure(error);
@@ -508,6 +579,45 @@ export class StaffWorkspaceComponent {
       ? this.router.url.slice(this.router.url.indexOf('?'))
       : '';
     return this.language.link(this.adminOnly ? 'admin' : 'moderation') + query;
+  }
+  reloadLatest(): void {
+    const detail = this.detail();
+    if (detail && !this.busy()) void this.readCurrent(detail.id);
+  }
+  private queueQuery(page: number): URLSearchParams {
+    const query = new URLSearchParams({ page: String(page) });
+    if (this.filterStatus) query.set('status', this.filterStatus);
+    if (this.queue && !this.filterStatus) query.set('queue', this.queue);
+    const assignee = this.myCases() ? this.account.identity()?.userId : this.filterAssignee;
+    if (this.isAdmin() && assignee) query.set('assignedUserId', assignee);
+    if (this.filterKind) query.set('kind', this.filterKind);
+    if (this.filterPriority) query.set('priority', this.filterPriority);
+    if (this.onlyEscalated && this.isAdmin()) query.set('escalated', 'true');
+    if (this.onlyUnassigned && this.isAdmin()) query.set('unassigned', 'true');
+    if (this.onlyAppeal) query.set('appeal', 'true');
+    return query;
+  }
+  private restoreListContext(context: string | null): void {
+    if (!context || this.route.snapshot.paramMap.get('caseId')) return;
+    const restore = this.returnContext.take(context);
+    if (!restore) return;
+    afterNextRender(
+      () => {
+        this.document.defaultView?.scrollTo({ top: restore.scrollY });
+        const selector = `[data-case-id=${JSON.stringify(restore.caseId)}] [data-open-case]`;
+        this.focus(this.document.querySelector(selector) ? selector : 'h1');
+      },
+      { injector: this.injector },
+    );
+  }
+  private decisionOutcome(body: Record<string, unknown>): string {
+    const action = body['action'];
+    if (action === 'publish_review') return this.label('outcome_publish_review');
+    if (action === 'reject_review') return this.label('outcome_reject_review');
+    if (action === 'temporarily_hide') return this.label('outcome_temporarily_hide');
+    if (action === 'restore') return this.label('outcome_restore');
+    if (action === 'request_information') return this.label('outcome_request_information');
+    return this.copy().success;
   }
   onDecisionDirty(dirty: boolean): void {
     this.draftDirty.set(dirty);
@@ -549,10 +659,12 @@ export class StaffWorkspaceComponent {
     this.cases.set([]);
     this.busy.set(false);
     this.resultAvailable.set(false);
+    this.stale.set(false);
+    this.nextAvailable.set(true);
     this.moderatorId = '';
     this.assignmentInitial = '';
-    this.escalationReason = 'requires_admin';
-    this.escalationInitial = 'requires_admin';
+    this.escalationReason = '';
+    this.escalationInitial = '';
     this.draftDirty.set(false);
     this.draftGuard.setDirty(false);
   }
@@ -571,10 +683,11 @@ export class StaffWorkspaceComponent {
       return { status: response.status };
     }
   }
-  private failure(error: unknown): void {
+  private failure(error: unknown, freshRead = false): void {
     const status = typeof error === 'number' ? error : (error as StaffHttpError).status;
     const code = typeof error === 'object' && error ? (error as StaffHttpError).code : undefined;
     if (status === 401 || code === 'staff_access_revoked') {
+      this.clearPrivate();
       this.account.invalidate();
       return;
     }
@@ -589,15 +702,17 @@ export class StaffWorkspaceComponent {
       }
       this.detail.set(null);
       this.evidenceText.set(null);
+      this.stale.set(false);
       this.error.set(status === 403 ? this.copy().denied : this.copy().unavailable);
       return;
     }
-    this.error.set(
-      status === 409
-        ? this.copy().conflict
-        : status === 422
-          ? this.label('invalidDecision')
-          : this.copy().error,
-    );
+    if (status === 409) {
+      this.stale.set(true);
+      this.resultAvailable.set(false);
+      this.error.set(this.copy().conflict);
+      return;
+    }
+    if (freshRead) this.success.set('');
+    this.error.set(status === 422 ? this.label('invalidDecision') : this.copy().error);
   }
 }
