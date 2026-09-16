@@ -91,3 +91,31 @@ reviewed and merged.
   and revisions.
 - The fixture route is not a product API. Do not link it, add product copy or
   turn it into a shared UI abstraction.
+
+## Modal scrolling contract
+
+Product dialogs use the layout-only `app-dialog-panel`, `app-dialog-header`,
+`app-dialog-body` and optional `app-dialog-footer` classes from
+`src/app/ui/dialog-layout.scss`. The panel is a height-constrained flex column
+with hidden overflow. Header and footer do not shrink; only the body has
+`min-height: 0` and `overflow-y: auto`, with contained vertical overscroll.
+A form between the panel and body/footer uses `app-dialog-form` so its automatic
+minimum size cannot move scrolling back to the panel. No sticky header/footer
+is needed. A closed native `<dialog>` retains the browser's `display: none`.
+
+Each caller retains its own viewport limit, responsive padding, colors, radii,
+semantics and focus/close policy. The profile contact dialog keeps its actions
+outside the scrolling draft; the share input and copy action remain together.
+The gallery scales its image within the available height instead of scrolling
+its full-screen frame. The shared confirmation dialog uses the same fixed
+header/footer with a scrollable description; native beforeunload warnings
+remain browser-owned. Subsequent Brain migrations must retain this
+body-only scrolling contract; these classes add no overlay or focus manager.
+
+After `npm run build`, `npm run test:dialogs:browser` checks all six current
+product dialog types with synthetic browser fixtures in DE/SQ/EN at desktop,
+mobile and short landscape viewport sizes. It asserts body-only scrolling,
+stationary headers/footers, keyboard focus visibility, viewport bounds and
+closed native-dialog visibility. It does not contact a workshop or use a real
+account, database, screenshot, video or trace. The Inquiries browser workflow
+runs this regression alongside the existing workflow tests.

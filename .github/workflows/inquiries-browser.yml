@@ -30,6 +30,8 @@ jobs:
       - run: npm run build
       - run: node scripts/inquiries-browser-smoke.mjs
       - run: node scripts/private-list-browser-smoke.mjs
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:dialogs:browser
       - uses: actions/upload-artifact@v4
         if: always()
         with:

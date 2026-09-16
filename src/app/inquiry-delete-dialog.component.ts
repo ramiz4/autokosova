@@ -24,19 +24,20 @@ import { LucideIconComponent } from './ui/lucide-icon.component';
   styleUrl: './inquiry-dialog.scss',
   template: ` <dialog
     #dialog
+    class="app-dialog-panel"
     aria-labelledby="inquiry-delete-title"
     aria-describedby="inquiry-delete-summary inquiry-delete-help inquiry-delete-alternative"
     (cancel)="cancel($event)"
     data-delete-dialog
   >
-    <header class="dialog-header">
+    <header class="app-dialog-header dialog-header">
       <div>
         <p class="eyebrow">{{ language.serviceLabel(request().serviceCategoryId) }}</p>
         <h2 id="inquiry-delete-title">{{ text('deleteTitle') }}</h2>
       </div>
       <lucide-icon [name]="TrashIcon" class="size-6 text-rose-700" />
     </header>
-    <div class="dialog-body">
+    <div class="app-dialog-body dialog-body">
       <div id="inquiry-delete-summary" class="mb-4" data-delete-summary>
         <p>{{ vehicleLabel() }}</p>
         @if (request().symptomPreview) {
@@ -53,7 +54,7 @@ import { LucideIconComponent } from './ui/lucide-icon.component';
         <p role="alert" class="error">{{ text(errorKey) }}</p>
       }
     </div>
-    <footer class="dialog-footer">
+    <footer class="app-dialog-footer dialog-footer">
       <button
         type="button"
         appButton="outline"

@@ -12,7 +12,6 @@ dialog,
   background: #fff;
   color: #07143e;
   box-shadow: 0 24px 100px #07143e35;
-  overflow-y: auto;
 }
 dialog::backdrop {
   background: #07143e85;
@@ -25,9 +24,6 @@ dialog::backdrop {
   padding: 22px 26px;
   border-bottom: 1px solid #e7edf5;
   background: #fff;
-  position: sticky;
-  top: 0;
-  z-index: 2;
 }
 h2 {
   font-size: 24px;
@@ -131,9 +127,6 @@ textarea {
   padding: 18px 26px;
   border-top: 1px solid #e7edf5;
   background: #fff;
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
 }
 .dialog-actions {
   margin-top: 18px;
