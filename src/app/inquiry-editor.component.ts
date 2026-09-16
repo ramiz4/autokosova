@@ -4,6 +4,7 @@ import {
   afterNextRender,
   Component,
   DestroyRef,
+  Injector,
   inject,
   input,
   OnInit,
@@ -79,6 +80,8 @@ export class InquiryEditorComponent implements OnInit {
   protected readonly dialogState = signal<'closed' | 'open'>('closed');
   private readonly areasEditor = viewChild(SearchAreasComponent);
   private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
   private readonly fb = inject(FormBuilder).nonNullable;
   private savedSnapshot = '';
   protected get unchanged(): boolean {
@@ -115,7 +118,7 @@ export class InquiryEditorComponent implements OnInit {
     afterNextRender(() => {
       this.dialogState.set('open');
     });
-    inject(DestroyRef).onDestroy(() => {
+    this.destroyRef.onDestroy(() => {
       this.resolveLeave?.(false);
       this.form.reset();
     });
@@ -222,10 +225,18 @@ export class InquiryEditorComponent implements OnInit {
     if (await this.saved.mutate(this.request(), { kind: 'update', input })) {
       this.form.markAsPristine();
       this.finishClose();
-    } else this.restoreFocusAfterFailedWrite();
+    } else this.restoreFocusAfterFailedWrite(this.request().id);
   }
-  private restoreFocusAfterFailedWrite(): void {
-    if (this.document.activeElement !== this.document.body) return;
-    this.document.querySelector<HTMLElement>('[data-inquiry-editor] #edit-symptom')?.focus();
+  private restoreFocusAfterFailedWrite(requestId: string): void {
+    afterNextRender(
+      () => {
+        if (this.destroyRef.destroyed || this.request().id !== requestId) return;
+        if (this.document.activeElement !== this.document.body) return;
+        this.document
+          .querySelector<HTMLElement>(`[data-inquiry-editor-id="${requestId}"] #edit-symptom`)
+          ?.focus();
+      },
+      { injector: this.injector },
+    );
   }
 }
