@@ -32,8 +32,17 @@ describe.each(['', 'sq', 'en'])('Account menu icons for /%s', (locale) => {
       }).compileComponents();
       await TestBed.inject(Router).navigateByUrl('/' + locale);
       const fixture = TestBed.createComponent(SiteHeaderComponent);
+      fixture.componentRef.setInput(
+        'active',
+        role === 'admin' ? 'admin' : role === 'moderator' ? 'moderation' : undefined,
+      );
       await fixture.whenStable();
       const page = fixture.nativeElement as HTMLElement;
+      const internal = role === 'admin' || role === 'moderator';
+      expect(page.querySelector('#desktop-navigation') === null).toBe(internal);
+      expect(page.querySelector('#mobile-navigation') === null).toBe(internal);
+      expect(page.querySelector('.mobile-menu-toggle') === null).toBe(internal);
+      expect(page.querySelector('app-language-switcher lucide-icon')).not.toBeNull();
       page.querySelector<HTMLButtonElement>('button[aria-controls="account-menu"]')!.click();
       await fixture.whenStable();
       const menu = page.querySelector('#account-menu')!;

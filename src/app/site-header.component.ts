@@ -74,6 +74,10 @@ export class SiteHeaderComponent {
     | 'reviews'
     | undefined
   >();
+  /** Staff shells retain account/language controls but never expose customer navigation. */
+  protected readonly internalShell = computed(
+    () => this.active() === 'admin' || this.active() === 'moderation',
+  );
   protected readonly account = inject(AccountSessionService);
   protected readonly accountType = accountType;
   protected readonly accountPanel = signal<'account' | null>(null);

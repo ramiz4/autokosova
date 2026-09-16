@@ -72,6 +72,13 @@ export class LanguageService {
     const path = suffixAt < 0 ? current : current.slice(0, suffixAt);
     const suffix = suffixAt < 0 ? '' : current.slice(suffixAt);
     const { parameter, route } = identifyRoute(path);
+    const staffCase = path
+      .replace(/^\/(?:sq|en)(?=\/|$)/, '')
+      .match(/^\/(admin|moderation)\/cases\/([^/]+)$/);
+    if (staffCase) {
+      const base = target === 'de' ? '' : `/${target}`;
+      return `${base}/${staffCase[1]}/cases/${staffCase[2]}${suffix}`;
+    }
     return `${routePath(target, route, parameter)}${suffix}`;
   }
 

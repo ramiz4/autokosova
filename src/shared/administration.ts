@@ -21,6 +21,23 @@ export interface AdminRevision {
 export interface AdminGarageDecision extends AdminRevision {
   readonly decision: 'published' | 'rejected' | 'suspended' | 'restore';
   readonly verification: VerificationChecklist;
+  readonly locationPoint?: { readonly latitude: number; readonly longitude: number };
+}
+export type AdminGaragePublishBlocker =
+  | 'state'
+  | 'checks'
+  | 'moderation_hidden'
+  | 'profile'
+  | 'point'
+  | 'company_document'
+  | 'owner_account'
+  | 'interest';
+export interface AdminGaragePrerequisites {
+  readonly publishable: boolean;
+  readonly blockers: readonly AdminGaragePublishBlocker[];
+  /** Restore uses the same evidence checks but a different allowed state. */
+  readonly restorable: boolean;
+  readonly restoreBlockers: readonly AdminGaragePublishBlocker[];
 }
 export interface AdminGarageSummary {
   readonly id: string;
@@ -50,6 +67,8 @@ export interface AdminGarageDetail extends AdminGarageSummary {
     readonly visibility: 'pending_review' | 'approved' | 'rejected';
     readonly previewPath?: string;
   }[];
+  /** Deliberately small, authorized projection for the review action. */
+  readonly prerequisites: AdminGaragePrerequisites;
 }
 export interface AdminUser {
   readonly id: string;
@@ -76,14 +95,27 @@ export interface AdminOverview {
   readonly blockedDeletions: number;
 }
 export interface AdminPrivacy {
-  readonly requests: readonly (DataDeletionRequest & {
-    readonly label: string;
-    readonly activeOwnerships: number;
-    readonly pendingFileDeletions: number;
-  })[];
+  readonly requests: readonly AdminPrivacyRequest[];
   readonly page: number;
   readonly hasMore: boolean;
+  /** A direct, re-authorized technical request selection; it is never a search term. */
+  readonly selected?: AdminPrivacyRequest;
+  /** Latest configured metadata only. A request always shows its separately bound policy. */
   readonly policy?: RetentionPolicy;
+}
+/** Limited admin projection. Owner-only vehicles, requests and favorites are intentionally types only. */
+export interface AdminPrivacyRequest extends DataDeletionRequest {
+  readonly label: string;
+  readonly activeOwnerships: number;
+  readonly ownedGarages: readonly { readonly id: string; readonly name: string }[];
+  readonly pendingFileDeletions: number;
+  readonly fileObjectCount: number;
+  readonly garageReviewCount: number;
+  readonly contentReportCount: number;
+  readonly ownerOnlyObjectTypes: readonly ('vehicles' | 'repair_requests' | 'garage_favorites')[];
+  readonly boundPolicy?: RetentionPolicy;
+  /** Derived from current DB facts; never persisted as another request state. */
+  readonly runnable: boolean;
 }
 export interface AdminAuditEvent {
   readonly id: string;
@@ -129,7 +161,7 @@ export function validAdminDecision(value: unknown): value is AdminGarageDecision
   const check = input['verification'];
   return (
     Object.keys(input).every((key) =>
-      ['revision', 'reason', 'decision', 'verification'].includes(key),
+      ['revision', 'reason', 'decision', 'verification', 'locationPoint'].includes(key),
     ) &&
     ['published', 'rejected', 'suspended', 'restore'].includes(String(input['decision'])) &&
     !!check &&
@@ -139,6 +171,26 @@ export function validAdminDecision(value: unknown): value is AdminGarageDecision
       ['not_checked', 'verified', 'failed'].includes(
         String((check as Record<string, unknown>)[key]),
       ),
-    )
+    ) &&
+    validAdminLocationPoint(input['locationPoint'])
+  );
+}
+
+/** Reject unknown keys as well as non-finite or out-of-range coordinates. */
+export function validAdminLocationPoint(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const point = value as Record<string, unknown>;
+  return (
+    Object.keys(point).length === 2 &&
+    Object.keys(point).every((key) => key === 'latitude' || key === 'longitude') &&
+    typeof point['latitude'] === 'number' &&
+    typeof point['longitude'] === 'number' &&
+    Number.isFinite(point['latitude']) &&
+    Number.isFinite(point['longitude']) &&
+    point['latitude'] >= -90 &&
+    point['latitude'] <= 90 &&
+    point['longitude'] >= -180 &&
+    point['longitude'] <= 180
   );
 }

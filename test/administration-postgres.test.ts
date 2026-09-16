@@ -95,12 +95,21 @@ test(
       const before = await adminStore.garage(a, id);
       assert.equal(before.publicationState, 'pending_review');
       assert.equal(validGarageProfile(before.profile, before.profile), true);
-      assert.equal((await adminStore.overview(a)).pendingGarages >= 2, true);
+      const overview = await adminStore.overview(a);
+      assert.equal(overview.pendingGarages >= 2, true);
+      assert.equal(
+        overview.unassignedCases,
+        (await lifecycle.listStaffCases(a, { queue: 'todo', unassigned: true })).cases.length,
+      );
+      assert.equal(
+        overview.escalatedCases,
+        (await lifecycle.listStaffCases(a, { queue: 'todo', escalated: true })).cases.length,
+      );
       for (const person of [m, owner]) {
         await assert.rejects(adminStore.overview(person));
         await assert.rejects(adminStore.users(person, {}));
         await assert.rejects(adminStore.garage(person, id));
-        await assert.rejects(adminStore.privacy(person));
+        await assert.rejects(adminStore.privacy(person, {}));
         await assert.rejects(adminStore.auditPage(person, {}));
         await assert.rejects(adminStore.catalog(person));
       }
@@ -117,6 +126,34 @@ test(
         }),
       );
       assert.equal((await adminStore.garage(a, id)).revision, before.revision);
+      const auditBeforeInvalidPoint = await seed.query(
+        'SELECT count(*)::integer AS count FROM moderation_event WHERE subject_id=$1',
+        [id],
+      );
+      await assert.rejects(
+        adminStore.decideGarage(a, id, {
+          revision: before.revision,
+          reason: 'company_verified',
+          decision: 'rejected',
+          verification: before.verification,
+          locationPoint: { latitude: 91, longitude: 21 } as never,
+        }),
+      );
+      const afterInvalidPoint = await adminStore.garage(a, id);
+      assert.equal(afterInvalidPoint.revision, before.revision);
+      assert.equal(
+        afterInvalidPoint.profile.locationPoint?.latitude,
+        before.profile.locationPoint?.latitude,
+      );
+      assert.equal(
+        (
+          await seed.query(
+            'SELECT count(*)::integer AS count FROM moderation_event WHERE subject_id=$1',
+            [id],
+          )
+        ).rows[0].count,
+        auditBeforeInvalidPoint.rows[0].count,
+      );
       await adminStore.verifyGarage(a, id, {
         revision: before.revision,
         reason: 'company_verified',
@@ -339,10 +376,26 @@ test(
           verification: verified,
         }),
       );
-      const privacy = await adminStore.privacy(a);
+      const privacy = await adminStore.privacy(a, {});
       assert.equal(privacy.policy, undefined);
       assert.ok(privacy.requests.some((r) => r.status === 'blocked_by_policy'));
       assert.ok(privacy.requests.some((r) => r.status === 'manual_content_decision_required'));
+      const blockedPrivacy = await adminStore.privacy(a, { status: 'blocked' });
+      assert.ok(
+        blockedPrivacy.requests.every((r) =>
+          ['blocked_by_policy', 'manual_content_decision_required'].includes(r.status),
+        ),
+      );
+      const ownershipContext = await adminStore.privacy(a, {
+        requestId: 'demo-admin-deletion-ownership',
+      });
+      assert.equal(ownershipContext.selected?.runnable, false);
+      assert.ok(ownershipContext.selected?.ownedGarages.length);
+      assert.deepEqual(ownershipContext.selected?.ownerOnlyObjectTypes, [
+        'vehicles',
+        'repair_requests',
+        'garage_favorites',
+      ]);
       await assert.rejects(lifecycle.processPersonalDataDeletion(a, 'demo-admin-deletion-policy'));
       const policy = {
         version: 'SYNTHETIC-TEST-ONLY',
@@ -403,6 +456,26 @@ test(
       );
       assert.equal((await lifecycle.exportPersonalData(a)).repairRequests.length, 0);
       await adminStore.refreshDeletion(a, 'demo-admin-deletion-policy');
+      const readyContext = await adminStore.privacy(a, {
+        requestId: 'demo-admin-deletion-policy',
+      });
+      assert.equal(readyContext.selected?.runnable, true);
+      assert.equal(readyContext.selected?.boundPolicy?.version, policy.version);
+      assert.equal((await adminStore.overview(a)).pendingDeletions >= 1, true);
+      // Readiness is current, not a stale stored label: a new ownership blocker removes the
+      // request from the runnable filter/count without giving this admin a customer read path.
+      await seed.query(
+        "INSERT INTO membership(user_id,garage_id,role,state,granted_by) VALUES('demo-admin-erase-requester','demo-admin-garage-members','owner','active','admin-regression') ON CONFLICT(user_id,garage_id) DO UPDATE SET role='owner',state='active'",
+      );
+      const changedOwnership = await adminStore.privacy(a, {
+        status: 'blocked',
+        requestId: 'demo-admin-deletion-policy',
+      });
+      assert.equal(changedOwnership.selected?.runnable, false);
+      await seed.query(
+        "UPDATE membership SET state='revoked' WHERE user_id='demo-admin-erase-requester' AND garage_id='demo-admin-garage-members'",
+      );
+      await adminStore.refreshDeletion(a, 'demo-admin-deletion-policy');
       const deletion = await lifecycle.processPersonalDataDeletion(a, 'demo-admin-deletion-policy');
       assert.equal(deletion.userId, 'demo-admin-erase-requester');
       for (const table of ['vehicle', 'repair_request', 'garage_favorite']) {
@@ -423,6 +496,11 @@ test(
         ).rowCount,
         0,
       );
+      const completedContext = await adminStore.privacy(a, {
+        requestId: 'demo-admin-deletion-policy',
+      });
+      assert.equal(completedContext.selected?.status, 'completed');
+      assert.equal(completedContext.selected?.pendingFileDeletions, 1);
       assert.equal(
         (
           await seed.query(

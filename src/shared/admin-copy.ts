@@ -1,6 +1,13 @@
 import type { AppLanguage } from './i18n';
 import { staffLabel } from './staff-copy';
 const labels: Readonly<Record<string, readonly [string, string, string]>> = {
+  security: ['Sicherheitsaktionen', 'Security actions', 'Veprimet e sigurisë'],
+  workspaceSection: ['Arbeitsbereich', 'Workspace section', 'Seksioni i punës'],
+  policySaved: [
+    'Aufbewahrungsregel gespeichert; Aufträge neu geprüft.',
+    'Retention policy saved; requests refreshed.',
+    'Rregulli i ruajtjes u ruajt; kërkesat u rifreskuan.',
+  ],
   takeOver: ['Fall selbst übernehmen', 'Take over case', 'Merr përsipër rastin'],
   caseWorker: ['Bearbeiter', 'Case worker', 'Përgjegjësi i rastit'],
   administration: ['Administration', 'Administration', 'Administrimi'],
@@ -14,6 +21,7 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
   ],
   audit: ['Ereignisprotokoll', 'Audit trail', 'Historiku i ngjarjeve'],
   catalog: ['Katalog und Pflegewege', 'Catalog and maintenance', 'Katalogu dhe mirëmbajtja'],
+  settings: ['Einstellungen', 'Settings', 'Cilësimet'],
   support: [
     'Unterstützte Werkstattaufnahme',
     'Assisted garage registration',
@@ -59,6 +67,11 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'The record changed or prerequisites are unmet. Reload and check.',
     'Të dhënat ndryshuan ose kushtet nuk plotësohen. Ringarkoni dhe kontrolloni.',
   ],
+  publishBlocked: [
+    'Die aktuelle Voraussetzung blockiert diese Aktion. Angaben prüfen oder unabhängig neu prüfen lassen.',
+    'A current prerequisite blocks this action. Check the record or have it reviewed independently.',
+    'Një kusht aktual e bllokon këtë veprim. Kontrolloni të dhënat ose kërkoni shqyrtim të pavarur.',
+  ],
   invalid: [
     'Prüfvoraussetzungen oder Eingaben sind unvollständig.',
     'Required checks or inputs are incomplete.',
@@ -76,18 +89,22 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
   ],
   revision: ['Datensatzversion', 'Record revision', 'Versioni i të dhënave'],
   verification: ['Unternehmensprüfung', 'Company verification', 'Verifikimi i biznesit'],
-  phone: ['Telefonnummer geprüft', 'Phone checked', 'Telefoni i kontrolluar'],
+  phone: ['Telefon geprüft', 'Phone checked', 'Telefoni i kontrolluar'],
+  phoneValue: ['Telefon', 'Phone', 'Telefon'],
   contactPerson: [
-    'Ansprechpartner geprüft',
+    'Kontaktperson geprüft',
     'Contact person checked',
     'Personi i kontaktit i kontrolluar',
   ],
+  contactPersonValue: ['Kontaktperson', 'Contact person', 'Personi i kontaktit'],
   companyDocument: [
-    'Unternehmensnachweis geprüft',
-    'Company evidence checked',
-    'Dëshmia e biznesit e kontrolluar',
+    'Unternehmensdokument geprüft',
+    'Company document checked',
+    'Dokumenti i biznesit i kontrolluar',
   ],
+  companyDocumentValue: ['Unternehmensdokument', 'Company document', 'Dokumenti i biznesit'],
   location: ['Standort geprüft', 'Location checked', 'Vendndodhja e kontrolluar'],
+  locationValue: ['Standort', 'Location', 'Vendndodhja'],
   not_checked: ['Nicht geprüft', 'Not checked', 'I pakontrolluar'],
   verified: ['Geprüft', 'Verified', 'I verifikuar'],
   failed: ['Nicht bestätigt', 'Not verified', 'I paverifikuar'],
@@ -98,7 +115,81 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Check the actual garage position, not the town center. Address or position changes invalidate verification.',
     'Kontrolloni pozicionin real të servisit, jo qendrën. Ndryshimet e adresës ose pozicionit e anulojnë verifikimin.',
   ],
+  correctPosition: ['Position korrigieren', 'Correct position', 'Korrigjo pozicionin'],
+  garageContexts: ['Werkstattbereiche', 'Garage contexts', 'Kontekstet e servisit'],
+  review: ['Prüfung', 'Review', 'Shqyrtimi'],
+  team: ['Team & Eigentum', 'Team & ownership', 'Ekipi dhe pronësia'],
+  saveReason: [
+    'Grund für Teilprüfung',
+    'Reason for partial review',
+    'Arsyeja për kontroll të pjesshëm',
+  ],
+  decisionReason: [
+    'Grund für diese Entscheidung',
+    'Reason for this decision',
+    'Arsyeja për këtë vendim',
+  ],
+  photoReason: [
+    'Grund für Fotoentscheidung',
+    'Reason for photo decision',
+    'Arsyeja për vendimin e fotos',
+  ],
+  membershipReason: [
+    'Grund für Teamänderung',
+    'Reason for team change',
+    'Arsyeja për ndryshimin e ekipit',
+  ],
+  completeChecks: [
+    'Die vier Prüfpunkte müssen bewusst bestätigt sein.',
+    'All four checks must be deliberately confirmed.',
+    'Të katër kontrollet duhet të konfirmohen me vetëdije.',
+  ],
+  'publishBlocker.checks': [
+    'Die vier Prüfpunkte müssen für diese Entscheidung bestätigt sein.',
+    'All four checks must be verified for this decision.',
+    'Të katër kontrollet duhet të verifikohen për këtë vendim.',
+  ],
+  'publishBlocker.state': [
+    'Diese Werkstatt ist nicht zur Veröffentlichung eingereicht.',
+    'This garage is not pending publication review.',
+    'Ky servis nuk është në shqyrtim për publikim.',
+  ],
+  'publishBlocker.moderation_hidden': [
+    'Ein Moderationsfall blockiert die Sichtbarkeit.',
+    'A moderation case blocks visibility.',
+    'Një rast moderimi bllokon dukshmërinë.',
+  ],
+  'publishBlocker.profile': [
+    'Das Profil ist noch nicht vollständig.',
+    'The profile is incomplete.',
+    'Profili nuk është i plotë.',
+  ],
+  'publishBlocker.point': [
+    'Die tatsächliche Position fehlt.',
+    'The actual position is missing.',
+    'Mungon pozicioni real.',
+  ],
+  'publishBlocker.company_document': [
+    'Ein verfügbares Unternehmensdokument fehlt.',
+    'An available company document is missing.',
+    'Mungon dokumenti i disponueshëm i biznesit.',
+  ],
+  'publishBlocker.owner_account': [
+    'Ein aktives Eigentümerkonto fehlt.',
+    'An active owner account is missing.',
+    'Mungon një llogari aktive pronari.',
+  ],
+  'publishBlocker.interest': [
+    'Eigene aktive Teamzuordnung: unabhängige Prüfung erforderlich.',
+    'Your active team membership requires independent review.',
+    'Anëtarësimi juaj aktiv kërkon shqyrtim të pavarur.',
+  ],
   saveChecks: ['Prüfstand speichern', 'Save verification', 'Ruaj verifikimin'],
+  saveChecksOptional: [
+    'Teilprüfung speichern (optional, noch nicht veröffentlichen)',
+    'Save partial review (optional, do not publish yet)',
+    'Ruaj shqyrtimin e pjesshëm (opsionale, mos publiko ende)',
+  ],
   company_verified: ['Unternehmensprüfung', 'Company check', 'Kontroll biznesi'],
   missing_information: ['Fehlende Angaben', 'Missing information', 'Informacion i munguar'],
   ownership_change: [
@@ -282,6 +373,50 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Recheck prerequisites',
     'Rikontrollo kushtet',
   ],
+  refreshDone: [
+    'Voraussetzungen wurden mit dem aktuellen Serverstand geprüft.',
+    'Prerequisites were checked against the current server state.',
+    'Kushtet u kontrolluan me gjendjen aktuale të serverit.',
+  ],
+  requestUnavailable: [
+    'Dieser Löschauftrag ist nicht mehr verfügbar. Zur Liste zurückkehren und aktuellen Stand prüfen.',
+    'This deletion request is no longer available. Return to the list and check the current state.',
+    'Kjo kërkesë për fshirje nuk është më e disponueshme. Kthehuni te lista dhe kontrolloni gjendjen aktuale.',
+  ],
+  verificationSaved: [
+    'Prüfung gespeichert; noch nicht veröffentlicht.',
+    'Verification saved; not published yet.',
+    'Verifikimi u ruajt; ende nuk është publikuar.',
+  ],
+  garagePublished: ['Werkstatt veröffentlicht.', 'Garage published.', 'Servisi u publikua.'],
+  garageRejected: ['Aufnahme abgelehnt.', 'Registration rejected.', 'Regjistrimi u refuzua.'],
+  garageSuspended: [
+    'Werkstatt administrativ gesperrt.',
+    'Garage suspended administratively.',
+    'Servisi u pezullua administrativisht.',
+  ],
+  garageRestored: [
+    'Administrative Sperre aufgehoben.',
+    'Administrative suspension lifted.',
+    'Pezullimi administrativ u hoq.',
+  ],
+  photoApproved: ['Foto freigegeben.', 'Photo approved.', 'Fotoja u miratua.'],
+  photoRejected: ['Foto abgelehnt.', 'Photo rejected.', 'Fotoja u refuzua.'],
+  membershipSaved: [
+    'Teamzuordnung gespeichert.',
+    'Team membership saved.',
+    'Anëtarësimi i ekipit u ruajt.',
+  ],
+  ownershipTransferred: [
+    'Eigentum übertragen.',
+    'Ownership transferred.',
+    'Pronësia u transferua.',
+  ],
+  deletionProcessed: [
+    'Löschauftrag gemäss der angezeigten Policy-Version ausgeführt; physische Dateilöschungen können ausstehen.',
+    'Deletion request executed under the shown policy version; physical file deletion may still be pending.',
+    'Kërkesa për fshirje u zbatua sipas versionit të shfaqur; fshirjet fizike mund të jenë ende në pritje.',
+  ],
   processDeletion: [
     'Freigegebenen Löschauftrag ausführen',
     'Execute approved deletion request',
@@ -311,6 +446,47 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Physische Dateilöschungen noch ausstehend',
     'Physical file deletions still pending',
     'Fshirjet fizike janë në pritje',
+  ],
+  pendingFilesMeaning: [
+    'Der Datenbankvorgang ist abgeschlossen; externe Dateilöschungen bestätigt erst der Storage-Worker.',
+    'The database operation is complete; the storage worker still has to confirm external file deletion.',
+    'Veprimi në bazën e të dhënave përfundoi; punëtori i ruajtjes duhet të konfirmojë fshirjen e skedarëve.',
+  ],
+  privacyRunnable: ['Jetzt ausführbar', 'Ready to execute', 'Gati për ekzekutim'],
+  technicalRequest: ['Technische Anfrage-ID', 'Technical request ID', 'ID teknike e kërkesës'],
+  boundPolicy: ['Gebundene Regel', 'Bound policy', 'Rregulli i lidhur'],
+  latestPolicy: [
+    'Zuletzt konfigurierte Regel',
+    'Latest configured policy',
+    'Rregulli i fundit i konfiguruar',
+  ],
+  ownerOnlyTypes: [
+    'Betroffene private Objektarten: Fahrzeuge, Anfragen und Favoriten. Diese bleiben außerhalb der Admin-Leseansicht.',
+    'Affected private object types: vehicles, requests and favorites. They remain outside the admin read view.',
+    'Llojet private të prekura: automjete, kërkesa dhe të preferuara. Ato mbeten jashtë pamjes së leximit të adminit.',
+  ],
+  fileObjects: ['Private Dateien', 'Private files', 'Skedarë privatë'],
+  garageReviews: ['Bewertungen', 'Reviews', 'Vlerësime'],
+  contentReports: ['Meldungen', 'Reports', 'Raporte'],
+  privacyPolicyChanged: [
+    'Die gebundene Regel hat sich geändert. Aktuelle Regel bewusst prüfen und erneut bestätigen.',
+    'The bound policy changed. Review the current policy deliberately and confirm again.',
+    'Rregulli i lidhur ndryshoi. Kontrolloni me vetëdije rregullin aktual dhe konfirmoni përsëri.',
+  ],
+  privacyPolicyMissing: [
+    'Für diese Anfrage fehlt eine gebundene freigegebene Regel. Regel bewusst prüfen und Voraussetzungen aktualisieren.',
+    'This request has no bound approved policy. Review policy deliberately and refresh prerequisites.',
+    'Kjo kërkesë nuk ka rregull të lidhur të miratuar. Kontrolloni rregullin dhe rifreskoni kushtet.',
+  ],
+  privacyOwnershipBlocked: [
+    'Aktives Werkstatteigentum blockiert die Löschung. Eigentum zuerst im verlinkten Team-Kontext klären, dann Voraussetzungen aktualisieren.',
+    'Active garage ownership blocks deletion. Resolve ownership in the linked team context, then refresh prerequisites.',
+    'Pronësia aktive e servisit bllokon fshirjen. Zgjidhni pronësinë në kontekstin e ekipit dhe rifreskoni kushtet.',
+  ],
+  returnDeletionRequest: [
+    'Zurück zum Löschauftrag',
+    'Return to deletion request',
+    'Kthehu te kërkesa për fshirje',
   ],
   catalogHint: [
     'Pflege im versionierten Repository-Prozess: Quelle/Lizenz prüfen, stabile IDs erhalten, referenzierte Werte stilllegen statt löschen. Kein Laufzeit-Editor.',

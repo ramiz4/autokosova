@@ -132,6 +132,7 @@ export interface StaffCaseDetail extends StaffCaseSummary {
     readonly garageId: string;
     readonly garageName: string;
     readonly publicationState: string;
+    readonly rejectionReason?: string;
     readonly evidenceStatus: string;
     readonly evidenceKind: string;
     readonly garageResponse?: { readonly text: string; readonly createdAt: string };
@@ -166,15 +167,29 @@ export interface StaffCaseDetail extends StaffCaseSummary {
   /** Server affordances, not a replacement for transactional authorization. */
   readonly allowedActions?: readonly StaffDecisionAction[];
   readonly evidenceAvailable?: boolean;
+  /** Opaque, authorized-only comparison token; changes when review material/proof affordances change. */
+  readonly reviewMaterialVersion?: string;
   readonly openAppeal?: boolean;
+  /** Restricted case context for APPEAL-1; never an arbitrary decision or user projection. */
+  readonly appealContext?: {
+    readonly originalDecision: 'published' | 'rejected';
+    readonly originalReason?: string;
+  };
 }
 export interface StaffQueueFilter {
+  /** The task-first queue deliberately excludes completed cases unless explicitly requested. */
+  readonly actionable?: boolean;
+  readonly queue?: 'todo' | 'waiting' | 'done';
   readonly assignedUserId?: string;
+  /** Administrative shortcut; never available to moderators. */
+  readonly unassigned?: boolean;
   readonly page?: number;
   readonly kind?: StaffCaseKind;
   readonly status?: ModerationCaseStatus;
   readonly priority?: ModerationPriority;
   readonly escalated?: boolean;
+  /** Administrative and moderator-safe queue narrowing; no appeal text or names enter a URL. */
+  readonly appeal?: boolean;
 }
 export interface StaffQueuePage {
   readonly cases: readonly StaffCaseSummary[];

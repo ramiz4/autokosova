@@ -12,6 +12,9 @@ export const requiredCases = [
   'review-boundaries',
   'admin-workflow',
   'admin-boundaries',
+  'admin-context',
+  'staff-context',
+  'privacy-context',
 ];
 export const requiredProjects = ['desktop', 'mobile'];
 

@@ -315,3 +315,15 @@ export async function layout(page: Page, info?: TestInfo, label = 'application')
     });
   }
 }
+
+/** Exercise the actual visible staff navigation at each viewport, never hidden duplicates. */
+export async function staffSection(
+  page: Page,
+  section: 'garages' | 'users' | 'privacy' | 'audit' | 'catalog',
+): Promise<void> {
+  const current = page.locator('[data-admin-garage], [data-staff-case]');
+  if (await current.count()) await expect(current).toHaveAttribute('aria-busy', 'false');
+  const mobile = page.locator('[data-staff-section-select]:visible');
+  if (await mobile.count()) await mobile.selectOption(section);
+  else await page.locator(`aside app-admin-navigation a[href$="/admin/${section}"]`).click();
+}

@@ -1,54 +1,53 @@
-<div class="border-b border-slate-200 bg-white">
-  <app-site-header [compact]="true" [active]="adminOnly ? 'admin' : 'moderation'" />
-</div>
-<main id="main-content" class="mx-auto max-w-6xl px-4 py-8 text-ink sm:px-6 sm:py-12">
+<app-staff-layout [admin]="isAdmin()" active="overview">
   <h1 tabindex="-1" class="text-3xl font-bold tracking-tight">
-    {{ adminOnly ? copy().admin : copy().moderation }}
+    {{ adminOnly ? copy().cases : copy().myCases }}
   </h1>
-  <p class="mt-3 max-w-3xl text-muted">{{ adminOnly ? copy().adminIntro : copy().ownIntro }}</p>
+  <p class="mt-2 max-w-3xl text-muted">{{ adminOnly ? copy().adminIntro : copy().ownIntro }}</p>
   @if (isAdmin()) {
-    <app-admin-navigation />
     @if (adminOnly && adminOverview(); as overview) {
-      <section class="mt-6 grid gap-3 sm:grid-cols-3" data-admin-overview>
-        <a
-          class="rounded-xl border border-slate-200 bg-white p-4"
-          [routerLink]="language.link('admin') + '/garages'"
-          ><strong>{{ overview.pendingGarages }}</strong> {{ adminLabel('pendingGarages') }}</a
-        >
-        <p class="rounded-xl border border-slate-200 bg-white p-4">
-          <strong>{{ overview.unassignedCases }}</strong> {{ adminLabel('unassignedCases') }}
-        </p>
-        <p class="rounded-xl border border-slate-200 bg-white p-4">
-          <strong>{{ overview.escalatedCases }}</strong> {{ adminLabel('escalatedCases') }}
-        </p>
-        <a
-          class="rounded-xl border border-slate-200 bg-white p-4"
-          [routerLink]="language.link('admin') + '/privacy'"
-          ><strong>{{ overview.pendingDeletions }}</strong> {{ adminLabel('pendingDeletions') }}</a
-        >
-        <a
-          class="rounded-xl border border-slate-200 bg-white p-4"
-          [routerLink]="language.link('admin') + '/privacy'"
-          ><strong>{{ overview.blockedDeletions }}</strong> {{ adminLabel('blockedDeletions') }}</a
-        >
+      <section class="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm" data-admin-overview>
+        @if (overview.pendingGarages > 0) {
+          <a
+            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            [routerLink]="language.link('admin-section', 'garages')"
+            [queryParams]="{ status: 'pending_review' }"
+            >{{ overview.pendingGarages }} {{ adminLabel('pendingGarages') }}</a
+          >
+        }
+        @if (overview.unassignedCases > 0) {
+          <a
+            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            [routerLink]="language.link('admin')"
+            [queryParams]="{ queue: 'todo', unassigned: 'true' }"
+            >{{ overview.unassignedCases }} {{ adminLabel('unassignedCases') }}</a
+          >
+        }
+        @if (overview.escalatedCases > 0) {
+          <a
+            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            [routerLink]="language.link('admin')"
+            [queryParams]="{ queue: 'todo', escalated: 'true' }"
+            >{{ overview.escalatedCases }} {{ adminLabel('escalatedCases') }}</a
+          >
+        }
+        @if (overview.pendingDeletions > 0) {
+          <a
+            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            [routerLink]="language.link('admin-section', 'privacy')"
+            [queryParams]="{ status: 'submitted' }"
+            >{{ overview.pendingDeletions }} {{ adminLabel('pendingDeletions') }}</a
+          >
+        }
+        @if (overview.blockedDeletions > 0) {
+          <a
+            class="font-semibold text-brand-dark underline-offset-4 hover:underline"
+            [routerLink]="language.link('admin-section', 'privacy')"
+            [queryParams]="{ status: 'blocked' }"
+            >{{ overview.blockedDeletions }} {{ adminLabel('blockedDeletions') }}</a
+          >
+        }
       </section>
     }
-  }
-  @if (isAdmin()) {
-    <nav class="mt-5 flex flex-wrap gap-3" [attr.aria-label]="label('workspace')">
-      <a
-        appButton="outline"
-        [routerLink]="language.link('admin')"
-        [attr.aria-current]="adminOnly ? 'page' : null"
-        >{{ copy().admin }}</a
-      >
-      <a
-        appButton="outline"
-        [routerLink]="language.link('moderation')"
-        [attr.aria-current]="!adminOnly ? 'page' : null"
-        >{{ copy().moderation }}</a
-      >
-    </nav>
   }
   @if (account.state() === 'guest') {
     <section class="mt-8 rounded-2xl border border-slate-200 bg-white p-6">
@@ -73,9 +72,9 @@
           class="mt-3"
           type="button"
           [disabled]="busy()"
-          (click)="detail() ? open(detail()!.id) : load(page())"
+          (click)="stale() ? reloadLatest() : detail() ? open(detail()!.id) : load(page())"
         >
-          {{ copy().retry }}
+          {{ stale() ? copy().latestState : copy().retry }}
         </button>
       </div>
     }
@@ -112,6 +111,11 @@
         <p class="mt-2">
           {{ copy().status }}: <strong data-case-status>{{ label(current.status) }}</strong>
         </p>
+        <p data-case-assignee class="mt-2 text-sm text-muted">
+          {{
+            current.assignedModeratorLabel || current.assignedModeratorUserId || copy().unassigned
+          }}
+        </p>
         <p class="mt-2 text-sm text-muted">
           {{ copy().created }}: {{ current.createdAt | date: 'dd.MM.yyyy HH:mm' }}
         </p>
@@ -123,40 +127,125 @@
         @if (current.conflictOfInterest) {
           <p role="alert" class="mt-4 rounded-lg bg-amber-50 p-3">{{ copy().interest }}</p>
         }
-        @if (current.review; as review) {
-          <div class="mt-6 grid gap-3 border-t border-slate-200 pt-6">
-            <p>{{ copy().visit }}: {{ review.visitMonth }}</p>
-            <p>{{ copy().service }}: {{ language.serviceLabel(review.serviceCategoryId) }}</p>
-            <p class="whitespace-pre-wrap break-words">{{ review.text }}</p>
-            <dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-              @for (
-                criterion of ['workQuality', 'communication', 'priceTransparency', 'punctuality'];
-                track criterion
-              ) {
-                <div>
-                  <dt>{{ label(criterion) }}</dt>
-                  <dd>{{ $any(review.ratings)[criterion] }} / 5</dd>
-                </div>
+        @if (current.appealContext; as appealContext) {
+          <section data-appeal-context class="mt-4 rounded-lg bg-amber-50 p-4">
+            <h3 class="font-bold">{{ label('originalDecision') }}</h3>
+            <p>{{ label(appealContext.originalDecision) }}</p>
+            @if (appealContext.originalReason) {
+              <p class="mt-2">{{ copy().reason }}: {{ label(appealContext.originalReason) }}</p>
+            }
+            @if (current.appeals[0]; as appeal) {
+              <h4 class="mt-3 font-semibold">{{ label('appealMessage') }}</h4>
+              <p class="mt-1 whitespace-pre-wrap break-words">{{ appeal.message }}</p>
+            }
+          </section>
+        }
+        @if (current.canAssign) {
+          <form
+            data-case-assignment
+            class="mt-6 grid gap-3 border-y border-slate-200 py-5 sm:max-w-lg"
+            (ngSubmit)="assign()"
+          >
+            @if (
+              !current.conflictOfInterest &&
+              current.assignedModeratorUserId !== account.identity()?.userId
+            ) {
+              <button
+                data-take-case
+                appButton="outline"
+                type="button"
+                [disabled]="busy()"
+                (click)="takeOver()"
+              >
+                {{ adminLabel('takeOver') }}
+              </button>
+            }
+            <label class="font-semibold" for="staff-assignee">{{ adminLabel('caseWorker') }}</label>
+            <select
+              id="staff-assignee"
+              name="moderator"
+              class="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
+              [(ngModel)]="moderatorId"
+              (ngModelChange)="onAssignmentChange()"
+              [disabled]="busy()"
+            >
+              <option value="">{{ copy().choose }}</option>
+              @for (person of moderators(); track person.userId) {
+                <option [value]="person.userId">{{ person.label }}</option>
               }
-            </dl>
-            @if (review.garageResponse; as response) {
-              <h3 class="font-bold">{{ label('garageResponse') }}</h3>
-              <p class="text-sm">{{ response.createdAt | date: 'dd.MM.yyyy HH:mm' }}</p>
-              <p class="whitespace-pre-wrap break-words">{{ response.text }}</p>
+            </select>
+            @if (!moderators().length) {
+              <p class="text-sm text-muted">{{ copy().noModerators }}</p>
             }
-            @if (review.updates?.length) {
-              <h3 class="font-bold">{{ label('updates') }}</h3>
+            @if (
+              current.assignedModeratorUserId && moderatorId !== current.assignedModeratorUserId
+            ) {
+              <p class="text-sm text-amber-900">{{ copy().reassignHint }}</p>
             }
-            @for (update of review.updates; track $index) {
-              <p class="text-sm">
-                {{ label(update.kind) }} · {{ update.createdAt | date: 'dd.MM.yyyy HH:mm' }}
+            <button data-assign appButton type="submit" [disabled]="busy() || !moderatorId">
+              {{ copy().assign }}
+            </button>
+          </form>
+        }
+        @if (current.review; as review) {
+          <div class="mt-6 grid gap-6 border-t border-slate-200 pt-6 lg:grid-cols-2">
+            <div class="grid gap-3">
+              <p>{{ copy().visit }}: {{ review.visitMonth }}</p>
+              <p>{{ copy().service }}: {{ language.serviceLabel(review.serviceCategoryId) }}</p>
+              <p class="whitespace-pre-wrap break-words">{{ review.text }}</p>
+              <dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                @for (
+                  criterion of ['workQuality', 'communication', 'priceTransparency', 'punctuality'];
+                  track criterion
+                ) {
+                  <div>
+                    <dt>{{ label(criterion) }}</dt>
+                    <dd>{{ $any(review.ratings)[criterion] }} / 5</dd>
+                  </div>
+                }
+              </dl>
+              @if (review.garageResponse; as response) {
+                <h3 class="font-bold">{{ label('garageResponse') }}</h3>
+                <p class="text-sm">{{ response.createdAt | date: 'dd.MM.yyyy HH:mm' }}</p>
+                <p class="whitespace-pre-wrap break-words">{{ response.text }}</p>
+              }
+              @if (review.updates?.length) {
+                <h3 class="font-bold">{{ label('updates') }}</h3>
+              }
+              @for (update of review.updates; track $index) {
+                <p class="text-sm">
+                  {{ label(update.kind) }} · {{ update.createdAt | date: 'dd.MM.yyyy HH:mm' }}
+                </p>
+                <p class="whitespace-pre-wrap break-words">{{ update.text }}</p>
+              }
+              <p>
+                {{ copy().reviewStatus }}: {{ label(review.publicationState) }} ·
+                {{ copy().evidenceStatus }}: {{ label(review.evidenceStatus) }}
               </p>
-              <p class="whitespace-pre-wrap break-words">{{ update.text }}</p>
-            }
-            <p>
-              {{ copy().reviewStatus }}: {{ label(review.publicationState) }} ·
-              {{ copy().evidenceStatus }}: {{ label(review.evidenceStatus) }}
-            </p>
+            </div>
+            <aside class="rounded-xl bg-slate-50 p-4" data-evidence-panel>
+              <h3 class="font-bold">{{ copy().evidence }}</h3>
+              @if (current.evidenceAvailable) {
+                <button
+                  data-evidence
+                  appButton="outline"
+                  type="button"
+                  class="mt-4"
+                  [disabled]="busy()"
+                  (click)="openEvidence()"
+                >
+                  {{ copy().evidence }}
+                </button>
+              } @else {
+                <p class="mt-3 text-sm text-amber-900">{{ label('evidenceUnavailable') }}</p>
+              }
+              @if (evidenceText(); as evidence) {
+                <pre
+                  data-evidence-text
+                  class="mt-4 max-w-full rounded-lg bg-white p-4 text-sm whitespace-pre-wrap break-words"
+                  >{{ evidence }}</pre>
+              }
+            </aside>
           </div>
         }
         @if (current.garage; as garage) {
@@ -180,24 +269,6 @@
             <p class="mt-3 text-sm text-muted">{{ label('mediaBoundary') }}</p>
           </div>
         }
-        @if (current.review && current.evidenceAvailable) {
-          <button
-            data-evidence
-            appButton="outline"
-            type="button"
-            class="mt-4"
-            [disabled]="busy()"
-            (click)="openEvidence()"
-          >
-            {{ copy().evidence }}
-          </button>
-        }
-        @if (evidenceText(); as evidence) {
-          <pre
-            data-evidence-text
-            class="mt-4 max-w-full rounded-lg bg-slate-50 p-4 text-sm whitespace-pre-wrap break-words"
-            >{{ evidence }}</pre>
-        }
         @if (current.report; as report) {
           <div class="mt-6">
             <h3 class="font-bold">{{ copy().reportDetails }}</h3>
@@ -205,166 +276,230 @@
             <p class="mt-2 whitespace-pre-wrap break-words">{{ report.details }}</p>
           </div>
         }
-        <app-staff-decision-form [detail]="current" [busy]="busy()" (submitted)="decide($event)" />
-        @if (current.canAssign) {
-          <form
-            class="mt-6 grid gap-3 border-t border-slate-200 pt-6 sm:max-w-lg"
-            (ngSubmit)="assign()"
-          >
-            @if (
-              !current.conflictOfInterest &&
-              current.assignedModeratorUserId !== account.identity()?.userId
-            ) {
+        <app-staff-decision-form
+          [detail]="current"
+          [busy]="busy()"
+          [stale]="stale()"
+          [completed]="resultAvailable()"
+          (submitted)="decide($event)"
+          (dirtyChange)="onDecisionDirty($event)"
+        />
+        @if (resultAvailable()) {
+          <section class="mt-5 rounded-xl bg-emerald-50 p-4 text-emerald-900" role="status">
+            <p>{{ copy().success }}</p>
+            @if (nextAvailable()) {
               <button
-                data-take-case
+                data-next-case
                 appButton="outline"
                 type="button"
-                [disabled]="busy()"
-                (click)="takeOver()"
+                class="mt-3"
+                (click)="nextEligibleCase()"
               >
-                {{ adminLabel('takeOver') }}
+                {{ copy().next }}
               </button>
             }
-            <label class="font-semibold" for="staff-assignee">{{ adminLabel('caseWorker') }}</label>
-            <select
-              id="staff-assignee"
-              name="moderator"
-              class="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
-              [(ngModel)]="moderatorId"
-              [disabled]="busy()"
-            >
-              <option value="">{{ copy().choose }}</option>
-              @for (person of moderators(); track person.userId) {
-                <option [value]="person.userId">{{ person.label }}</option>
-              }
-            </select>
-            @if (!moderators().length) {
-              <p class="text-sm text-muted">{{ copy().noModerators }}</p>
-            }
-            <button data-assign appButton type="submit" [disabled]="busy() || !moderatorId">
-              {{ copy().assign }}
-            </button>
-          </form>
+          </section>
         }
         @if (current.canEscalate) {
-          <form
-            class="mt-6 grid gap-3 border-t border-slate-200 pt-6 sm:max-w-lg"
-            (ngSubmit)="escalate()"
+          <details
+            data-escalate-panel
+            class="mt-6 border-t border-slate-200 pt-4"
+            [open]="current.conflictOfInterest"
           >
-            <label class="font-semibold" for="staff-escalation">{{ copy().reason }}</label
-            ><select
-              id="staff-escalation"
-              name="reason"
-              class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
-              [(ngModel)]="escalationReason"
-              [disabled]="busy()"
-            >
-              @for (reason of reasons; track reason) {
-                <option [value]="reason">{{ label(reason) }}</option>
-              }
-            </select>
-            <button data-escalate appButton="outline" type="submit" [disabled]="busy()">
+            <summary class="min-h-11 cursor-pointer py-3 font-semibold text-brand-dark">
               {{ copy().escalate }}
-            </button>
-          </form>
+            </summary>
+            <form class="mt-3 grid gap-3 sm:max-w-lg" (ngSubmit)="escalate()">
+              <label class="font-semibold" for="staff-escalation">{{ copy().reason }}</label
+              ><select
+                id="staff-escalation"
+                name="reason"
+                class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+                [(ngModel)]="escalationReason"
+                (ngModelChange)="onEscalationChange()"
+                [disabled]="busy()"
+              >
+                <option value="">{{ copy().choose }}</option>
+                @for (reason of reasons; track reason) {
+                  <option [value]="reason">{{ label(reason) }}</option>
+                }
+              </select>
+              <p class="text-sm text-muted">{{ copy().escalationConfirm }}</p>
+              <button
+                data-escalate
+                appButton="outline"
+                type="submit"
+                [disabled]="busy() || !escalationReason"
+              >
+                {{ copy().escalate }}
+              </button>
+            </form>
+          </details>
         }
-        <h3 class="mt-8 font-bold">{{ copy().history }}</h3>
-        @if (!current.history.length) {
-          <p class="mt-2 text-sm text-muted">{{ copy().noHistory }}</p>
-        }
-        <ol class="mt-3 grid gap-2 text-sm">
-          @for (event of current.history; track $index) {
-            <li class="break-words">
-              {{ event.createdAt | date: 'dd.MM.yyyy HH:mm' }} · {{ event.actorLabel }} ·
-              {{ label(event.action) }}
-            </li>
+        <details class="mt-8">
+          <summary class="min-h-11 cursor-pointer py-2 font-bold">{{ copy().history }}</summary>
+          @if (!current.history.length) {
+            <p class="mt-2 text-sm text-muted">{{ copy().noHistory }}</p>
           }
-        </ol>
-        @if (current.appeals.length) {
-          <h3 class="mt-6 font-bold">{{ copy().appeals }}</h3>
-          @for (appeal of current.appeals; track $index) {
-            <p class="mt-3 whitespace-pre-wrap break-words">{{ appeal.message }}</p>
-          }
-        }
+          <ol class="mt-3 grid gap-2 text-sm">
+            @for (event of current.history; track $index) {
+              <li class="break-words">
+                {{ event.createdAt | date: 'dd.MM.yyyy HH:mm' }} · {{ event.actorLabel }} ·
+                {{ label(event.action) }}
+              </li>
+            }
+          </ol>
+        </details>
       </section>
     } @else {
-      <form
-        class="my-6 grid gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-3"
-        (ngSubmit)="load()"
-      >
-        @if (isAdmin()) {
-          <label class="grid gap-2 text-sm font-semibold"
-            >{{ adminLabel('caseWorker') }}
-            <select
-              data-case-assignee-filter
-              name="assignedUserId"
-              [(ngModel)]="filterAssignee"
-              class="min-h-11 rounded-lg border border-slate-300 px-3"
+      <section class="my-4 border-y border-slate-200 py-3" aria-label="{{ copy().cases }}">
+        <div class="flex flex-wrap items-center gap-2" data-queue-tabs>
+          @for (item of ['todo', 'waiting', 'done']; track item) {
+            <button
+              [appButton]="queue === item ? 'primary' : 'outline'"
+              type="button"
+              [attr.aria-pressed]="queue === item"
+              (click)="setQueue($any(item))"
             >
-              <option value="">{{ copy().all }}</option>
-              @for (person of moderators(); track person.userId) {
-                <option [value]="person.userId">{{ person.label }}</option>
-              }
-            </select>
-          </label>
-        }
-        <label class="grid gap-2 text-sm font-semibold"
-          >{{ copy().status
-          }}<select
-            name="status"
-            [(ngModel)]="filterStatus"
-            class="min-h-11 rounded-lg border border-slate-300 px-3"
+              {{ queueLabel($any(item)) }}
+            </button>
+          }
+          @if (isAdmin() && adminOnly) {
+            <button appButton="outline" type="button" data-my-cases (click)="openMyCases()">
+              {{ copy().myCases }}
+            </button>
+          }
+          <button
+            appButton="outline"
+            type="button"
+            data-appeal-filter
+            [class.font-extrabold]="onlyAppeal"
+            [attr.aria-pressed]="onlyAppeal"
+            (click)="toggleAppeals()"
           >
-            <option value="">{{ copy().all }}</option>
-            @for (
-              status of ['submitted', 'assigned', 'waiting_for_subject', 'resolved', 'rejected'];
-              track status
-            ) {
-              <option [value]="status">{{ label(status) }}</option>
+            {{ copy().appeals }}
+          </button>
+        </div>
+        <details class="mt-2">
+          <summary class="min-h-11 cursor-pointer py-2 font-semibold text-brand-dark">
+            {{ copy().moreFilters }}
+          </summary>
+          <form class="grid gap-4 pt-3 sm:grid-cols-3" (ngSubmit)="applyFilters()">
+            @if (isAdmin() && !myCases()) {
+              <label class="grid gap-2 text-sm font-semibold"
+                >{{ adminLabel('caseWorker') }}
+                <select
+                  data-case-assignee-filter
+                  name="assignedUserId"
+                  [(ngModel)]="filterAssignee"
+                  (change)="applyFilters()"
+                  class="min-h-11 rounded-lg border border-slate-300 px-3"
+                >
+                  <option value="">{{ copy().all }}</option>
+                  @for (person of moderators(); track person.userId) {
+                    <option [value]="person.userId">{{ person.label }}</option>
+                  }
+                </select>
+              </label>
             }
-          </select></label
-        >
-        <label class="grid gap-2 text-sm font-semibold"
-          >{{ copy().kind
-          }}<select
-            name="kind"
-            [(ngModel)]="filterKind"
-            class="min-h-11 rounded-lg border border-slate-300 px-3"
-          >
-            <option value="">{{ copy().all }}</option>
-            @for (
-              kind of isAdmin()
-                ? ['report', 'review_submission', 'garage_submission', 'data_deletion']
-                : ['report', 'review_submission'];
-              track kind
-            ) {
-              <option [value]="kind">{{ label(kind) }}</option>
+            <label class="grid gap-2 text-sm font-semibold"
+              >{{ copy().kind }}
+              <select
+                name="kind"
+                [(ngModel)]="filterKind"
+                (change)="applyFilters()"
+                class="min-h-11 rounded-lg border border-slate-300 px-3"
+              >
+                <option value="">{{ copy().all }}</option>
+                @for (
+                  kind of isAdmin()
+                    ? ['report', 'review_submission', 'garage_submission', 'data_deletion']
+                    : ['report', 'review_submission'];
+                  track kind
+                ) {
+                  <option [value]="kind">{{ label(kind) }}</option>
+                }
+              </select>
+            </label>
+            <label class="grid gap-2 text-sm font-semibold"
+              >{{ copy().priority }}
+              <select
+                name="priority"
+                [(ngModel)]="filterPriority"
+                (change)="applyFilters()"
+                class="min-h-11 rounded-lg border border-slate-300 px-3"
+              >
+                <option value="">{{ copy().all }}</option>
+                <option value="high">{{ copy().high }}</option>
+                <option value="normal">{{ copy().normal }}</option>
+              </select>
+            </label>
+            @if (isAdmin() && !myCases()) {
+              <label class="flex min-h-11 items-center gap-3"
+                ><input
+                  type="checkbox"
+                  name="unassigned"
+                  [(ngModel)]="onlyUnassigned"
+                  (change)="applyFilters()"
+                />{{ copy().unassigned }}</label
+              >
+              <label class="flex min-h-11 items-center gap-3"
+                ><input
+                  type="checkbox"
+                  name="escalated"
+                  [(ngModel)]="onlyEscalated"
+                  (change)="applyFilters()"
+                />{{ copy().escalation }}</label
+              >
             }
-          </select></label
-        >
-        <label class="grid gap-2 text-sm font-semibold"
-          >{{ copy().priority }}
-          <select
-            name="priority"
-            [(ngModel)]="filterPriority"
-            class="min-h-11 rounded-lg border border-slate-300 px-3"
-          >
-            <option value="">{{ copy().all }}</option>
-            <option value="high">{{ copy().high }}</option>
-            <option value="normal">{{ copy().normal }}</option>
-          </select>
-        </label>
-        @if (isAdmin()) {
-          <label class="flex min-h-11 items-center gap-3"
-            ><input type="checkbox" name="escalated" [(ngModel)]="onlyEscalated" />{{
-              copy().escalation
-            }}</label
-          >
+            <label class="flex min-h-11 items-center gap-3"
+              ><input
+                type="checkbox"
+                name="appeal"
+                [(ngModel)]="onlyAppeal"
+                (change)="applyFilters()"
+              />{{ copy().appeals }}</label
+            >
+          </form>
+        </details>
+        @if (
+          filterKind ||
+          filterPriority ||
+          filterAssignee ||
+          filterStatus ||
+          onlyEscalated ||
+          onlyUnassigned ||
+          onlyAppeal ||
+          queue !== 'todo'
+        ) {
+          <div data-active-filters class="mt-2 flex flex-wrap items-center gap-3 text-sm">
+            @if (filterKind) {
+              <span>{{ label(filterKind) }}</span>
+            }
+            @if (filterPriority) {
+              <span>{{ label(filterPriority) }}</span>
+            }
+            @if (filterStatus) {
+              <span>{{ label(filterStatus) }}</span>
+            }
+            @if (filterAssignee) {
+              <span>{{ adminLabel('caseWorker') }}</span>
+            }
+            @if (onlyEscalated) {
+              <span>{{ copy().escalation }}</span>
+            }
+            @if (onlyUnassigned) {
+              <span>{{ copy().unassigned }}</span>
+            }
+            @if (onlyAppeal) {
+              <span>{{ copy().appeals }}</span>
+            }
+            <button data-reset-filters appButton="outline" type="button" (click)="resetFilters()">
+              {{ copy().reset }}
+            </button>
+          </div>
         }
-        <button appButton="outline" type="submit" class="self-end" [disabled]="loading()">
-          {{ copy().retry }}
-        </button>
-      </form>
+      </section>
       @if (!loading() && !error() && !cases().length) {
         <p data-staff-empty class="rounded-xl border border-slate-200 bg-white p-6">
           {{ isAdmin() ? copy().empty : label('emptyMine') }}
@@ -375,7 +510,7 @@
           <article
             data-staff-row
             [attr.data-case-id]="item.id"
-            class="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-[1fr_auto]"
+            class="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-[minmax(0,1fr)_auto]"
           >
             <div class="min-w-0">
               <p class="text-sm font-semibold text-brand-dark">
@@ -384,7 +519,7 @@
               <h2 class="mt-1 text-lg font-bold break-words">
                 {{ item.label || label(item.kind) }}
               </h2>
-              <p class="mt-2 text-sm">
+              <p class="mt-1 text-sm">
                 {{ label(item.status) }} ·
                 {{
                   item.assignedModeratorLabel ||
@@ -404,7 +539,7 @@
               type="button"
               class="self-center"
               [disabled]="loading()"
-              (click)="open(item.id)"
+              (click)="open(item)"
             >
               {{ copy().open }}
             </button>
@@ -417,7 +552,7 @@
           type="button"
           [disabled]="page() <= 1 || loading()"
           data-previous-cases
-          (click)="load(page() - 1)"
+          (click)="goPage(page() - 1)"
         >
           {{ copy().previous }}</button
         ><button
@@ -425,7 +560,7 @@
           type="button"
           [disabled]="!hasMore() || loading()"
           data-next-cases
-          (click)="load(page() + 1)"
+          (click)="goPage(page() + 1)"
         >
           {{ copy().next }}
         </button>
@@ -433,4 +568,4 @@
     }
     <p class="mt-6 text-sm text-muted">{{ copy().refreshHint }}</p>
   }
-</main>
+</app-staff-layout>

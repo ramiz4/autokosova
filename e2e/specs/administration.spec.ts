@@ -1,6 +1,7 @@
 import { test, expect } from '../support/application';
 import type { Page } from '@playwright/test';
 import { adminLabel } from '../../src/shared/admin-copy';
+import { staffSection } from '../support/journeys';
 import { onboardingCopy } from '../../src/shared/onboarding-copy';
 
 async function confirm(page: Page, selector: string) {
@@ -12,10 +13,16 @@ async function openGarage(page: Page, id: string) {
   await page.locator('[data-admin-search]').click();
   await page.locator(`[data-admin-garage-id="${id}"] [data-admin-open-garage]`).click();
   await expect(page.locator('[data-admin-garage]')).toBeVisible();
+  await openReviewEditor(page);
   await expect(page.locator('[data-admin-reason]')).toBeEnabled();
 }
-async function reason(page: Page, value: string) {
-  await page.locator('[data-admin-reason]').selectOption(value);
+async function openReviewEditor(page: Page) {
+  const editor = page.locator('[data-review-save]');
+  if (!(await editor.evaluate((element) => (element as HTMLDetailsElement).open)))
+    await editor.locator('summary').click();
+}
+async function reason(page: Page, value: string, selector = '[data-admin-reason]') {
+  await page.locator(selector).selectOption(value);
 }
 
 test('admin-workflow verifies garages, checks evidence, decides photos, suspends/restores and transfers ownership', async ({
@@ -24,7 +31,7 @@ test('admin-workflow verifies garages, checks evidence, decides photos, suspends
 }, testInfo) => {
   await app.login(page, 'admin');
   await expect(page.locator('[data-admin-overview]')).toBeVisible();
-  await page.locator('app-admin-navigation a[href="/admin/garages"]').click();
+  await staffSection(page, 'garages');
   await expect(page.locator('[data-admin-garage-list]')).toBeVisible();
   const id = 'demo-admin-garage-pending';
   await openGarage(page, id);
@@ -44,11 +51,11 @@ test('admin-workflow verifies garages, checks evidence, decides photos, suspends
     )
     .toBe('verified');
   await expect(page.locator('[data-admin-reason]')).toHaveValue('');
-  await reason(page, 'company_verified');
   await confirm(page, '[data-publish-garage]');
   await expect(page.locator('[data-suspend-garage]')).toBeVisible();
   expect((await page.request.get(app.origin + '/api/public/garages/' + id)).status()).toBe(200);
-  await reason(page, 'company_verified');
+  await page.locator('[data-admin-tab="photos"]').click();
+  await reason(page, 'company_verified', '[name="photoReason"]');
   await confirm(page, '[data-approve-photo]');
   await expect
     .poll(
@@ -57,18 +64,22 @@ test('admin-workflow verifies garages, checks evidence, decides photos, suspends
           .photos[0].visibility,
     )
     .toBe('approved');
-  await expect(page.locator('[data-admin-reason]')).toHaveValue('');
-  await reason(page, 'policy_violation');
+  await expect(page.locator('[name="photoReason"]')).toHaveValue('');
+  await page.locator('[data-admin-tab="review"]').click();
+  await openReviewEditor(page);
+  await reason(page, 'policy_violation', '[data-admin-decision-reason]');
   await confirm(page, '[data-suspend-garage]');
   await expect(page.locator('[data-restore-garage]')).toBeVisible();
   expect((await page.request.get(app.origin + '/api/public/garages/' + id)).status()).toBe(404);
-  await reason(page, 'company_verified');
+  await reason(page, 'company_verified', '[data-admin-decision-reason]');
   await confirm(page, '[data-restore-garage]');
   await expect(page.locator('[data-suspend-garage]')).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('admin-garage.png'), fullPage: true });
   await page.locator('[data-admin-back]').click();
   await openGarage(page, 'demo-admin-garage-members');
-  await page.locator('[data-target-user]').selectOption('demo-admin-next-owner');
+  await page.locator('[data-admin-tab="team"]').click();
+  await page.locator('#target-user').fill('demo-admin-next-owner');
+  await page.locator('#target-user-option-0').click();
   const [transferResponse] = await Promise.all([
     page.waitForResponse(
       (r) =>
@@ -93,7 +104,7 @@ test('admin-workflow verifies garages, checks evidence, decides photos, suspends
     .toBe('owner');
   await page.locator('[data-admin-back]').click();
   await openGarage(page, 'demo-admin-garage-incomplete');
-  await reason(page, 'missing_information');
+  await reason(page, 'missing_information', '[data-admin-decision-reason]');
   await confirm(page, '[data-reject-garage]');
   await expect
     .poll(
@@ -108,7 +119,8 @@ test('admin-workflow verifies garages, checks evidence, decides photos, suspends
     )
     .toBe('rejected');
   // Reuse the ordinary garage editor through a documented support request, not impersonation.
-  await page.locator('app-admin-navigation a[href="/admin/support"]').click();
+  await staffSection(page, 'garages');
+  await page.locator('[data-assist-garage]').click();
   await page.locator('[data-support-applicant]').selectOption('demo-admin-owner');
   await page.locator('[data-support-reference]').fill('SYNTHETIC-SUPPORT-REQUEST');
   await page.locator('[data-start-support]').click();
@@ -168,15 +180,15 @@ test('admin-boundaries checks staff separation, takeover, policy gates and local
     .locator('[data-case-id="review:demo-staff-review-unassigned"] [data-open-case]')
     .click();
   await page.locator('[data-take-case]').click();
-  await expect(page.locator('[data-staff-list]')).toBeVisible();
-  await page.locator('[data-case-assignee-filter]').selectOption(app.subjects.admin);
-  await page.locator('main form button[type="submit"]').click();
-  await expect(page.locator('[data-case-id="review:demo-staff-review-unassigned"]')).toBeVisible();
-  await page.locator('app-admin-navigation a[href="/admin/privacy"]').click();
+  await expect(page.locator('[data-staff-case]')).toBeVisible();
+  await expect(page.locator('[data-case-heading]')).toContainText('DEMO');
+  await expect(page.locator('[data-case-assignee]')).toContainText('E2E admin');
+  await expect(page.locator('[data-take-case]')).toHaveCount(0);
+  await staffSection(page, 'privacy');
   await expect(page.locator('[data-admin-deletions]')).toBeVisible();
   const request = page.locator('[data-deletion-id="demo-admin-deletion-policy"]');
   await expect(request.locator('[data-process-deletion]')).toHaveCount(0);
-  await page.locator('main details summary').click();
+  await page.locator('[data-policy-secondary] button').click();
   await expect(page.locator('[data-save-policy]')).toBeDisabled();
   await page.locator('[name="policyVersion"]').fill('SYNTHETIC-E2E-ONLY');
   await page
@@ -193,10 +205,13 @@ test('admin-boundaries checks staff separation, takeover, policy gates and local
   await expect(page.locator('[data-save-policy]')).toBeDisabled();
   await page.locator('[name="approvalConfirmed"]').check();
   await confirm(page, '[data-save-policy]');
-  await expect(request.locator('[data-process-deletion]')).toBeVisible();
-  await confirm(page, '[data-deletion-id="demo-admin-deletion-policy"] [data-process-deletion]');
-  await expect(request).toContainText(adminLabel('completed', 'de'));
-  await expect(request.locator('[data-process-deletion]')).toHaveCount(0);
+  await expect(page.locator('[data-admin-result]')).toContainText(adminLabel('policySaved', 'de'));
+  await request.getByRole('button', { name: adminLabel('open', 'de'), exact: true }).click();
+  const selected = page.locator('[data-privacy-context]');
+  await expect(selected.locator('[data-process-deletion]')).toBeVisible();
+  await confirm(page, '[data-privacy-context] [data-process-deletion]');
+  await expect(selected).toContainText(adminLabel('completed', 'de'));
+  await expect(selected.locator('[data-process-deletion]')).toHaveCount(0);
   for (const language of ['de', 'sq', 'en'] as const) {
     const prefix = language === 'de' ? '' : '/' + language;
     await app.login(page, 'admin', language, prefix + '/admin/users');
