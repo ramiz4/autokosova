@@ -10,12 +10,12 @@ test('staff-context preserves authorized case context across navigation, drafts,
   await expect(page).toHaveURL(app.origin + deep);
   await expect(page.locator('[data-staff-case]')).toBeVisible();
   await page.locator('input[name="garageMatches"]').check();
-  page.once('dialog', (dialog) => dialog.dismiss());
   await page.locator('[data-back-cases]').click();
+  await page.locator('[data-confirmation-cancel]').click();
   await expect(page.locator('[data-staff-case]')).toBeVisible();
   await expect(page.locator('input[name="garageMatches"]')).toBeChecked();
-  page.once('dialog', (dialog) => dialog.accept());
   await page.locator('[data-back-cases]').click();
+  await page.locator('[data-confirmation-confirm]').click();
   await expect(page.locator('[data-staff-list]')).toBeVisible();
   await expect(page.locator(`[data-case-id="${assigned}"] [data-open-case]`)).toBeFocused();
 
@@ -25,15 +25,21 @@ test('staff-context preserves authorized case context across navigation, drafts,
   await page.reload();
   await expect(page.locator('[data-staff-case]')).toBeVisible();
   await page.locator('input[name="garageMatches"]').check();
-  page.once('dialog', (dialog) => dialog.dismiss());
   await page.locator('app-language-switcher summary').press('Enter');
+  await page.locator('[data-confirmation-cancel]').click();
   await page.getByRole('link', { name: 'English' }).press('Enter');
   await expect(page).toHaveURL(app.origin + deep);
   await expect(page.locator('input[name="garageMatches"]')).toBeChecked();
   await expect(page.locator('[data-staff-case]')).toBeVisible();
 
-  page.once('dialog', (dialog) => dialog.accept());
-  await app.login(page, 'admin', 'de', '/admin/cases/review:demo-staff-review-unassigned');
+  const adminLogin = app.login(
+    page,
+    'admin',
+    'de',
+    '/admin/cases/review:demo-staff-review-unassigned',
+  );
+  await page.locator('[data-confirmation-confirm]').click();
+  await adminLogin;
   await expect(page.locator('#staff-assignee')).toContainText('E2E admin');
   await expect(page.locator('[data-take-case]')).toBeEnabled();
   await page.locator('[data-take-case]').click();
@@ -55,8 +61,8 @@ test('staff-context preserves authorized case context across navigation, drafts,
   await app.database.query('UPDATE moderation_case SET revision=revision+1 WHERE id=$1', [
     assigned,
   ]);
-  page.once('dialog', (dialog) => dialog.accept());
   await page.locator('[data-publish-review]').click();
+  await page.locator('[data-confirmation-confirm]').click();
   await expect(page.locator('[role="alert"]')).toBeVisible();
   await expect(page.locator('input[name="garageMatches"]')).toBeChecked();
   await expect(page.locator('input[name="serviceMatches"]')).toBeChecked();
@@ -66,8 +72,8 @@ test('staff-context preserves authorized case context across navigation, drafts,
   expect(caseDetail.revision).toBeGreaterThan(0);
   await page.getByRole('button', { name: /Aktuellen Stand prüfen/i }).click();
   await expect(page.locator('[data-publish-review]')).toBeEnabled();
-  page.once('dialog', (dialog) => dialog.accept());
   await page.locator('[data-publish-review]').click();
+  await page.locator('[data-confirmation-confirm]').click();
   await expect(page.locator('[data-case-status]')).toContainText('Abgeschlossen');
   await expect(page.locator('[data-next-case]')).toBeVisible();
   const completedUrl = page.url();
@@ -79,8 +85,8 @@ test('staff-context preserves authorized case context across navigation, drafts,
   await page.goto(app.origin + '/moderation/cases/review:demo-staff-review-blocked');
   await page.locator('[data-escalate-panel] summary').click();
   await page.locator('#staff-escalation').selectOption('requires_admin');
-  page.once('dialog', (dialog) => dialog.accept());
   await page.locator('[data-escalate]').click();
+  await page.locator('[data-confirmation-confirm]').click();
   await expect(page).toHaveURL(app.origin + '/moderation');
   await expect(page.locator('main [role="status"]')).toContainText('Administration');
   await expect(page.locator('[data-staff-list]')).toHaveAttribute('aria-busy', 'false');

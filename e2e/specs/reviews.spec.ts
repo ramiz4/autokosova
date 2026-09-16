@@ -83,8 +83,8 @@ test('review-workflow submits evidence, assigns, verifies, publishes, replies an
   await expect(page.locator('[data-evidence-text]')).toContainText('DEMO – kein echter Nachweis');
   for (const field of ['garageMatches', 'serviceMatches', 'visitMonthMatches'])
     await page.locator(`input[name="${field}"]`).check();
-  page.once('dialog', (dialog) => dialog.accept());
   await page.locator('[data-publish-review]').click();
+  await page.locator('[data-confirmation-confirm]').click();
   await expect(page.locator('[data-staff-case] [role="status"]')).toBeVisible();
   await logout(page, app.origin);
   await app.login(page, 'customer');
@@ -96,8 +96,8 @@ test('review-workflow submits evidence, assigns, verifies, publishes, replies an
     .locator('[data-contribution-text]')
     .fill('DEMO – Nach unserer Reklamation wurde eine Nacharbeit durchgeführt.');
   await page.locator('select[name="kind"]').selectOption('rework');
-  page.once('dialog', (dialog) => dialog.accept());
   await page.locator('[data-save-contribution]').click();
+  await page.locator('[data-confirmation-confirm]').click();
   await expect(page.locator('[data-own-review-detail]')).toContainText('Nach unserer Reklamation');
   // Additional synthetic membership for this scenario only; no existing owner/demo binding is modified.
   await app.database.query(
@@ -111,8 +111,8 @@ test('review-workflow submits evidence, assigns, verifies, publishes, replies an
   await card.locator('[data-start-contribution]').click();
   const reply = 'DEMO – Danke für die Rückmeldung. Wir haben den Vorgang besprochen.';
   await card.locator('[data-contribution-text]').fill(reply);
-  page.once('dialog', (dialog) => dialog.accept());
   await card.locator('[data-save-contribution]').click();
+  await page.locator('[data-confirmation-confirm]').click();
   await expect(card).toContainText(reply);
   await expect(card).toContainText(text);
   await expect(card).toContainText('Nach unserer Reklamation');

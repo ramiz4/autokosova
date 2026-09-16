@@ -122,18 +122,18 @@ it('distinguishes pending, failed and genuinely empty lists and supports retry',
 
 it('opens one form, preserves edits when back is declined and clears only after confirmation', async () => {
   const { fixture, component, page } = await setup();
-  component['reset']();
+  await component['reset']();
   fixture.detectChanges();
   expect(page.querySelectorAll('form')).toHaveLength(1);
   expect(page.querySelector('[data-garages-overview]')).toBeNull();
   component['form'].contactPhone = '+99900000002';
-  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
-  component['backToOverview']();
+  const confirm = vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(false);
+  await component['backToOverview']();
   fixture.detectChanges();
   expect(component['form'].contactPhone).toBe('+99900000002');
   expect(page.querySelector('form')).not.toBeNull();
-  confirm.mockReturnValue(true);
-  component['backToOverview']();
+  confirm.mockResolvedValue(true);
+  await component['backToOverview']();
   fixture.detectChanges();
   expect(page.querySelector('form')).toBeNull();
   expect(component['form'].contactPhone).toBe('');
@@ -292,8 +292,9 @@ it.each(['de', 'sq', 'en'] as const)(
     name.dispatchEvent(new Event('input', { bubbles: true }));
     await fixture.whenStable();
     expect(save.disabled).toBe(true);
-    const confirm = vi.spyOn(window, 'confirm');
+    const confirm = vi.spyOn(component.confirmation(), 'ask');
     component['cancelEditing']();
+    await fixture.whenStable();
     fixture.detectChanges();
     expect(confirm).not.toHaveBeenCalled();
     expect(page.querySelector('form')).toBeNull();

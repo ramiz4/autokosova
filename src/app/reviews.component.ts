@@ -7,12 +7,14 @@ import {
   inject,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AccountSessionService } from './account-session.service';
 import { LanguageService } from './language.service';
 import { SiteHeaderComponent } from './site-header.component';
 import { ButtonDirective } from './ui/button.directive';
+import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
 import { ReviewContributionComponent } from './review-contribution.component';
 import { reviewLabel } from '../shared/review-copy';
 import type { OwnReviewDetail, OwnReviewPage } from '../shared/reviews';
@@ -26,10 +28,12 @@ import { ReviewHttpError, reviewJson, reviewChecked, reviewError } from './revie
     DatePipe,
     ButtonDirective,
     ReviewContributionComponent,
+    ConfirmationDialogComponent,
   ],
   templateUrl: './reviews.component.html',
 })
 export class ReviewsComponent {
+  readonly confirmation = viewChild.required<ConfirmationDialogComponent>('confirmation');
   readonly account = inject(AccountSessionService);
   readonly language = inject(LanguageService);
   readonly ready = signal(false);
@@ -52,6 +56,7 @@ export class ReviewsComponent {
     effect(() => {
       const context = this.account.dataContext(),
         ready = this.ready();
+      this.confirmation().cancelPending();
       this.generation++;
       this.controller.abort();
       this.controller = new AbortController();
@@ -76,8 +81,16 @@ export class ReviewsComponent {
   loginUrl(): string {
     return '/auth/login?returnTo=' + encodeURIComponent(this.language.link('reviews'));
   }
-  canLeave(): boolean {
-    return !this.busy() && (!this.dirty || window.confirm(this.label('discard')));
+  async canLeave(): Promise<boolean> {
+    if (this.busy() || !this.dirty) return !this.busy();
+    const context = this.account.dataContext();
+    const accepted = await this.confirmation().ask({
+      title: this.label('discard'),
+      description: this.label('discard'),
+      confirmLabel: this.label('discard'),
+      cancelLabel: this.label('cancel'),
+    });
+    return accepted && context === this.account.dataContext() && !this.busy() && this.dirty;
   }
   setDirty(value: boolean): void {
     this.dirty = value;
@@ -86,7 +99,7 @@ export class ReviewsComponent {
     return generation === this.generation && context === this.account.dataContext();
   }
   async load(page = 1): Promise<void> {
-    if (!this.account.dataContext() || this.busy() || !this.canLeave()) return;
+    if (!this.account.dataContext() || this.busy() || !(await this.canLeave())) return;
     const generation = ++this.generation,
       context = this.account.dataContext();
     this.controller.abort();
@@ -121,7 +134,7 @@ export class ReviewsComponent {
     }
   }
   async open(id: string, afterSaved = false): Promise<void> {
-    if (!afterSaved && !this.canLeave()) return;
+    if (!afterSaved && !(await this.canLeave())) return;
     const generation = ++this.generation,
       context = this.account.dataContext();
     this.controller.abort();

@@ -6,16 +6,16 @@ import { Injectable } from '@angular/core';
  */
 @Injectable({ providedIn: 'root' })
 export class AdminDraftGuardService {
-  private confirm: ((targetUrl?: string) => boolean) | null = null;
+  private confirm: ((targetUrl?: string) => Promise<boolean>) | null = null;
 
-  connect(confirm: (targetUrl?: string) => boolean): () => void {
+  connect(confirm: (targetUrl?: string) => Promise<boolean>): () => void {
     this.confirm = confirm;
     return () => {
       if (this.confirm === confirm) this.confirm = null;
     };
   }
 
-  confirmContextChange(targetUrl?: string): boolean {
-    return this.confirm?.(targetUrl) ?? true;
+  confirmContextChange(targetUrl?: string): Promise<boolean> {
+    return this.confirm?.(targetUrl) ?? Promise.resolve(true);
   }
 }

@@ -156,7 +156,7 @@ it('requires deliberate operator attestation and all explicit retention values',
   expect(component.validPolicy()).toBe(false);
   component.approvalConfirmed = true;
   expect(component.validPolicy()).toBe(true);
-  vi.spyOn(window, 'confirm').mockReturnValue(false);
+  vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(false);
   await component.savePolicy();
   expect(fetch).not.toHaveBeenCalled();
 });
@@ -183,9 +183,9 @@ it('uses equality for a reverted review draft and leaves a cancelled context unt
   expect(component.dirty()).toBe(initial !== 'verified');
   component.verification.phone = initial;
   expect(component.dirty()).toBe(false);
-  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  const confirm = vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(false);
   component.reviewReason = 'missing_information';
-  expect(component.canLeave('/admin/garages?garageId=another')).toBe(false);
+  await expect(component.canLeave('/admin/garages?garageId=another')).resolves.toBe(false);
   expect(component.detail()?.id).toBe('demo-admin-test');
   expect(confirm).toHaveBeenCalledOnce();
 });
@@ -251,7 +251,7 @@ it('ignores a stale candidate search so it cannot replace the newer selection li
 
 it('submits exactly the deletion policy that the administrator confirmed', async () => {
   const { component, fetch } = await render('privacy');
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(true);
   fetch.mockClear();
   fetch
     .mockResolvedValueOnce(new Response(null, { status: 204 }))
@@ -260,6 +260,38 @@ it('submits exactly the deletion policy that the administrator confirmed', async
   const [path, options] = fetch.mock.calls[0];
   expect(path).toContain('/synthetic-request/process');
   expect(JSON.parse(options.body)).toEqual({ policyVersion: 'SYNTHETIC-CONFIRMED' });
+});
+
+it('rejects a changed transfer or retention policy while its confirmation is pending', async () => {
+  const { component, account, fetch } = await render('garages');
+  component.detail.set({
+    ...garage,
+    members: [{ userId: 'from', label: 'From', role: 'owner', state: 'active' }],
+  });
+  component.fromUserId = 'from';
+  component.targetUserId = 'to';
+  let answer!: (value: boolean) => void;
+  vi.spyOn(component.confirmation(), 'ask').mockImplementation(
+    () => new Promise<boolean>((resolve) => (answer = resolve)),
+  );
+  fetch.mockClear();
+  const transfer = component.transfer();
+  component.targetUserId = 'other';
+  account.dataContext.set('admin:2');
+  answer(true);
+  await transfer;
+  expect(fetch).not.toHaveBeenCalled();
+
+  component.policyVersion = 'SYNTHETIC';
+  component.approvalReference = 'SYNTHETIC APPROVAL';
+  component.publicReviewHandling = 'delete';
+  for (const key of component.durations) component.days[key] = 30;
+  component.approvalConfirmed = true;
+  const policy = component.savePolicy();
+  component.policyVersion = 'CHANGED';
+  answer(true);
+  await policy;
+  expect(fetch).not.toHaveBeenCalled();
 });
 
 it('keeps only a technical selected request in the URL and detects policy edits by equality', async () => {
@@ -284,7 +316,7 @@ it('refreshes privacy during its own save and does not report a stale policy as 
   component.publicReviewHandling = 'delete';
   for (const key of component.durations) component.days[key] = 30;
   component.approvalConfirmed = true;
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(true);
   fetch.mockClear();
   fetch
     .mockResolvedValueOnce(new Response(null, { status: 204 }))

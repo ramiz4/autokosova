@@ -44,13 +44,13 @@ afterEach(() => {
 
 it('does not warn for an untouched, loaded or explicitly reset form', async () => {
   const component = (await setup()).componentInstance;
-  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
-  expect(component.canLeave()).toBe(true);
+  const confirm = vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(false);
+  await expect(component.canLeave()).resolves.toBe(true);
   savedGarage(component);
-  expect(component.canLeave()).toBe(true);
-  component['reset']();
+  await expect(component.canLeave()).resolves.toBe(true);
+  await component['reset']();
   expect(component['garageId']).toBeUndefined();
-  expect(component.canLeave()).toBe(true);
+  await expect(component.canLeave()).resolves.toBe(true);
   expect(confirm).not.toHaveBeenCalled();
 });
 
@@ -70,11 +70,11 @@ it.each([
   const component = (await setup()).componentInstance;
   Object.assign(component['form'], patch);
   const before = structuredClone(component['form']);
-  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  const confirm = vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(false);
   const fetchMock = vi.fn();
   vi.stubGlobal('fetch', fetchMock);
   await component['open']('another');
-  component['reset']();
+  await component['reset']();
   expect(component['form']).toEqual(before);
   expect(component['garageId']).toBeUndefined();
   expect(confirm).toHaveBeenCalledTimes(2);
@@ -84,13 +84,13 @@ it.each([
 it('protects consent on a new draft and clears it only after confirmation', async () => {
   const component = (await setup()).componentInstance;
   component['consentAccepted'] = true;
-  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
-  component['reset']();
+  const confirm = vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(false);
+  await component['reset']();
   expect(component['consentAccepted']).toBe(true);
-  confirm.mockReturnValue(true);
-  component['reset']();
+  confirm.mockResolvedValue(true);
+  await component['reset']();
   expect(component['consentAccepted']).toBe(false);
-  expect(component.canLeave()).toBe(true);
+  await expect(component.canLeave()).resolves.toBe(true);
 });
 
 it.each(['de', 'sq', 'en'] as const)(
@@ -99,16 +99,16 @@ it.each(['de', 'sq', 'en'] as const)(
     const component = (await setup()).componentInstance;
     vi.spyOn(TestBed.inject(LanguageService), 'language', 'get').mockReturnValue(language);
     component['form'].contactPhone = '+99900000001';
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const confirm = vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(false);
     const path = `${language === 'de' ? '' : language + '/'}garages/new`;
     const guard = routes.find((route) => route.path === path)?.canDeactivate?.[0] as (
       value: GarageOnboardingComponent | null,
-    ) => boolean;
+    ) => Promise<boolean>;
     expect(guard).toBeTypeOf('function');
-    expect(guard(component)).toBe(false);
-    expect(confirm).toHaveBeenCalledWith(component['copy'].discard);
-    confirm.mockReturnValue(true);
-    expect(guard(component)).toBe(true);
+    await expect(guard(component)).resolves.toBe(false);
+    expect(confirm).toHaveBeenCalledOnce();
+    confirm.mockResolvedValue(true);
+    await expect(guard(component)).resolves.toBe(true);
     expect(guard(null)).toBe(true);
   },
 );
@@ -143,11 +143,11 @@ it.each(['sending', 'loading'] as const)(
     const component = (await setup()).componentInstance;
     savedGarage(component);
     component[state] = true;
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const confirm = vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(true);
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    expect(component.canLeave()).toBe(false);
-    component['reset']();
+    await expect(component.canLeave()).resolves.toBe(false);
+    await component['reset']();
     await component['open']('another');
     await component['submitForReview']();
     expect(component['garageId']).toBe('owned');
@@ -161,14 +161,14 @@ it('keeps edits and the unsaved warning when opening another profile fails', asy
   const component = (await setup()).componentInstance;
   savedGarage(component);
   component['form'].contactPhone = '+99900000003';
-  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  const confirm = vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(true);
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 503 })));
   await component['open']('another');
   expect(component['garageId']).toBe('owned');
   expect(component['form'].contactPhone).toBe('+99900000003');
   expect(component['loading']).toBe(false);
-  confirm.mockReturnValue(false);
-  expect(component.canLeave()).toBe(false);
+  confirm.mockResolvedValue(false);
+  await expect(component.canLeave()).resolves.toBe(false);
 });
 
 it('clears the warning only after a successful save', async () => {
@@ -176,7 +176,7 @@ it('clears the warning only after a successful save', async () => {
   component['form'] = structuredClone(validForm);
   component['consentAccepted'] = true;
   document.cookie = 'autokosova_csrf=test-token; path=/';
-  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  const confirm = vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(false);
   const fetchMock = vi
     .fn()
     .mockResolvedValueOnce(new Response('{}', { status: 503 }))
@@ -184,11 +184,11 @@ it('clears the warning only after a successful save', async () => {
     .mockResolvedValueOnce(new Response(JSON.stringify({ garages: [] })));
   vi.stubGlobal('fetch', fetchMock);
   await component['submit']();
-  expect(component.canLeave()).toBe(false);
+  await expect(component.canLeave()).resolves.toBe(false);
   await component['submit']();
   confirm.mockClear();
   expect(component['garageId']).toBe('owned');
-  expect(component.canLeave()).toBe(true);
+  await expect(component.canLeave()).resolves.toBe(true);
   expect(confirm).not.toHaveBeenCalled();
 });
 

@@ -46,6 +46,7 @@ import { AccountSessionService } from './account-session.service';
 import { SiteHeaderComponent } from './site-header.component';
 import { LucideIconComponent } from './ui/lucide-icon.component';
 import { MultiSelectComponent, type SelectionOption } from './ui/multi-select.component';
+import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
 
 type Form = { -readonly [Key in keyof GarageProfileInput]: GarageProfileInput[Key] } & {
   address: string;
@@ -88,6 +89,7 @@ function blankForm(): Form {
     SiteHeaderComponent,
     LucideIconComponent,
     MultiSelectComponent,
+    ConfirmationDialogComponent,
   ],
   templateUrl: './garage-onboarding.component.html',
   styleUrl: './garage-onboarding.component.scss',
@@ -96,6 +98,7 @@ function blankForm(): Form {
   },
 })
 export class GarageOnboardingComponent {
+  readonly confirmation = viewChild.required<ConfirmationDialogComponent>('confirmation');
   readonly ArrowRightIcon: LucideIcon = LucideArrowRight;
   readonly BadgeCheckIcon: LucideIcon = LucideBadgeCheck;
   readonly InfoIcon: LucideIcon = LucideInfo;
@@ -180,8 +183,8 @@ export class GarageOnboardingComponent {
     this.cdr.detectChanges();
     this.workspaceTitle()?.nativeElement.focus();
   }
-  protected backToOverview(): void {
-    if (!this.canLeave()) return;
+  protected async backToOverview(): Promise<void> {
+    if (!(await this.canLeave())) return;
     this.clearForm();
     this.editing = false;
     this.focusTitle();
@@ -249,11 +252,23 @@ export class GarageOnboardingComponent {
   private get hasUnsavedChanges(): boolean {
     return !this.unchanged || (!this.garageId && this.consentAccepted);
   }
-  canLeave(): boolean {
+  async canLeave(): Promise<boolean> {
     if (!this.workspaceVisible || this.sending || this.loading) return false;
+    if (!this.hasUnsavedChanges) return true;
+    const context = this.captureContext();
+    const accepted = await this.confirmation().ask({
+      title: this.copy.discard,
+      description: this.copy.discard,
+      confirmLabel: this.management.back,
+      cancelLabel: this.management.cancel,
+    });
     return (
-      !this.hasUnsavedChanges ||
-      (typeof window !== 'undefined' && window.confirm(this.copy.discard))
+      accepted &&
+      this.currentContext(context) &&
+      this.workspaceVisible &&
+      !this.sending &&
+      !this.loading &&
+      this.hasUnsavedChanges
     );
   }
   protected onBeforeUnload(event: BeforeUnloadEvent): void {
@@ -299,6 +314,7 @@ export class GarageOnboardingComponent {
     effect(() => {
       const id = this.account.identity()?.userId;
       const state = this.account.state();
+      this.confirmation().cancelPending();
       untracked(() => {
         // A refresh of the same account temporarily hides, but does not discard, unsaved work.
         // A confirmed logout or different account must forget the previous private workspace.
@@ -519,7 +535,7 @@ export class GarageOnboardingComponent {
     }
   }
   protected async open(id: string): Promise<void> {
-    if (!this.canLeave()) return;
+    if (!(await this.canLeave())) return;
     const context = this.captureContext();
     this.loading = true;
     this.message = '';
@@ -553,8 +569,8 @@ export class GarageOnboardingComponent {
       }
     }
   }
-  protected reset(): void {
-    if (!this.canLeave()) return;
+  protected async reset(): Promise<void> {
+    if (!(await this.canLeave())) return;
     this.clearForm();
     this.editing = true;
     this.focusTitle();
@@ -575,7 +591,26 @@ export class GarageOnboardingComponent {
   protected async remove(): Promise<void> {
     if (!this.workspaceVisible || !this.garageId || !this.canDelete || this.sending || this.loading)
       return;
-    if (!window.confirm(this.management.confirm.replace('{name}', this.form.name))) return;
+    const context = this.captureContext();
+    const id = this.garageId;
+    if (
+      !(await this.confirmation().ask({
+        title: this.management.remove,
+        description: this.management.confirm.replace('{name}', this.form.name),
+        confirmLabel: this.management.remove,
+        cancelLabel: this.management.cancel,
+      }))
+    )
+      return;
+    if (
+      !this.currentContext(context) ||
+      !this.workspaceVisible ||
+      this.garageId !== id ||
+      !this.canDelete ||
+      this.sending ||
+      this.loading
+    )
+      return;
     const csrf = document.cookie
       .split('; ')
       .find((cookie) => cookie.startsWith('autokosova_csrf='))
@@ -586,7 +621,6 @@ export class GarageOnboardingComponent {
       this.message = this.copy.signIn;
       return;
     }
-    const context = this.captureContext();
     this.sending = true;
     this.message = '';
     try {

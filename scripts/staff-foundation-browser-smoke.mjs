@@ -118,10 +118,12 @@ try {
   );
   await browser.click('[data-escalate-panel] summary');
   await browser.fill('#staff-escalation', 'requires_admin');
-  const pending = browser.click('[data-escalate]');
-  await new Promise((resolve) => setTimeout(resolve, 150));
-  await browser.command('Page.handleJavaScriptDialog', { accept: true });
-  await pending;
+  await browser.click('[data-escalate]');
+  await until(
+    () => browser.evaluate(`!!document.querySelector('[data-confirmation-confirm]')`),
+    'escalation confirmation',
+  );
+  await browser.click('[data-confirmation-confirm]');
   await until(
     () =>
       browser.evaluate(

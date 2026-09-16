@@ -197,7 +197,7 @@ it('does not send a delete without ownership, confirmation or a CSRF token', asy
   component['garageId'] = 'demo-owned';
   const request = vi.fn();
   vi.stubGlobal('fetch', request);
-  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  const confirm = vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(false);
   try {
     await component['remove']();
     expect(confirm).not.toHaveBeenCalled();
@@ -205,7 +205,7 @@ it('does not send a delete without ownership, confirmation or a CSRF token', asy
     await component['remove']();
     expect(request).not.toHaveBeenCalled();
     expect(component['garageId']).toBe('demo-owned');
-    confirm.mockReturnValue(true);
+    confirm.mockResolvedValue(true);
     await component['remove']();
     expect(request).not.toHaveBeenCalled();
     expect(component['needsLogin']).toBe(true);
@@ -223,7 +223,7 @@ it('deletes only the selected garage and preserves form data on a failed delete'
   document.cookie = 'autokosova_csrf=test-csrf; path=/';
   const request = vi.fn().mockResolvedValue(new Response('{}', { status: 503 }));
   vi.stubGlobal('fetch', request);
-  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  const confirm = vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(true);
   try {
     await component['remove']();
     expect(component['garageId']).toBe('demo-owned');

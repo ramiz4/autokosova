@@ -58,6 +58,7 @@ import { SiteHeaderComponent } from './site-header.component';
 import { ButtonDirective } from './ui/button.directive';
 import { LucideIconComponent } from './ui/lucide-icon.component';
 import { RatingStarsComponent } from './ui/rating-stars.component';
+import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
 
 interface PublicGarageProfile {
   readonly contact: { readonly phone?: string; readonly whatsapp?: boolean };
@@ -96,6 +97,7 @@ const PROFILE_SECTIONS = new Set(['about', 'reviews', 'services', 'makes', 'loca
     FormsModule,
     LucideIconComponent,
     RatingStarsComponent,
+    ConfirmationDialogComponent,
     RouterLink,
     SiteFooterComponent,
     SiteHeaderComponent,
@@ -103,6 +105,7 @@ const PROFILE_SECTIONS = new Set(['about', 'reviews', 'services', 'makes', 'loca
   templateUrl: './garage-profile.component.html',
 })
 export class GarageProfileComponent {
+  readonly confirmation = viewChild.required<ConfirmationDialogComponent>('confirmation');
   readonly BadgeCheckIcon: LucideIcon = LucideBadgeCheck;
   readonly CarIcon: LucideIcon = LucideCar;
   readonly CheckIcon: LucideIcon = LucideCheck;
@@ -134,12 +137,20 @@ export class GarageProfileComponent {
     if (dirty) this.contributionDrafts.add(id);
     else this.contributionDrafts.delete(id);
   }
-  canLeave(): boolean {
-    return !this.contributionDrafts.size || window.confirm(this.reviewLabel('discard'));
+  async canLeave(): Promise<boolean> {
+    if (!this.contributionDrafts.size) return true;
+    const context = this.account.dataContext();
+    const accepted = await this.confirmation().ask({
+      title: this.reviewLabel('discard'),
+      description: this.reviewLabel('discard'),
+      confirmLabel: this.reviewLabel('discard'),
+      cancelLabel: this.reviewLabel('cancel'),
+    });
+    return accepted && context === this.account.dataContext() && this.contributionDrafts.size > 0;
   }
   protected async reviewPageChanged(page: number): Promise<void> {
-    if (!this.canLeave()) return;
-    await this.loadReviews(this.profile?.id, undefined, page);
+    if (!(await this.canLeave())) return;
+    await this.loadReviewsPage(this.profile?.id, undefined, page);
   }
 
   private readonly account = inject(AccountSessionService);
@@ -177,6 +188,7 @@ export class GarageProfileComponent {
   constructor() {
     effect(() => {
       this.account.dataContext();
+      this.confirmation().cancelPending();
       this.contributionDrafts.clear();
     });
     this.language.setPage('profile.profile', 'profile.trust');
@@ -447,7 +459,16 @@ export class GarageProfileComponent {
     page = 1,
   ): Promise<void> {
     if ((!this.browser && !requestUrl) || !garageId) return;
-    if (this.browser && !this.canLeave()) return;
+    if (this.browser && !(await this.canLeave())) return;
+    await this.loadReviewsPage(garageId, requestUrl, page);
+  }
+
+  private async loadReviewsPage(
+    garageId = this.profile?.id,
+    requestUrl?: string,
+    page = 1,
+  ): Promise<void> {
+    if ((!this.browser && !requestUrl) || !garageId) return;
     this.contributionDrafts.clear();
     const generation = ++this.reviewGeneration;
     this.reviewController?.abort();

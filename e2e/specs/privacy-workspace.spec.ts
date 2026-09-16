@@ -3,8 +3,8 @@ import type { Page } from '@playwright/test';
 import { adminLabel } from '../../src/shared/admin-copy';
 
 async function confirm(page: Page, selector: string) {
-  page.once('dialog', (dialog) => dialog.accept());
   await page.locator(selector).click();
+  await page.locator('[data-confirmation-confirm]').click();
 }
 
 test('privacy-context opens a bounded ownership blocker, returns from team context and refreshes it', async ({
