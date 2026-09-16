@@ -1,3 +1,4 @@
+import { reviewLabel } from '../shared/review-copy';
 import { staffCopy } from '../shared/staff-copy';
 import { accountType } from '../shared/account';
 import { NgTemplateOutlet } from '@angular/common';
@@ -23,12 +24,21 @@ import { IconComponent } from './ui/icon.component';
   templateUrl: './site-header.component.html',
 })
 export class SiteHeaderComponent {
+  protected readonly reviewLabel = reviewLabel;
   readonly compact = input(false);
   // Keep the logo consistent across landing, inquiry, search and onboarding navigation.
   readonly smallLogo = input(true);
   readonly loginReturnTo = input<string>();
   readonly active = input<
-    'admin' | 'moderation' | 'garage' | 'search' | 'request' | 'inquiries' | 'favorites' | undefined
+    | 'admin'
+    | 'moderation'
+    | 'garage'
+    | 'search'
+    | 'request'
+    | 'inquiries'
+    | 'favorites'
+    | 'reviews'
+    | undefined
   >();
   protected readonly account = inject(AccountSessionService);
   protected readonly accountType = accountType;

@@ -1,3 +1,4 @@
+import { registerReviewWorkflowRoutes } from './review-workflow-routes';
 import type { LocalDemoFileStore } from './local-demo-files';
 import { registerStaffRoutes } from './staff-routes';
 import { randomBytes } from 'node:crypto';
@@ -164,7 +165,7 @@ const repairRequestBodySchema = {
 function safeReturnTo(value: unknown): string {
   if (typeof value !== 'string' || value.length > 2000) return '/';
   const match = value.match(
-    /^(\/(?:(?:sq|en)\/)?(?:admin|moderation|profile|inquiries|favorites|inquiry|anfrage|garages(?:\/[A-Za-z0-9_-]{1,128})?))(?:\?([^#]*))?$/,
+    /^(\/(?:(?:sq|en)\/)?(?:admin|moderation|profile|reviews|inquiries|favorites|inquiry|anfrage|garages(?:\/[A-Za-z0-9_-]{1,128}(?:\/reviews\/new)?)?))(?:\?([^#]*))?$/,
   );
   if (!match) return '/';
   const path = match[1].replace(/\/anfrage$/, '/inquiry');
@@ -363,7 +364,9 @@ export function createServer(options: ServerOptions = {}) {
           method: request.method,
           url: request.url
             .split('?')[0]
-            .replace(/(\/api\/me\/repair-requests)\/[^/]+$/, '$1/:id')
+            .replace(/(\/api\/me\/(?:repair-requests|reviews|review-evidence))\/[^/]+/, '$1/:id')
+            .replace(/(\/api\/reviews)\/[^/]+/, '$1/:id')
+            .replace(/\/api\/garages\/[^/]+\/reviews\/[^/]+/, '/api/garages/:id/reviews/:id')
             .replace(/(\/api\/(?:staff\/cases|local-demo\/files))\/[^/]+/, '$1/:id'),
         }),
       },
@@ -480,6 +483,13 @@ export function createServer(options: ServerOptions = {}) {
   }
 
   registerStaffRoutes(app, moderationStore, requirePrincipal, errorResponse);
+  registerReviewWorkflowRoutes(
+    app,
+    reviewStore,
+    options.localDemoFiles,
+    requirePrincipal,
+    errorResponse,
+  );
   if (options.localDemoFiles) app.addHook('onClose', async () => options.localDemoFiles!.close());
   app.get('/api/local-demo/files/:fileId/content', async (request, reply) => {
     try {
@@ -511,7 +521,7 @@ export function createServer(options: ServerOptions = {}) {
     const sitemap = options.publicSiteUrl
       ? `\nSitemap: ${siteUrl(options.publicSiteUrl, '/sitemap.xml')}`
       : '';
-    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /admin\nDisallow: /sq/admin\nDisallow: /en/admin\nDisallow: /moderation\nDisallow: /sq/moderation\nDisallow: /en/moderation\nDisallow: /profile\nDisallow: /sq/profile\nDisallow: /en/profile\nDisallow: /favorites\nDisallow: /sq/favorites\nDisallow: /en/favorites\nDisallow: /inquiries\nDisallow: /sq/inquiries\nDisallow: /en/inquiries\nDisallow: /inquiry\nDisallow: /sq/inquiry\nDisallow: /en/inquiry\nDisallow: /garages/new\nDisallow: /sq/garages/new\nDisallow: /en/garages/new\nDisallow: /garages$\nDisallow: /garages?\nDisallow: /sq/garages$\nDisallow: /sq/garages?\nDisallow: /en/garages$\nDisallow: /en/garages?\nDisallow: /suche\nDisallow: /werkstaetten${sitemap}\n`;
+    return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /admin\nDisallow: /sq/admin\nDisallow: /en/admin\nDisallow: /moderation\nDisallow: /sq/moderation\nDisallow: /en/moderation\nDisallow: /profile\nDisallow: /sq/profile\nDisallow: /en/profile\nDisallow: /favorites\nDisallow: /sq/favorites\nDisallow: /en/favorites\nDisallow: /reviews\nDisallow: /sq/reviews\nDisallow: /en/reviews\nDisallow: /*/reviews/new\nDisallow: /inquiries\nDisallow: /sq/inquiries\nDisallow: /en/inquiries\nDisallow: /inquiry\nDisallow: /sq/inquiry\nDisallow: /en/inquiry\nDisallow: /garages/new\nDisallow: /sq/garages/new\nDisallow: /en/garages/new\nDisallow: /garages$\nDisallow: /garages?\nDisallow: /sq/garages$\nDisallow: /sq/garages?\nDisallow: /en/garages$\nDisallow: /en/garages?\nDisallow: /suche\nDisallow: /werkstaetten${sitemap}\n`;
   });
   app.get('/sitemap.xml', async (_request, reply) => {
     if (!options.publicSiteUrl) {
@@ -588,32 +598,42 @@ export function createServer(options: ServerOptions = {}) {
       return errorResponse(error, reply);
     }
   });
-  app.get('/api/public/garages/:garageId/reviews', async (request, reply) => {
-    try {
-      const params = request.params as { garageId: string };
-      const query = request.query as { serviceCategoryId?: string; vehicleMakeId?: string };
-      if (
-        query.serviceCategoryId &&
-        !REPAIR_REQUEST_SERVICE_CATEGORIES.includes(query.serviceCategoryId as never)
-      ) {
-        throw new AccessError(400, 'Please choose a known service category');
+  app.get(
+    '/api/public/garages/:garageId/reviews',
+    {
+      schema: {
+        querystring: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            page: { type: 'integer', minimum: 1, maximum: 10000 },
+            serviceCategoryId: { type: 'string', enum: REPAIR_REQUEST_SERVICE_CATEGORIES },
+            vehicleMakeId: { type: 'string', enum: REPAIR_REQUEST_VEHICLE_MAKES },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const id = (request.params as { garageId: string }).garageId;
+        const filter = request.query as {
+          page?: number;
+          serviceCategoryId?: string;
+          vehicleMakeId?: string;
+        };
+        if (reviewStore.listPublicReviewPage)
+          return await reviewStore.listPublicReviewPage(id, filter);
+        return {
+          reviews: await reviewStore.listPublicReviews(id, filter),
+          page: 1,
+          hasMore: false,
+        };
+      } catch (error) {
+        return errorResponse(error, reply);
       }
-      if (
-        query.vehicleMakeId &&
-        !REPAIR_REQUEST_VEHICLE_MAKES.includes(query.vehicleMakeId as never)
-      ) {
-        throw new AccessError(400, 'Please choose a known vehicle make');
-      }
-      return {
-        reviews: await reviewStore.listPublicReviews(params.garageId, {
-          ...(query.serviceCategoryId ? { serviceCategoryId: query.serviceCategoryId } : {}),
-          ...(query.vehicleMakeId ? { vehicleMakeId: query.vehicleMakeId } : {}),
-        }),
-      };
-    } catch (error) {
-      return errorResponse(error, reply);
-    }
-  });
+    },
+  );
+
   app.get('/api/public/garages/:garageId/photos/:photoId', async (request, reply) => {
     const params = request.params as { photoId: string; garageId: string };
     const photo = accessStore.getGaragePhoto(params.garageId, params.photoId);
@@ -1021,13 +1041,33 @@ export function createServer(options: ServerOptions = {}) {
     }
   });
 
-  app.get('/api/me/reviews', async (request, reply) => {
-    try {
-      return { reviews: await reviewStore.listOwnReviews(requirePrincipal(request)) };
-    } catch (error) {
-      return errorResponse(error, reply);
-    }
-  });
+  app.get(
+    '/api/me/reviews',
+    {
+      schema: {
+        querystring: {
+          type: 'object',
+          additionalProperties: false,
+          properties: { page: { type: 'integer', minimum: 1, maximum: 10000 } },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const principal = requirePrincipal(request);
+        if (!reviewStore.listOwnReviewPage)
+          return { reviews: await reviewStore.listOwnReviews(principal), page: 1, hasMore: false };
+        const data = await reviewStore.listOwnReviewPage(
+          principal,
+          (request.query as { page?: number }).page ?? 1,
+        );
+        requirePrincipal(request);
+        return data;
+      } catch (error) {
+        return errorResponse(error, reply);
+      }
+    },
+  );
 
   app.post(
     '/api/me/reviews',
@@ -1052,6 +1092,7 @@ export function createServer(options: ServerOptions = {}) {
         body: {
           additionalProperties: false,
           properties: {
+            requestId: { type: 'string', pattern: '^[a-fA-F0-9-]{36}$' },
             kind: { enum: ['complaint', 'rework'], type: 'string' },
             text: {
               maxLength: REVIEW_LIMITS.maxUpdateLength,
@@ -1059,7 +1100,7 @@ export function createServer(options: ServerOptions = {}) {
               type: 'string',
             },
           },
-          required: ['kind', 'text'],
+          required: ['kind', 'text', 'requestId'],
           type: 'object',
         },
       },
@@ -1067,12 +1108,13 @@ export function createServer(options: ServerOptions = {}) {
     async (request, reply) => {
       try {
         const params = request.params as { reviewId: string };
-        const body = request.body as { kind: ReviewUpdateKind; text: string };
+        const body = request.body as { kind: ReviewUpdateKind; text: string; requestId: string };
         await reviewStore.postReviewUpdate(
           requirePrincipal(request, true),
           params.reviewId,
           body.kind,
           body.text,
+          body.requestId,
         );
         return reply.code(204).send();
       } catch (error) {
@@ -1344,13 +1386,15 @@ export function createServer(options: ServerOptions = {}) {
         body: {
           additionalProperties: false,
           properties: {
+            requestId: { type: 'string', pattern: '^[a-fA-F0-9-]{36}$' },
+            responseRevision: { type: 'integer', minimum: 0, maximum: 2147483647 },
             text: {
               maxLength: REVIEW_LIMITS.maxResponseLength,
               minLength: REVIEW_LIMITS.minTextLength,
               type: 'string',
             },
           },
-          required: ['text'],
+          required: ['text', 'requestId', 'responseRevision'],
           type: 'object',
         },
       },
@@ -1358,12 +1402,14 @@ export function createServer(options: ServerOptions = {}) {
     async (request, reply) => {
       try {
         const params = request.params as { reviewId: string; garageId: string };
-        const body = request.body as { text: string };
+        const body = request.body as { text: string; requestId: string; responseRevision: number };
         await reviewStore.postGarageResponse(
           requirePrincipal(request, true),
           params.garageId,
           params.reviewId,
           body.text,
+          body.requestId,
+          body.responseRevision,
         );
         return reply.code(204).send();
       } catch (error) {

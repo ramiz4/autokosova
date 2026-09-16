@@ -1,0 +1,205 @@
+<div class="border-b border-slate-200 bg-white">
+  <app-site-header [compact]="true" active="reviews" />
+</div>
+<main id="main-content" class="mx-auto max-w-3xl px-4 py-8 text-ink sm:px-6 sm:py-12">
+  <h1 class="text-3xl font-bold">{{ label('write') }}</h1>
+  <p class="mt-3 text-muted">{{ label('intro') }}</p>
+  @if (account.state() === 'guest') {
+    <p class="mt-6">{{ label('login') }}</p>
+    <a appButton class="mt-4" [href]="loginUrl()">{{ language.t('nav.login') }}</a>
+  } @else if (!ready() || account.state() === 'loading' || loading()) {
+    <p role="status" class="mt-6">{{ label('loading') }}</p>
+  } @else if (account.state() === 'error') {
+    <p role="alert" class="mt-6">{{ label('error') }}</p>
+    <button appButton="outline" type="button" (click)="account.refresh()">
+      {{ label('retry') }}
+    </button>
+  } @else {
+    @if (error()) {
+      <p role="alert" class="mt-5 rounded-xl bg-rose-50 p-4 text-rose-900">{{ error() }}</p>
+    }
+    @if (!garageName()) {
+      <button appButton="outline" type="button" class="mt-4" (click)="load()">
+        {{ label('retry') }}
+      </button>
+    } @else {
+      <h2 class="mt-6 text-xl font-bold">{{ garageName() }}</h2>
+      @if (!canReview()) {
+        <p role="alert" class="mt-4 rounded-xl bg-amber-50 p-4">
+          {{ label(account.identity()?.roles?.includes('admin') ? 'adminReview' : 'selfReview') }}
+        </p>
+      } @else if (result(); as saved) {
+        <section
+          data-review-submitted
+          class="mt-6 rounded-2xl border border-emerald-200 bg-white p-6"
+        >
+          <p role="status" class="font-semibold">
+            {{ label('status') }}: {{ label(saved.publicationState) }}
+          </p>
+          <p class="mt-3">{{ label('submittedHelp') }}</p>
+          <a appButton class="mt-5" [routerLink]="language.link('reviews')">{{ label('own') }}</a>
+        </section>
+      } @else {
+        <form
+          class="mt-6 grid gap-6 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7"
+          (ngSubmit)="submit()"
+          [attr.aria-busy]="busy()"
+          novalidate
+        >
+          <label class="grid gap-2 font-semibold" for="review-service"
+            >{{ label('service') }}
+            <select
+              id="review-service"
+              name="serviceCategoryId"
+              [attr.aria-invalid]="attempted && !form.serviceCategoryId"
+              [(ngModel)]="form.serviceCategoryId"
+              required
+              [disabled]="busy()"
+              class="min-h-11 rounded-lg border border-slate-300 px-3"
+            >
+              <option value="">{{ label('choose') }}</option>
+              @for (service of services; track service) {
+                <option [value]="service">{{ language.serviceLabel(service) }}</option>
+              }
+            </select>
+            @if (attempted && !form.serviceCategoryId) {
+              <span class="text-sm font-normal text-rose-800">{{ label('invalid') }}</span>
+            }
+          </label>
+          <label class="grid gap-2 font-semibold" for="review-month"
+            >{{ label('month') }}
+            <input
+              id="review-month"
+              name="visitMonth"
+              [attr.aria-invalid]="attempted && !monthValid()"
+              type="month"
+              min="1900-01"
+              [max]="maximumMonth"
+              [(ngModel)]="form.visitMonth"
+              required
+              [disabled]="busy()"
+              class="min-h-11 min-w-0 rounded-lg border border-slate-300 px-3"
+            />
+            @if (attempted && !monthValid()) {
+              <span class="text-sm font-normal text-rose-800">{{ label('invalidMonth') }}</span>
+            }
+          </label>
+          <label class="grid gap-2 font-semibold" for="review-make"
+            >{{ label('make') }}
+            <select
+              id="review-make"
+              name="vehicleMakeId"
+              [(ngModel)]="form.vehicleMakeId"
+              [disabled]="busy()"
+              class="min-h-11 rounded-lg border border-slate-300 px-3"
+            >
+              <option value="">{{ label('none') }}</option>
+              @for (make of makes; track make) {
+                <option [value]="make">{{ make }}</option>
+              }
+            </select>
+          </label>
+          <fieldset class="grid gap-4 rounded-xl border border-slate-200 p-4" [disabled]="busy()">
+            <legend class="px-2 font-semibold">{{ label('ratings') }}</legend>
+            @for (field of fields; track field) {
+              <label
+                class="grid gap-2 sm:grid-cols-[1fr_10rem] sm:items-center"
+                [for]="'review-' + field"
+                >{{ label(field) }}
+                <select
+                  [id]="'review-' + field"
+                  [name]="field"
+                  [attr.aria-invalid]="attempted && (form[field] < 1 || form[field] > 5)"
+                  [(ngModel)]="form[field]"
+                  required
+                  class="min-h-11 rounded-lg border border-slate-300 px-3"
+                >
+                  <option [ngValue]="0">{{ label('choose') }}</option>
+                  @for (star of [1, 2, 3, 4, 5]; track star) {
+                    <option [ngValue]="star">{{ star }} / 5</option>
+                  }
+                </select>
+              </label>
+            }
+            <p class="text-sm text-muted">
+              {{ label('overall') }} <strong data-review-overall>{{ overall() }} / 5</strong>
+            </p>
+          </fieldset>
+          <label class="grid gap-2 font-semibold" for="review-text"
+            >{{ label('text') }}
+            <textarea
+              id="review-text"
+              name="text"
+              [attr.aria-invalid]="attempted && form.text.trim().length < 20"
+              rows="6"
+              minlength="20"
+              maxlength="2000"
+              required
+              [(ngModel)]="form.text"
+              [disabled]="busy()"
+              aria-describedby="review-text-help"
+              class="w-full rounded-lg border border-slate-300 p-3"
+            ></textarea>
+            <span id="review-text-help" class="text-sm font-normal text-muted">{{
+              label('textHelp')
+            }}</span>
+            @if (attempted && form.text.trim().length < 20) {
+              <span class="text-sm font-normal text-rose-800">{{ label('invalid') }}</span>
+            }
+          </label>
+          <section
+            class="grid gap-3 rounded-xl bg-slate-50 p-4"
+            aria-labelledby="review-evidence-title"
+          >
+            <h3 id="review-evidence-title" class="font-semibold">{{ label('evidence') }}</h3>
+            <p class="text-sm">{{ label('redact') }}</p>
+            @if (uploadMode() === 'local_fixture') {
+              <p class="text-sm text-amber-950">{{ label('demo') }}</p>
+              <a
+                href="/api/me/review-evidence/sample"
+                download="demo-visit.txt"
+                class="inline-flex min-h-11 items-center font-semibold text-brand-dark underline"
+                >{{ label('sample') }}</a
+              >
+              <input
+                id="review-evidence-file"
+                type="file"
+                accept=".txt,text/plain"
+                [attr.aria-label]="label('evidence')"
+                [disabled]="busy()"
+                (change)="selectFile($event)"
+                class="min-h-11 w-full min-w-0 text-sm"
+              />
+              <button
+                data-upload-review-evidence
+                appButton="outline"
+                type="button"
+                [disabled]="busy() || !file || !!evidenceId()"
+                (click)="upload()"
+              >
+                {{ label('upload') }}
+              </button>
+              @if (evidenceId()) {
+                <p data-review-evidence-uploaded role="status" class="text-sm text-emerald-900">
+                  {{ label('uploaded') }}
+                </p>
+              }
+            } @else {
+              <p role="status" class="text-sm">{{ label('uploadUnavailable') }}</p>
+            }
+          </section>
+          @if (busy()) {
+            <p role="status">{{ label('saving') }}</p>
+          }
+          <div class="flex flex-wrap gap-3">
+            <button data-submit-review appButton type="submit" [disabled]="busy() || !evidenceId()">
+              {{ label('submit') }}</button
+            ><a appButton="outline" [routerLink]="language.link('garage', garageId())">{{
+              label('back')
+            }}</a>
+          </div>
+        </form>
+      }
+    }
+  }
+</main>

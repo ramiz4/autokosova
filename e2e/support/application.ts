@@ -11,7 +11,7 @@ import { startTestOidc } from '../../scripts/inquiries-test-oidc.mjs';
 import { startProcess, runProcess } from '../../scripts/dev/process.mjs';
 import { assertControlDatabase, processEnvironment } from '../../scripts/e2e/policy.mjs';
 
-export type AccountKind = 'customer' | 'garage' | 'other' | 'editor';
+export type AccountKind = 'customer' | 'garage' | 'other' | 'editor' | 'admin' | 'moderator';
 export type App = Awaited<ReturnType<typeof createApplication>>;
 
 async function freePort(): Promise<number> {
@@ -36,6 +36,8 @@ export async function createApplication() {
     garage: 'e2e-garage-' + randomUUID(),
     other: 'e2e-other-' + randomUUID(),
     editor: 'e2e-editor-' + randomUUID(),
+    admin: 'e2e-admin-' + randomUUID(),
+    moderator: 'e2e-moderator-' + randomUUID(),
   };
   const provider = await startTestOidc(origin + '/auth/callback', subjects.customer);
   baseUrl.pathname = '/' + databaseName;
@@ -48,6 +50,9 @@ export async function createApplication() {
     PORT: String(port),
     AUTOKOSOVA_DEMO_GARAGE_SUBJECT: subjects.garage,
     AUTOKOSOVA_DEMO_CUSTOMER_SUBJECT: subjects.customer,
+    AUTOKOSOVA_DEMO_ADMIN_SUBJECT: subjects.admin,
+    AUTOKOSOVA_DEMO_MODERATOR_SUBJECT: subjects.moderator,
+    AUTOKOSOVA_LOCAL_DEMO_FILES: '1',
   };
   let child: ReturnType<typeof startProcess> | undefined;
   let created = false;
@@ -132,6 +137,7 @@ export async function createApplication() {
       await start();
     },
     async login(page: Page, kind: AccountKind, locale = 'de', returnTo?: string) {
+      provider.setRoles(kind === 'admin' ? ['admin'] : kind === 'moderator' ? ['moderator'] : []);
       provider.setSubject(subjects[kind]);
       provider.setProfile({
         name: `E2E ${kind}`,

@@ -66,6 +66,24 @@ function localizedRoutes(prefix: string): Routes {
       loadComponent: () =>
         import('./favorites.component').then((module) => module.FavoritesComponent),
     },
+    {
+      path: `${childPrefix}reviews`,
+      pathMatch: 'full',
+      loadComponent: () => import('./reviews.component').then((m) => m.ReviewsComponent),
+      canDeactivate: [
+        (component: import('./reviews.component').ReviewsComponent | null) =>
+          component?.canLeave() ?? true,
+      ],
+    },
+    {
+      path: `${childPrefix}garages/:garageId/reviews/new`,
+      pathMatch: 'full',
+      loadComponent: () => import('./review-create.component').then((m) => m.ReviewCreateComponent),
+      canDeactivate: [
+        (component: import('./review-create.component').ReviewCreateComponent | null) =>
+          component?.canLeave() ?? true,
+      ],
+    },
     // Compatibility redirects only; generated links always use English route names.
     {
       path: `${childPrefix}anfrage`,
@@ -117,6 +135,7 @@ function localizedRoutes(prefix: string): Routes {
     })),
     {
       component: GarageProfileComponent,
+      canDeactivate: [(component: GarageProfileComponent | null) => component?.canLeave() ?? true],
       path: `${childPrefix}garages/:garageId`,
       // The profile keeps the shared footer inside its mobile safe-area layout.
       data: { ownsFooter: true },

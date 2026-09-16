@@ -248,7 +248,7 @@
                       [routerLink]="language.link('garage', profile.id)"
                       [queryParams]="backQueryParams()"
                       fragment="reviews"
-                      class="text-muted underline decoration-slate-300 underline-offset-4 hover:text-brand-dark"
+                      class="inline-flex min-h-11 items-center text-muted underline decoration-slate-300 underline-offset-4 hover:text-brand-dark"
                       >({{ reviewCountLabel(profile.reviewSummary!.reviewCount) }})</a
                     >
                   </span>
@@ -479,7 +479,10 @@
           } @else {
             <ol class="mt-5 grid gap-4">
               @for (review of reviews; track review.id) {
-                <li class="border-t border-slate-200 py-5 first:border-t-0">
+                <li
+                  [attr.data-public-review-id]="review.id"
+                  class="border-t border-slate-200 py-5 first:border-t-0"
+                >
                   <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div class="flex flex-wrap items-center gap-2">
@@ -521,12 +524,25 @@
                   </p>
                   @if (review.garageResponse) {
                     <div class="mt-4 border-l-4 border-blue-200 pl-4">
-                      <p class="font-semibold">{{ ui('profile.ui.response') }}</p>
+                      <p class="font-semibold">
+                        {{ ui('profile.ui.response') }} ·
+                        {{
+                          review.garageResponse.updatedAt || review.garageResponse.createdAt
+                            | date: 'dd.MM.yyyy HH:mm'
+                        }}
+                      </p>
                       <p class="mt-1 text-sm leading-6 text-muted">
                         {{ review.garageResponse.text }}
                       </p>
                     </div>
                   }
+                  <app-review-contribution
+                    [reviewId]="review.id"
+                    [garageId]="profile.id"
+                    [response]="review.garageResponse"
+                    (dirtyChange)="contributionDirty(review.id, $event)"
+                    (changed)="loadReviews(profile.id, undefined, reviewPage)"
+                  />
                   @if (review.updates.length) {
                     <div class="mt-4 border-l-4 border-slate-200 pl-4">
                       <p class="font-semibold">{{ ui('profile.ui.updates') }}</p>
@@ -538,7 +554,8 @@
                                 ? 'profile.ui.rework'
                                 : 'profile.ui.complaint'
                             )
-                          }}: {{ update.text }}
+                          }}
+                          · {{ update.createdAt | date: 'dd.MM.yyyy HH:mm' }}: {{ update.text }}
                         </p>
                       }
                     </div>
@@ -547,9 +564,27 @@
               }
             </ol>
           }
-          <p class="mt-5 border-t border-slate-100 pt-4 text-xs leading-5 text-muted">
-            {{ ui('profile.ui.writeUnavailable') }}
-          </p>
+          <div class="mt-5 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
+            <a data-write-review appButton [routerLink]="language.link('review-new', profile.id)">{{
+              reviewLabel('write')
+            }}</a>
+            <button
+              appButton="outline"
+              type="button"
+              [disabled]="reviewPage <= 1 || reviewState === 'loading'"
+              (click)="reviewPageChanged(reviewPage - 1)"
+            >
+              {{ reviewLabel('previous') }}
+            </button>
+            <button
+              appButton="outline"
+              type="button"
+              [disabled]="!reviewHasMore || reviewState === 'loading'"
+              (click)="reviewPageChanged(reviewPage + 1)"
+            >
+              {{ reviewLabel('next') }}
+            </button>
+          </div>
         </section>
       </div>
     }
