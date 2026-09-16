@@ -1,4 +1,5 @@
-import { DatePipe } from '@angular/common';
+import { DOCUMENT } from '@angular/common';
+import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
 import {
   Component,
   DestroyRef,
@@ -8,31 +9,64 @@ import {
   signal,
   untracked,
   viewChild,
+  viewChildren,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import {
+  LucideCalendarDays,
+  LucideEllipsisVertical,
+  LucideEye,
+  LucideFileText,
+  LucideMessageSquarePlus,
+  LucideSearch,
+  LucideSlidersHorizontal,
+  type LucideIcon,
+} from '@lucide/angular';
 import { AccountSessionService } from './account-session.service';
 import { LanguageService } from './language.service';
 import { SiteHeaderComponent } from './site-header.component';
 import { ButtonDirective } from './ui/button.directive';
 import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
+import { LucideIconComponent } from './ui/lucide-icon.component';
+import { RatingStarsComponent } from './ui/rating-stars.component';
 import { ReviewContributionComponent } from './review-contribution.component';
 import { reviewLabel } from '../shared/review-copy';
-import type { OwnReviewDetail, OwnReviewPage } from '../shared/reviews';
-import { ReviewHttpError, reviewJson, reviewChecked, reviewError } from './review-http';
+import {
+  REVIEW_PAGE_SIZE,
+  type OwnReviewDetail,
+  type OwnReviewPage,
+  type OwnReviewSort,
+  type ReviewPublicationState,
+} from '../shared/reviews';
+import { ReviewHttpError, reviewChecked, reviewError, reviewJson } from './review-http';
+
+type ReviewAction = 'view' | 'evidence' | 'update';
 
 @Component({
   selector: 'app-reviews',
   imports: [
     SiteHeaderComponent,
     RouterLink,
-    DatePipe,
     ButtonDirective,
     ReviewContributionComponent,
     ConfirmationDialogComponent,
+    LucideIconComponent,
+    RatingStarsComponent,
+    CdkMenu,
+    CdkMenuItem,
+    CdkMenuTrigger,
   ],
+  styleUrl: './reviews.component.scss',
   templateUrl: './reviews.component.html',
 })
 export class ReviewsComponent {
+  readonly CalendarIcon: LucideIcon = LucideCalendarDays;
+  readonly EllipsisIcon: LucideIcon = LucideEllipsisVertical;
+  readonly EvidenceIcon: LucideIcon = LucideFileText;
+  readonly EyeIcon: LucideIcon = LucideEye;
+  readonly SearchIcon: LucideIcon = LucideSearch;
+  readonly SortIcon: LucideIcon = LucideSlidersHorizontal;
+  readonly UpdateIcon: LucideIcon = LucideMessageSquarePlus;
   readonly confirmation = viewChild.required<ConfirmationDialogComponent>('confirmation');
   readonly account = inject(AccountSessionService);
   readonly language = inject(LanguageService);
@@ -45,9 +79,32 @@ export class ReviewsComponent {
   readonly evidence = signal<string | null>(null);
   readonly page = signal(1);
   readonly hasMore = signal(false);
+  readonly total = signal(0);
+  readonly search = signal('');
+  readonly publicationState = signal<ReviewPublicationState | 'all'>('all');
+  readonly sort = signal<OwnReviewSort>('submitted_desc');
+  readonly startUpdate = signal(false);
+  readonly states: readonly (ReviewPublicationState | 'all')[] = [
+    'all',
+    'submitted',
+    'under_review',
+    'published',
+    'temporarily_hidden',
+    'rejected',
+    'withdrawn',
+  ];
+  readonly sorts: readonly OwnReviewSort[] = ['submitted_desc', 'submitted_asc'];
+  readonly actionsMenuPositions = [
+    { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
+    { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -8 },
+  ] satisfies CdkMenuTrigger['menuPosition'];
+  private readonly actionMenus = viewChildren(CdkMenuTrigger);
+  private readonly document = inject(DOCUMENT);
   private dirty = false;
   private generation = 0;
   private controller = new AbortController();
+  private searchTimer: ReturnType<typeof setTimeout> | undefined;
+
   constructor() {
     afterNextRender(() => {
       this.ready.set(true);
@@ -57,15 +114,18 @@ export class ReviewsComponent {
       const context = this.account.dataContext(),
         ready = this.ready();
       this.confirmation().cancelPending();
+      this.actionMenus().forEach((menu) => menu.close());
       this.generation++;
       this.controller.abort();
       this.controller = new AbortController();
+      if (this.searchTimer) clearTimeout(this.searchTimer);
       this.reviews.set([]);
       this.detail.set(null);
       this.evidence.set(null);
       this.error.set('');
       this.loading.set(false);
       this.busy.set(false);
+      this.total.set(0);
       this.dirty = false;
       if (context && ready) untracked(() => void this.load());
     });
@@ -73,6 +133,7 @@ export class ReviewsComponent {
     inject(DestroyRef).onDestroy(() => {
       this.generation++;
       this.controller.abort();
+      if (this.searchTimer) clearTimeout(this.searchTimer);
     });
   }
   label(key: string): string {
@@ -80,6 +141,55 @@ export class ReviewsComponent {
   }
   loginUrl(): string {
     return '/auth/login?returnTo=' + encodeURIComponent(this.language.link('reviews'));
+  }
+  pageCount(): number {
+    return Math.max(1, Math.ceil(this.total() / REVIEW_PAGE_SIZE));
+  }
+  pageDescription(): string {
+    return this.label('pageOf')
+      .replace('{page}', String(this.page()))
+      .replace('{pages}', String(this.pageCount()))
+      .replace('{total}', String(this.total()));
+  }
+  hasActiveFilters(): boolean {
+    return !!this.search() || this.publicationState() !== 'all' || this.sort() !== 'submitted_desc';
+  }
+  searchLabel(): string {
+    return this.label('searchReviews');
+  }
+  sortLabel(sort: OwnReviewSort): string {
+    return this.label(sort);
+  }
+  stateLabel(state: ReviewPublicationState | 'all'): string {
+    return state === 'all' ? this.label('allReviews') : this.label(state);
+  }
+  submittedAt(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    const locale =
+      this.language.language === 'de' ? 'de-CH' : this.language.language === 'sq' ? 'sq' : 'en-GB';
+    return new Intl.DateTimeFormat(locale, {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(date);
+  }
+  ratingLabel(rating: number): string {
+    const number = rating.toLocaleString(
+      this.language.language === 'de' ? 'de-CH' : this.language.language,
+      { minimumFractionDigits: 1, maximumFractionDigits: 1 },
+    );
+    return this.language.language === 'sq'
+      ? `${number} nga 5 yje`
+      : this.language.language === 'en'
+        ? `${number} out of 5 stars`
+        : `${number} von 5 Sternen`;
+  }
+  statusClass(status: string): string {
+    return `status-${status}`;
+  }
+  setDirty(value: boolean): void {
+    this.dirty = value;
   }
   async canLeave(): Promise<boolean> {
     if (this.busy() || !this.dirty) return !this.busy();
@@ -92,14 +202,23 @@ export class ReviewsComponent {
     });
     return accepted && context === this.account.dataContext() && !this.busy() && this.dirty;
   }
-  setDirty(value: boolean): void {
-    this.dirty = value;
+  onSearch(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => void this.changeList({ query: input.value }, input), 250);
   }
-  private current(generation: number, context: unknown): boolean {
-    return generation === this.generation && context === this.account.dataContext();
+  onState(state: ReviewPublicationState | 'all', select: HTMLSelectElement): void {
+    void this.changeList({ publicationState: state }, undefined, select);
   }
-  async load(page = 1): Promise<void> {
-    if (!this.account.dataContext() || this.busy() || !(await this.canLeave())) return;
+  onSort(sort: OwnReviewSort, select: HTMLSelectElement): void {
+    void this.changeList({ sort }, undefined, select);
+  }
+  async clearFilters(): Promise<void> {
+    await this.changeList({ query: '', publicationState: 'all', sort: 'submitted_desc' });
+  }
+  async load(page = 1, skipLeave = false): Promise<void> {
+    if (!this.account.dataContext() || this.busy() || (!skipLeave && !(await this.canLeave())))
+      return;
     const generation = ++this.generation,
       context = this.account.dataContext();
     this.controller.abort();
@@ -108,33 +227,46 @@ export class ReviewsComponent {
     this.error.set('');
     this.detail.set(null);
     this.evidence.set(null);
+    this.startUpdate.set(false);
     this.dirty = false;
     try {
       const data = await reviewJson<OwnReviewPage>(
-        await fetch('/api/me/reviews?page=' + page, {
+        await fetch(this.listUrl(page), {
           credentials: 'same-origin',
           cache: 'no-store',
           signal: this.controller.signal,
         }),
       );
       if (this.current(generation, context)) {
-        if (!Array.isArray(data.reviews) || typeof data.hasMore !== 'boolean')
+        if (
+          !Array.isArray(data.reviews) ||
+          typeof data.hasMore !== 'boolean' ||
+          !Number.isInteger(data.total)
+        )
           throw new Error('Invalid review page');
+        const lastPage = Math.max(1, Math.ceil(data.total / REVIEW_PAGE_SIZE));
+        if (data.total > 0 && page > lastPage) {
+          this.total.set(data.total);
+          void this.load(lastPage, true);
+          return;
+        }
         this.reviews.set(data.reviews);
-        this.page.set(data.page);
+        this.page.set(data.total ? page : 1);
         this.hasMore.set(data.hasMore);
+        this.total.set(data.total);
       }
     } catch (error) {
       if (this.current(generation, context)) {
         this.reviews.set([]);
+        this.total.set(0);
         this.failure(error);
       }
     } finally {
       if (this.current(generation, context)) this.loading.set(false);
     }
   }
-  async open(id: string, afterSaved = false): Promise<void> {
-    if (!afterSaved && !(await this.canLeave())) return;
+  async open(id: string, action: ReviewAction = 'view'): Promise<void> {
+    if (!(await this.canLeave())) return;
     const generation = ++this.generation,
       context = this.account.dataContext();
     this.controller.abort();
@@ -143,6 +275,7 @@ export class ReviewsComponent {
     this.error.set('');
     this.detail.set(null);
     this.evidence.set(null);
+    this.startUpdate.set(false);
     this.dirty = false;
     try {
       const data = await reviewJson<OwnReviewDetail>(
@@ -155,12 +288,19 @@ export class ReviewsComponent {
       if (this.current(generation, context)) {
         if (data.id !== id || typeof data.text !== 'string') throw new Error('Invalid own review');
         this.detail.set(data);
+        if (action === 'update') this.startUpdate.set(true);
+        afterNextRender(() => this.document.getElementById('own-review-detail-title')?.focus());
+        if (action === 'evidence') await this.openEvidence();
       }
     } catch (error) {
       if (this.current(generation, context)) this.failure(error);
     } finally {
       if (this.current(generation, context)) this.loading.set(false);
     }
+  }
+  openFromMenu(review: OwnReviewDetail, action: ReviewAction, menu: CdkMenuTrigger): void {
+    menu.close();
+    void this.open(review.id, action);
   }
   async openEvidence(): Promise<void> {
     const detail = this.detail();
@@ -196,11 +336,38 @@ export class ReviewsComponent {
       if (this.current(generation, context)) this.busy.set(false);
     }
   }
-  private failure(error: unknown): void {
-    if (error instanceof ReviewHttpError && error.status === 401) {
-      this.account.invalidate();
+  private async changeList(
+    change: {
+      query?: string;
+      publicationState?: ReviewPublicationState | 'all';
+      sort?: OwnReviewSort;
+    },
+    input?: HTMLInputElement,
+    select?: HTMLSelectElement,
+  ): Promise<void> {
+    if (!(await this.canLeave())) {
+      if (input) input.value = this.search();
+      if (select)
+        select.value =
+          change.publicationState !== undefined ? this.publicationState() : this.sort();
       return;
     }
-    this.error.set(reviewError(error, this.language.language));
+    if (change.query !== undefined) this.search.set(change.query);
+    if (change.publicationState !== undefined) this.publicationState.set(change.publicationState);
+    if (change.sort !== undefined) this.sort.set(change.sort);
+    await this.load(1, true);
+  }
+  private listUrl(page: number): string {
+    const params = new URLSearchParams({ page: String(page), sort: this.sort() });
+    if (this.search().trim()) params.set('query', this.search().trim());
+    if (this.publicationState() !== 'all') params.set('publicationState', this.publicationState());
+    return '/api/me/reviews?' + params.toString();
+  }
+  private current(generation: number, context: unknown): boolean {
+    return generation === this.generation && context === this.account.dataContext();
+  }
+  private failure(error: unknown): void {
+    if (error instanceof ReviewHttpError && error.status === 401) this.account.invalidate();
+    else this.error.set(reviewError(error, this.language.language));
   }
 }

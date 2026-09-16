@@ -10,6 +10,7 @@ import {
   input,
   output,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -33,6 +34,8 @@ export class ReviewContributionComponent {
   readonly garageId = input.required<string>();
   readonly mode = input<'response' | 'update'>('response');
   readonly response = input<PublicGarageReview['garageResponse']>();
+  /** Opens the existing contribution editor from a parent action menu. */
+  readonly startRequested = input(false);
   readonly changed = output<void>();
   readonly dirtyChange = output<boolean>();
   readonly account = inject(AccountSessionService);
@@ -71,6 +74,9 @@ export class ReviewContributionComponent {
       this.text = '';
       this.baseline = '';
       this.dirtyChange.emit(false);
+    });
+    effect(() => {
+      if (this.startRequested()) untracked(() => this.start());
     });
     inject(DestroyRef).onDestroy(() => {
       this.generation++;

@@ -8,9 +8,9 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     accountNavigationCopy('sq').reviews,
   ],
   intro: [
-    'Berichte über einen tatsächlichen Werkstattbesuch. Dein Nachweis bleibt privat.',
-    'Describe an actual garage visit. Your evidence stays private.',
-    'Përshkruaj një vizitë reale në servis. Dëshmia mbetet private.',
+    'Hier findest du alle Bewertungen, die du für Werkstätten abgegeben hast.',
+    'Here you can find every review you have submitted for garages.',
+    'Këtu i gjen të gjitha vlerësimet që ke dorëzuar për serviset.',
   ],
   login: [
     'Bitte melde dich an, um deine Bewertung einzureichen.',
@@ -176,6 +176,40 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Të hidhen poshtë ndryshimet e paruajtura?',
   ],
   details: ['Details ansehen', 'View details', 'Shiko detajet'],
+  reviewsEyebrow: ['BEWERTUNGEN', 'REVIEWS', 'VLERËSIME'],
+  allReviews: ['Alle Bewertungen', 'All reviews', 'Të gjitha vlerësimet'],
+  searchReviews: ['Bewertungen durchsuchen…', 'Search reviews…', 'Kërko vlerësime…'],
+  filterReviews: [
+    'Bewertungen nach Status filtern',
+    'Filter reviews by status',
+    'Filtro vlerësimet sipas statusit',
+  ],
+  sortReviews: ['Bewertungen sortieren', 'Sort reviews', 'Rendit vlerësimet'],
+  reviewControls: [
+    'Suche, Filter und Sortierung',
+    'Search, filter and sorting',
+    'Kërkim, filtër dhe renditje',
+  ],
+  reviewActions: ['Aktionen für Bewertung', 'Review actions', 'Veprimet për vlerësimin'],
+  submitted_desc: ['Zuletzt abgegeben', 'Most recently submitted', 'Dorëzuar së fundi'],
+  submitted_asc: ['Zuerst abgegeben', 'Oldest submitted first', 'Dorëzuar më herët'],
+  submittedOn: ['Eingereicht am', 'Submitted on', 'Dorëzuar më'],
+  pagination: ['Seitennavigation', 'Page navigation', 'Navigimi i faqeve'],
+  pageOf: [
+    'Seite {page} von {pages} · {total} Treffer',
+    'Page {page} of {pages} · {total} results',
+    'Faqja {page} nga {pages} · {total} rezultate',
+  ],
+  noResults: [
+    'Keine passenden Bewertungen gefunden.',
+    'No matching reviews found.',
+    'Nuk u gjet asnjë vlerësim përkatës.',
+  ],
+  clearFilters: [
+    'Suche und Filter zurücksetzen',
+    'Clear search and filters',
+    'Pastro kërkimin dhe filtrat',
+  ],
   empty: [
     'Du hast noch keine Bewertungen eingereicht.',
     'You have not submitted any reviews yet.',

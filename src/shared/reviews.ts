@@ -171,6 +171,16 @@ export interface OwnReviewPage {
   readonly reviews: readonly OwnReviewDetail[];
   readonly page: number;
   readonly hasMore: boolean;
+  /** Exact count after the private list filter has been applied. */
+  readonly total: number;
+}
+export type OwnReviewSort = 'submitted_desc' | 'submitted_asc';
+/** Parameters for the author's private list; all are evaluated server-side. */
+export interface OwnReviewListFilter {
+  readonly page?: number;
+  readonly query?: string;
+  readonly publicationState?: ReviewPublicationState;
+  readonly sort?: OwnReviewSort;
 }
 export interface PublicReviewPage {
   readonly reviews: readonly PublicGarageReview[];
