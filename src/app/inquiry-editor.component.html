@@ -40,15 +40,17 @@
           <p brnDialogDescription class="text-sm leading-[1.65] text-[#536d98]">
             {{ text('editHelp') }}
           </p>
-          <p class="help mt-4" data-inquiry-editor-status>
+          <p class="mt-4 text-sm leading-[1.65] text-[#536d98]" data-inquiry-editor-status>
             {{ text('statusLabel') }}: {{ text(request().active ? 'active' : 'inactive') }}
           </p>
           <fieldset
             [disabled]="saved.writeState() === 'saving'"
             class="mt-[18px] min-w-0 border-0 border-t border-[#e7edf5] pt-[22px]"
           >
-            <legend>{{ field('repair') }}</legend>
-            <label for="edit-service">{{ field('service') }}</label>
+            <legend class="pr-3 text-base font-bold">{{ field('repair') }}</legend>
+            <label for="edit-service" class="mb-[7px] mt-[14px] block text-[13px] font-semibold">{{
+              field('service')
+            }}</label>
             <select
               id="edit-service"
               required
@@ -62,9 +64,11 @@
                 <option [value]="id">{{ language.serviceLabel(id) }}</option>
               }
             </select>
-            <label for="edit-symptom"
+            <label for="edit-symptom" class="mb-[7px] mt-[14px] block text-[13px] font-semibold"
               >{{ field('problem') }}
-              <span class="optional">{{ language.t('common.optional') }}</span></label
+              <span class="ml-1.5 text-xs font-normal text-[#536d98]">{{
+                language.t('common.optional')
+              }}</span></label
             >
             <textarea
               id="edit-symptom"
@@ -77,9 +81,11 @@
             class="mt-[18px] min-w-0 border-0 border-t border-[#e7edf5] pt-[22px]"
             [open]="!!request().vehicle"
           >
-            <summary>
+            <summary class="min-h-11 text-base font-bold">
               {{ field('vehicle') }}
-              <span class="optional">{{ language.t('common.optional') }}</span>
+              <span class="ml-1.5 text-xs font-normal text-[#536d98]">{{
+                language.t('common.optional')
+              }}</span>
             </summary>
             <fieldset
               formGroupName="vehicle"
@@ -159,14 +165,17 @@
               </div>
             </fieldset>
           </details>
-          <fieldset class="edit-section" [disabled]="saved.writeState() === 'saving'">
-            <legend>{{ field('placeTime') }}</legend>
+          <fieldset
+            class="mt-[18px] min-w-0 border-0 border-t border-[#e7edf5] pt-[22px]"
+            [disabled]="saved.writeState() === 'saving'"
+          >
+            <legend class="pr-3 text-base font-bold">{{ field('placeTime') }}</legend>
             <app-search-areas
               formControlName="areas"
               idPrefix="inquiry-edit"
               (editingChange)="areasEditing.set($event)"
             />
-            <div class="field-grid">
+            <div class="grid min-w-0 grid-cols-2 gap-x-[18px] gap-y-1 max-[480px]:grid-cols-1">
               <div>
                 <label for="edit-dropoff">{{ field('dropoff') }}</label
                 ><input
@@ -183,7 +192,7 @@
             </div>
           </fieldset>
           @if (request().attachmentIds.length) {
-            <p class="help">
+            <p class="text-sm leading-[1.65] text-[#536d98]">
               {{ text('attachments') }}: {{ request().attachmentIds.length }}.
               {{ text('attachmentsKept') }}
             </p>
@@ -196,7 +205,7 @@
           }
           @if (discarding()) {
             <section role="alert" class="discard-box" aria-labelledby="discard-title">
-              <h3 id="discard-title">{{ text('discardTitle') }}</h3>
+              <h3 id="discard-title" class="font-bold">{{ text('discardTitle') }}</h3>
               <p>{{ text('discardBody') }}</p>
               <div class="dialog-actions">
                 <button type="button" appButton="outline" size="compact" (click)="keepEditing()">
