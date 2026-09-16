@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { createServer } from 'node:http';
-import { exportJWK, generateKeyPair, SignJWT } from 'jose';
+import { jwtVerify, exportJWK, generateKeyPair, SignJWT } from 'jose';
 
 /** Test-only stateful provider: real PKCE/JWT flow, explicit fake credential entry, real SSO cookie. */
 export async function startSessionOidc(redirectUri) {
@@ -13,7 +13,7 @@ export async function startSessionOidc(redirectUri) {
   const codes = new Map(),
     sessions = new Map(),
     forms = new Map();
-  const counters = { prompts: 0, silentLogins: 0, logouts: 0, exchanges: 0 };
+  const counters = { prompts: 0, silentLogins: 0, logouts: 0, exchanges: 0, selections: 0 };
   let issuer,
     mode = 'fresh',
     rejectLogout = false,
@@ -87,10 +87,10 @@ export async function startSessionOidc(redirectUri) {
         assert.ok(['a', 'b'].includes(form.get('account')));
         const id = randomUUID(),
           session = {
+            id,
             subject: `logout-fixture-${form.get('account')}`,
             authTime: Math.floor(Date.now() / 1000),
           };
-        sessions.delete(cookie(request, 'fixture_sso'));
         sessions.set(id, session);
         response.setHeader('set-cookie', `fixture_sso=${id}; Path=/; HttpOnly; SameSite=Lax`);
         authorize(response, parameters, session);
@@ -115,6 +115,12 @@ export async function startSessionOidc(redirectUri) {
         );
         await tokenPause?.();
         const token = await new SignJWT({
+          ...(mode === 'missing-sid'
+            ? {}
+            : {
+                sid:
+                  mode === 'legacy-sid' ? 'V1_' + grant.id : mode === 'invalid-sid' ? 42 : grant.id,
+              }),
           name: `Fiktives Konto ${grant.subject.endsWith('a') ? 'A' : 'B'}`,
           nonce: mode === 'wrong-nonce' ? 'wrong' : grant.nonce,
           ...(mode === 'missing-time'
@@ -135,17 +141,40 @@ export async function startSessionOidc(redirectUri) {
         assert.equal(url.searchParams.get('client_id'), 'logout-test-client');
         assert.equal(url.searchParams.get('post_logout_redirect_uri'), callback);
         assert.ok(url.searchParams.get('state'));
-        assert.equal(url.searchParams.has('id_token_hint'), false);
+        const hint = url.searchParams.get('id_token_hint');
+        if (!hint) {
+          counters.selections++;
+          response.writeHead(302, { location: '/logout?selection=required' }).end();
+          return;
+        }
+        const { payload } = await jwtVerify(hint, keys.publicKey, {
+          issuer,
+          audience: 'logout-test-client',
+        });
+        const sid = payload.sid;
+        assert.equal(typeof sid, 'string');
+        assert.ok(
+          sessions.has(sid),
+          'id_token_hint must identify an active matching provider session',
+        );
+        assert.equal(sessions.get(sid).subject, payload.sub);
         if (rejectLogout) {
           response.writeHead(503).end('Test provider unavailable');
           return;
         }
-        sessions.delete(cookie(request, 'fixture_sso'));
+        sessions.delete(sid);
         counters.logouts++;
-        response.setHeader('set-cookie', 'fixture_sso=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
+        if (cookie(request, 'fixture_sso') === sid)
+          response.setHeader(
+            'set-cookie',
+            'fixture_sso=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0',
+          );
         const target = new URL(callback);
         target.searchParams.set('state', url.searchParams.get('state'));
         response.writeHead(302, { location: target.href }).end();
+      } else if (url.pathname === '/logout') {
+        response.setHeader('content-type', 'text/html; charset=utf-8');
+        response.end('<!doctype html><h1 data-account-selection>Account selection required</h1>');
       } else response.writeHead(404).end();
     } catch {
       response.writeHead(400).end('Invalid test request');
@@ -160,6 +189,14 @@ export async function startSessionOidc(redirectUri) {
     counters,
     get sessionCount() {
       return sessions.size;
+    },
+    addUnrelatedSession(subject = 'logout-fixture-unrelated') {
+      const id = randomUUID();
+      sessions.set(id, { id, subject, authTime: Math.floor(Date.now() / 1000) });
+      return id;
+    },
+    hasSession(id) {
+      return sessions.has(id);
     },
     setMode(value) {
       mode = value;

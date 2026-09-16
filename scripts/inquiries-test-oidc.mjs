@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { createServer } from 'node:http';
-import { exportJWK, generateKeyPair, SignJWT } from 'jose';
+import { jwtVerify, exportJWK, generateKeyPair, SignJWT } from 'jose';
 
 /** Isolated test provider. Production auth code still exchanges PKCE and verifies signed JWTs. */
 export async function startTestOidc(redirectUri, initialSubject) {
@@ -10,9 +10,9 @@ export async function startTestOidc(redirectUri, initialSubject) {
   const jwk = { ...(await exportJWK(publicKey)), kid: randomUUID(), use: 'sig', alg: 'RS256' };
   const codes = new Map();
   const tokens = new Map();
-  const logoutSelections = new Map();
-  let logoutSelectionLogin;
+  const providerSessions = new Map();
   let logoutSelectionCount = 0;
+  let logoutSelectionLogin;
   let profile = {
     name: 'Testkonto · Anfragen',
     preferred_username: 'inquiries-test',
@@ -67,6 +67,7 @@ export async function startTestOidc(redirectUri, initialSubject) {
           challenge: url.searchParams.get('code_challenge'),
           nonce: url.searchParams.get('nonce'),
           authTime: Math.floor(Date.now() / 1000),
+          sessionId: randomUUID(),
         });
         const target = new URL(redirectUri);
         target.searchParams.set('state', url.searchParams.get('state'));
@@ -77,28 +78,33 @@ export async function startTestOidc(redirectUri, initialSubject) {
         const target = new URL('/auth/logout/callback', redirectUri);
         assert.equal(url.searchParams.get('post_logout_redirect_uri'), target.href);
         assert.ok(url.searchParams.get('state'));
-        target.searchParams.set('state', url.searchParams.get('state'));
-        if (logoutSelectionLogin) {
-          const selection = randomUUID();
-          logoutSelections.set(selection, { target: target.href, login: logoutSelectionLogin });
-          response.writeHead(302, { location: '/logout?selection=' + selection }).end();
-        } else response.writeHead(302, { location: target.href }).end();
-      } else if (url.pathname === '/logout') {
-        const selection = url.searchParams.get('selection');
-        const pending = logoutSelections.get(selection);
-        assert.ok(pending);
-        if (request.method === 'POST') {
-          let body = '';
-          for await (const chunk of request) body += chunk;
-          assert.equal(new URLSearchParams(body).get('account'), 'own');
-          logoutSelections.delete(selection);
-          logoutSelectionCount++;
-          response.writeHead(303, { location: pending.target }).end();
-        } else {
-          response.setHeader('content-type', 'text/html');
-          response.end(`<form method="post"><button name="account" value="other">other-test-account</button>
-            <button name="account" value="own"><span>${pending.login}</span></button></form>`);
+        const hint = url.searchParams.get('id_token_hint');
+        if (!hint || logoutSelectionLogin) {
+          response.writeHead(302, { location: '/logout?selection=required' }).end();
+          return;
         }
+        const { payload } = await jwtVerify(hint, publicKey, {
+          issuer,
+          audience: 'inquiries-browser-test',
+        });
+        const sid = payload.sid;
+        assert.equal(typeof sid, 'string');
+        assert.ok(providerSessions.has(sid), 'logout hint must target an active provider session');
+        assert.equal(providerSessions.get(sid), payload.sub);
+        providerSessions.delete(sid);
+        target.searchParams.set('state', url.searchParams.get('state'));
+        response.writeHead(302, { location: target.href }).end();
+      } else if (url.pathname === '/logout') {
+        response.setHeader('content-type', 'text/html');
+        if (request.method === 'POST') {
+          logoutSelectionCount++;
+          response
+            .writeHead(400)
+            .end('Provider interaction is forbidden in the direct-logout test');
+        } else
+          response.end(
+            `<h1 data-account-selection>Account selection required</h1><form method="post"><button name="account" value="other">other-test-account</button><button name="account" value="own"><span>${logoutSelectionLogin ?? 'test-account'}</span></button></form>`,
+          );
       } else if (url.pathname === '/token' && request.method === 'POST') {
         let body = '';
         for await (const chunk of request) body += chunk;
@@ -119,6 +125,7 @@ export async function startTestOidc(redirectUri, initialSubject) {
           'urn:zitadel:iam:org:project:roles': Object.fromEntries(
             grant.roles.map((role) => [role, { 'synthetic-test-org': 'example.invalid' }]),
           ),
+          sid: grant.sessionId,
           nonce: grant.nonce,
           auth_time: grant.authTime,
         })
@@ -130,6 +137,7 @@ export async function startTestOidc(redirectUri, initialSubject) {
           .setExpirationTime('5m')
           .sign(privateKey);
         exchanges++;
+        providerSessions.set(grant.sessionId, grant.subject);
         response.setHeader('content-type', 'application/json');
         const accessToken = randomUUID();
         tokens.set('Bearer ' + accessToken, grant);

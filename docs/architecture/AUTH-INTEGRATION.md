@@ -163,8 +163,16 @@ Header und Profil verwenden denselben Ablauf:
    Der Browser navigiert vollständig zu `/auth/logout/provider`; ein kurzlebiges HttpOnly-Cookie
    bindet diesen einmaligen Handoff an die zuvor autorisierte Abmeldung.
 3. Der Browser besucht den konfigurierten End-Session-Endpunkt mit `client_id`, fester Callback-URI,
-   Sprache und zufälligem `state`. ZITADEL verwendet seine eigenen Cookies und kann eine
-   Logout-Bestätigung anzeigen. Raw-ID-Tokens werden weder aufbewahrt noch als Hint weitergegeben.
+   Sprache, zufälligem `state` und dem ID-Token-Hinweis der **zuvor erfolgreich verifizierten,
+   genau dieser lokalen Sitzung**. Der Hinweis bleibt ausschließlich serverseitig, ist an die
+   lokale Session gebunden und wird beim einmaligen Handoff, Abbruch, Ablauf, Ersatz, Widerruf
+   oder Server-Shutdown verworfen. Ein minutlicher Sweep entfernt auch nie wieder aufgerufene
+   abgelaufene Sitzungen/Handoffs. Er steht nie in Principal-/Konto-JSON, Cookies, Storage,
+   Fehlern oder Logs. Die notwendige Provider-Navigation trägt ihn nur als `id_token_hint`.
+   Nur ein verifizierter nichtleerer Login-V2-`sid` wird als gezielter Logout-Kontext verwendet.
+   Fehlende/ungültige `sid`-Claims oder Legacy-`V1_`-Sitzungen werden nicht an den Provider
+   weitergereicht, da dieser sonst sämtliche Browser-Sitzungen beenden könnte. Ohne sicheren
+   Kontext bleibt die Antwort beim wahrheitsgemäßen lokalen Logout-Fallback.
 4. Nur der passende, browsergebundene, noch gültige State wird einmal akzeptiert. Rückkehr zur
    Startseite `/`, `/sq` oder `/en`; kein erneuter automatischer Login. Der Callback verändert
    keine neuen App-Sitzungen. Ein neuer Login verwirft einen noch ausstehenden Logout-Callback.
@@ -172,8 +180,8 @@ Header und Profil verwenden denselben Ablauf:
 Ohne Provider-Logout-Konfiguration zeigt `/auth/logged-out` in DE/SQ/EN ausdrücklich nur die
 lokale Abmeldung und erklärt die Grenze. Ein Provider-Ausfall/abgebrochener Redirect hebt den
 lokalen Widerruf nicht auf; der nächste Login fordert weiterhin frische Authentifizierung.
-Bei abgelaufener App-Sitzung kann der Browser mit passendem Double-Submit-CSRF noch die
-Provider-Abmeldung starten. Ohne CSRF gibt es keine Provider-Navigation. API-Clients ohne
+Bei abgelaufener App-Sitzung kann der Browser mit passendem Double-Submit-CSRF noch lokale
+Cookies entfernen; ohne gültigen serverseitigen Logout-Kontext erfolgt keine Provider-Navigation. Ohne CSRF gibt es keine Provider-Navigation. API-Clients ohne
 JSON-Accept behalten den bisherigen **lokalen** 204-Vertrag, nicht die Behauptung eines SSO-Logout.
 
 Alle Auth-Antworten sind `private, no-store`, `Vary: Cookie`, `no-referrer` und `noindex`.
@@ -186,8 +194,9 @@ universeller Logout aus allen föderierten Diensten, Browserprofilen oder Gerät
 
 `node scripts/oidc-logout-browser-smoke.mjs` nutzt einen isolierten **zustandsbehafteten**
 signierenden OIDC-Testprovider mit eigenem SSO-Cookie und einer expliziten Test-Anmeldemaske.
-Das Programm prüft fortbestehende Provider-Sitzung, frische Anmeldung, Browser-End-Session,
-Konto A → Logout → Konto B, Header/Profil, Sprachen und Provider-Fehler. Keine Anwendungsantworten
+Das Programm prüft fortbestehende Provider-Sitzung, frische Anmeldung, Browser-End-Session ohne
+Kontoauswahl, gezielte Sitzung A → Logout bei fortbestehender unabhängiger Sitzung, anschließend
+Konto B, Header/Profil, Sprachen und Provider-Fehler. Keine Anwendungsantworten
 werden ersetzt und kein Login-Bypass in die Runtime eingebaut. Es werden keine Screenshots von
 Credentials/Codes/Token-URLs erstellt. Dieser Nachweis ersetzt **nicht** die freigegebene echte
 Test-ZITADEL aus #38. Der konkrete lokale Nutzerbrowser/1Password-Eintrag ist hier nicht verfügbar;
@@ -238,9 +247,9 @@ Die Testkonten werden ausschließlich über dedizierte 1Password-Vault-Referenze
 bereitgestellt, ihre Subjects ausschließlich in der eigenen zufälligen Test-DB zugeordnet.
 Passwörter gehören nur in den Browser-Testprozess, nicht in App, Build oder Seeds. Kontotyp,
 Anwendungsrollen und konkrete Memberships bleiben getrennte Prüfungen. Der echte Browserlauf
-muss zusätzlich Provider-End-Session, Callback und Kontowechsel nachweisen.
-Die gehostete Logout-Auswahl verwendet den frisch verifizierten kanonischen Benutzernamen,
-nicht einen möglicherweise abgekürzten Anmeldenamen aus dem Test-Secret.
+muss zusätzlich Provider-End-Session, Callback und Kontowechsel nachweisen. Eine gehostete
+Logout-Kontoauswahl ist ein klarer Fehlschlag; der Browserlauf klickt weder Bestätigung noch
+Konto und darf insbesondere kein fremdes Konto auswählen.
 
 Seit dem Nutzerauftrag vom 16.09.2026 erfolgt die CI ohne manuelle Environment-Approvals.
 Automatische Prüfung der benannten vertrauenswürdigen Konten, aktuellen Schreibrechte,

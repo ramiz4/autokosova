@@ -181,8 +181,8 @@ async function main() {
         beforeGarages,
       );
     });
-    await step('garage-logout', () => fullLogout(garage, config, garageUsername));
-    await step('customer-logout', () => fullLogout(customer, config, customerUsername));
+    await step('garage-logout', () => fullLogout(garage, config));
+    await step('customer-logout', () => fullLogout(customer, config));
     // Same browser context, without clearing cookies/storage: reject unintended account reuse.
     await step('account-switch', async () => {
       const switched = await signIn(customer, config, config.accounts[1]);
@@ -199,7 +199,7 @@ async function main() {
         (await (await api(customer, config.origin, '/api/me/repair-requests')).json()).requests,
       ).toEqual([]);
     });
-    await step('switched-logout', () => fullLogout(customer, config, garageUsername));
+    await step('switched-logout', () => fullLogout(customer, config));
   } catch (error) {
     if (error instanceof LogoutFailure) result.stage = error.stage;
     // Fixed stage retained; no arbitrary error messages or personal data.

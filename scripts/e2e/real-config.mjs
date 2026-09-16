@@ -46,7 +46,6 @@ export function realConfiguration(env) {
   return {
     issuer: env.E2E_REAL_ISSUER,
     endSessionEndpoint: endSession.href,
-    logoutConfirmSelector: env.E2E_REAL_LOGOUT_CONFIRM_SELECTOR,
     origin: base.origin,
     loginOrigin: login.origin,
     usernameSelector:

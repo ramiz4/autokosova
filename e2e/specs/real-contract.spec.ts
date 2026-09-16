@@ -22,29 +22,17 @@ test('real-runner-contract checks provider profile and actual end-session traver
   await fullLogout(page, config);
   await app.login(page, 'garage');
   await checkProfile(page, app.origin, 'garage');
-  // Real HTTP redirects, not page.route() on a redirect target (which is never intercepted).
+  await fullLogout(page, config);
+  expect(app.provider.logoutSelectionCount).toBe(0);
+  // Reproduce the previous provider page with both matching and unrelated accounts.
+  // A regression must fail without clicking either account, not silently complete it.
+  await app.login(page, 'garage');
   app.provider.setLogoutSelection('e2e-garage');
-  await fullLogout(page, config, 'e2e-garage');
-  expect(app.provider.logoutSelectionCount).toBe(1);
-  // The login input may be a short name, while the provider renders its canonical username.
-  const canonicalUsername = 'e2e-garage@example.invalid';
-  app.provider.setProfile({
-    name: 'E2E garage',
-    preferred_username: canonicalUsername,
-    email: 'garage@example.invalid',
-  });
-  app.provider.setLogoutSelection(canonicalUsername);
-  await page.goto(app.origin + '/auth/login?locale=de');
-  await expect(fullLogout(page, config, 'e2e-garage')).rejects.toMatchObject({
+  await expect(fullLogout(page, config)).rejects.toMatchObject({
     stage: 'logout-account-selection',
   });
-  expect(app.provider.logoutSelectionCount).toBe(1);
-  await page.goto(app.origin + '/auth/login?locale=de');
-  const identity = await (await page.request.get(app.origin + '/api/me')).json();
-  expect(identity.userId).toBe(app.subjects.garage);
-  expect(identity.username).toBe(canonicalUsername);
-  await fullLogout(page, config, identity.username);
-  expect(app.provider.logoutSelectionCount).toBe(2);
+  expect(app.provider.logoutSelectionCount).toBe(0);
+  await expect(page.locator('[data-account-selection]')).toBeVisible();
   app.provider.setLogoutSelection(undefined);
   await app.login(page, 'garage');
   // A successful local logout and app return must still fail with no visit to the required endpoint.

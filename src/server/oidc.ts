@@ -172,7 +172,11 @@ export async function verifyZitadelAccessToken(
     throw new Error('OIDC token has no subject');
   }
 
+  const sid = verification.payload['sid'];
   return {
+    // ZITADEL may terminate all browser sessions for absent/legacy V1 sids. Only V2
+    // session hints are safe here; unsupported sessions keep the local-only fallback.
+    canTargetLogout: typeof sid === 'string' && sid.length > 0 && !sid.startsWith('V1_'),
     profile: accountProfileFromClaims(verification.payload),
     roles: extractZitadelProjectRoles(verification.payload[zitadelProjectRolesClaim]),
     subject: verification.payload.sub,
@@ -223,11 +227,14 @@ export function createEndSessionUrl(
   config: ZitadelOidcConfig,
   state: string,
   locale: string,
+  idTokenHint: string,
 ): string {
   validateLogoutConfig(config, process.env['NODE_ENV'] === 'production');
+  if (!idTokenHint) throw new Error('Verified OIDC logout context is required');
   const url = new URL(config.endSessionEndpoint!);
-  // ZITADEL supports client_id + its own browser cookie. Do not retain/forward raw ID tokens.
+  // The caller supplies only the verified ID token bound to the just-revoked local session.
   url.searchParams.set('client_id', config.clientId);
+  url.searchParams.set('id_token_hint', idTokenHint);
   url.searchParams.set('post_logout_redirect_uri', config.postLogoutRedirectUri!);
   url.searchParams.set('state', state);
   url.searchParams.set('ui_locales', locale);

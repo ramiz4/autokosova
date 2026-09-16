@@ -175,9 +175,11 @@ ist eine Environment Variable mit der Vault-ID. Alle folgenden Environment Varia
 | `E2E_REAL_LOGIN_ORIGIN_REF` | Optional abweichender ausdrücklich freigegebener HTTPS-Login-Origin |
 
 Optionale nicht geheime Environment Variables für die konkrete Provider-Oberfläche:
-`E2E_REAL_USERNAME_SELECTOR`, `E2E_REAL_PASSWORD_SELECTOR`, `E2E_REAL_SUBMIT_SELECTOR` und
-`E2E_REAL_LOGOUT_CONFIRM_SELECTOR`. Letztere nur setzen, wenn die Provider-Version ausdrücklich
-einen Bestätigungsschritt benötigt. Kein generischer Klick auf beliebige Provider-Buttons.
+`E2E_REAL_USERNAME_SELECTOR`, `E2E_REAL_PASSWORD_SELECTOR` und `E2E_REAL_SUBMIT_SELECTOR`.
+Der Logout muss ohne weitere Provider-Interaktion gelingen. Eine Kontoauswahl oder Bestätigung
+ist ein Testfehler und wird niemals automatisch angeklickt. Der frühere
+`E2E_REAL_LOGOUT_CONFIRM_SELECTOR` wird nicht mehr ausgewertet; ein vorhandener Wert kann diesen
+Prüfvertrag nicht abschwächen.
 
 Referenzprüfung weist fehlende Felder, Klartext, fremde Vault-IDs und ungültige Referenzen zurück.
 Die offizielle `1password/load-secrets-action` (v5.0.1, vollständiger geprüfter Commit-SHA,

@@ -14,23 +14,30 @@ interface LogoutTransaction {
   readonly state: string;
   readonly locale: string;
   readonly expiresAt: number;
+  idTokenHint?: string;
   sent: boolean;
 }
 
-/** Browser-bound, one-use handoff and callback. Contains no identity or OIDC token. */
+/** Browser-bound, one-use handoff. The token is discarded immediately after provider navigation starts. */
 export class OidcLogoutTransactions {
   private readonly pending = new Map<string, LogoutTransaction>();
   constructor(private readonly now = () => Date.now()) {}
 
-  begin(locale: string) {
+  pruneExpired(): void {
     for (const [key, value] of this.pending)
       if (value.expiresAt <= this.now()) this.pending.delete(key);
+  }
+
+  begin(locale: string, idTokenHint: string) {
+    this.pruneExpired();
+    if (!idTokenHint) return undefined;
     if (this.pending.size >= 1000) return undefined;
     const binding = randomBytes(32).toString('base64url');
     this.pending.set(binding, {
       state: randomBytes(32).toString('base64url'),
       locale,
       expiresAt: this.now() + ttl,
+      idTokenHint,
       sent: false,
     });
     return binding;
@@ -38,15 +45,24 @@ export class OidcLogoutTransactions {
 
   handoff(binding: string | undefined): LogoutTransaction | undefined {
     const transaction = binding ? this.pending.get(binding) : undefined;
-    if (!transaction || transaction.sent || transaction.expiresAt <= this.now()) return undefined;
+    if (!transaction || transaction.sent) return undefined;
+    if (transaction.expiresAt <= this.now()) {
+      this.pending.delete(binding!);
+      return undefined;
+    }
     transaction.sent = true;
-    return transaction;
+    const handoff = { ...transaction };
+    delete transaction.idTokenHint;
+    return handoff;
   }
 
   complete(binding: string | undefined, state: unknown): LogoutTransaction | undefined {
     const transaction = binding ? this.pending.get(binding) : undefined;
-    if (!transaction?.sent || transaction.state !== state || transaction.expiresAt <= this.now())
+    if (!transaction?.sent || transaction.state !== state) return undefined;
+    if (transaction.expiresAt <= this.now()) {
+      this.pending.delete(binding!);
       return undefined;
+    }
     this.pending.delete(binding!);
     return transaction;
   }
@@ -73,7 +89,18 @@ export function registerOidcLogout(
     sameSite: 'lax' as const,
     secure: process.env['NODE_ENV'] === 'production',
   };
-  app.addHook('onClose', async () => transactions.clear());
+  // Sweep even when an expired session/handoff is never visited again. Do not keep
+  // the process alive for cleanup, and release retained token material on shutdown.
+  const cleanup = setInterval(() => {
+    store.pruneExpiredSessions();
+    transactions.pruneExpired();
+  }, 60_000);
+  cleanup.unref();
+  app.addHook('onClose', async () => {
+    clearInterval(cleanup);
+    transactions.clear();
+    store.clearLogoutIdTokens();
+  });
   // An old logout callback must not interrupt a newly started authentication.
   app.addHook('onRequest', async (request) => {
     if (request.url.split('?', 1)[0] === '/auth/login')
@@ -82,15 +109,18 @@ export function registerOidcLogout(
   app.post('/auth/logout', async (request, reply) => {
     const principal = store.getPrincipal(request.cookies['autokosova_session']);
     const csrf = request.cookies['autokosova_csrf'];
-    // A browser with an expired session can still clear its provider session using the
-    // double-submit cookie. For a live session, also bind CSRF to the server principal.
+    // An expired session can still clear local cookies using double-submit CSRF, but
+    // cannot target a provider session. Live sessions also bind CSRF to the principal.
     if (
       !csrf ||
       request.headers['x-csrf-token'] !== csrf ||
       (principal && principal.csrfToken !== csrf)
     )
       return reply.code(principal ? 403 : 401).send({ error: 'Logout authorization required' });
-    store.revokeSession(request.cookies['autokosova_session']);
+    const sessionId = request.cookies['autokosova_session'];
+    // Capture only the callback-verified token of this exact live session before local revocation.
+    const idTokenHint = principal ? store.getLogoutIdToken(sessionId) : undefined;
+    store.revokeSession(sessionId);
     store.revokeOidcTransactions(request.cookies[AUTH_BROWSER_COOKIE]);
     transactions.cancel(request.cookies[LOGOUT_COOKIE]);
     reply.clearCookie('autokosova_session', { path: '/' });
@@ -102,8 +132,8 @@ export function registerOidcLogout(
     if (!request.headers.accept?.includes('application/json')) return reply.code(204).send();
     const locale = localeOf((request.query as { locale?: unknown }).locale);
     const binding =
-      config?.endSessionEndpoint && config.postLogoutRedirectUri
-        ? transactions.begin(locale)
+      config?.endSessionEndpoint && config.postLogoutRedirectUri && idTokenHint
+        ? transactions.begin(locale, idTokenHint)
         : undefined;
     if (!binding) return { redirectTo: `/auth/logged-out?locale=${locale}` };
     reply.setCookie(LOGOUT_COOKIE, binding, { ...cookieOptions, maxAge: ttl / 1000 });
@@ -114,7 +144,11 @@ export function registerOidcLogout(
     const transaction = transactions.handoff(request.cookies[LOGOUT_COOKIE]);
     if (!transaction || !config)
       return reply.code(400).send({ error: 'Logout handoff invalid or expired' });
-    return reply.redirect(createEndSessionUrl(config, transaction.state, transaction.locale));
+    if (!transaction.idTokenHint)
+      return reply.code(400).send({ error: 'Logout handoff has no verified session context' });
+    return reply.redirect(
+      createEndSessionUrl(config, transaction.state, transaction.locale, transaction.idTokenHint),
+    );
   });
 
   app.get('/auth/logout/callback', async (request, reply) => {
@@ -146,19 +180,19 @@ export function registerOidcLogout(
 const localLogoutCopy = {
   de: {
     title: 'Bei AutoKosova abgemeldet',
-    body: 'Die lokale Sitzung ist beendet. Die Abmeldung beim Anmeldeanbieter ist nicht konfiguriert oder konnte nicht gestartet werden. Beim nächsten Login wird eine erneute Authentifizierung angefordert.',
+    body: 'Die lokale Sitzung ist beendet. Die gezielte Abmeldung beim Anmeldeanbieter ist nicht konfiguriert oder der Sitzung fehlt der erforderliche Logout-Kontext. Beim nächsten Login wird eine erneute Authentifizierung angefordert.',
     home: 'Zur Startseite',
     login: 'Erneut anmelden',
   },
   sq: {
     title: 'Keni dalë nga AutoKosova',
-    body: 'Sesioni lokal ka përfunduar. Dalja nga ofruesi i identitetit nuk është konfiguruar ose nuk mund të nisej. Hyrja tjetër do të kërkojë autentikim të ri.',
+    body: 'Sesioni lokal ka përfunduar. Dalja e synuar nga ofruesi i identitetit nuk është konfiguruar ose këtij sesioni i mungon konteksti i nevojshëm. Hyrja tjetër do të kërkojë autentikim të ri.',
     home: 'Faqja kryesore',
     login: 'Hyni përsëri',
   },
   en: {
     title: 'Signed out of AutoKosova',
-    body: 'Your local session has ended. Identity-provider logout is not configured or could not be started. Your next sign-in will request fresh authentication.',
+    body: 'Your local session has ended. Targeted identity-provider logout is not configured or this session lacks the required logout context. Your next sign-in will request fresh authentication.',
     home: 'Back to home',
     login: 'Sign in again',
   },

@@ -123,6 +123,8 @@ interface Session {
   readonly profile: AccountProfile;
   readonly csrfToken: string;
   readonly expiresAt: Date;
+  /** Verified callback token, retained only to direct this exact session's provider logout. */
+  logoutIdToken?: string;
   readonly userId: string;
 }
 
@@ -715,6 +717,30 @@ export class AccessStore implements ReviewStore {
     return { csrfToken, sessionId };
   }
 
+  /**
+   * OIDC callbacks alone may attach an ID token. It is never part of Principal or account data;
+   * logout reads it by the opaque local session ID before revoking that session.
+   */
+  createVerifiedOidcSession(
+    userId: string,
+    profile: AccountProfile,
+    logoutIdToken: string | undefined,
+    expiresAt = new Date(Date.now() + 60 * 60 * 1000),
+  ) {
+    const session = this.createSession(userId, expiresAt, profile);
+    if (logoutIdToken) this.sessions.get(session.sessionId)!.logoutIdToken = logoutIdToken;
+    return session;
+  }
+
+  pruneExpiredSessions(now = new Date()): void {
+    for (const [id, session] of this.sessions)
+      if (session.expiresAt <= now) this.sessions.delete(id);
+  }
+
+  clearLogoutIdTokens(): void {
+    for (const session of this.sessions.values()) delete session.logoutIdToken;
+  }
+
   getOwnAccount(principal: Principal) {
     const current = this.getPrincipal(principal.sessionId);
     if (!current || current.userId !== principal.userId) {
@@ -1042,6 +1068,11 @@ export class AccessStore implements ReviewStore {
       sessionId,
       userId: session.userId,
     };
+  }
+
+  getLogoutIdToken(sessionId: string | undefined, now = new Date()): string | undefined {
+    if (!this.getPrincipal(sessionId, now)) return undefined;
+    return this.sessions.get(sessionId!)?.logoutIdToken;
   }
 
   getPrivateGarage(principal: Principal, garageId: string) {
