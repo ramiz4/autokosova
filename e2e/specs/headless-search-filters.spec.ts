@@ -87,7 +87,10 @@ test('search-filter-disclosure keeps Brain state, focus and filter URLs responsi
   await expect(form).toHaveJSProperty('inert', false);
   await expect(vehicleMake).toBeFocused();
   await form.locator('button[type="button"]').last().click();
-  await expectSearchUrl(page, [['all', 'true']]);
+  await expectSearchUrl(page, [
+    ['all', 'true'],
+    ['sort', 'recommended'],
+  ]);
   await expect(vehicleMake).toHaveValue('');
   await expect(form).toBeVisible();
   await expect(form).toHaveJSProperty('inert', false);
