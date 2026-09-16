@@ -1,9 +1,6 @@
-<div class="border-b border-slate-200 bg-white">
-  <app-site-header [compact]="true" active="admin" />
-</div>
-<main id="main-content" class="mx-auto max-w-6xl px-4 py-8 text-ink sm:px-6 sm:py-12">
+<app-staff-layout [admin]="allowed()" [active]="$any(section)">
   <h1 tabindex="-1" class="text-3xl font-bold">{{ label(section) }}</h1>
-  <p class="mt-3 max-w-3xl text-muted">{{ label('intro') }}</p>
+  <p class="mt-2 max-w-3xl text-muted">{{ label('intro') }}</p>
   @if (account.state() === 'guest') {
     <a appButton class="mt-6" [href]="loginUrl()">{{ label('login') }}</a>
   } @else if (!ready() || account.state() === 'loading') {
@@ -11,7 +8,6 @@
   } @else if (!allowed()) {
     <p role="alert" class="mt-6">{{ label('denied') }}</p>
   } @else {
-    <app-admin-navigation [active]="section" />
     @if (error()) {
       <div role="alert" class="my-5 rounded-xl bg-rose-50 p-4 text-rose-900">
         <p>{{ error() }}</p>
@@ -20,14 +16,19 @@
           class="mt-3"
           type="button"
           [disabled]="busy()"
-          (click)="detail() ? openGarage(detail()!.id) : load(page())"
+          (click)="detail() ? openGarage(detail()!.id, detailTab) : load(page())"
         >
           {{ label('retry') }}
         </button>
       </div>
     }
     @if (success()) {
-      <p role="status" class="my-5 rounded-xl bg-emerald-50 p-4 text-emerald-900">
+      <p
+        data-admin-result
+        tabindex="-1"
+        role="status"
+        class="my-5 rounded-xl bg-emerald-50 p-4 text-emerald-900"
+      >
         {{ success() }}
       </p>
     }
@@ -52,6 +53,11 @@
       >
         {{ label('back') }}
       </button>
+      @if (privacyReturnUrl(); as returnUrl) {
+        <a appButton="outline" class="my-4 ml-3" [href]="returnUrl">{{
+          label('returnDeletionRequest')
+        }}</a>
+      }
       <section
         class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-8"
         data-admin-garage
@@ -69,298 +75,407 @@
         }
         <dl class="mt-5 grid gap-3 sm:grid-cols-2">
           <div>
-            <dt class="text-sm text-muted">{{ label('location') }}</dt>
+            <dt class="text-sm text-muted">{{ label('locationValue') }}</dt>
             <dd class="break-words">
               {{ current.profile.address }} · {{ current.profile.placeId }}
             </dd>
+            <dd class="mt-1 text-sm text-muted">
+              @if (current.profile.locationPoint) {
+                {{ label('latitude') }} {{ current.profile.locationPoint.latitude }} ·
+                {{ label('longitude') }} {{ current.profile.locationPoint.longitude }}
+              } @else {
+                {{ label('publishBlocker.point') }}
+              }
+            </dd>
           </div>
           <div>
-            <dt class="text-sm text-muted">{{ label('contactPerson') }}</dt>
+            <dt class="text-sm text-muted">{{ label('contactPersonValue') }}</dt>
             <dd class="break-words">
               {{ current.profile.contactPerson }} · {{ current.profile.contactPhone }}
             </dd>
           </div>
         </dl>
         <p class="mt-4 whitespace-pre-wrap break-words">{{ current.profile.description }}</p>
-        @if (!current.deleted) {
-          <h3 class="mt-7 text-xl font-bold">{{ label('documents') }}</h3>
-          <div class="mt-3 flex flex-wrap gap-3">
-            @for (doc of current.documents; track doc.fileId) {
-              <button
-                appButton="outline"
-                type="button"
-                data-company-document
-                [disabled]="busy() || !doc.available"
-                (click)="openDocument(doc.fileId)"
-              >
-                {{ label(doc.available ? 'openDocument' : 'unavailable') }}
-              </button>
-            } @empty {
-              <p>{{ label('unavailable') }}</p>
-            }
-          </div>
-          @if (proof()) {
-            <pre
-              data-company-evidence
-              class="mt-4 max-w-full rounded-lg bg-slate-50 p-4 text-sm whitespace-pre-wrap break-words"
-              >{{ proof() }}</pre>
+        <nav class="mt-6 flex flex-wrap gap-2" [attr.aria-label]="label('garageContexts')">
+          @for (tab of detailTabs; track tab) {
+            <button
+              appButton="outline"
+              type="button"
+              [attr.data-admin-tab]="tab"
+              [attr.aria-current]="detailTab === tab ? 'page' : null"
+              [class.bg-slate-100]="detailTab === tab"
+              [class.underline]="detailTab === tab"
+              [disabled]="busy()"
+              (click)="setDetailTab(tab)"
+            >
+              {{ label(tab) }}
+            </button>
           }
-          <form class="mt-7 border-t border-slate-200 pt-6" (ngSubmit)="saveVerification()">
-            <fieldset [disabled]="busy()" class="grid gap-4 sm:grid-cols-2">
-              <legend class="mb-4 text-xl font-bold">{{ label('verification') }}</legend>
-              @for (key of checks; track key) {
-                <label class="grid gap-2 font-semibold"
-                  >{{ label(key) }}
+        </nav>
+        @if (!current.deleted) {
+          @if (detailTab === 'review') {
+            <h3 class="mt-7 text-xl font-bold">{{ label('documents') }}</h3>
+            <div class="mt-3 flex flex-wrap gap-3">
+              @for (doc of current.documents; track doc.fileId) {
+                <button
+                  appButton="outline"
+                  type="button"
+                  data-company-document
+                  [disabled]="busy() || !doc.available"
+                  (click)="openDocument(doc.fileId)"
+                >
+                  {{ label(doc.available ? 'openDocument' : 'unavailable') }}
+                </button>
+              } @empty {
+                <p>{{ label('unavailable') }}</p>
+              }
+            </div>
+            @if (proof()) {
+              <pre
+                data-company-evidence
+                class="mt-4 max-w-full rounded-lg bg-slate-50 p-4 text-sm whitespace-pre-wrap break-words"
+                >{{ proof() }}</pre>
+            }
+            <form class="mt-7 border-t border-slate-200 pt-6" (ngSubmit)="saveVerification()">
+              <fieldset [disabled]="busy()" class="grid gap-4 sm:grid-cols-2">
+                <legend class="mb-4 text-xl font-bold">{{ label('verification') }}</legend>
+                @for (key of checks; track key) {
+                  <label class="grid gap-2 font-semibold"
+                    >{{ label(key + 'Value') }}
+                    <select
+                      [name]="key"
+                      [attr.data-admin-check]="key"
+                      [(ngModel)]="verification[key]"
+                      class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+                    >
+                      @for (state of ['not_checked', 'verified', 'failed']; track state) {
+                        <option [value]="state">{{ label(state) }}</option>
+                      }
+                    </select>
+                  </label>
+                }
+                <button
+                  appButton="outline"
+                  type="button"
+                  class="sm:col-span-2 justify-self-start"
+                  (click)="editingPosition = !editingPosition"
+                >
+                  {{ editingPosition ? label('back') : label('correctPosition') }}
+                </button>
+                @if (editingPosition) {
+                  <label class="grid gap-2 font-semibold"
+                    >{{ label('latitude')
+                    }}<input
+                      type="number"
+                      name="latitude"
+                      step="any"
+                      min="-90"
+                      max="90"
+                      [(ngModel)]="latitude"
+                      (ngModelChange)="verification.location = 'not_checked'"
+                      class="min-h-11 rounded-lg border border-slate-300 px-3"
+                  /></label>
+                  <label class="grid gap-2 font-semibold"
+                    >{{ label('longitude')
+                    }}<input
+                      type="number"
+                      name="longitude"
+                      step="any"
+                      min="-180"
+                      max="180"
+                      [(ngModel)]="longitude"
+                      (ngModelChange)="verification.location = 'not_checked'"
+                      class="min-h-11 rounded-lg border border-slate-300 px-3"
+                  /></label>
+                  <p class="text-sm text-muted sm:col-span-2">{{ label('locationHint') }}</p>
+                }
+                <details data-review-save class="sm:col-span-2">
+                  <summary class="min-h-11 cursor-pointer py-3 font-semibold text-brand-dark">
+                    {{ label('saveChecksOptional') }}
+                  </summary>
+                  <div class="grid gap-3">
+                    <label class="grid gap-2 font-semibold sm:col-span-2"
+                      >{{ label('saveReason') }}
+                      <select
+                        name="reviewReason"
+                        data-admin-reason
+                        [(ngModel)]="reviewReason"
+                        required
+                        class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+                      >
+                        <option value="">{{ label('choose') }}</option>
+                        @for (reason of reasons; track reason) {
+                          <option [value]="reason">{{ label(reason) }}</option>
+                        }
+                      </select>
+                    </label>
+                    <button
+                      data-save-checks
+                      appButton="outline"
+                      type="submit"
+                      [disabled]="!reviewReason"
+                    >
+                      {{ label('saveChecks') }}
+                    </button>
+                  </div>
+                </details>
+              </fieldset>
+            </form>
+            <div class="mt-5 flex flex-wrap gap-3">
+              @if (
+                current.publicationState === 'pending_review' ||
+                current.publicationState === 'published' ||
+                (current.publicationState === 'suspended' && current.adminSuspended)
+              ) {
+                <label class="basis-full grid gap-2 font-semibold">
+                  {{ label('decisionReason') }}
                   <select
-                    [name]="key"
-                    [attr.data-admin-check]="key"
-                    [(ngModel)]="verification[key]"
-                    (ngModelChange)="dirty = true"
+                    name="decisionReason"
+                    data-admin-decision-reason
+                    [(ngModel)]="decisionReason"
                     class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+                    [disabled]="busy() || stale()"
                   >
-                    @for (state of ['not_checked', 'verified', 'failed']; track state) {
-                      <option [value]="state">{{ label(state) }}</option>
+                    <option value="">{{ label('choose') }}</option>
+                    @for (reason of reasons; track reason) {
+                      <option [value]="reason">{{ label(reason) }}</option>
                     }
                   </select>
                 </label>
               }
-              <label class="grid gap-2 font-semibold"
-                >{{ label('latitude')
-                }}<input
-                  type="number"
-                  name="latitude"
-                  step="any"
-                  min="-90"
-                  max="90"
-                  [(ngModel)]="latitude"
-                  (ngModelChange)="dirty = true"
-                  class="min-h-11 rounded-lg border border-slate-300 px-3"
-              /></label>
-              <label class="grid gap-2 font-semibold"
-                >{{ label('longitude')
-                }}<input
-                  type="number"
-                  name="longitude"
-                  step="any"
-                  min="-180"
-                  max="180"
-                  [(ngModel)]="longitude"
-                  (ngModelChange)="dirty = true"
-                  class="min-h-11 rounded-lg border border-slate-300 px-3"
-              /></label>
-              <p class="text-sm text-muted sm:col-span-2">{{ label('locationHint') }}</p>
-              <label class="grid gap-2 font-semibold sm:col-span-2"
-                >{{ label('reason') }}
-                <select
-                  name="adminReason"
-                  data-admin-reason
-                  [(ngModel)]="reason"
-                  required
-                  class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+              @if (current.publicationState === 'pending_review') {
+                <button
+                  data-publish-garage
+                  appButton
+                  type="button"
+                  [disabled]="!canPublish(current)"
+                  (click)="decide('published')"
                 >
-                  <option value="">{{ label('choose') }}</option>
-                  @for (reason of reasons; track reason) {
-                    <option [value]="reason">{{ label(reason) }}</option>
+                  {{ label('publish') }}
+                </button>
+                @if (!canPublish(current)) {
+                  <p data-publish-blocker class="basis-full text-sm text-amber-900">
+                    @for (blocker of publishBlockers(current); track blocker) {
+                      {{ label('publishBlocker.' + blocker) }} ·
+                    }
+                    @if (!canPublish(current)) {
+                      {{ label('completeChecks') }}
+                    }
+                  </p>
+                }
+                <p class="basis-full text-sm text-muted">{{ label('company_verified') }}</p>
+                <button
+                  data-reject-garage
+                  appButton="outline"
+                  type="button"
+                  [disabled]="busy() || !decisionReason || stale()"
+                  (click)="decide('rejected')"
+                >
+                  {{ label('reject') }}
+                </button>
+              }
+              @if (
+                current.publicationState === 'published' ||
+                (current.publicationState === 'suspended' && !current.adminSuspended)
+              ) {
+                <button
+                  data-suspend-garage
+                  appButton="outline"
+                  type="button"
+                  [disabled]="busy() || !decisionReason || stale()"
+                  (click)="decide('suspended')"
+                >
+                  {{ label('suspend') }}
+                </button>
+              }
+              @if (current.publicationState === 'suspended' && current.adminSuspended) {
+                <button
+                  data-restore-garage
+                  appButton="outline"
+                  type="button"
+                  [disabled]="!canRestore(current) || !decisionReason"
+                  (click)="decide('restore')"
+                >
+                  {{ label('restore') }}
+                </button>
+                @if (!canRestore(current)) {
+                  <p class="basis-full text-sm text-amber-900">
+                    @for (blocker of restoreBlockers(current); track blocker) {
+                      {{ label('publishBlocker.' + blocker) }} ·
+                    }
+                  </p>
+                }
+              }
+            </div>
+          }
+          @if (detailTab === 'photos') {
+            <h3 class="mt-8 text-xl font-bold">{{ label('photos') }}</h3>
+            <label class="mt-4 grid gap-2 font-semibold"
+              >{{ label('photoReason') }}
+              <select
+                [(ngModel)]="photoReason"
+                name="photoReason"
+                class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+              >
+                <option value="">{{ label('choose') }}</option>
+                @for (reason of reasons; track reason) {
+                  <option [value]="reason">{{ label(reason) }}</option>
+                }
+              </select>
+            </label>
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+              @for (photo of current.photos; track photo.id) {
+                <article class="rounded-xl border border-slate-200 p-4">
+                  @if (photo.previewPath) {
+                    <img
+                      [src]="photo.previewPath"
+                      [alt]="label('photo')"
+                      width="640"
+                      height="400"
+                      class="w-full rounded-lg"
+                    />
+                  } @else {
+                    <p class="text-sm text-muted">{{ label('photoMissing') }}</p>
                   }
+                  <p class="mt-3">{{ label(photo.visibility) }}</p>
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <button
+                      appButton="outline"
+                      type="button"
+                      data-approve-photo
+                      [disabled]="busy() || !photoReason || !photo.previewPath"
+                      (click)="setPhoto(photo.id, true)"
+                    >
+                      {{ label('approvePhoto') }}
+                    </button>
+                    <button
+                      appButton="outline"
+                      type="button"
+                      [disabled]="busy() || !photoReason"
+                      (click)="setPhoto(photo.id, false)"
+                    >
+                      {{ label('rejectPhoto') }}
+                    </button>
+                  </div>
+                </article>
+              } @empty {
+                <p class="text-muted">{{ label('empty') }}</p>
+              }
+            </div>
+          }
+
+          @if (detailTab === 'team') {
+            <h3 class="mt-8 text-xl font-bold">{{ label('members') }}</h3>
+            <label class="mt-4 grid gap-2 font-semibold"
+              >{{ label('membershipReason') }}
+              <select
+                [(ngModel)]="memberReason"
+                name="memberReason"
+                class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+              >
+                <option value="">{{ label('choose') }}</option>
+                @for (reason of reasons; track reason) {
+                  <option [value]="reason">{{ label(reason) }}</option>
+                }
+              </select>
+            </label>
+            <ul class="mt-4 grid gap-3">
+              @for (person of current.members; track person.userId) {
+                <li
+                  class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-4"
+                >
+                  <p class="min-w-0 break-words">
+                    {{ person.label }} · {{ label(person.role) }} · {{ label(person.state) }}
+                  </p>
+                  @if (person.state === 'active') {
+                    <button
+                      appButton="outline"
+                      type="button"
+                      [disabled]="busy() || !memberReason"
+                      (click)="member(person.userId, person.role, 'revoked')"
+                    >
+                      {{ label('revoke') }}
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+              <div class="grid gap-2 font-semibold">
+                <span>{{ label('memberTarget') }}</span>
+                <app-admin-account-combobox
+                  inputId="target-user"
+                  [disabled]="busy() || stale()"
+                  [emptyLabel]="label('empty')"
+                  [label]="label('memberTarget')"
+                  [items]="candidates()"
+                  [query]="candidateQuery"
+                  (queryChange)="changeCandidateQuery($event)"
+                  (selected)="selectCandidate($event)"
+                />
+                @if (targetUserId) {
+                  <span class="text-sm text-muted">{{ targetUserId }}</span>
+                }
+              </div>
+              <label class="grid gap-2 font-semibold"
+                >{{ label('members') }}
+                <select
+                  name="memberRole"
+                  [(ngModel)]="memberRole"
+                  class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+                  [disabled]="busy()"
+                >
+                  <option value="editor">{{ label('editor') }}</option>
+                  <option value="owner">{{ label('owner') }}</option>
                 </select>
               </label>
-              <button data-save-checks appButton type="submit" [disabled]="!reason">
-                {{ label('saveChecks') }}
-              </button>
-            </fieldset>
-          </form>
-          <div class="mt-5 flex flex-wrap gap-3">
-            @if (current.publicationState === 'pending_review') {
               <button
-                data-publish-garage
-                appButton
-                type="button"
-                [disabled]="busy() || !reason"
-                (click)="decide('published')"
-              >
-                {{ label('publish') }}
-              </button>
-              <button
-                data-reject-garage
                 appButton="outline"
+                data-save-member
                 type="button"
-                [disabled]="busy() || !reason"
-                (click)="decide('rejected')"
+                [disabled]="busy() || !memberReason || !targetUserId"
+                (click)="member()"
               >
-                {{ label('reject') }}
+                {{ label('memberSave') }}
               </button>
-            }
-            @if (
-              current.publicationState === 'published' ||
-              (current.publicationState === 'suspended' && !current.adminSuspended)
-            ) {
+            </div>
+            <div class="mt-5 rounded-xl bg-slate-50 p-4">
+              <p class="text-sm text-muted">{{ label('transferHint') }}</p>
+              @if (activeOwners(current).length > 1) {
+                <label class="mt-3 grid gap-2 font-semibold">
+                  {{ label('sourceOwner') }}
+                  <select
+                    name="sourceOwner"
+                    [(ngModel)]="fromUserId"
+                    class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+                    [disabled]="busy() || stale()"
+                  >
+                    <option value="">{{ label('choose') }}</option>
+                    @for (owner of activeOwners(current); track owner.userId) {
+                      <option [value]="owner.userId">{{ owner.label }} · {{ owner.userId }}</option>
+                    }
+                  </select>
+                </label>
+              } @else {
+                <p class="mt-3">{{ label('sourceOwner') }}: {{ memberLabel(fromUserId) }}</p>
+              }
+              <p class="mt-3">
+                {{ label('sourceOwner') }} → {{ memberLabel(fromUserId) }} ·
+                {{ label('memberTarget') }} → {{ memberLabel(targetUserId) }}
+              </p>
               <button
-                data-suspend-garage
                 appButton="outline"
+                data-transfer-owner
+                class="mt-4"
                 type="button"
-                [disabled]="busy() || !reason"
-                (click)="decide('suspended')"
+                [disabled]="busy() || !fromUserId || !targetUserId || fromUserId === targetUserId"
+                (click)="transfer()"
               >
-                {{ label('suspend') }}
+                {{ label('transfer') }}
               </button>
-            }
-            @if (current.publicationState === 'suspended' && current.adminSuspended) {
-              <button
-                data-restore-garage
-                appButton="outline"
-                type="button"
-                [disabled]="busy() || !reason"
-                (click)="decide('restore')"
-              >
-                {{ label('restore') }}
-              </button>
-            }
-          </div>
-          <h3 class="mt-8 text-xl font-bold">{{ label('photos') }}</h3>
-          <div class="mt-4 grid gap-4 sm:grid-cols-2">
-            @for (photo of current.photos; track photo.id) {
-              <article class="rounded-xl border border-slate-200 p-4">
-                @if (photo.previewPath) {
-                  <img
-                    [src]="photo.previewPath"
-                    [alt]="label('photo')"
-                    width="640"
-                    height="400"
-                    class="w-full rounded-lg"
-                  />
-                } @else {
-                  <p class="text-sm text-muted">{{ label('photoMissing') }}</p>
-                }
-                <p class="mt-3">{{ label(photo.visibility) }}</p>
-                <div class="mt-3 flex flex-wrap gap-2">
-                  <button
-                    appButton="outline"
-                    type="button"
-                    data-approve-photo
-                    [disabled]="busy() || !reason || !photo.previewPath"
-                    (click)="setPhoto(photo.id, true)"
-                  >
-                    {{ label('approvePhoto') }}
-                  </button>
-                  <button
-                    appButton="outline"
-                    type="button"
-                    [disabled]="busy() || !reason"
-                    (click)="setPhoto(photo.id, false)"
-                  >
-                    {{ label('rejectPhoto') }}
-                  </button>
-                </div>
-              </article>
-            } @empty {
-              <p class="text-muted">{{ label('empty') }}</p>
-            }
-          </div>
-
-          <h3 class="mt-8 text-xl font-bold">{{ label('members') }}</h3>
-          <ul class="mt-4 grid gap-3">
-            @for (person of current.members; track person.userId) {
-              <li
-                class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-4"
-              >
-                <p class="min-w-0 break-words">
-                  {{ person.label }} · {{ label(person.role) }} · {{ label(person.state) }}
-                </p>
-                @if (person.state === 'active') {
-                  <button
-                    appButton="outline"
-                    type="button"
-                    [disabled]="busy() || !reason"
-                    (click)="member(person.userId, person.role, 'revoked')"
-                  >
-                    {{ label('revoke') }}
-                  </button>
-                }
-              </li>
-            }
-          </ul>
-          <form class="mt-5 flex flex-wrap items-end gap-3" (ngSubmit)="findCandidates()">
-            <label class="grid min-w-0 grow gap-2"
-              >{{ label('memberTarget')
-              }}<input
-                name="candidateSearch"
-                [(ngModel)]="candidateQuery"
-                maxlength="120"
-                class="min-h-11 rounded-lg border border-slate-300 px-3"
-            /></label>
-            <button appButton="outline" type="submit" [disabled]="busy()">
-              {{ label('search') }}
-            </button>
-          </form>
-          <div class="mt-4 grid gap-4 sm:grid-cols-2">
-            <label class="grid gap-2 font-semibold"
-              >{{ label('memberTarget') }}
-              <select
-                name="targetUser"
-                data-target-user
-                [(ngModel)]="targetUserId"
-                class="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
-                [disabled]="busy()"
-              >
-                <option value="">{{ label('choose') }}</option>
-                @for (person of candidates(); track person.id) {
-                  <option [value]="person.id">{{ person.label }}</option>
-                }
-              </select>
-            </label>
-            <label class="grid gap-2 font-semibold"
-              >{{ label('members') }}
-              <select
-                name="memberRole"
-                [(ngModel)]="memberRole"
-                class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
-                [disabled]="busy()"
-              >
-                <option value="editor">{{ label('editor') }}</option>
-                <option value="owner">{{ label('owner') }}</option>
-              </select>
-            </label>
-            <button
-              appButton="outline"
-              data-save-member
-              type="button"
-              [disabled]="busy() || !reason || !targetUserId"
-              (click)="member()"
-            >
-              {{ label('memberSave') }}
-            </button>
-          </div>
-          <div class="mt-5 rounded-xl bg-slate-50 p-4">
-            <p class="text-sm text-muted">{{ label('transferHint') }}</p>
-            <label class="mt-3 grid gap-2 font-semibold"
-              >{{ label('sourceOwner') }}
-              <select
-                data-source-owner
-                name="sourceOwner"
-                [(ngModel)]="fromUserId"
-                class="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
-                [disabled]="busy()"
-              >
-                <option value="">{{ label('choose') }}</option>
-                @for (person of current.members; track person.userId) {
-                  @if (person.role === 'owner' && person.state === 'active') {
-                    <option [value]="person.userId">{{ person.label }}</option>
-                  }
-                }
-              </select>
-            </label>
-            <button
-              appButton="outline"
-              data-transfer-owner
-              class="mt-4"
-              type="button"
-              [disabled]="busy() || !fromUserId || !targetUserId || fromUserId === targetUserId"
-              (click)="transfer()"
-            >
-              {{ label('transfer') }}
-            </button>
-          </div>
-          @if (current.publicationState !== 'suspended') {
+            </div>
+          }
+          @if (detailTab === 'support' && current.publicationState !== 'suspended') {
             <div class="mt-7 border-t border-slate-200 pt-6">
               <p class="text-sm text-muted">{{ label('supportHint') }}</p>
               <label class="mt-3 grid gap-2 font-semibold"
@@ -423,6 +538,7 @@
               }}<select
                 name="status"
                 [(ngModel)]="status"
+                (change)="applyStatusFilter()"
                 class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
               >
                 <option value="">{{ label('all') }}</option>
@@ -454,6 +570,9 @@
         </form>
       }
       @if (section === 'garages') {
+        <a appButton="outline" data-assist-garage class="mb-4" [href]="link('support')">{{
+          label('startSupport')
+        }}</a>
         <div class="grid gap-4 sm:grid-cols-2" data-admin-garage-list>
           @for (item of garages(); track item.id) {
             <article
@@ -523,8 +642,10 @@
             </button>
           </section>
         } @else {
-          <section class="mb-5 rounded-xl bg-slate-50 p-5">
-            <h2 class="text-xl font-bold">{{ label('provider') }}</h2>
+          <details class="mb-5 rounded-xl bg-slate-50 p-4">
+            <summary class="min-h-11 cursor-pointer py-3 font-semibold">
+              {{ label('provider') }}
+            </summary>
             <p class="mt-3 text-sm">{{ label('providerHint') }}</p>
             <p class="mt-3 text-sm">{{ label('rolesHint') }}</p>
             @if (consoleUrl()) {
@@ -539,42 +660,53 @@
             } @else {
               <p class="mt-3 text-sm text-muted">{{ label('providerMissing') }}</p>
             }
-          </section>
-          <div class="grid gap-4" data-admin-users>
+          </details>
+          <div
+            class="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white"
+            data-admin-users
+          >
             @for (person of users(); track person.id) {
-              <article
-                class="rounded-xl border border-slate-200 bg-white p-5"
-                [attr.data-admin-user-id]="person.id"
-              >
+              <article class="p-4 sm:p-5" [attr.data-admin-user-id]="person.id">
                 <h2 class="text-xl font-bold break-words">{{ person.label }}</h2>
                 <p class="mt-2">
                   {{ label('accountType') }}: {{ label(person.accountType) }} ·
                   {{ label(person.status) }}
                 </p>
-                <p class="mt-2">{{ label('roles') }}: {{ person.roles.join(', ') }}</p>
-                @if (person.rolesVerifiedAt) {
-                  <p class="mt-2 text-sm text-muted">
-                    {{ label('rolesVerifiedAt') }}:
-                    {{ person.rolesVerifiedAt | date: 'dd.MM.yyyy HH:mm' }}
-                  </p>
-                }
                 <ul class="mt-3 grid gap-2">
                   @for (membership of person.memberships; track membership.garageId) {
                     <li class="text-sm break-words">
-                      {{ membership.garageName }} · {{ label(membership.role) }} ·
-                      {{ label(membership.state) }}
+                      <a
+                        data-user-garage
+                        class="inline-flex min-h-11 items-center font-semibold text-brand-dark underline underline-offset-4"
+                        [href]="link('garages') + '?garageId=' + membership.garageId + '&tab=team'"
+                        >{{ membership.garageName }}</a
+                      >
+                      · {{ label(membership.role) }} · {{ label(membership.state) }}
                     </li>
                   }
                 </ul>
-                <button
-                  appButton="outline"
-                  class="mt-4"
-                  type="button"
-                  [disabled]="busy()"
-                  (click)="revokeSessions(person.id)"
-                >
-                  {{ label('sessions') }}
-                </button>
+                <details data-account-security class="mt-2">
+                  <summary
+                    class="min-h-11 cursor-pointer py-3 text-sm font-semibold text-brand-dark"
+                  >
+                    {{ label('security') }}
+                  </summary>
+                  <p class="mt-2">{{ label('roles') }}: {{ person.roles.join(', ') }}</p>
+                  @if (person.rolesVerifiedAt) {
+                    <p class="mt-2 text-sm text-muted">
+                      {{ label('rolesVerifiedAt') }}:
+                      {{ person.rolesVerifiedAt | date: 'dd.MM.yyyy HH:mm' }}
+                    </p>
+                  }
+                  <button
+                    appButton="outline"
+                    type="button"
+                    [disabled]="busy()"
+                    (click)="revokeSessions(person.id)"
+                  >
+                    {{ label('sessions') }}
+                  </button>
+                </details>
               </article>
             } @empty {
               @if (!loading() && !error()) {
@@ -587,98 +719,91 @@
 
       @if (section === 'privacy') {
         @if (privacy(); as data) {
-          <section class="rounded-xl border border-slate-200 bg-white p-5">
-            <h2 class="text-xl font-bold">{{ label('policy') }}</h2>
-            @if (data.policy; as policy) {
-              <p class="mt-3">{{ label('policyVersion') }}: {{ policy.version }}</p>
-              <p class="mt-2 break-words">
-                {{ label('operatorApprovalReference') }}: {{ policy.operatorApprovalReference }}
+          <label class="mt-4 grid max-w-xs gap-2 text-sm font-semibold"
+            >{{ label('status') }}
+            <select
+              name="deletionStatus"
+              [disabled]="busy() || loading()"
+              [(ngModel)]="status"
+              (change)="applyStatusFilter()"
+              class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+            >
+              <option value="">{{ label('all') }}</option>
+              <option value="submitted">{{ label('submitted') }}</option>
+              <option value="blocked">{{ label('blockedDeletions') }}</option>
+              <option value="completed">{{ label('completed') }}</option>
+            </select>
+          </label>
+          @if (selectedPrivacy(); as request) {
+            <section
+              data-privacy-context
+              tabindex="-1"
+              class="mt-5 rounded-xl border-2 border-brand bg-white p-5"
+            >
+              <h2 class="text-xl font-bold break-words">{{ request.label }}</h2>
+              <p class="mt-2" data-privacy-result>
+                {{ request.runnable ? label('privacyRunnable') : label(request.status) }}
               </p>
-              <dl class="mt-4 grid gap-3 sm:grid-cols-2">
-                @for (key of durations; track key) {
-                  <div>
-                    <dt class="text-sm text-muted">{{ label(key) }}</dt>
-                    <dd>{{ $any(policy)[key] }}</dd>
-                  </div>
-                }
-              </dl>
-              <p class="mt-3">{{ label(policy.publicReviewHandling) }}</p>
-            } @else {
-              <p class="mt-3 text-amber-900">{{ label('noPolicy') }}</p>
-            }
-            <details class="mt-5">
-              <summary class="min-h-11 cursor-pointer font-semibold text-brand-dark">
-                {{ label('savePolicy') }}
-              </summary>
-              <p class="mt-3 text-sm text-muted">{{ label('policyHint') }}</p>
-              <form class="mt-4" (ngSubmit)="savePolicy()">
-                <fieldset [disabled]="busy()" class="grid gap-4 sm:grid-cols-2">
-                  <label class="grid gap-2 font-semibold"
-                    >{{ label('policyVersion')
-                    }}<input
-                      name="policyVersion"
-                      required
-                      maxlength="80"
-                      [(ngModel)]="policyVersion"
-                      (ngModelChange)="dirty = true"
-                      class="min-h-11 rounded-lg border border-slate-300 px-3"
-                  /></label>
-                  <label class="grid gap-2 font-semibold"
-                    >{{ label('operatorApprovalReference')
-                    }}<input
-                      name="approvalReference"
-                      required
-                      maxlength="200"
-                      [(ngModel)]="approvalReference"
-                      (ngModelChange)="dirty = true"
-                      class="min-h-11 rounded-lg border border-slate-300 px-3"
-                  /></label>
-                  @for (key of durations; track key) {
-                    <label class="grid gap-2 font-semibold"
-                      >{{ label(key)
-                      }}<input
-                        type="number"
-                        [name]="key"
-                        [attr.data-policy-duration]="key"
-                        [id]="'admin-policy-' + key"
-                        min="1"
-                        max="3650"
-                        required
-                        [(ngModel)]="days[key]"
-                        (ngModelChange)="dirty = true"
-                        class="min-h-11 rounded-lg border border-slate-300 px-3"
-                    /></label>
-                  }
-                  <label class="grid gap-2 font-semibold sm:col-span-2"
-                    >{{ label('publicReviewHandling')
-                    }}<select
-                      name="publicReviewHandling"
-                      required
-                      [(ngModel)]="publicReviewHandling"
-                      (ngModelChange)="dirty = true"
-                      class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+              <p class="mt-2 text-sm text-muted">
+                {{ label('technicalRequest') }}: {{ request.id }}
+              </p>
+              @if (request.boundPolicy; as policy) {
+                <p class="mt-3">
+                  {{ label('boundPolicy') }}: {{ policy.version }} ·
+                  {{ label(policy.publicReviewHandling) }}
+                </p>
+              } @else {
+                <p class="mt-3 text-amber-900">{{ label('noPolicy') }}</p>
+              }
+              <p class="mt-3 text-sm">{{ label('ownerOnlyTypes') }}</p>
+              <p class="mt-2 text-sm">
+                {{ label('fileObjects') }}: {{ request.fileObjectCount }} ·
+                {{ label('garageReviews') }}: {{ request.garageReviewCount }} ·
+                {{ label('contentReports') }}: {{ request.contentReportCount }}
+              </p>
+              @if (request.activeOwnerships) {
+                <div class="mt-3 rounded-lg bg-amber-50 p-3 text-amber-950">
+                  <p>{{ label('privacyOwnershipBlocked') }}</p>
+                  @for (garage of request.ownedGarages; track garage.id) {
+                    <a
+                      class="mt-2 block break-words underline"
+                      [href]="privacyGarageUrl(garage.id, request.id)"
+                      >{{ garage.name }}</a
                     >
-                      <option value="">{{ label('choose') }}</option>
-                      <option value="delete">{{ label('delete') }}</option>
-                      <option value="retain_anonymized">{{ label('retain_anonymized') }}</option>
-                    </select></label
+                  }
+                </div>
+              }
+              @if (request.pendingFileDeletions) {
+                <p class="mt-3 text-amber-900">
+                  {{ label('pendingFiles') }}: {{ request.pendingFileDeletions }}.
+                  {{ label('pendingFilesMeaning') }}
+                </p>
+              }
+              <div class="mt-4 flex flex-wrap gap-3">
+                @if (request.status !== 'completed') {
+                  <button
+                    appButton="outline"
+                    type="button"
+                    [disabled]="busy()"
+                    (click)="refreshDeletion(request.id)"
                   >
-                  <label class="flex min-h-11 items-start gap-3 sm:col-span-2"
-                    ><input
-                      type="checkbox"
-                      name="approvalConfirmed"
-                      required
-                      [(ngModel)]="approvalConfirmed"
-                      class="mt-1 h-5 w-5 shrink-0"
-                    />{{ label('approvalAttestation') }}</label
-                  >
-                  <button appButton type="submit" data-save-policy [disabled]="!validPolicy()">
-                    {{ label('savePolicy') }}
+                    {{ label('refreshPrerequisites') }}
                   </button>
-                </fieldset>
-              </form>
-            </details>
-          </section>
+                }
+                @if (request.runnable && request.boundPolicy) {
+                  <button
+                    appButton="outline"
+                    type="button"
+                    data-process-deletion
+                    [disabled]="busy()"
+                    (click)="processDeletion(request.id, request.boundPolicy.version)"
+                  >
+                    {{ label('processDeletion') }}
+                  </button>
+                }
+              </div>
+            </section>
+          }
           <div class="mt-5 grid gap-4" data-admin-deletions>
             @for (request of data.requests; track request.id) {
               <article
@@ -686,13 +811,15 @@
                 [attr.data-deletion-id]="request.id"
               >
                 <h2 class="text-xl font-bold break-words">{{ request.label }}</h2>
-                <p class="mt-3">{{ label(request.status) }}</p>
+                <p class="mt-3">
+                  {{ request.runnable ? label('privacyRunnable') : label(request.status) }}
+                </p>
                 <p class="mt-2 text-sm text-muted">
                   {{ request.createdAt | date: 'dd.MM.yyyy HH:mm' }} · {{ label('owner') }}:
                   {{ request.activeOwnerships }}
                 </p>
-                @if (request.policyVersion) {
-                  <p class="mt-2">{{ label('policyVersion') }}: {{ request.policyVersion }}</p>
+                @if (request.boundPolicy) {
+                  <p class="mt-2">{{ label('boundPolicy') }}: {{ request.boundPolicy.version }}</p>
                 }
                 @if (request.pendingFileDeletions) {
                   <p class="mt-3 text-amber-900">
@@ -710,23 +837,109 @@
                       {{ label('refreshPrerequisites') }}
                     </button>
                   }
-                  @if (request.status === 'submitted' && request.policyVersion) {
-                    <button
-                      appButton="outline"
-                      type="button"
-                      data-process-deletion
-                      [disabled]="busy()"
-                      (click)="processDeletion(request.id, request.policyVersion)"
-                    >
-                      {{ label('processDeletion') }}
-                    </button>
-                  }
+                  <button
+                    appButton="outline"
+                    type="button"
+                    (click)="openPrivacyRequest(request.id)"
+                  >
+                    {{ label('open') }}
+                  </button>
                 </div>
               </article>
             } @empty {
               <p>{{ label('empty') }}</p>
             }
           </div>
+          <section
+            class="mt-6 rounded-xl border border-slate-200 bg-white p-5"
+            data-policy-secondary
+          >
+            <button
+              appButton="outline"
+              type="button"
+              [attr.aria-expanded]="policyOpen"
+              (click)="policyOpen = !policyOpen"
+            >
+              {{ label('policy') }}
+            </button>
+            @if (data.policy; as policy) {
+              <p class="mt-3">
+                {{ label('latestPolicy') }}: {{ policy.version }} ·
+                {{ label(policy.publicReviewHandling) }}
+              </p>
+            } @else {
+              <p class="mt-3 text-amber-900">{{ label('noPolicy') }}</p>
+            }
+            @if (policyOpen) {
+              <p class="mt-3 text-sm text-muted">{{ label('policyHint') }}</p>
+              <form class="mt-4" (ngSubmit)="savePolicy()">
+                <fieldset [disabled]="busy()" class="grid gap-4 sm:grid-cols-2">
+                  <label class="grid gap-2 font-semibold"
+                    >{{ label('policyVersion')
+                    }}<input
+                      name="policyVersion"
+                      required
+                      maxlength="80"
+                      [(ngModel)]="policyVersion"
+                      (ngModelChange)="policyChanged()"
+                      class="min-h-11 rounded-lg border border-slate-300 px-3"
+                  /></label>
+                  <label class="grid gap-2 font-semibold"
+                    >{{ label('operatorApprovalReference')
+                    }}<input
+                      name="approvalReference"
+                      required
+                      maxlength="200"
+                      [(ngModel)]="approvalReference"
+                      (ngModelChange)="policyChanged()"
+                      class="min-h-11 rounded-lg border border-slate-300 px-3"
+                  /></label>
+                  @for (key of durations; track key) {
+                    <label class="grid gap-2 font-semibold"
+                      >{{ label(key)
+                      }}<input
+                        type="number"
+                        [name]="key"
+                        [attr.data-policy-duration]="key"
+                        min="1"
+                        max="3650"
+                        required
+                        [(ngModel)]="days[key]"
+                        (ngModelChange)="policyChanged()"
+                        class="min-h-11 rounded-lg border border-slate-300 px-3"
+                    /></label>
+                  }
+                  <label class="grid gap-2 font-semibold sm:col-span-2"
+                    >{{ label('publicReviewHandling')
+                    }}<select
+                      name="publicReviewHandling"
+                      required
+                      [(ngModel)]="publicReviewHandling"
+                      (ngModelChange)="policyChanged()"
+                      class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
+                    >
+                      <option value="">{{ label('choose') }}</option>
+                      <option value="delete">{{ label('delete') }}</option>
+                      <option value="retain_anonymized">{{ label('retain_anonymized') }}</option>
+                    </select></label
+                  >
+                  <label class="flex min-h-11 items-start gap-3 sm:col-span-2"
+                    ><input
+                      type="checkbox"
+                      name="approvalConfirmed"
+                      required
+                      [(ngModel)]="approvalConfirmed"
+                      (ngModelChange)="policyChanged()"
+                      class="mt-1 h-5 w-5 shrink-0"
+                    />{{ label('approvalAttestation') }}</label
+                  >
+                  <button appButton type="submit" data-save-policy [disabled]="!validPolicy()">
+                    {{ label('savePolicy') }}
+                  </button>
+                </fieldset>
+              </form>
+            }
+          </section>
         }
       }
       @if (section === 'audit') {
@@ -803,4 +1016,4 @@
       }
     }
   }
-</main>
+</app-staff-layout>

@@ -154,6 +154,49 @@ test('OIDC login accepts only safe inquiry and public search return paths', asyn
   }
 });
 
+test('OIDC login preserves only bounded local staff and administration context routes', async () => {
+  const store = new AccessStore();
+  const app = createServer({
+    accessStore: store,
+    oidcConfig: {
+      audience: 'client-id',
+      authorizationEndpoint: 'https://issuer.example/oauth/v2/authorize',
+      clientId: 'client-id',
+      issuer: 'https://issuer.example',
+      jwksUri: 'https://issuer.example/oauth/v2/keys',
+      redirectUri: 'http://localhost:4000/auth/callback',
+      tokenEndpoint: 'https://issuer.example/oauth/v2/token',
+    },
+  });
+  try {
+    const accepted = [
+      '/moderation/cases/review:demo-staff-review-assigned?queue=todo&page=2&kind=review_submission',
+      '/en/admin/cases/case_123?unassigned=true&priority=high',
+      '/admin/garages?garageId=garage_1&tab=review&returnRequest=request_1',
+      '/sq/admin/privacy?requestId=request_1&status=submitted',
+    ];
+    for (const returnTo of accepted) {
+      const response = await app.inject('/auth/login?returnTo=' + encodeURIComponent(returnTo));
+      const state = new URL(response.headers.location!).searchParams.get('state')!;
+      assert.equal(store.consumeOidcTransaction(state)?.returnTo, returnTo);
+    }
+    for (const returnTo of [
+      '/moderation/cases/review%253Ademo',
+      '/moderation/cases/review:demo?reason=private',
+      '/moderation/cases/review:demo?queue=todo&queue=done',
+      '/moderation/cases/review:demo#proof',
+      '/admin/garages?garageId=garage_1&tab=evil',
+      '/admin/privacy?requestId=request_1&garageId=garage_1',
+    ]) {
+      const response = await app.inject('/auth/login?returnTo=' + encodeURIComponent(returnTo));
+      const state = new URL(response.headers.location!).searchParams.get('state')!;
+      assert.equal(store.consumeOidcTransaction(state)?.returnTo, '/');
+    }
+  } finally {
+    await app.close();
+  }
+});
+
 test('customers only receive their own vehicles', async () => {
   const { app, customerA, customerB, customerVehicle } = setup();
   try {

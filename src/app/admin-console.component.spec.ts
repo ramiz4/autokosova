@@ -2,22 +2,17 @@ import { Component, input, output, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { AdminConsoleComponent } from './admin-console.component';
-import { AdminNavigationComponent } from './admin-navigation.component';
 import { GarageOnboardingComponent } from './garage-onboarding.component';
-import { SiteHeaderComponent } from './site-header.component';
+import { StaffLayoutComponent } from './staff-layout.component';
 import { AccountSessionService } from './account-session.service';
 import { LanguageService } from './language.service';
 import { adminLabel } from '../shared/admin-copy';
 import type { AdminGarageDetail } from '../shared/administration';
 import type { AppLanguage } from '../shared/i18n';
 
-@Component({ selector: 'app-site-header', template: '' })
-class HeaderStub {
-  readonly compact = input(false);
-  readonly active = input('');
-}
-@Component({ selector: 'app-admin-navigation', template: '' })
-class NavigationStub {
+@Component({ selector: 'app-staff-layout', template: '<ng-content />' })
+class StaffLayoutStub {
+  readonly admin = input(false);
   readonly active = input('');
 }
 @Component({ selector: 'app-garage-onboarding', template: '' })
@@ -53,6 +48,12 @@ const garage: AdminGarageDetail = {
     location: 'not_checked',
   },
   adminSuspended: false,
+  prerequisites: {
+    publishable: false,
+    blockers: ['company_document', 'owner_account', 'point'],
+    restorable: false,
+    restoreBlockers: ['state', 'company_document', 'owner_account', 'point'],
+  },
   members: [],
   documents: [],
   photos: [],
@@ -61,7 +62,12 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
-async function render(section = 'users', locale: AppLanguage = 'de', role = 'admin') {
+async function render(
+  section = 'users',
+  locale: AppLanguage = 'de',
+  role = 'admin',
+  query: Record<string, string> = {},
+) {
   const account = {
     state: signal('ready'),
     identity: signal({ userId: 'synthetic-admin', roles: [role], garageMemberships: [] }),
@@ -90,7 +96,15 @@ async function render(section = 'users', locale: AppLanguage = 'de', role = 'adm
     imports: [AdminConsoleComponent],
     providers: [
       provideRouter([]),
-      { provide: ActivatedRoute, useValue: { snapshot: { data: { adminSection: section } } } },
+      {
+        provide: ActivatedRoute,
+        useValue: {
+          snapshot: {
+            data: { adminSection: section },
+            queryParamMap: { get: (key: string) => query[key] ?? null },
+          },
+        },
+      },
       { provide: AccountSessionService, useValue: account },
       {
         provide: LanguageService,
@@ -100,9 +114,9 @@ async function render(section = 'users', locale: AppLanguage = 'de', role = 'adm
   })
     .overrideComponent(AdminConsoleComponent, {
       remove: {
-        imports: [SiteHeaderComponent, AdminNavigationComponent, GarageOnboardingComponent],
+        imports: [StaffLayoutComponent, GarageOnboardingComponent],
       },
-      add: { imports: [HeaderStub, NavigationStub, OnboardingStub] },
+      add: { imports: [StaffLayoutStub, OnboardingStub] },
     })
     .compileComponents();
   const fixture = TestBed.createComponent(AdminConsoleComponent);
@@ -149,22 +163,53 @@ it('requires deliberate operator attestation and all explicit retention values',
 it('keeps the loaded revision and unsaved checks on a conflict, with no success claim', async () => {
   const { component, fetch } = await render('garages');
   component.detail.set(garage);
-  component.reason = 'company_verified';
+  component.reviewReason = 'company_verified';
   component.verification.phone = 'verified';
-  component.dirty = true;
   fetch.mockClear();
   fetch.mockResolvedValue(new Response('{}', { status: 409 }));
   await component.saveVerification();
   expect(component.detail()?.revision).toBe(7);
   expect(component.verification.phone).toBe('verified');
-  expect(component.dirty).toBe(true);
+  expect(component.dirty()).toBe(true);
+  expect(component.stale()).toBe(true);
   expect(component.success()).toBe('');
   expect(component.error()).not.toBe('');
+});
+it('uses equality for a reverted review draft and leaves a cancelled context untouched', async () => {
+  const { component } = await render('garages');
+  await component.openGarage('demo-admin-test', 'review', false);
+  const initial = component.verification.phone;
+  component.verification.phone = 'verified';
+  expect(component.dirty()).toBe(initial !== 'verified');
+  component.verification.phone = initial;
+  expect(component.dirty()).toBe(false);
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  component.reviewReason = 'missing_information';
+  expect(component.canLeave('/admin/garages?garageId=another')).toBe(false);
+  expect(component.detail()?.id).toBe('demo-admin-test');
+  expect(confirm).toHaveBeenCalledOnce();
+});
+it('keeps the mutation busy until its authoritative garage read completes', async () => {
+  const { component, fetch } = await render('garages');
+  await component.openGarage('demo-admin-test', 'review', false);
+  component.reviewReason = 'company_verified';
+  let finishRead!: (value: Response) => void;
+  fetch.mockClear();
+  fetch
+    .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    .mockImplementationOnce(() => new Promise<Response>((resolve) => (finishRead = resolve)));
+  const saving = component.saveVerification();
+  await vi.waitFor(() => expect(component.busy()).toBe(true));
+  await component.saveVerification();
+  expect(fetch.mock.calls.filter(([url]) => String(url).endsWith('/verification'))).toHaveLength(1);
+  finishRead(new Response(JSON.stringify(garage)));
+  await saving;
+  expect(component.busy()).toBe(false);
 });
 it('prevents duplicate writes and discards a late result after logout', async () => {
   const { component, account, fetch, fixture } = await render('garages');
   component.detail.set(garage);
-  component.reason = 'company_verified';
+  component.reviewReason = 'company_verified';
   component.latitude = 42.67;
   component.longitude = 21.16;
   component.query = 'private fixture query';
@@ -186,6 +231,7 @@ it('prevents duplicate writes and discards a late result after logout', async ()
 });
 it('ignores a stale candidate search so it cannot replace the newer selection list', async () => {
   const { component, fetch } = await render('users');
+  component.detailTab = 'team';
   let first!: (r: Response) => void;
   fetch
     .mockImplementationOnce(() => new Promise<Response>((r) => (first = r)))
@@ -214,4 +260,55 @@ it('submits exactly the deletion policy that the administrator confirmed', async
   const [path, options] = fetch.mock.calls[0];
   expect(path).toContain('/synthetic-request/process');
   expect(JSON.parse(options.body)).toEqual({ policyVersion: 'SYNTHETIC-CONFIRMED' });
+});
+
+it('keeps only a technical selected request in the URL and detects policy edits by equality', async () => {
+  const { component, fetch } = await render('privacy', 'de', 'admin', {
+    requestId: 'synthetic-request',
+    focus: 'privacy-context',
+  });
+  expect(
+    fetch.mock.calls.some(([url]) => String(url).includes('requestId=synthetic-request')),
+  ).toBe(true);
+  expect(component.policyDirty()).toBe(false);
+  component.policyVersion = 'SYNTHETIC-V1';
+  expect(component.policyDirty()).toBe(true);
+  component.policyVersion = '';
+  expect(component.policyDirty()).toBe(false);
+});
+
+it('refreshes privacy during its own save and does not report a stale policy as current', async () => {
+  const { component, fetch } = await render('privacy');
+  component.policyVersion = 'SYNTHETIC';
+  component.approvalReference = 'SYNTHETIC NOT REAL APPROVAL';
+  component.publicReviewHandling = 'delete';
+  for (const key of component.durations) component.days[key] = 30;
+  component.approvalConfirmed = true;
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  fetch.mockClear();
+  fetch
+    .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ requests: [], policy: { version: 'SYNTHETIC' }, page: 1, hasMore: false }),
+      ),
+    );
+  await component.savePolicy();
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(component.privacy()?.policy?.version).toBe('SYNTHETIC');
+  expect(component.success()).toBe(adminLabel('policySaved', 'de'));
+  expect(component.policyDirty()).toBe(false);
+});
+
+it('does not announce a fresh garage state after a failed post-write read', async () => {
+  const { component, fetch } = await render('garages');
+  await component.openGarage('demo-admin-test', 'review', false);
+  component.reviewReason = 'company_verified';
+  fetch
+    .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    .mockResolvedValueOnce(new Response('{}', { status: 503 }));
+  await component.saveVerification();
+  expect(component.error()).not.toBe('');
+  expect(component.success()).toBe('');
+  expect(component.stale()).toBe(true);
 });

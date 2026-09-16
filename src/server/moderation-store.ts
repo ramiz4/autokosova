@@ -141,7 +141,11 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
     if (!isStaffCaseDecision(input)) throw new AccessError(422, 'Case decision is invalid');
     const detail = await this.workspace.get(principal, caseId);
     if (detail.conflictOfInterest)
-      throw new AccessError(403, 'A person involved in a case cannot decide it');
+      throw new AccessError(
+        403,
+        'A person involved in a case cannot decide it',
+        'case_interest_conflict',
+      );
     if (!detail.allowedActions?.includes(input.action))
       throw new AccessError(409, 'This action is not available for the current case');
     // These are the existing domain writers, not another publication workflow. They repeat
@@ -541,8 +545,12 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
       );
       await client.query(
         `UPDATE data_deletion_request
-         SET status = 'submitted', policy_version = $1
-         WHERE status = 'blocked_by_policy' AND policy_version IS NULL`,
+         SET status = CASE WHEN EXISTS(
+               SELECT 1 FROM membership m WHERE m.user_id=data_deletion_request.user_id
+                AND m.role='owner' AND m.state='active'
+             ) THEN 'manual_content_decision_required' ELSE 'submitted' END,
+             policy_version = $1
+         WHERE status IN ('blocked_by_policy','manual_content_decision_required') AND policy_version IS NULL`,
         [input.version],
       );
       await this.audit(
@@ -736,10 +744,15 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
         throw new AccessError(
           409,
           'The deletion policy changed; review and confirm the current policy',
+          'privacy_policy_changed',
         );
 
       if (row.status !== 'submitted' || !row.policy_version) {
-        throw new AccessError(409, 'Data deletion requires the configured operator policy');
+        throw new AccessError(
+          409,
+          'Data deletion requires the configured operator policy',
+          'privacy_policy_missing',
+        );
       }
       const policy = await client.query<{
         readonly public_review_handling: 'delete' | 'retain_anonymized';
@@ -747,7 +760,11 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
         row.policy_version,
       ]);
       if (!policy.rows[0])
-        throw new AccessError(409, 'Data deletion requires the configured operator policy');
+        throw new AccessError(
+          409,
+          'Data deletion requires the configured operator policy',
+          'privacy_policy_missing',
+        );
       const userId = row.user_id;
       // Serialize account erasure with new favorites, which take a shared owner lock.
       await client.query('SELECT id FROM app_user WHERE id = $1 FOR UPDATE', [userId]);
@@ -757,7 +774,11 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
         [userId],
       );
       if (ownerships.rowCount)
-        throw new AccessError(409, 'Resolve current garage ownership before erasure');
+        throw new AccessError(
+          409,
+          'Resolve current garage ownership before erasure',
+          'privacy_ownership_blocked',
+        );
 
       const files = await client.query<{ readonly id: string; readonly storage_key: string }>(
         "SELECT id, storage_key FROM file_object WHERE owner_user_id = $1 AND retention_state = 'active'",

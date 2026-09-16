@@ -21,13 +21,15 @@
         class="site-logo block h-7 w-auto max-w-full sm:h-8"
       />
     </a>
-    <nav
-      id="desktop-navigation"
-      class="hidden h-full shrink-0 items-center gap-4 text-[13px] font-semibold whitespace-nowrap text-[#475569] xl:flex"
-      [attr.aria-label]="language.t('nav.main')"
-    >
-      <ng-container [ngTemplateOutlet]="publicNavigation" />
-    </nav>
+    @if (!internalShell()) {
+      <nav
+        id="desktop-navigation"
+        class="hidden h-full shrink-0 items-center gap-4 text-[13px] font-semibold whitespace-nowrap text-[#475569] xl:flex"
+        [attr.aria-label]="language.t('nav.main')"
+      >
+        <ng-container [ngTemplateOutlet]="publicNavigation" />
+      </nav>
+    }
     <div class="flex items-center gap-2 sm:gap-3">
       <app-language-switcher [compact]="true" class="flex items-center" />
       @if (account.signedIn() || account.state() !== 'guest') {
@@ -66,35 +68,43 @@
           ><a appButton size="compact" [href]="loginUrl(true)">{{ language.t('nav.register') }}</a>
         </div>
       }
-      <button
-        #menuButton
-        type="button"
-        class="mobile-menu-toggle flex size-11 items-center justify-center rounded-lg hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand xl:hidden"
-        [attr.aria-label]="language.t(menuOpen() ? 'nav.close' : 'nav.open')"
-        [attr.aria-expanded]="menuOpen()"
-        aria-controls="mobile-navigation"
-        (click)="toggleMenu()"
-      >
-        <lucide-icon [name]="menuIcon()" class="size-6" />
-      </button>
-    </div>
-  </div>
-  <nav
-    id="mobile-navigation"
-    [hidden]="!menuOpen()"
-    class="site-menu-surface absolute inset-x-0 top-full mt-2 max-h-[calc(100dvh-10rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/80 p-4 shadow-xl shadow-slate-900/10 sm:p-5 xl:hidden"
-    [attr.aria-label]="language.t('nav.mobile')"
-  >
-    <div class="grid gap-1">
-      <ng-container [ngTemplateOutlet]="publicNavigation" />
-      @if (account.state() === 'guest') {
-        <div class="mt-2 grid grid-cols-2 gap-3">
-          <a appButton="outline" size="compact" [href]="loginUrl()">{{ language.t('nav.login') }}</a
-          ><a appButton size="compact" [href]="loginUrl(true)">{{ language.t('nav.register') }}</a>
-        </div>
+      @if (!internalShell()) {
+        <button
+          #menuButton
+          type="button"
+          class="mobile-menu-toggle flex size-11 items-center justify-center rounded-lg hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand xl:hidden"
+          [attr.aria-label]="language.t(menuOpen() ? 'nav.close' : 'nav.open')"
+          [attr.aria-expanded]="menuOpen()"
+          aria-controls="mobile-navigation"
+          (click)="toggleMenu()"
+        >
+          <lucide-icon [name]="menuIcon()" class="size-6" />
+        </button>
       }
     </div>
-  </nav>
+  </div>
+  @if (!internalShell()) {
+    <nav
+      id="mobile-navigation"
+      [hidden]="!menuOpen()"
+      class="site-menu-surface absolute inset-x-0 top-full mt-2 max-h-[calc(100dvh-10rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/80 p-4 shadow-xl shadow-slate-900/10 sm:p-5 xl:hidden"
+      [attr.aria-label]="language.t('nav.mobile')"
+    >
+      <div class="grid gap-1">
+        <ng-container [ngTemplateOutlet]="publicNavigation" />
+        @if (account.state() === 'guest') {
+          <div class="mt-2 grid grid-cols-2 gap-3">
+            <a appButton="outline" size="compact" [href]="loginUrl()">{{
+              language.t('nav.login')
+            }}</a
+            ><a appButton size="compact" [href]="loginUrl(true)">{{
+              language.t('nav.register')
+            }}</a>
+          </div>
+        }
+      </div>
+    </nav>
+  }
   @if (account.state() !== 'guest' && accountPanel() === 'account') {
     <section
       id="account-menu"
@@ -224,9 +234,11 @@
           >
         }
       </div>
-      <div class="mt-2 grid gap-1 border-t border-slate-200 pt-2 sm:hidden">
-        <ng-container [ngTemplateOutlet]="publicNavigation" />
-      </div>
+      @if (!internalShell()) {
+        <div class="mt-2 grid gap-1 border-t border-slate-200 pt-2 sm:hidden">
+          <ng-container [ngTemplateOutlet]="publicNavigation" />
+        </div>
+      }
       @if (account.signedIn()) {
         <button
           type="button"

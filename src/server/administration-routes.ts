@@ -4,6 +4,7 @@ import type { PostgresAdministrationStore, AdminFilter } from './administration-
 import type { LocalDemoFileStore } from './local-demo-files';
 import {
   validAdminDecision,
+  validAdminLocationPoint,
   validAdminRevision,
   type AdminRevision,
 } from '../shared/administration';
@@ -26,6 +27,7 @@ export function registerAdministrationRoutes(
     properties: {
       page: { type: 'integer', minimum: 1, maximum: 10000 },
       query: { type: 'string', maxLength: 120 },
+      requestId: { type: 'string', maxLength: 200, pattern: '^[A-Za-z0-9_-]{1,200}$' },
       status: { type: 'string', maxLength: 40 },
     },
   };
@@ -78,7 +80,7 @@ export function registerAdministrationRoutes(
   get('/users', (r, p) => store!.users(p, r.query as AdminFilter));
   get('/garages', (r, p) => store!.garages(p, r.query as AdminFilter));
   get('/garages/:garageId', (r, p) => store!.garage(p, ids(r).garageId));
-  get('/privacy', (r, p) => store!.privacy(p, (r.query as AdminFilter).page));
+  get('/privacy', (r, p) => store!.privacy(p, r.query as AdminFilter));
   get('/audit', (r, p) => store!.auditPage(p, r.query as AdminFilter));
   get('/catalog', (_, p) => store!.catalog(p));
   get('/provider', async () => ({
@@ -106,9 +108,15 @@ export function registerAdministrationRoutes(
       }
     });
   };
-  post('/garages/:garageId/decision', async (r, p) => {
-    if (!validAdminDecision(r.body)) throw new AccessError(422, 'Invalid administrative decision');
-    await store!.decideGarage(p, ids(r).garageId, r.body);
+  app.post(prefix + '/garages/:garageId/decision', async (request, reply) => {
+    try {
+      const principal = await admin(request, true);
+      if (!validAdminDecision(request.body))
+        throw new AccessError(422, 'Invalid administrative decision');
+      return reply.send(await store!.decideGarage(principal, ids(request).garageId, request.body));
+    } catch (error) {
+      return respond(error, reply);
+    }
   });
   post('/garages/:garageId/submit', async (r, p) => {
     const value = revisionBody(r.body, ['revision', 'reason', 'requestReference']);
@@ -130,13 +138,7 @@ export function registerAdministrationRoutes(
   post('/garages/:garageId/verification', async (r, p) => {
     const value = revisionBody(r.body, ['revision', 'reason', 'verification', 'locationPoint']);
     const point = value['locationPoint'];
-    if (
-      point !== undefined &&
-      (!record(point) ||
-        Object.keys(point).length !== 2 ||
-        typeof point['latitude'] !== 'number' ||
-        typeof point['longitude'] !== 'number')
-    )
+    if (point !== undefined && !validAdminLocationPoint(point))
       throw new AccessError(422, 'Invalid point');
     await store!.verifyGarage(p, ids(r).garageId, {
       revision: value.revision,

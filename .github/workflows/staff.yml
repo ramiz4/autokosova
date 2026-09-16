@@ -35,11 +35,29 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run test:staff:browser
+      - run: npx playwright install --with-deps chromium
+      - name: Capture current synthetic staff workflows
+        run: node --import tsx scripts/staff-workspace-ux-evidence.mts
+        env:
+          AUTOKOSOVA_E2E_DATABASE_URL: postgresql://autokosova:autokosova@127.0.0.1:5432/autokosova
+      - name: Checkout the documented UX audit baseline
+        uses: actions/checkout@v5
+        with:
+          ref: e5404b76d035902ed4661cbb705e73556ee1ba64
+          path: .ux-baseline
+      - run: npm ci --prefix .ux-baseline
+      - run: npm run build --prefix .ux-baseline
+      - name: Capture matching baseline workflows
+        run: node --import tsx scripts/staff-workspace-ux-evidence.mts .ux-baseline test-results/staff-workspace-ux/before before
+        env:
+          AUTOKOSOVA_E2E_DATABASE_URL: postgresql://autokosova:autokosova@127.0.0.1:5432/autokosova
       - name: Upload synthetic staff viewport evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: staff-foundation-evidence
-          path: test-results/staff-foundation
+          path: |
+            test-results/staff-foundation
+            test-results/staff-workspace-ux
           if-no-files-found: ignore
           retention-days: 7

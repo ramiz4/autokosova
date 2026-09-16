@@ -1,4 +1,5 @@
 import { LOCAL_DEMO_PHOTOS } from '../shared/local-demo';
+import { createHash } from 'node:crypto';
 import type pg from 'pg';
 import type { StaffCaseDetail, StaffCaseSummary } from '../shared/moderation';
 
@@ -11,6 +12,7 @@ interface Content {
   readonly review?: StaffCaseDetail['review'];
   readonly garage?: StaffCaseDetail['garage'];
   readonly evidenceAvailable: boolean;
+  readonly materialVersion?: string;
   readonly restorable: boolean;
   readonly subjectState?: string;
 }
@@ -28,6 +30,7 @@ export async function readStaffCaseContent(
       garage_id: string;
       garage_name: string | null;
       publication_state: string;
+      rejection_reason_code: string | null;
       verification_state: string | null;
       evidence_kind: string | null;
       work_quality: number;
@@ -35,12 +38,13 @@ export async function readStaffCaseContent(
       price_transparency: number;
       punctuality: number;
       evidence_available: boolean;
+      private_file_id: string | null;
       restorable: boolean;
     }>(
       `SELECT r.review_text,to_char(r.visit_month,'YYYY-MM') AS visit_month,r.service_category_id,
-         r.garage_id,g.name AS garage_name,r.publication_state,e.verification_state,e.evidence_kind,
+         r.garage_id,g.name AS garage_name,r.publication_state,r.rejection_reason_code,e.verification_state,e.evidence_kind,
          r.work_quality,r.communication,r.price_transparency,r.punctuality,
-         COALESCE(f.scan_state='clean' AND f.retention_state='active',false) AS evidence_available,
+         f.id AS private_file_id,COALESCE(f.scan_state='clean' AND f.retention_state='active',false) AS evidence_available,
          COALESCE(r.publication_state='temporarily_hidden' AND r.moderation_hidden_case_id=$2
            AND r.published_at IS NOT NULL AND ((e.verification_state='verified'
              AND e.garage_matches AND e.service_matches AND e.visit_month_matches
@@ -67,6 +71,23 @@ export async function readStaffCaseContent(
     );
     return {
       evidenceAvailable: r.evidence_available,
+      materialVersion: createHash('sha256')
+        .update(
+          JSON.stringify([
+            r.review_text,
+            r.visit_month,
+            r.service_category_id,
+            r.work_quality,
+            r.communication,
+            r.price_transparency,
+            r.punctuality,
+            r.publication_state,
+            r.verification_state,
+            r.private_file_id,
+            r.evidence_available,
+          ]),
+        )
+        .digest('base64url'),
       restorable: r.restorable,
       subjectState: r.publication_state,
       review: {
@@ -76,6 +97,7 @@ export async function readStaffCaseContent(
         garageId: r.garage_id,
         garageName: r.garage_name ?? '',
         publicationState: r.publication_state,
+        ...(r.rejection_reason_code ? { rejectionReason: r.rejection_reason_code } : {}),
         evidenceStatus: r.verification_state ?? 'unavailable',
         evidenceKind: r.evidence_kind ?? 'unavailable',
         ratings: {

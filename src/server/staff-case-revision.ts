@@ -7,5 +7,9 @@ export function assertCaseRevision(actual: number | undefined, expected: number 
     throw new AccessError(422, 'Invalid case revision');
   if (actual === undefined) throw new AccessError(404, 'Moderation case not found');
   if (actual !== expected)
-    throw new AccessError(409, 'The case changed; reload it before making a decision');
+    throw new AccessError(
+      409,
+      'The case changed; reload it before making a decision',
+      'case_stale',
+    );
 }

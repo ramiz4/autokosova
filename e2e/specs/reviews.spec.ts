@@ -60,28 +60,32 @@ test('review-workflow submits evidence, assigns, verifies, publishes, replies an
   await logout(page, app.origin);
   await app.login(page, 'admin');
   const row = () => page.locator(`[data-case-id="review:${review.id}"]`);
-  await expect(page.locator('select[name="status"]')).toBeVisible();
-  await page.locator('select[name="status"]').selectOption('submitted');
+  await expect(page.locator('[data-queue-tabs] button').first()).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
   await page
-    .locator('form')
-    .filter({ has: page.locator('select[name="status"]') })
-    .getByRole('button')
+    .locator('details')
+    .filter({ has: page.locator('select[name="kind"]') })
+    .locator('summary')
     .click();
+  await page.locator('select[name="kind"]').selectOption('review_submission');
+  await expect(page).toHaveURL(/kind=review_submission/);
   await expect(row()).toBeVisible();
   await row().locator('[data-open-case]').click();
   await page.locator('#staff-assignee').selectOption(app.subjects.moderator);
   await page.locator('[data-assign]').click();
+  await expect(page.locator('[data-case-assignee]')).toContainText('E2E moderator');
   await logout(page, app.origin);
   await app.login(page, 'moderator');
   await row().locator('[data-open-case]').click();
   await page.locator('[data-evidence]').click();
   await expect(page.locator('[data-evidence-text]')).toContainText('DEMO – kein echter Nachweis');
-  await page.locator('#staff-decision-action').selectOption('publish_review');
   for (const field of ['garageMatches', 'serviceMatches', 'visitMonthMatches'])
     await page.locator(`input[name="${field}"]`).check();
   page.once('dialog', (dialog) => dialog.accept());
-  await page.locator('[data-submit-decision]').click();
-  await expect(page.locator('[data-staff-case]')).toHaveCount(0);
+  await page.locator('[data-publish-review]').click();
+  await expect(page.locator('[data-staff-case] [role="status"]')).toBeVisible();
   await logout(page, app.origin);
   await app.login(page, 'customer');
   await page.goto(app.origin + '/reviews');

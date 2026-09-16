@@ -1,29 +1,11 @@
 @if (actions().length) {
   <form data-decision-form class="mt-6 border-t border-slate-200 pt-6" (ngSubmit)="submit()">
-    <fieldset [disabled]="busy()" class="grid max-w-xl gap-4">
+    <fieldset [disabled]="busy() || stale()" class="grid max-w-xl gap-4">
       <legend class="mb-4 text-xl font-bold">{{ label('decision') }}</legend>
       @if (detail().openAppeal) {
         <p class="rounded-lg bg-amber-50 p-3">{{ label('independentAppeal') }}</p>
       }
-      <label class="grid gap-2 font-semibold" for="staff-decision-action"
-        >{{ label('action') }}
-        <select
-          id="staff-decision-action"
-          name="action"
-          [(ngModel)]="action"
-          required
-          class="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
-        >
-          <option value="">{{ label('choose') }}</option>
-          @for (item of actions(); track item) {
-            <option [value]="item">{{ label(item) }}</option>
-          }
-        </select>
-      </label>
-      @if (action) {
-        <p data-decision-effect class="text-sm text-muted">{{ label('effect_' + action) }}</p>
-      }
-      @if (action === 'publish_review' || action === 'reject_review') {
+      @if (actions().includes('publish_review') || actions().includes('reject_review')) {
         <fieldset class="grid gap-3 rounded-lg bg-slate-50 p-4">
           <legend class="font-semibold">{{ label('checklist') }}</legend>
           <label class="flex min-h-11 items-center gap-3"
@@ -31,6 +13,7 @@
               type="checkbox"
               name="garageMatches"
               [(ngModel)]="garageMatches"
+              (ngModelChange)="emitDirty()"
               class="h-5 w-5 shrink-0"
             />{{ label('garageMatches') }}</label
           >
@@ -39,6 +22,7 @@
               type="checkbox"
               name="serviceMatches"
               [(ngModel)]="serviceMatches"
+              (ngModelChange)="emitDirty()"
               class="h-5 w-5 shrink-0"
             />{{ label('serviceMatches') }}</label
           >
@@ -47,12 +31,55 @@
               type="checkbox"
               name="visitMonthMatches"
               [(ngModel)]="visitMonthMatches"
+              (ngModelChange)="emitDirty()"
               class="h-5 w-5 shrink-0"
             />{{ label('visitMonthMatches') }}</label
           >
+          @if (!detail().evidenceAvailable) {
+            <p class="text-sm text-amber-900">{{ label('evidenceUnavailable') }}</p>
+          }
         </fieldset>
-        @if (!detail().evidenceAvailable) {
-          <p class="text-sm text-amber-900">{{ label('evidenceUnavailable') }}</p>
+        <div class="flex flex-wrap gap-3" data-review-actions>
+          @if (actions().includes('publish_review')) {
+            <button
+              [appButton]="action === 'reject_review' ? 'outline' : 'primary'"
+              type="button"
+              data-publish-review
+              [disabled]="!publishValid()"
+              (click)="choose('publish_review')"
+            >
+              {{ label('publish_review') }}
+            </button>
+          }
+          @if (actions().includes('reject_review')) {
+            <button
+              appButton="outline"
+              type="button"
+              data-reject-review
+              (click)="choose('reject_review')"
+            >
+              {{ label('reject_review') }}
+            </button>
+          }
+        </div>
+      }
+      @if (!(actions().includes('publish_review') || actions().includes('reject_review'))) {
+        <div class="flex flex-wrap gap-3" data-report-actions>
+          @for (item of actions(); track item) {
+            @if (item !== 'request_information') {
+              <button
+                [attr.data-action]="item"
+                [appButton]="item === 'approve' ? 'primary' : 'outline'"
+                type="button"
+                (click)="choose(item)"
+              >
+                {{ label(item) }}
+              </button>
+            }
+          }
+        </div>
+        @if (action) {
+          <p data-decision-effect class="text-sm text-muted">{{ label('effect_' + action) }}</p>
         }
       }
       @if (action === 'reject_review') {
@@ -62,6 +89,7 @@
             id="review-rejection-reason"
             name="rejectionReason"
             [(ngModel)]="rejectionReason"
+            (ngModelChange)="emitDirty()"
             required
             class="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
           >
@@ -79,6 +107,7 @@
             id="moderation-reason"
             name="reason"
             [(ngModel)]="reason"
+            (ngModelChange)="emitDirty()"
             required
             class="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
           >
@@ -89,9 +118,28 @@
           </select>
         </label>
       }
-      <button appButton data-submit-decision type="submit" [disabled]="!valid()">
-        {{ label('saveDecision') }}
-      </button>
+      @if (action === 'reject_review' || action === 'reject' || action === 'temporarily_hide') {
+        <button appButton data-submit-decision type="submit" [disabled]="!valid()">
+          {{ label(action) }}
+        </button>
+      }
+      @if (actions().includes('request_information')) {
+        <div class="flex flex-wrap gap-3" data-secondary-review-actions>
+          <button
+            data-action="request_information"
+            appButton="outline"
+            type="button"
+            (click)="choose('request_information')"
+          >
+            {{ label('request_information') }}
+          </button>
+        </div>
+        @if (action === 'request_information') {
+          <p data-decision-effect class="text-sm text-muted">
+            {{ label('effect_request_information') }}
+          </p>
+        }
+      }
     </fieldset>
   </form>
 } @else {

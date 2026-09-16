@@ -328,6 +328,8 @@ Zusätzliche, eindeutig fiktive Moderationsfälle werden nur bei der erstmaligen
 
 Listen sind nach Priorität und Eingangszeit geordnet und paginiert; Status, Fallart und Priorität sind filterbar. Admins können zusätzlich eskalierte Fälle filtern. Ein leeres Moderatorkonto erhält niemals die globale Liste. Nicht verfügbare Bilder oder einzeln zu entfernende Antworten ohne eigenen abgesicherten Bearbeitungsvertrag werden an Admin eskaliert, nicht durch Löschen unbeteiligter Bewertungen ersetzt.
 
+Der interne Einstieg zeigt standardmässig nur handlungsbereite Fälle; abgeschlossene Fälle sind über die ausdrücklich benannte Gesamtansicht erreichbar. Ein Fall besitzt zusätzlich die stabile kanonische Detailadresse `/admin/cases/:caseId` beziehungsweise `/moderation/cases/:caseId` (mit optionalem `/sq` oder `/en` Präfix). Die ID ist ausschliesslich technisch; bei Reload und Sprachwechsel prüft der Server den Zugriff erneut. Eine Admin-Übernahme lädt im selben Fall die aktuelle serverseitige Zuweisung und Fähigkeiten nach, statt den Arbeitskontext still in die Liste zurückzusetzen.
+
 Durchlauf: **Admin zuweisen → regulär abmelden → Moderator Fall ansehen / Nachweis öffnen → begründet zur Adminprüfung geben → Admin findet Eskalation.** Nach Rückgabe verliert der Moderator diesen Fallzugriff. Der gemeinsame Arbeitsbereich umfasst Zuweisung, Fallkontext, Nachweischeckliste, Entscheidungen, Rückfragen, Wiederherstellung und unabhängige Widersprüche. Der Kunden-Einreichungsweg wird in #99, die übrige Administration in #94 ergänzt. Die erhöhten Rollen vergeben keine Eigentümer- oder Providerrechte.
 
 Alle Nachweise sind klar markierte synthetische Textdateien, keine echten Rechnungen. Der Starter aktiviert `AUTOKOSOVA_LOCAL_DEMO_FILES=1` ausschliesslich für seinen lokalen Workflow-Demoprozess. Bei direktem Test-SSR-Start ist diese explizite Freigabe ebenfalls erforderlich. Der Adapter bleibt in Produktion und bei nichtlokaler Datenbank gesperrt und akzeptiert keine beliebigen Dateien, Speicherpfade oder Uploads. Er ist kein Malware-Scanner. Downloads sind kurzlebig, einmalig, sitzungs-/objektgebunden und werden bei jeder Einlösung erneut autorisiert.
@@ -350,15 +352,15 @@ Automatisierte Abnahme: `npm run verify` mit lokaler DB, `npm run test:staff:bro
 
 `npm run dev:demo-workflows` bereitet zusätzlich die Adminfälle vor. Ein regulärer Adminlogin öffnet `/admin` mit echtem Handlungsbedarf. Die Navigation führt zu Werkstattprüfung, Benutzern/Mitgliedschaften, Datenschutz, Audit, Katalog und dokumentierter Supportaufnahme. Alle Bereiche existieren ebenso unter `/sq` und `/en`. Die Fallbearbeitung wird aus der Moderation wiederverwendet.
 
-| Fiktiver Datensatz              | Übung                                                                                                                  |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `demo-admin-garage-pending`     | Unternehmensdokument öffnen, vier Prüfpunkte/Position kontrollieren, begründet veröffentlichen; Foto separat freigeben |
-| `demo-admin-garage-incomplete`  | Fehlender Unternehmensnachweis verhindert Veröffentlichung; Aufnahmeantrag begründet ablehnen                          |
-| `demo-admin-garage-members`     | Editor widerrufen, letzten Eigentümer schützen und an `demo-admin-next-owner` übertragen                               |
-| `demo-admin-garage-suspended`   | Administrative Sperre prüfen und nur bei gültigen Voraussetzungen zurücknehmen                                         |
+| Fiktiver Datensatz               | Übung                                                                                                                                                             |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `demo-admin-garage-pending`      | Unternehmensdokument öffnen, vier Prüfpunkte/Position kontrollieren, begründet veröffentlichen; Foto separat freigeben                                            |
+| `demo-admin-garage-incomplete`   | Fehlender Unternehmensnachweis verhindert Veröffentlichung; Aufnahmeantrag begründet ablehnen                                                                     |
+| `demo-admin-garage-members`      | Editor widerrufen, letzten Eigentümer schützen und an `demo-admin-next-owner` übertragen                                                                          |
+| `demo-admin-garage-suspended`    | Administrative Sperre prüfen und nur bei gültigen Voraussetzungen zurücknehmen                                                                                    |
 | `demo-admin-garage-unrestorable` | Administrative Sperre ohne Unternehmensnachweis; Wiederherstellung bleibt gesperrt. Widerrufene Zuordnung `demo-admin-former-editor` hat keinen Werkstattzugriff. |
-| `demo-admin-deletion-policy`    | Ohne freigegebene Policy gesperrt; keine erdachten Produktivfristen verwenden                                          |
-| `demo-admin-deletion-ownership` | Eigentumsübergabe oder andere erforderliche Betreiberentscheidung vor Löschung klären                                  |
+| `demo-admin-deletion-policy`     | Ohne freigegebene Policy gesperrt; keine erdachten Produktivfristen verwenden                                                                                     |
+| `demo-admin-deletion-ownership`  | Eigentumsübergabe oder andere erforderliche Betreiberentscheidung vor Löschung klären                                                                             |
 
 Die dafür vorgesehenen synthetischen Konten sind Datenobjekte für die Tests, keine Passwörter, Login-Bypässe oder lokal vergebenen Mitarbeiterrollen. Neue Starts verändern erledigte Fälle, Sperren, Memberships oder gelöschte Datensätze nicht. Unternehmensdateien verwenden dieselben sitzungsgebundenen Einmal-Grants wie die Staff-Demo. Fotos bleiben bis zu ihrer eigenen Freigabe nicht öffentlich. Vorhandene Kunden-/Werkstatt-Demozuordnungen bleiben bestehen.
 

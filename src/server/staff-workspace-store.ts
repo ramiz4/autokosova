@@ -78,6 +78,10 @@ export class PostgresStaffWorkspace {
   async list(principal: Principal, filter: StaffQueueFilter): Promise<StaffQueuePage> {
     if (filter.assignedUserId && !principal.roles.has('admin'))
       throw new AccessError(403, 'Assignee filtering is administrative');
+    if (filter.unassigned && !principal.roles.has('admin'))
+      throw new AccessError(403, 'Unassigned filtering is administrative');
+    if (filter.unassigned && filter.assignedUserId)
+      throw new AccessError(400, 'A case cannot be assigned and unassigned');
     const page = filter.page ?? 1;
     if (!Number.isSafeInteger(page) || page < 1 || page > 10000)
       throw new AccessError(400, 'Invalid case page');
@@ -92,8 +96,15 @@ export class PostgresStaffWorkspace {
         WHERE ($1::boolean OR (c.assigned_moderator_user_id=$2 AND c.escalation_reason IS NULL
           AND c.kind IN ('report','review_submission')))
           AND ($3::text IS NULL OR c.kind=$3) AND ($4::text IS NULL OR c.status=$4)
+          AND (NOT $10::boolean OR c.status IN ('submitted','assigned','waiting_for_subject'))
+          AND ($11::text IS NULL OR ($11='todo' AND c.status IN ('submitted','assigned'))
+            OR ($11='waiting' AND c.status='waiting_for_subject')
+            OR ($11='done' AND c.status IN ('resolved','rejected')))
           AND ($5::text IS NULL OR c.priority=$5) AND ($6::boolean IS NULL OR (c.escalation_reason IS NOT NULL)=$6)
           AND ($9::text IS NULL OR c.assigned_moderator_user_id=$9)
+          AND ($13::boolean IS NULL OR (c.appeal_against_user_id IS NOT NULL)=$13)
+          AND (NOT $12::boolean OR (c.assigned_moderator_user_id IS NULL AND c.escalation_reason IS NULL
+            AND c.kind IN ('report','review_submission')))
         ORDER BY (c.priority='high') DESC,c.created_at,c.id LIMIT $7 OFFSET $8`,
         [
           principal.roles.has('admin'),
@@ -105,6 +116,10 @@ export class PostgresStaffWorkspace {
           pageSize + 1,
           (page - 1) * pageSize,
           filter.assignedUserId ?? null,
+          filter.actionable === true,
+          filter.queue ?? null,
+          filter.unassigned === true,
+          filter.appeal ?? null,
         ],
       );
       return {
@@ -150,9 +165,16 @@ export class PostgresStaffWorkspace {
         [caseId],
       );
       const content = await readStaffCaseContent(client, row);
+      // Detail reads use the locked case row, not the list query's joined identity projection.
+      const assignee = row.assigned_moderator_user_id
+        ? await client.query<{ display_name: string }>(
+            'SELECT display_name FROM staff_identity WHERE user_id=$1',
+            [row.assigned_moderator_user_id],
+          )
+        : undefined;
       const openAppeal = row.appeal_against_user_id !== null && activeStatuses.includes(row.status);
       return {
-        ...summary(row),
+        ...summary({ ...row, assigned_label: assignee?.rows[0]?.display_name }),
         label: content.garage?.name || content.review?.garageName || '',
         ...(report.rows[0]
           ? {
@@ -174,7 +196,19 @@ export class PostgresStaffWorkspace {
           createdAt: appeal.created_at.toISOString(),
         })),
         evidenceAvailable: content.evidenceAvailable,
+        ...(content.materialVersion ? { reviewMaterialVersion: content.materialVersion } : {}),
         openAppeal,
+        ...(openAppeal && content.review
+          ? {
+              appealContext: {
+                originalDecision:
+                  content.review.publicationState === 'published' ? 'published' : 'rejected',
+                ...(content.review.publicationState === 'rejected' && content.review.rejectionReason
+                  ? { originalReason: content.review.rejectionReason }
+                  : {}),
+              },
+            }
+          : {}),
         allowedActions: staffDecisionActions({
           kind: row.kind,
           status: row.status,
