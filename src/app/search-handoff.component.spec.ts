@@ -1,4 +1,5 @@
 import { By } from '@angular/platform-browser';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { SearchAreasComponent } from './ui/search-areas.component';
 import { BehaviorSubject, of } from 'rxjs';
 import { PLATFORM_ID } from '@angular/core';
@@ -240,6 +241,74 @@ async function areaFixture(query: Record<string, string> = {}) {
   }).compileComponents();
   return TestBed.createComponent(SearchHandoffComponent);
 }
+
+it('keeps the Brain content state, hidden state and mobile preference in sync across xl', async () => {
+  const breakpoints = new BehaviorSubject({ matches: false, breakpoints: {} });
+  await TestBed.configureTestingModule({
+    imports: [SearchHandoffComponent],
+    providers: [
+      provideRouter([]),
+      { provide: ActivatedRoute, useValue: routeWith({}) },
+      { provide: PLATFORM_ID, useValue: 'server' },
+      { provide: BreakpointObserver, useValue: { observe: () => breakpoints.asObservable() } },
+    ],
+  }).compileComponents();
+  const fixture = TestBed.createComponent(SearchHandoffComponent);
+  const component = fixture.componentInstance;
+  component['response'] = {
+    allResults: true,
+    page: 1,
+    pageSize: 10,
+    results: [],
+    searchAreas: [],
+    serviceCategory: { id: 'all', label: 'Alle Leistungen' },
+    sort: 'recommended',
+    total: 0,
+    totalPages: 1,
+  };
+  component['state'] = 'ready';
+  fixture.detectChanges();
+
+  const aside = fixture.nativeElement.querySelector('aside') as HTMLElement;
+  const trigger = fixture.nativeElement.querySelector(
+    'button[brnCollapsibleTrigger]',
+  ) as HTMLButtonElement;
+  const form = fixture.nativeElement.querySelector('form') as HTMLFormElement;
+  expect(trigger.getAttribute('aria-controls')).toBe(form.id);
+  expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  expect(aside.dataset['state']).toBe('closed');
+  expect(form.hidden).toBe(true);
+  expect(form.hasAttribute('inert')).toBe(true);
+
+  trigger.click();
+  fixture.detectChanges();
+  expect(component['filtersOpen']()).toBe(true);
+  expect(trigger.getAttribute('aria-expanded')).toBe('true');
+  expect(aside.dataset['state']).toBe('open');
+  expect(form.hidden).toBe(false);
+  expect(form.hasAttribute('inert')).toBe(false);
+
+  breakpoints.next({ matches: true, breakpoints: {} });
+  fixture.detectChanges();
+  expect(component['filtersExpanded']()).toBe(true);
+  component['onFiltersExpanded'](false);
+  expect(component['filtersExpanded']()).toBe(true);
+
+  breakpoints.next({ matches: false, breakpoints: {} });
+  fixture.detectChanges();
+  expect(component['filtersOpen']()).toBe(true);
+  expect(form.hidden).toBe(false);
+
+  trigger.click();
+  fixture.detectChanges();
+  breakpoints.next({ matches: true, breakpoints: {} });
+  fixture.detectChanges();
+  breakpoints.next({ matches: false, breakpoints: {} });
+  fixture.detectChanges();
+  expect(component['filtersOpen']()).toBe(false);
+  expect(form.hidden).toBe(true);
+  expect(form.hasAttribute('inert')).toBe(true);
+});
 
 it('uses the shared editor without applying unconfirmed locations and preserves independent radii in the URL', async () => {
   const fixture = await areaFixture({ places: 'xk-prizren:30,xk-peja:50' });

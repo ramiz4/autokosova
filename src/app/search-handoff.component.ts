@@ -11,18 +11,29 @@ import { FavoritesService } from './favorites.service';
 import { FavoriteNoticeComponent } from './favorite-notice.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SearchAreasComponent, type SearchArea } from './ui/search-areas.component';
-import { isPlatformBrowser } from '@angular/common';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   ChangeDetectorRef,
   Component,
   DestroyRef,
+  ElementRef,
+  computed,
+  effect,
   inject,
   PLATFORM_ID,
   signal,
   viewChild,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import {
+  BrnCollapsible,
+  BrnCollapsibleContent,
+  BrnCollapsibleTrigger,
+} from '@spartan-ng/brain/collapsible';
+import { map } from 'rxjs';
 import { CATALOG_PLACES, SERVICE_CATEGORY_LABELS, VEHICLE_MAKE_LABELS } from '../shared/catalog';
 import { REPAIR_REQUEST_LIMITS } from '../shared/repair-request';
 import { localDemoPhotoPath } from '../shared/local-demo';
@@ -68,6 +79,9 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
 
 @Component({
   imports: [
+    BrnCollapsible,
+    BrnCollapsibleContent,
+    BrnCollapsibleTrigger,
     SearchAreasComponent,
     ButtonDirective,
     FormsModule,
@@ -139,38 +153,43 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
       <section
         class="mx-auto w-[calc(100%_-_1.5rem)] max-w-[1360px] px-4 py-6 sm:px-6 lg:w-[calc(100%_-_4rem)]"
       >
+        @let expandedFilters = filtersExpanded();
         <div class="grid gap-5 xl:grid-cols-[minmax(280px,320px)_minmax(0,1fr)]">
           <aside
+            brnCollapsible
+            [expanded]="expandedFilters"
+            (expandedChange)="onFiltersExpanded($event)"
             class="sticky top-20 z-10 max-h-[calc(100dvh-6rem)] self-start overflow-y-auto rounded-2xl border border-slate-200/80 bg-white px-5 py-3 shadow-sm shadow-slate-900/5"
           >
             <div
               class="flex min-h-11 items-center justify-between gap-3 border-slate-100 xl:min-h-10 xl:border-b xl:pb-2"
-              [class.border-b]="filtersOpen()"
-              [class.pb-2]="filtersOpen()"
+              [class.border-b]="expandedFilters"
+              [class.pb-2]="expandedFilters"
             >
               <h2 id="filter-title" class="text-base font-bold tracking-tight">
                 {{ ui('search.ui.filter') }}
               </h2>
               <button
+                #filterToggle
                 type="button"
+                brnCollapsibleTrigger
                 class="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-brand-dark xl:hidden"
-                aria-controls="search-filters"
-                [attr.aria-expanded]="filtersOpen()"
-                (click)="filtersOpen.set(!filtersOpen())"
               >
-                {{ ui(filtersOpen() ? 'search.ui.closeFilters' : 'search.ui.openFilters') }}
+                {{ ui(expandedFilters ? 'search.ui.closeFilters' : 'search.ui.openFilters') }}
                 <lucide-icon
                   [name]="ChevronDownIcon"
                   class="size-4"
-                  [class.rotate-180]="filtersOpen()"
+                  [class.rotate-180]="expandedFilters"
                 />
               </button>
             </div>
             <form
+              #filterContent
+              brnCollapsibleContent
               id="search-filters"
               aria-labelledby="filter-title"
-              class="mt-4 xl:block"
-              [class.hidden]="!filtersOpen()"
+              class="mt-4"
+              [hidden]="!expandedFilters"
               (ngSubmit)="applyFilters()"
               novalidate
             >
@@ -460,6 +479,7 @@ export class SearchHandoffComponent {
   readonly StarIcon: LucideIcon = LucideStar;
 
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly document = inject(DOCUMENT);
   private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -474,8 +494,17 @@ export class SearchHandoffComponent {
   protected areas: SearchArea[] = [];
   protected service = '';
   protected readonly filtersOpen = signal(false);
+  private readonly wideFilters = toSignal(
+    inject(BreakpointObserver)
+      .observe('(min-width: 1280px)')
+      .pipe(map((breakpoint) => breakpoint.matches)),
+    { initialValue: false },
+  );
+  protected readonly filtersExpanded = computed(() => this.wideFilters() || this.filtersOpen());
   protected readonly areasEditing = signal(false);
   private readonly searchAreas = viewChild(SearchAreasComponent);
+  private readonly filterContent = viewChild<ElementRef<HTMLElement>>('filterContent');
+  private readonly filterToggle = viewChild<ElementRef<HTMLButtonElement>>('filterToggle');
   protected readonly filterError = signal(false);
   private readonly destroyRef = inject(DestroyRef);
   private loadVersion = 0;
@@ -497,6 +526,19 @@ export class SearchHandoffComponent {
   }
   constructor() {
     this.language.setPage('search.title', 'search.intro', true);
+    let wasWide = this.wideFilters();
+    effect(() => {
+      const isWide = this.wideFilters();
+      if (
+        this.browser &&
+        wasWide &&
+        !isWide &&
+        !this.filtersOpen() &&
+        this.filterContent()?.nativeElement.contains(this.document.activeElement)
+      )
+        this.filterToggle()?.nativeElement.focus();
+      wasWide = isWide;
+    });
     if (this.browser) void this.favorites.load();
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.readFilters();
@@ -598,6 +640,9 @@ export class SearchHandoffComponent {
   }
   protected goToPage(page: number): void {
     this.navigate({ page: String(page) });
+  }
+  protected onFiltersExpanded(expanded: boolean): void {
+    if (!this.wideFilters()) this.filtersOpen.set(expanded);
   }
   protected applyFilters(): void {
     if (this.areasEditing()) {
