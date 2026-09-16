@@ -112,6 +112,9 @@
         <p class="mt-2">
           {{ copy().status }}: <strong data-case-status>{{ label(current.status) }}</strong>
         </p>
+        <p data-case-assignee class="mt-2 text-sm text-muted">
+          {{ current.assignedModeratorLabel || copy().unassigned }}
+        </p>
         <p class="mt-2 text-sm text-muted">
           {{ copy().created }}: {{ current.createdAt | date: 'dd.MM.yyyy HH:mm' }}
         </p>

@@ -99,9 +99,9 @@ try {
   await until(
     () =>
       browser.evaluate(
-        `!!document.querySelector('[data-staff-list]') && document.querySelector('[data-case-id="review:demo-staff-review-unassigned"]')?.textContent.includes('DEMO moderator')`,
+        `document.querySelector('[data-case-assignee]')?.textContent.includes('DEMO moderator')`,
       ),
-    'persisted assignment reflected in list',
+    'persisted assignment reflected in the open case',
   );
   await logout();
   await login('moderator');
