@@ -169,6 +169,8 @@ export interface StaffCaseDetail extends StaffCaseSummary {
   readonly openAppeal?: boolean;
 }
 export interface StaffQueueFilter {
+  /** The task-first queue deliberately excludes completed cases unless explicitly requested. */
+  readonly actionable?: boolean;
   readonly assignedUserId?: string;
   readonly page?: number;
   readonly kind?: StaffCaseKind;

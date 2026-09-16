@@ -110,6 +110,7 @@ export class AdminConsoleComponent {
     auditLogRetentionDays: null,
   };
   dirty = false;
+  editingPosition = false;
   private generation = 0;
   private reads = 0;
   private controller = new AbortController();
@@ -185,6 +186,7 @@ export class AdminConsoleComponent {
     this.candidateQuery = '';
     this.latitude = null;
     this.longitude = null;
+    this.editingPosition = false;
     for (const key of this.checks) this.verification[key] = 'not_checked';
     this.approvalConfirmed = false;
     this.policyVersion = '';
@@ -304,6 +306,15 @@ export class AdminConsoleComponent {
   async decide(decision: 'published' | 'rejected' | 'suspended' | 'restore') {
     if (!this.reason || !window.confirm(this.label('decisionConfirm'))) return;
     await this.garageMutation('decision', { decision, verification: this.verification });
+  }
+  canPublish(detail: AdminGarageDetail): boolean {
+    return (
+      !this.busy() &&
+      this.reason !== '' &&
+      detail.documents.some((document) => document.available) &&
+      detail.members.some((member) => member.role === 'owner' && member.state === 'active') &&
+      this.checks.every((check) => this.verification[check] === 'verified')
+    );
   }
   async member(
     userId = this.targetUserId,

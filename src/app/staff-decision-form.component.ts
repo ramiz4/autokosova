@@ -58,6 +58,20 @@ export class StaffDecisionFormComponent {
       return this.violationReasons.some((reason) => reason === this.reason);
     return true;
   }
+  publishValid(): boolean {
+    return (
+      this.actions().includes('publish_review') &&
+      this.garageMatches &&
+      this.serviceMatches &&
+      this.visitMonthMatches &&
+      this.detail().evidenceAvailable === true &&
+      !this.busy()
+    );
+  }
+  choose(action: StaffDecisionAction): void {
+    this.action = action;
+    if (action === 'publish_review') this.submit();
+  }
   submit(): void {
     if (!this.valid()) return;
     const action = this.action as StaffDecisionAction;

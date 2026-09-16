@@ -101,6 +101,8 @@ Jede spätere Berechtigungsänderung aktualisiert diese Matrix, betroffene Fachb
 
 `CONTEXT-1`: Falldetails projizieren Bewertung, vier Einzelwerte, Nachweisstatus, benötigte Antwort-/Nachtragsinhalte sowie Profiltext. Öffentliche fiktive Profilbilder verwenden den bestehenden öffentlichen Bildvertrag nur solange das Profil veröffentlicht ist. Nicht verfügbare Medien und fehlende Einzelinhalt-Aktionen werden an Admin eskaliert; private Unternehmensnachweise und Speicherpfade werden nicht freigegeben. Der Fallverlauf zeigt feste Aktions-/Grundcodes, Zeit und erforderliche Akteursbezeichnung, keine privaten Belegtexte.
 
+`CONTEXT-2`: Die kanonischen Detailpfade `/admin/cases/:caseId` und `/moderation/cases/:caseId` enthalten nur die technische Fall-ID. Sie speichern weder Nachweisinhalt, Grant, Entwurf, Grund noch Rolleninformation. Bei jeder Detailanfrage bleibt `CASE-1` maßgeblich; ein Reload, Sprachwechsel oder verspätetes Ergebnis erweitert keinen Zugriff. Der Standardfilter der UI schließt erledigte Fälle nur als Darstellungsvoreinstellung aus und ändert weder Listenberechtigung noch Zählergrenzen.
+
 Die vorhandene Datei- und Scanabstraktion bleibt unverändert: lokal öffnungsfähige Belege sind explizit synthetisch. Dies behauptet keine reale Provideranmeldung, externe Malware-Prüfung oder Produktivfreigabe. Die Bedienabläufe und fiktiven Szenario-IDs stehen im README, keine Zugangsdaten in Git.
 
 ## Eigene Bewertungen und Beiträge (#99)

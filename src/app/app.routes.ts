@@ -47,13 +47,22 @@ function localizedRoutes(prefix: string): Routes {
       ],
       loadComponent: () => import('./admin-console.component').then((m) => m.AdminConsoleComponent),
     })),
-    ...['admin', 'moderation'].map((path) => ({
-      path: `${childPrefix}${path}`,
-      pathMatch: 'full' as const,
-      data: { adminOnly: path === 'admin' },
-      loadComponent: () =>
-        import('./staff-workspace.component').then((m) => m.StaffWorkspaceComponent),
-    })),
+    ...['admin', 'moderation'].flatMap((path) => [
+      {
+        path: `${childPrefix}${path}/cases/:caseId`,
+        pathMatch: 'full' as const,
+        data: { adminOnly: path === 'admin' },
+        loadComponent: () =>
+          import('./staff-workspace.component').then((m) => m.StaffWorkspaceComponent),
+      },
+      {
+        path: `${childPrefix}${path}`,
+        pathMatch: 'full' as const,
+        data: { adminOnly: path === 'admin' },
+        loadComponent: () =>
+          import('./staff-workspace.component').then((m) => m.StaffWorkspaceComponent),
+      },
+    ]),
     {
       path: `${childPrefix}profile`,
       pathMatch: 'full',

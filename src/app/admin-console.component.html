@@ -124,31 +124,41 @@
                   </select>
                 </label>
               }
-              <label class="grid gap-2 font-semibold"
-                >{{ label('latitude')
-                }}<input
-                  type="number"
-                  name="latitude"
-                  step="any"
-                  min="-90"
-                  max="90"
-                  [(ngModel)]="latitude"
-                  (ngModelChange)="dirty = true"
-                  class="min-h-11 rounded-lg border border-slate-300 px-3"
-              /></label>
-              <label class="grid gap-2 font-semibold"
-                >{{ label('longitude')
-                }}<input
-                  type="number"
-                  name="longitude"
-                  step="any"
-                  min="-180"
-                  max="180"
-                  [(ngModel)]="longitude"
-                  (ngModelChange)="dirty = true"
-                  class="min-h-11 rounded-lg border border-slate-300 px-3"
-              /></label>
-              <p class="text-sm text-muted sm:col-span-2">{{ label('locationHint') }}</p>
+              <button
+                appButton="outline"
+                type="button"
+                class="sm:col-span-2 justify-self-start"
+                (click)="editingPosition = !editingPosition"
+              >
+                {{ editingPosition ? label('back') : label('locationHint') }}
+              </button>
+              @if (editingPosition) {
+                <label class="grid gap-2 font-semibold"
+                  >{{ label('latitude')
+                  }}<input
+                    type="number"
+                    name="latitude"
+                    step="any"
+                    min="-90"
+                    max="90"
+                    [(ngModel)]="latitude"
+                    (ngModelChange)="dirty = true"
+                    class="min-h-11 rounded-lg border border-slate-300 px-3"
+                /></label>
+                <label class="grid gap-2 font-semibold"
+                  >{{ label('longitude')
+                  }}<input
+                    type="number"
+                    name="longitude"
+                    step="any"
+                    min="-180"
+                    max="180"
+                    [(ngModel)]="longitude"
+                    (ngModelChange)="dirty = true"
+                    class="min-h-11 rounded-lg border border-slate-300 px-3"
+                /></label>
+                <p class="text-sm text-muted sm:col-span-2">{{ label('locationHint') }}</p>
+              }
               <label class="grid gap-2 font-semibold sm:col-span-2"
                 >{{ label('reason') }}
                 <select
@@ -175,11 +185,17 @@
                 data-publish-garage
                 appButton
                 type="button"
-                [disabled]="busy() || !reason"
+                [disabled]="!canPublish(current)"
                 (click)="decide('published')"
               >
                 {{ label('publish') }}
               </button>
+              @if (!canPublish(current)) {
+                <p data-publish-blocker class="basis-full text-sm text-amber-900">
+                  {{ label('locationHint') }} · {{ label('companyDocument') }} ·
+                  {{ label('owner') }}
+                </p>
+              }
               <button
                 data-reject-garage
                 appButton="outline"

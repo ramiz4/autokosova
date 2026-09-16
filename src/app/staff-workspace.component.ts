@@ -15,7 +15,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AccountSessionService } from './account-session.service';
 import { LanguageService } from './language.service';
@@ -49,6 +49,8 @@ export class StaffWorkspaceComponent {
   readonly language = inject(LanguageService);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private previousCase = '';
   readonly adminOnly = inject(ActivatedRoute).snapshot.data['adminOnly'] === true;
   readonly copy = computed(() => staffCopy(this.language.language));
@@ -67,6 +69,7 @@ export class StaffWorkspaceComponent {
   readonly busy = signal(false);
   readonly error = signal('');
   readonly success = signal('');
+  readonly resultAvailable = signal(false);
   readonly cases = signal<readonly StaffCaseSummary[]>([]);
   readonly detail = signal<StaffCaseDetail | null>(null);
   readonly moderators = signal<readonly StaffModerator[]>([]);
@@ -75,6 +78,7 @@ export class StaffWorkspaceComponent {
   readonly reasons = STAFF_ESCALATION_REASONS;
   readonly evidenceText = signal<string | null>(null);
   filterStatus = '';
+  actionableOnly = true;
   filterAssignee = '';
   filterKind = '';
   filterPriority = '';
@@ -89,6 +93,17 @@ export class StaffWorkspaceComponent {
       this.ready.set(true);
       void this.account.refresh();
     });
+    this.route.paramMap.subscribe((params) => {
+      const caseId = params.get('caseId');
+      if (caseId && this.ready() && this.allowed()) void this.open(caseId, false);
+    });
+    const query = this.route.snapshot.queryParamMap;
+    this.filterStatus = query.get('status') ?? '';
+    this.filterKind = query.get('kind') ?? '';
+    this.filterPriority = query.get('priority') ?? '';
+    this.filterAssignee = query.get('assignedUserId') ?? '';
+    this.onlyEscalated = query.get('escalated') === 'true';
+    this.actionableOnly = query.get('actionable') !== 'false';
     effect(() => {
       const context = this.account.dataContext();
       const ready = this.ready();
@@ -103,11 +118,15 @@ export class StaffWorkspaceComponent {
       this.moderators.set([]);
       this.error.set('');
       this.success.set('');
+      this.resultAvailable.set(false);
       this.loading.set(false);
       this.busy.set(false);
       this.moderatorId = '';
-      this.filterAssignee = '';
-      if (context && ready && allowed) untracked(() => void this.load());
+      if (context && ready && allowed)
+        untracked(() => {
+          const caseId = this.route.snapshot.paramMap.get('caseId');
+          void (caseId ? this.open(caseId, false) : this.load());
+        });
     });
     effect(() =>
       this.language.setPageText(
@@ -140,6 +159,7 @@ export class StaffWorkspaceComponent {
     this.error.set('');
     const query = new URLSearchParams({ page: String(page) });
     if (this.filterStatus) query.set('status', this.filterStatus);
+    if (this.actionableOnly && !this.filterStatus) query.set('actionable', 'true');
     if (this.isAdmin() && this.filterAssignee) query.set('assignedUserId', this.filterAssignee);
     if (this.filterKind) query.set('kind', this.filterKind);
     if (this.filterPriority) query.set('priority', this.filterPriority);
@@ -188,7 +208,18 @@ export class StaffWorkspaceComponent {
       if (generation === this.generation) this.loading.set(false);
     }
   }
-  async open(id: string): Promise<void> {
+  applyFilters(): void {
+    const queryParams: Record<string, string> = {};
+    if (this.filterStatus) queryParams['status'] = this.filterStatus;
+    if (this.filterKind) queryParams['kind'] = this.filterKind;
+    if (this.filterPriority) queryParams['priority'] = this.filterPriority;
+    if (this.isAdmin() && this.filterAssignee) queryParams['assignedUserId'] = this.filterAssignee;
+    if (this.isAdmin() && this.onlyEscalated) queryParams['escalated'] = 'true';
+    if (!this.actionableOnly) queryParams['actionable'] = 'false';
+    void this.router.navigate([], { relativeTo: this.route, queryParams });
+    void this.load();
+  }
+  async open(id: string, updateUrl = true): Promise<void> {
     if (this.busy() || this.loading()) return;
     const generation = this.generation,
       context = this.account.dataContext(),
@@ -214,6 +245,12 @@ export class StaffWorkspaceComponent {
       ) {
         this.detail.set(data);
         this.previousCase = id;
+        if (updateUrl && !this.route.snapshot.paramMap.get('caseId'))
+          void this.router.navigateByUrl(
+            this.language.link(this.adminOnly ? 'admin' : 'moderation') +
+              '/cases/' +
+              encodeURIComponent(id),
+          );
         this.focus('[data-case-heading]');
         this.moderatorId = data.assignedModeratorUserId ?? '';
       }
@@ -228,11 +265,17 @@ export class StaffWorkspaceComponent {
     this.detailVersion++;
     this.detail.set(null);
     this.evidenceText.set(null);
+    if (this.route.snapshot.paramMap.get('caseId'))
+      void this.router.navigateByUrl(this.language.link(this.adminOnly ? 'admin' : 'moderation'));
     void this.load(this.page()).then(() => this.focusList());
   }
   async decide(input: StaffCaseDecision): Promise<void> {
     if (input.revision !== this.detail()?.revision) return;
     await this.mutate('decide', input);
+  }
+  nextEligibleCase(): void {
+    this.resultAvailable.set(false);
+    this.back();
   }
   private focus(selector: string): void {
     afterNextRender(() => this.document.querySelector<HTMLElement>(selector)?.focus(), {
@@ -332,12 +375,22 @@ export class StaffWorkspaceComponent {
       });
       if (!response.ok) throw response.status;
       if (generation !== this.generation || context !== this.account.dataContext()) return;
-      this.detail.set(null);
-      this.evidenceText.set(null);
       this.success.set(this.copy().success);
       this.busy.set(false);
-      await this.load(this.page());
-      this.focusList();
+      if (action === 'assign') {
+        await this.open(detail.id, false);
+      } else if (action === 'decide') {
+        this.resultAvailable.set(true);
+      } else {
+        this.detail.set(null);
+        this.evidenceText.set(null);
+        await this.load(this.page());
+        if (this.route.snapshot.paramMap.get('caseId'))
+          await this.router.navigateByUrl(
+            this.language.link(this.adminOnly ? 'admin' : 'moderation'),
+          );
+        this.focusList();
+      }
     } catch (error) {
       if (generation === this.generation && context === this.account.dataContext())
         this.failure(error);

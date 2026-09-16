@@ -5,10 +5,13 @@ import { adminLabel } from '../shared/admin-copy';
 @Component({
   selector: 'app-admin-navigation',
   imports: [RouterLink],
-  template: ` <nav class="my-6 flex flex-wrap gap-2" [attr.aria-label]="label('administration')">
+  template: ` <nav
+    class="my-6 flex gap-2 overflow-x-auto pb-1 md:flex-col md:overflow-visible"
+    [attr.aria-label]="label('administration')"
+  >
     @for (section of sections; track section) {
       <a
-        class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        class="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         [routerLink]="path(section)"
         [attr.aria-current]="active() === section ? 'page' : null"
         >{{ label(section) }}</a
