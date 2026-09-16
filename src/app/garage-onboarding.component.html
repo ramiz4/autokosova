@@ -486,7 +486,7 @@
           </form>
         }
       </section>
-      @if (!managing) {
+      @if (!managing && !supportMode) {
         <aside class="space-y-4" [attr.aria-label]="copy.nextTitle">
           <section class="info-card">
             <h2 class="text-lg font-bold tracking-tight">{{ copy.nextTitle }}</h2>

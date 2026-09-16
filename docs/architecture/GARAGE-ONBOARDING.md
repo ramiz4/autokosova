@@ -77,3 +77,15 @@ Die Bildverarbeitung nutzt [sharp](https://sharp.pixelplumbing.com/api-output/):
 Metadata-Preservation-API entfernt die Standardausgabe Metadaten; `autoOrient` übernimmt die
 Bildausrichtung vor der Skalierung. Diese technische Umsetzung ersetzt keine rechtliche
 Aufbewahrungsentscheidung.
+
+## Administrative Prüfung und dokumentierte Hilfe (#94)
+
+`/admin/garages` enthält eine begrenzte Gesamt-/Statussuche mit privater Detailprüfung. Die vier Checklistenwerte, tatsächliche Position, Unternehmensdatei, Fotos und Memberships werden serverseitig aus dem bestehenden Datenmodell gelesen. Änderungen verwenden `admin_revision` plus feste Grundcodes. Nicht vorhandene, gesperrte oder nicht verfügbare Unternehmensnachweise verhindern Erstveröffentlichung; blosse Checkboxen ersetzen den verfügbaren Nachweis nicht. Gelöschte Profile werden nicht reaktiviert.
+
+`PostgresAdministrationStore` verwendet den bestehenden Garage-Onboarding-Writer statt einer zweiten Veröffentlichungspipeline. Eine administrative Sperre bleibt von `moderation_hidden_case_id` getrennt; die Moderationsaktion darf sie nicht aufheben. Rücknahme der Admin-Sperre benötigt weiterhin gültige Voraussetzungen. Eigene Werkstattbeteiligung verhindert Prüfung/Entscheidung auch bei Adminrolle.
+
+Unterstützte Aufnahme unter `/admin/support` und notwendige Profilkorrektur verlangen einen dokumentierten Auftrag, tatsächliches vorhandenes Antragstellerkonto und Einwilligungsversion. Das normale Aufnahmeformular wird wiederverwendet. Die Administration wird nicht Eigentümer und täuscht keine Kundenanmeldung vor. Auftrag und Audit werden mit der Änderung gespeichert; Position-/Adressänderungen setzen die Standortbestätigung zurück.
+
+Foto-/Dateiquellen werden nicht erfunden. Die lokale Demo enthält allowlist-gebundene, explizit fiktive Unternehmensdokumente und Fotos. Eine Fotofreigabe ändert den tatsächlichen Sichtbarkeitszustand; ein fehlender freigegebener externer Adapter bleibt erkennbar nicht verfügbar. Die Unternehmensprüfung ist keine Aussage über Reparaturqualität.
+
+UI → API → Berechtigungsprüfung ist in `ROLES-AND-PERMISSIONS.md` festgehalten. Prüfungen: `administration-postgres.test.ts`, `admin-console.component.spec.ts` und `e2e/specs/administration.spec.ts`, ergänzt um vorhandene Onboarding-/Moderationsregressionen. Tatsächliche Ausführung und CI-Status stehen im zugehörigen PR, nicht in fiktiven Abnahmebehauptungen.

@@ -76,6 +76,8 @@ export class PostgresStaffWorkspace {
   }
 
   async list(principal: Principal, filter: StaffQueueFilter): Promise<StaffQueuePage> {
+    if (filter.assignedUserId && !principal.roles.has('admin'))
+      throw new AccessError(403, 'Assignee filtering is administrative');
     const page = filter.page ?? 1;
     if (!Number.isSafeInteger(page) || page < 1 || page > 10000)
       throw new AccessError(400, 'Invalid case page');
@@ -91,6 +93,7 @@ export class PostgresStaffWorkspace {
           AND c.kind IN ('report','review_submission')))
           AND ($3::text IS NULL OR c.kind=$3) AND ($4::text IS NULL OR c.status=$4)
           AND ($5::text IS NULL OR c.priority=$5) AND ($6::boolean IS NULL OR (c.escalation_reason IS NOT NULL)=$6)
+          AND ($9::text IS NULL OR c.assigned_moderator_user_id=$9)
         ORDER BY (c.priority='high') DESC,c.created_at,c.id LIMIT $7 OFFSET $8`,
         [
           principal.roles.has('admin'),
@@ -101,6 +104,7 @@ export class PostgresStaffWorkspace {
           filter.escalated ?? null,
           pageSize + 1,
           (page - 1) * pageSize,
+          filter.assignedUserId ?? null,
         ],
       );
       return {
@@ -119,7 +123,7 @@ export class PostgresStaffWorkspace {
         display_name: string;
       }>(`SELECT s.user_id,s.display_name
         FROM staff_identity s JOIN app_user u ON u.id=s.user_id
-        WHERE u.status='active' AND 'moderator'=ANY(s.verified_roles) ORDER BY s.display_name,s.user_id LIMIT 100`);
+        WHERE u.status='active' AND s.verified_roles && ARRAY['moderator','admin']::text[] ORDER BY s.display_name,s.user_id LIMIT 100`);
       return result.rows.map((row) => ({ userId: row.user_id, label: row.display_name }));
     });
   }

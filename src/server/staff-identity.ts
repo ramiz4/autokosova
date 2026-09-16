@@ -34,11 +34,11 @@ export async function recordVerifiedStaffIdentity(
 export async function assertStaffCandidate(client: pg.PoolClient, userId: string): Promise<void> {
   const result = await client.query(
     `SELECT 1 FROM staff_identity s JOIN app_user u ON u.id=s.user_id
-    WHERE s.user_id=$1 AND u.status='active' AND 'moderator'=ANY(s.verified_roles) FOR SHARE OF s,u`,
+    WHERE s.user_id=$1 AND u.status='active' AND s.verified_roles && ARRAY['moderator','admin']::text[] FOR SHARE OF s,u`,
     [userId],
   );
   if (!result.rowCount)
-    throw new AccessError(422, 'A case can only be assigned to a verified moderator');
+    throw new AccessError(422, 'A case can only be assigned to verified moderation staff');
 }
 
 export async function assertCurrentStaffIdentity(

@@ -67,6 +67,7 @@ export function registerStaffRoutes(
           type: 'object',
           additionalProperties: false,
           properties: {
+            assignedUserId: { type: 'string', minLength: 1, maxLength: 200 },
             page: { type: 'integer', minimum: 1, maximum: 10000 },
             kind: { enum: ['report', 'review_submission', 'garage_submission', 'data_deletion'] },
             status: {

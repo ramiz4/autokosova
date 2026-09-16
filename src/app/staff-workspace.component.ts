@@ -75,6 +75,7 @@ export class StaffWorkspaceComponent {
   readonly reasons = STAFF_ESCALATION_REASONS;
   readonly evidenceText = signal<string | null>(null);
   filterStatus = '';
+  filterAssignee = '';
   filterKind = '';
   filterPriority = '';
   onlyEscalated = false;
@@ -138,6 +139,7 @@ export class StaffWorkspaceComponent {
     this.error.set('');
     const query = new URLSearchParams({ page: String(page) });
     if (this.filterStatus) query.set('status', this.filterStatus);
+    if (this.isAdmin() && this.filterAssignee) query.set('assignedUserId', this.filterAssignee);
     if (this.filterKind) query.set('kind', this.filterKind);
     if (this.filterPriority) query.set('priority', this.filterPriority);
     if (this.onlyEscalated && this.isAdmin()) query.set('escalated', 'true');
@@ -242,6 +244,11 @@ export class StaffWorkspaceComponent {
         ? '[data-case-id=' + JSON.stringify(this.previousCase) + '] [data-open-case]'
         : 'h1',
     );
+  }
+  async takeOver(): Promise<void> {
+    if (!this.isAdmin() || !this.detail()?.canAssign || this.detail()?.conflictOfInterest) return;
+    this.moderatorId = this.account.identity()?.userId ?? '';
+    await this.assign();
   }
   async assign(): Promise<void> {
     if (this.moderatorId) await this.mutate('assign', { moderatorUserId: this.moderatorId });

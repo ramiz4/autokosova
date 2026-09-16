@@ -1,6 +1,8 @@
 import type { AppLanguage } from './i18n';
 import { staffLabel } from './staff-copy';
 const labels: Readonly<Record<string, readonly [string, string, string]>> = {
+  takeOver: ['Fall selbst übernehmen', 'Take over case', 'Merr përsipër rastin'],
+  caseWorker: ['Bearbeiter', 'Case worker', 'Përgjegjësi i rastit'],
   administration: ['Administration', 'Administration', 'Administrimi'],
   overview: ['Fallsteuerung', 'Case coordination', 'Koordinimi i rasteve'],
   garages: ['Werkstätten', 'Garages', 'Serviset'],

@@ -169,6 +169,7 @@ export interface StaffCaseDetail extends StaffCaseSummary {
   readonly openAppeal?: boolean;
 }
 export interface StaffQueueFilter {
+  readonly assignedUserId?: string;
   readonly page?: number;
   readonly kind?: StaffCaseKind;
   readonly status?: ModerationCaseStatus;

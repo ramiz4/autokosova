@@ -1,6 +1,7 @@
 import { DOCUMENT, DatePipe } from '@angular/common';
 import {
   Component,
+  Injector,
   DestroyRef,
   afterNextRender,
   computed,
@@ -52,6 +53,8 @@ export class AdminConsoleComponent {
   readonly language = inject(LanguageService);
   readonly section = inject(ActivatedRoute).snapshot.data['adminSection'] as string;
   private readonly document = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
+  private candidateRead = 0;
   readonly allowed = computed(() => this.account.identity()?.roles.includes('admin') === true);
   readonly ready = signal(false);
   readonly loading = signal(false);
@@ -163,6 +166,7 @@ export class AdminConsoleComponent {
     this.catalog.set(null);
     this.privacy.set(null);
     this.overview.set(null);
+    this.candidateRead++;
     this.candidates.set([]);
     this.proof.set('');
     this.support.set(null);
@@ -254,7 +258,10 @@ export class AdminConsoleComponent {
       this.fromUserId =
         value.members.find((m) => m.role === 'owner' && m.state === 'active')?.userId ?? '';
       await this.findCandidates();
-      this.document.querySelector<HTMLElement>('[data-admin-detail-heading]')?.focus();
+      afterNextRender(
+        () => this.document.querySelector<HTMLElement>('[data-admin-detail-heading]')?.focus(),
+        { injector: this.injector },
+      );
     } catch (error) {
       if (generation === this.generation && read === this.reads) this.failure(error);
     } finally {
@@ -270,17 +277,18 @@ export class AdminConsoleComponent {
     void this.load(this.page());
   }
   async findCandidates() {
-    const generation = this.generation;
+    const generation = this.generation,
+      request = ++this.candidateRead;
     try {
       const result = await this.json<AdminPage<AdminUser>>(
         await this.request(
           '/api/admin/management/users?query=' + encodeURIComponent(this.candidateQuery),
         ),
       );
-      if (generation === this.generation)
+      if (generation === this.generation && request === this.candidateRead)
         this.candidates.set(result.items.filter((u) => u.status === 'active'));
     } catch (error) {
-      if (generation === this.generation) this.failure(error);
+      if (generation === this.generation && request === this.candidateRead) this.failure(error);
     }
   }
   async saveVerification() {

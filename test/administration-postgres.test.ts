@@ -80,6 +80,17 @@ test(
       const a = principal('admin-regression', 'admin'),
         m = principal('admin-regression-moderator', 'moderator'),
         owner = principal('demo-admin-owner', 'customer');
+      const takeover = 'review:demo-staff-review-unassigned';
+      await lifecycle.assignStaffCase(a, takeover, {
+        moderatorUserId: a.userId,
+        revision: (await lifecycle.getStaffCase(a, takeover)).revision,
+      });
+      assert.equal((await lifecycle.getStaffCase(a, takeover)).assignedModeratorUserId, a.userId);
+      assert.deepEqual(
+        (await lifecycle.listStaffCases(a, { assignedUserId: a.userId })).cases.map((c) => c.id),
+        [takeover],
+      );
+      await assert.rejects(lifecycle.listStaffCases(m, { assignedUserId: a.userId }));
       const id = 'demo-admin-garage-pending';
       const before = await adminStore.garage(a, id);
       assert.equal(before.publicationState, 'pending_review');
