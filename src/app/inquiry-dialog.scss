@@ -1,7 +1,6 @@
 :host {
   display: contents;
 }
-dialog,
 .inquiry-editor-panel {
   margin: auto;
   padding: 0;
@@ -13,18 +12,6 @@ dialog,
   color: #07143e;
   box-shadow: 0 24px 100px #07143e35;
 }
-dialog::backdrop {
-  background: #07143e85;
-}
-.dialog-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 22px 26px;
-  border-bottom: 1px solid #e7edf5;
-  background: #fff;
-}
 h2 {
   font-size: 24px;
   font-weight: 700;
@@ -32,18 +19,6 @@ h2 {
 }
 h3 {
   font-weight: 700;
-}
-.eyebrow {
-  color: #536d98;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.dialog-body {
-  padding: 24px 26px;
-  overflow-wrap: anywhere;
 }
 .help {
   font-size: 14px;
@@ -142,13 +117,6 @@ textarea {
   color: #8e2037;
   border-radius: 12px;
 }
-.danger {
-  background: #bb2445;
-  border-color: #bb2445;
-}
-.danger:hover {
-  background: #921a35;
-}
 button:disabled {
   opacity: 0.55;
 }
@@ -160,8 +128,6 @@ button:disabled {
   .field-grid {
     grid-template-columns: minmax(0, 1fr);
   }
-  .dialog-header,
-  .dialog-body,
   .dialog-footer {
     padding: 18px;
   }
