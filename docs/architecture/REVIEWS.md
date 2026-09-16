@@ -87,3 +87,9 @@ Die lokale Entwicklung verwendet nur fiktive IDs und Testdaten. Die ausdrücklic
 weiterhin die in ADR-001 beschriebene private Quarantäne, Malware-Prüfung, Objektablage und
 rechtlich freigegebene Löschfrist. Ohne diese externen Produktivgates dürfen keine realen
 Rechnungen oder Leistungsnachweise verarbeitet werden.
+
+## Moderationsarbeitsplatz und Widerspruch
+
+Der Fallarbeitsplatz aus #95 verbindet den eigenen Prüfzustand mit drei getrennten Nachweisprüfpunkten und festen Ablehnungsgründen. Die versionierte Entscheidung wird im bestehenden Review-Store gespeichert, ohne Sterne oder Bericht umzuschreiben. Ein vorher abgelehnter oder veröffentlichter Beitrag kann bei offenem Widerspruch unabhängig geprüft werden; das Zuweisen dieses Widerspruchs ändert noch nicht die Sichtbarkeit. Die abschliessende Entscheidung schliesst den Fall auch dann, wenn der vorherige Zustand bestätigt wird.
+
+Der vollständige Kunden-Einreichungsweg und Werkstattantwort-Editor folgen in #99. Lokale Prüffälle, darunter eine belegte negative Erfahrung, fehlender/ungeeigneter Nachweis und unabhängige/eigene Widersprüche, stehen im gemeinsamen Workflow-Seed zur Verfügung. Wiederholung erhält Entscheidungen und Löschungen. Einzelheiten und Code-/Testverweise in der zentralen Rollenreferenz.

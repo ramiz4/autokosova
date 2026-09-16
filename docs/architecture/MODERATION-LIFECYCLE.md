@@ -82,3 +82,13 @@ mindestens festlegen und freigeben:
 
 Bis dahin sind diese Hinweise keine rechtssicheren Rechtstexte, die lokale Regelkonfiguration ist
 nur ein technischer Gate, und ein öffentlicher Pilot bleibt gesperrt.
+
+## Operativer Fallarbeitsplatz
+
+`/moderation`, `/sq/moderation` und `/en/moderation` verwenden denselben Fallarbeitsplatz wie Admins. Er zeigt nur aktuell autorisierte Fälle, begrenzte Listen und den fallbezogenen Verlauf. Der Entscheidungsdialog unterscheidet die Nachweischeckliste der Bewertung von einer Inhaltsmeldung. Pflichtgründe, Wirkungshinweise und Bestätigung gelten für folgenreiche Aktionen; fehlgeschlagene Entscheidungen lassen Eingaben stehen, geänderte Revisionen verlangen bewusstes Neuladen.
+
+Der Endpunkt `POST /api/staff/cases/:caseId/decide` verwendet den gemeinsamen geprüften Entscheidungsvertrag. Eine Rückfrage hält den Fall offen, verschickt aber keine Nachricht. Meldungsabschluss ohne Verstoss veröffentlicht keine neue Werkstatt. Wiederherstellung verlangt den passenden Ausblendungsfall und weiterhin gültige Freigabe; separate administrative Sperren und zurückgezogene/gelöschte Inhalte bleiben unberührt.
+
+Widersprüche werden ohne Überschreiben der alten Historie von einer anderen berechtigten Person entschieden. Zuweisung eines Widerspruchs ändert nicht automatisch den öffentlichen Bewertungsstatus. Eigene Beteiligung sperrt eine Entscheidung, erlaubt aber die begründete Übergabe an Admin. Berichtskontext und Originalbewertung bleiben getrennt.
+
+Nachweise: `test/moderation-workspace-postgres.test.ts` prüft echte Tabellenberechtigungen mit Nichtbesitzer-Laufzeitrolle, Freigabe/Ablehnung, Widersprüche, konkurrierende Entscheidungen, Inhaltsänderungen, CSRF, Entzug und wiederholte Seeds. Der bestehende Staff-Browsercheck führt die UI-Strecken über einen signierenden Testprovider und echte PostgreSQL aus. Diese Testgrenze ist von einem echten ZITADEL-Durchlauf und Produktivfreigaben getrennt.

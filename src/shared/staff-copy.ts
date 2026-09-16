@@ -200,6 +200,151 @@ export function staffCopy(language: AppLanguage): Copy {
 }
 
 const extraLabels: Readonly<Record<string, readonly [string, string, string]>> = {
+  profilePhoto: [
+    'Öffentliches Demo-Profilfoto',
+    'Public demo profile photo',
+    'Foto publike e profilit demo',
+  ],
+  mediaBoundary: [
+    'Nicht verfügbare Bilder oder einzelne unzulässige Antworten zur Adminprüfung geben. Keine unbeteiligte Bewertung entfernen.',
+    'Refer unavailable images or individual inappropriate responses to administration. Do not remove an unrelated review.',
+    'Përcillni imazhet e padisponueshme ose përgjigjet e papërshtatshme për shqyrtim administrativ. Mos hiqni një vlerësim të palidhur.',
+  ],
+  decision: ['Entscheidung', 'Decision', 'Vendimi'],
+  action: ['Aktion', 'Action', 'Veprimi'],
+  saveDecision: ['Entscheidung speichern', 'Save decision', 'Ruaj vendimin'],
+  checklist: ['Nachweis prüfen', 'Check evidence', 'Kontrollo dëshminë'],
+  garageMatches: [
+    'Nachweis passt zur Werkstatt',
+    'Evidence matches the garage',
+    'Dëshmia përputhet me servisin',
+  ],
+  serviceMatches: [
+    'Nachweis passt zur Leistung',
+    'Evidence matches the service',
+    'Dëshmia përputhet me shërbimin',
+  ],
+  visitMonthMatches: [
+    'Nachweis passt zum Besuchsmonat',
+    'Evidence matches the visit month',
+    'Dëshmia përputhet me muajin e vizitës',
+  ],
+  publish_review: ['Bewertung veröffentlichen', 'Publish review', 'Publiko vlerësimin'],
+  reject_review: ['Bewertung ablehnen', 'Reject review', 'Refuzo vlerësimin'],
+  approve: [
+    'Meldung ohne Verstoss abschliessen',
+    'Close report: no violation',
+    'Mbyll raportimin: pa shkelje',
+  ],
+  request_information: ['Informationen anfordern', 'Request information', 'Kërko informacion'],
+  reject: ['Prüfung begründet ablehnen', 'Reject with a reason', 'Refuzo me arsyetim'],
+  temporarily_hide: [
+    'Inhalt vorläufig ausblenden',
+    'Temporarily hide content',
+    'Fsheh përkohësisht përmbajtjen',
+  ],
+  restore: ['Inhalt wiederherstellen', 'Restore content', 'Rikthe përmbajtjen'],
+  effect_publish_review: [
+    'Die Bewertung wird öffentlich sichtbar. Text und Sterne bleiben unverändert.',
+    'The review becomes public. Text and ratings stay unchanged.',
+    'Vlerësimi bëhet publik. Teksti dhe yjet mbeten të pandryshuar.',
+  ],
+  effect_reject_review: [
+    'Die Bewertung wird nicht veröffentlicht. Der Autor sieht den Ablehnungsgrund.',
+    'The review will not be published. The author can see the rejection reason.',
+    'Vlerësimi nuk publikohet. Autori sheh arsyen e refuzimit.',
+  ],
+  effect_approve: [
+    'Die Inhaltsprüfung wird abgeschlossen. Keine Werkstatt-Erstfreigabe oder Änderung von Nachweisprüfungen.',
+    'Closes this content check. Does not publish a new garage or verify evidence.',
+    'Mbyll kontrollin e përmbajtjes. Nuk publikon servis të ri dhe nuk verifikon dëshmi.',
+  ],
+  effect_request_information: [
+    'Der Fall bleibt mit offener Rückfrage bestehen. Es wird keine E-Mail oder Push-Nachricht versendet.',
+    'The case stays open awaiting information. No email or push notification is sent.',
+    'Rasti mbetet i hapur në pritje të informacionit. Nuk dërgohet email ose njoftim.',
+  ],
+  effect_reject: [
+    'Die Prüfung wird mit dem gewählten Grund abgeschlossen. Inhalte werden nicht endgültig gelöscht.',
+    'The check ends with the selected reason. Content is not permanently deleted.',
+    'Kontrolli mbyllet me arsyen e zgjedhur. Përmbajtja nuk fshihet përgjithmonë.',
+  ],
+  effect_temporarily_hide: [
+    'Der Inhalt ist danach öffentlich nicht sichtbar. Original und Nachweise bleiben erhalten.',
+    'The content is no longer public. The original and evidence are retained.',
+    'Përmbajtja nuk shihet më publikisht. Origjinali dhe dëshmitë ruhen.',
+  ],
+  effect_restore: [
+    'Der zuvor freigegebene Inhalt wird wieder sichtbar. Separate Sperren bleiben wirksam.',
+    'Previously approved content becomes public again. Separate restrictions remain effective.',
+    'Përmbajtja e miratuar më parë bëhet sërish publike. Kufizimet e veçanta mbeten në fuqi.',
+  ],
+  duplicate_visit: ['Doppelter Besuchsnachweis', 'Duplicate visit', 'Vizitë e dyfishtë'],
+  evidence_not_sufficient: [
+    'Nachweis nicht ausreichend',
+    'Insufficient evidence',
+    'Dëshmi e pamjaftueshme',
+  ],
+  content_not_publishable: [
+    'Inhalt nicht veröffentlichbar',
+    'Content cannot be published',
+    'Përmbajtja nuk mund të publikohet',
+  ],
+  other_policy: ['Sonstiger Regelgrund', 'Other policy reason', 'Arsye tjetër e rregullave'],
+  policy_violation: ['Regelverstoss', 'Policy violation', 'Shkelje e rregullave'],
+  private_data_exposure: [
+    'Private Daten offengelegt',
+    'Private data exposed',
+    'Të dhëna private të zbuluara',
+  ],
+  abuse: ['Missbrauch', 'Abuse', 'Abuzim'],
+  no_violation: ['Kein Verstoss', 'No violation', 'Pa shkelje'],
+  noDecision: [
+    'Für diesen Fall ist aktuell keine eigene Entscheidung zulässig. Status, Nachweis und Zuständigkeit beachten.',
+    'No decision is currently available to you. Check status, evidence and assignment.',
+    'Aktualisht nuk ju lejohet vendim për këtë rast. Kontrolloni statusin, dëshminë dhe caktimin.',
+  ],
+  independentAppeal: [
+    'Unabhängige Widerspruchsprüfung: Die vorherige Entscheidung bleibt im Verlauf erhalten.',
+    'Independent appeal review: the previous decision stays in the history.',
+    'Shqyrtim i pavarur i ankesës: vendimi i mëparshëm ruhet në historik.',
+  ],
+  garageResponse: ['Werkstattantwort', 'Garage response', 'Përgjigjja e servisit'],
+  updates: ['Nachträge des Kunden', 'Customer updates', 'Përditësimet e klientit'],
+  workQuality: ['Arbeitsqualität', 'Work quality', 'Cilësia e punës'],
+  communication: ['Kommunikation', 'Communication', 'Komunikimi'],
+  priceTransparency: ['Preistransparenz', 'Price transparency', 'Transparenca e çmimeve'],
+  punctuality: ['Termintreue', 'Punctuality', 'Përpikëria'],
+  emptyMine: [
+    'Keine passenden zugewiesenen Fälle.',
+    'No matching assigned cases.',
+    'Nuk ka raste të caktuara që përputhen.',
+  ],
+  invalidDecision: [
+    'Die Entscheidung erfüllt die Voraussetzungen nicht. Eingaben und Nachweis prüfen.',
+    'The decision does not meet the requirements. Check inputs and evidence.',
+    'Vendimi nuk i plotëson kushtet. Kontrolloni të dhënat dhe dëshminë.',
+  ],
+  description: ['Profilinhalt', 'Profile content', 'Përmbajtja e profilit'],
+  suspended: ['Gesperrt', 'Suspended', 'I pezulluar'],
+  pending_review: ['Zur Prüfung eingereicht', 'Pending review', 'Në pritje të shqyrtimit'],
+  unavailable: ['Nicht verfügbar', 'Unavailable', 'I padisponueshëm'],
+  invoice: ['Rechnung', 'Invoice', 'Faturë'],
+  work_order: ['Arbeitsauftrag', 'Work order', 'Urdhër pune'],
+  payment_confirmation: ['Zahlungsbestätigung', 'Payment confirmation', 'Konfirmim pagese'],
+  garage_confirmation: ['Werkstattbestätigung', 'Garage confirmation', 'Konfirmim nga servisi'],
+  other_service_proof: [
+    'Anderer Leistungsnachweis',
+    'Other service evidence',
+    'Dëshmi tjetër shërbimi',
+  ],
+  complaint: ['Reklamation', 'Complaint', 'Ankesë'],
+  rework: ['Nacharbeit', 'Rework', 'Riparim plotësues'],
+  'moderation-appeal-submitted': [
+    'Widerspruch eingereicht',
+    'Appeal submitted',
+    'Ankesa u dorëzua',
+  ],
   workspace: ['Arbeitsbereiche', 'Workspaces', 'Hapësirat e punës'],
   under_review: ['In Prüfung', 'Under review', 'Në shqyrtim'],
   published: ['Veröffentlicht', 'Published', 'I publikuar'],
@@ -251,6 +396,9 @@ const extraLabels: Readonly<Record<string, readonly [string, string, string]>> =
   'review-rejected': ['Bewertung abgelehnt', 'Review rejected', 'Vlerësimi u refuzua'],
 };
 export function staffLabel(value: string, language: AppLanguage): string {
+  for (const prefix of ['moderation-case-reason-', 'review-decision-reason-', 'moderation-case-']) {
+    if (value.startsWith(prefix)) return staffLabel(value.slice(prefix.length), language);
+  }
   const extra = extraLabels[value];
   if (extra) return extra[language === 'de' ? 0 : language === 'en' ? 1 : 2];
   const copy = staffCopy(language);

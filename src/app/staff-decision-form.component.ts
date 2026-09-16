@@ -1,0 +1,99 @@
+import { Component, computed, effect, inject, input, output } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { LanguageService } from './language.service';
+import { ButtonDirective } from './ui/button.directive';
+import { staffLabel } from '../shared/staff-copy';
+import type { StaffCaseDetail, ModerationReasonCode } from '../shared/moderation';
+import { type StaffCaseDecision, type StaffDecisionAction } from '../shared/staff-decision';
+import { REVIEW_REJECTION_REASONS, type ReviewRejectionReason } from '../shared/review-decision';
+
+@Component({
+  selector: 'app-staff-decision-form',
+  imports: [FormsModule, ButtonDirective],
+  templateUrl: './staff-decision-form.component.html',
+})
+export class StaffDecisionFormComponent {
+  readonly detail = input.required<StaffCaseDetail>();
+  readonly busy = input(false);
+  readonly submitted = output<StaffCaseDecision>();
+  readonly language = inject(LanguageService);
+  readonly actions = computed(() => this.detail().allowedActions ?? []);
+  readonly rejectionReasons = REVIEW_REJECTION_REASONS;
+  readonly violationReasons = [
+    'policy_violation',
+    'private_data_exposure',
+    'unsafe_content',
+    'abuse',
+    'other_policy',
+  ] as const;
+  action: StaffDecisionAction | '' = '';
+  rejectionReason: ReviewRejectionReason | '' = '';
+  reason: ModerationReasonCode | '' = '';
+  garageMatches = false;
+  serviceMatches = false;
+  visitMonthMatches = false;
+  constructor() {
+    effect(() => {
+      this.detail();
+      this.action = '';
+      this.rejectionReason = '';
+      this.reason = '';
+      this.garageMatches = this.serviceMatches = this.visitMonthMatches = false;
+    });
+  }
+  label(value: string): string {
+    return staffLabel(value, this.language.language);
+  }
+  valid(): boolean {
+    if (!this.action || !this.actions().includes(this.action) || this.busy()) return false;
+    if (this.action === 'publish_review')
+      return (
+        this.garageMatches &&
+        this.serviceMatches &&
+        this.visitMonthMatches &&
+        this.detail().evidenceAvailable === true
+      );
+    if (this.action === 'reject_review') return this.rejectionReason !== '';
+    if (this.action === 'reject' || this.action === 'temporarily_hide')
+      return this.violationReasons.some((reason) => reason === this.reason);
+    return true;
+  }
+  submit(): void {
+    if (!this.valid()) return;
+    const action = this.action as StaffDecisionAction;
+    const revision = this.detail().revision;
+    const checklist = {
+      garageMatches: this.garageMatches,
+      serviceMatches: this.serviceMatches,
+      visitMonthMatches: this.visitMonthMatches,
+    };
+    let decision: StaffCaseDecision;
+    if (action === 'publish_review') decision = { action, revision, checklist };
+    else if (action === 'reject_review')
+      decision = {
+        action,
+        revision,
+        checklist,
+        rejectionReason: this.rejectionReason as ReviewRejectionReason,
+      };
+    else
+      decision = {
+        action,
+        revision,
+        reasonCode:
+          action === 'request_information'
+            ? 'missing_information'
+            : action === 'approve' || action === 'restore'
+              ? 'no_violation'
+              : (this.reason as ModerationReasonCode),
+      };
+    if (
+      ['publish_review', 'reject_review', 'reject', 'temporarily_hide', 'restore'].includes(
+        action,
+      ) &&
+      !window.confirm(this.label(action) + '?\n\n' + this.label('effect_' + action))
+    )
+      return;
+    this.submitted.emit(decision);
+  }
+}

@@ -144,14 +144,136 @@ export async function seedStaffDemo(client, environment = process.env) {
       "INSERT INTO moderation_event(id,actor_user_id,subject_type,subject_id,event_type) VALUES($1,$2,'moderation_case',$3,'demo-case-prepared')",
       [scenario.id + '-audit', staffDemoOperator, 'review:' + scenario.id],
     );
+    await seedModerationScenario(client, scenario, config);
     await mark(client, 'garage_review', scenario.id);
     await mark(client, 'visit_evidence', scenario.id + '-evidence');
     await mark(client, 'file_object', fileId);
   }
+  if (config.moderator) await seedProfileReportDemo(client, config);
 }
 async function mark(client, type, id) {
   await client.query(
     'INSERT INTO local_demo_seed_entity(entity_type,entity_id,seed_version) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',
     [type, id, 'staff-foundation-v1'],
   );
+}
+
+// Only called for a newly created, provenance-checked synthetic review in this seed transaction.
+async function seedModerationScenario(client, scenario, config) {
+  const type = scenario.scenario;
+  if (!type || !config.moderator) return;
+  if (!scenario.id.startsWith('demo-staff-review-'))
+    throw new Error('Invalid synthetic scenario ID');
+  const caseId = 'review:' + scenario.id;
+  if (type === 'waiting') {
+    await client.query(
+      "UPDATE moderation_case SET status='waiting_for_subject',reason_code='missing_information' WHERE id=$1",
+      [caseId],
+    );
+    return;
+  }
+  if (type === 'appeal' || type === 'own-appeal') {
+    const previous = type === 'own-appeal' ? config.moderator : staffDemoOperator;
+    await client.query(
+      "UPDATE garage_review SET publication_state='rejected',rejection_reason_code='evidence_not_sufficient' WHERE id=$1",
+      [scenario.id],
+    );
+    await client.query(
+      "UPDATE visit_evidence SET verification_state='not_verified' WHERE review_id=$1",
+      [scenario.id],
+    );
+    await client.query(
+      'INSERT INTO moderation_appeal(id,case_id,appellant_user_id,message) VALUES($1,$2,$3,$4)',
+      [
+        scenario.id + '-appeal',
+        caseId,
+        staffDemoAuthor,
+        'DEMO – Bitte diesen fiktiven Nachweis unabhängig nochmals prüfen. Die ursprüngliche Entscheidung bleibt im Verlauf.',
+      ],
+    );
+    await client.query(
+      "UPDATE moderation_case SET status='assigned',decided_by_user_id=$2,appeal_against_user_id=$2 WHERE id=$1",
+      [caseId, previous],
+    );
+    await client.query(
+      "INSERT INTO moderation_event(id,actor_user_id,subject_type,subject_id,event_type) VALUES($1,$2,'review',$3,'review-rejected')",
+      [scenario.id + '-old-decision', previous, scenario.id],
+    );
+    return;
+  }
+  await client.query(
+    "UPDATE garage_review SET publication_state='published',published_at='2026-09-02T10:00:00Z' WHERE id=$1",
+    [scenario.id],
+  );
+  await client.query(
+    "UPDATE visit_evidence SET verification_state='verified',garage_matches=true,service_matches=true,visit_month_matches=true,reviewed_by_user_id=$2,reviewed_at='2026-09-02T10:00:00Z' WHERE review_id=$1",
+    [scenario.id, staffDemoOperator],
+  );
+  const report = scenario.id + '-report';
+  await client.query(
+    `INSERT INTO moderation_case(id,kind,subject_type,subject_id,requester_user_id,assigned_moderator_user_id,status,priority,created_at)
+    VALUES($1,'report','review',$2,$3,$4,'assigned','high','2026-09-03T10:00:00Z')`,
+    [report, scenario.id, staffDemoReporter, config.moderator],
+  );
+  await client.query(
+    "INSERT INTO content_report(case_id,reporter_user_id,category,details) VALUES($1,$2,'personal_data',$3)",
+    [
+      report,
+      staffDemoReporter,
+      'DEMO – Fiktive Meldung für die Inhaltsprüfung. Alle Angaben sind erfunden.',
+    ],
+  );
+  if (type === 'restore' || type === 'removed') {
+    await client.query(
+      `UPDATE garage_review SET publication_state=$2,moderation_hidden_case_id=$3,published_at=CASE WHEN $2='withdrawn' THEN NULL ELSE published_at END WHERE id=$1`,
+      [
+        scenario.id,
+        type === 'restore' ? 'temporarily_hidden' : 'withdrawn',
+        type === 'restore' ? report : null,
+      ],
+    );
+    await client.query(
+      "UPDATE moderation_case SET status='resolved',decided_by_user_id=$2,reason_code='policy_violation' WHERE id=$1",
+      [report, staffDemoOperator],
+    );
+  }
+  await mark(client, 'moderation_case', report);
+}
+
+async function seedProfileReportDemo(client, config) {
+  const id = 'demo-staff-profile-report';
+  const garage = 'demo-staff-profile-subject';
+  const known = await client.query(
+    "SELECT 1 FROM local_demo_seed_entity WHERE entity_type='moderation_case' AND entity_id=$1",
+    [id],
+  );
+  if (known.rowCount) return;
+  const occupied = await client.query(
+    'SELECT 1 FROM moderation_case WHERE id=$1 UNION ALL SELECT 1 FROM garage WHERE id=$2',
+    [id, garage],
+  );
+  if (occupied.rowCount) throw new Error('Unmanaged staff demo scenario collision');
+  await client.query(
+    "INSERT INTO garage(id,name,publication_state,place_id,description) VALUES($1,'DEMO · Profilprüfung','published','xk-pristina','DEMO – Fiktiver Profiltext für die Inhaltsprüfung. Unternehmensprüfung bleibt getrennt.')",
+    [garage],
+  );
+  await client.query(
+    "INSERT INTO garage_verification(garage_id,phone_state,contact_person_state,company_document_state,location_state) VALUES($1,'verified','verified','verified','verified')",
+    [garage],
+  );
+  await client.query(
+    `INSERT INTO moderation_case(id,kind,subject_type,subject_id,requester_user_id,assigned_moderator_user_id,status,priority,created_at)
+    VALUES($1,'report','garage_profile',$2,$3,$4,'assigned','normal','2026-09-04T10:00:00Z')`,
+    [id, garage, staffDemoReporter, config.moderator],
+  );
+  await client.query(
+    "INSERT INTO content_report(case_id,reporter_user_id,category,details) VALUES($1,$2,'spam_or_deception',$3)",
+    [
+      id,
+      staffDemoReporter,
+      'DEMO – Fiktive Inhaltsmeldung, keine Unternehmensnachweise und keine realen Daten.',
+    ],
+  );
+  await mark(client, 'garage', garage);
+  await mark(client, 'moderation_case', id);
 }

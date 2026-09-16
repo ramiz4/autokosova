@@ -289,6 +289,7 @@ const reviewDecisionSchema = {
       required: ['serviceMatches', 'visitMonthMatches', 'garageMatches'],
       type: 'object',
     },
+    caseRevision: { type: 'integer', minimum: 1, maximum: 2147483647 },
     decision: { enum: ['published', 'rejected'], type: 'string' },
     rejectionReason: { enum: REVIEW_REJECTION_REASONS, type: 'string' },
   },
@@ -311,6 +312,7 @@ const contentReportSchema = {
 const moderationActionSchema = {
   additionalProperties: false,
   properties: {
+    caseRevision: { type: 'integer', minimum: 1, maximum: 2147483647 },
     action: { enum: MODERATION_ACTIONS, type: 'string' },
     reasonCode: { enum: MODERATION_REASON_CODES, type: 'string' },
   },
@@ -1454,9 +1456,17 @@ export function createServer(options: ServerOptions = {}) {
     { schema: { body: moderationActionSchema } },
     async (request, reply) => {
       try {
+        const principal = requirePrincipal(request, true);
+        if (!principal.roles.has('admin') && !principal.roles.has('moderator'))
+          throw new AccessError(403, 'Staff access denied');
         const params = request.params as { caseId: string };
+        if (
+          moderationStore.decideStaffCase &&
+          (request.body as ModerationActionInput).caseRevision === undefined
+        )
+          throw new AccessError(422, 'A current case revision is required');
         return await moderationStore.applyModerationAction(
-          requirePrincipal(request, true),
+          principal,
           params.caseId,
           request.body as ModerationActionInput,
         );
@@ -1548,9 +1558,17 @@ export function createServer(options: ServerOptions = {}) {
     { schema: { body: reviewDecisionSchema } },
     async (request, reply) => {
       try {
+        const principal = requirePrincipal(request, true);
+        if (!principal.roles.has('admin') && !principal.roles.has('moderator'))
+          throw new AccessError(403, 'Staff access denied');
         const params = request.params as { reviewId: string };
+        if (
+          moderationStore.decideStaffCase &&
+          (request.body as ReviewDecisionInput).caseRevision === undefined
+        )
+          throw new AccessError(422, 'A current case revision is required');
         await reviewStore.decideReview(
-          requirePrincipal(request, true),
+          principal,
           params.reviewId,
           request.body as ReviewDecisionInput,
         );

@@ -1,4 +1,15 @@
 import type { FileGrant, Principal } from './access';
+import {
+  REVIEW_REJECTION_REASONS,
+  type ReviewDecisionInput,
+  type ReviewRejectionReason,
+} from '../shared/review-decision';
+export {
+  REVIEW_REJECTION_REASONS,
+  type EvidenceVerificationChecklist,
+  type ReviewDecisionInput,
+  type ReviewRejectionReason,
+} from '../shared/review-decision';
 
 export const REVIEW_LIMITS = {
   maxResponseLength: 1_200,
@@ -15,19 +26,11 @@ export const REVIEW_EVIDENCE_KINDS = [
   'other_service_proof',
 ] as const;
 
-export const REVIEW_REJECTION_REASONS = [
-  'duplicate_visit',
-  'evidence_not_sufficient',
-  'content_not_publishable',
-  'other_policy',
-] as const;
-
 export type ReviewEvidenceKind = (typeof REVIEW_EVIDENCE_KINDS)[number];
 export type ReviewEvidenceStatus =
   'submitted' | 'under_review' | 'verified' | 'not_verified' | 'deleted_after_retention';
 export type ReviewPublicationState =
   'submitted' | 'under_review' | 'published' | 'temporarily_hidden' | 'rejected' | 'withdrawn';
-export type ReviewRejectionReason = (typeof REVIEW_REJECTION_REASONS)[number];
 export type ReviewUpdateKind = 'complaint' | 'rework';
 
 export interface ReviewRatings {
@@ -46,18 +49,6 @@ export interface ReviewSubmissionInput extends ReviewRatings {
   /** Calendar month in which the work was performed; deliberately no travel dates. */
   readonly visitMonth: string;
   readonly garageId: string;
-}
-
-export interface EvidenceVerificationChecklist {
-  readonly serviceMatches: boolean;
-  readonly visitMonthMatches: boolean;
-  readonly garageMatches: boolean;
-}
-
-export interface ReviewDecisionInput {
-  readonly checklist: EvidenceVerificationChecklist;
-  readonly decision: 'published' | 'rejected';
-  readonly rejectionReason?: ReviewRejectionReason;
 }
 
 export interface PublicReviewSummary {

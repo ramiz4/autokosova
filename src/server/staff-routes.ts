@@ -1,3 +1,4 @@
+import { isStaffCaseDecision } from '../shared/staff-decision';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { AccessError, type Principal } from './access';
 import {
@@ -103,6 +104,21 @@ export function registerStaffRoutes(
       return await privateRead(request, (principal) =>
         store.getStaffCase!(principal, (request.params as { caseId: string }).caseId),
       );
+    } catch (error) {
+      return respond(error, reply);
+    }
+  });
+  app.post('/api/staff/cases/:caseId/decide', { schema: { params } }, async (request, reply) => {
+    try {
+      const principal = staff(request, true);
+      if (!store.decideStaffCase) throw new AccessError(503, 'Case decisions are unavailable');
+      if (!isStaffCaseDecision(request.body)) throw new AccessError(422, 'Invalid case decision');
+      await store.decideStaffCase(
+        principal,
+        (request.params as { caseId: string }).caseId,
+        request.body,
+      );
+      return reply.code(204).send();
     } catch (error) {
       return respond(error, reply);
     }

@@ -1,4 +1,5 @@
 import { assertCurrentStaffIdentity, assertStaffCandidate } from './staff-identity';
+import { assertCaseRevision } from './staff-case-revision';
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
 import type { FileGrant, Principal } from './access';
@@ -72,13 +73,16 @@ interface PublicUpdateRow {
  */
 export class PostgresReviewStore implements ReviewStore {
   private readonly pool: pg.Pool;
+  private readonly ownsPool: boolean;
 
-  constructor(databaseUrl: string) {
-    this.pool = new pg.Pool({ connectionString: databaseUrl });
+  constructor(database: string | pg.Pool) {
+    this.ownsPool = typeof database === 'string';
+    this.pool =
+      typeof database === 'string' ? new pg.Pool({ connectionString: database }) : database;
   }
 
   async close(): Promise<void> {
-    await this.pool.end();
+    if (this.ownsPool) await this.pool.end();
   }
 
   async assignModerator(
@@ -223,15 +227,40 @@ export class PostgresReviewStore implements ReviewStore {
       await client.query('BEGIN');
       await this.setPrincipal(client, principal);
       await this.ensureUser(client, principal.userId);
-      await client.query('SELECT id FROM moderation_case WHERE id=$1 FOR UPDATE', [
-        `review:${reviewId}`,
-      ]);
+      // CASE-4: the version check and the evidence/publication mutation share this row lock.
+      const cases = await client.query<{
+        revision: number;
+        status: string;
+        appeal_against_user_id: string | null;
+        assigned_moderator_user_id: string | null;
+        escalation_reason: string | null;
+      }>(
+        `SELECT revision,status,appeal_against_user_id,assigned_moderator_user_id,escalation_reason
+         FROM moderation_case WHERE id=$1 AND kind='review_submission' FOR UPDATE`,
+        [`review:${reviewId}`],
+      );
+      const record = cases.rows[0];
+      assertCaseRevision(record?.revision, decision.caseRevision);
       const review = await this.getReviewAccess(client, reviewId, true);
       this.requireModerationAccess(principal, review);
       await this.requireNoReviewInterest(client, review, principal.userId);
-      if (review.publication_state !== 'under_review') {
-        throw new AccessError(409, 'Only reviews under review can receive a decision');
-      }
+      if (
+        record &&
+        !principal.roles.has('admin') &&
+        (record.assigned_moderator_user_id !== principal.userId || record.escalation_reason)
+      )
+        throw new AccessError(403, 'Moderator access denied for this case');
+      const open =
+        record && ['submitted', 'assigned', 'waiting_for_subject'].includes(record.status);
+      const reconsideration =
+        open &&
+        record.appeal_against_user_id !== null &&
+        ['published', 'rejected'].includes(review.publication_state);
+      if ((record && !open) || (review.publication_state !== 'under_review' && !reconsideration))
+        throw new AccessError(
+          409,
+          'Only an open review or independent appeal can receive a decision',
+        );
       this.validateDecision(decision);
       if (decision.decision === 'published') {
         if (
@@ -248,7 +277,8 @@ export class PostgresReviewStore implements ReviewStore {
         }
         await client.query(
           `UPDATE garage_review
-           SET publication_state = 'published', published_at = now(), rejection_reason_code = NULL
+           SET publication_state = 'published', published_at = COALESCE(published_at,now()),
+               rejection_reason_code = NULL
            WHERE id = $1`,
           [reviewId],
         );
@@ -280,11 +310,25 @@ export class PostgresReviewStore implements ReviewStore {
           ],
         );
       }
-      await client.query('UPDATE moderation_case SET decided_by_user_id=$2 WHERE id=$1', [
-        `review:${reviewId}`,
-        principal.userId,
-      ]);
+      // An upheld appeal may leave the review's publication state unchanged. Close the case
+      // explicitly rather than relying on a publication-state trigger to detect a transition.
+      await client.query(
+        `UPDATE moderation_case SET decided_by_user_id=$2,status=$3,reason_code=$4,
+          appeal_against_user_id=NULL WHERE id=$1`,
+        [
+          `review:${reviewId}`,
+          principal.userId,
+          decision.decision === 'published' ? 'resolved' : 'rejected',
+          decision.decision === 'published' ? 'no_violation' : 'policy_violation',
+        ],
+      );
       await this.audit(client, principal.userId, reviewId, `review-${decision.decision}`);
+      await this.audit(
+        client,
+        principal.userId,
+        reviewId,
+        `review-decision-reason-${decision.decision === 'published' ? 'no_violation' : decision.rejectionReason}`,
+      );
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
@@ -335,8 +379,15 @@ export class PostgresReviewStore implements ReviewStore {
       await client.query('BEGIN');
       await this.setPrincipal(client, principal);
       const review = await this.getReviewAccess(client, reviewId);
-      const isAssignedModerator =
-        principal.roles.has('moderator') && review.moderator_user_id === principal.userId;
+      // REVIEW-1: use the existing current case predicate for both submitted reviews and
+      // assigned reports about that review. The role alone never grants file access.
+      const assignment = principal.roles.has('moderator')
+        ? await client.query<{ allowed: boolean }>(
+            "SELECT staff_assigned_subject('review',$1) AS allowed",
+            [reviewId],
+          )
+        : undefined;
+      const isAssignedModerator = assignment?.rows[0]?.allowed === true;
       if (
         review.author_user_id !== principal.userId &&
         !principal.roles.has('admin') &&

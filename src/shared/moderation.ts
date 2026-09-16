@@ -1,3 +1,5 @@
+import type { StaffDecisionAction } from './staff-decision';
+
 /**
  * The codes in this module deliberately carry no free text. They are safe for the append-only
  * audit trail; an explanatory message, when needed, lives only on the restricted case or appeal.
@@ -47,6 +49,7 @@ export interface ContentReportInput {
 export interface ModerationActionInput {
   readonly action: ModerationAction;
   readonly reasonCode: ModerationReasonCode;
+  readonly caseRevision?: number;
 }
 
 export interface ModerationCaseSummary {
@@ -131,6 +134,12 @@ export interface StaffCaseDetail extends StaffCaseSummary {
     readonly publicationState: string;
     readonly evidenceStatus: string;
     readonly evidenceKind: string;
+    readonly garageResponse?: { readonly text: string; readonly createdAt: string };
+    readonly updates?: readonly {
+      readonly text: string;
+      readonly kind: string;
+      readonly createdAt: string;
+    }[];
     readonly ratings: {
       readonly workQuality: number;
       readonly communication: number;
@@ -141,13 +150,23 @@ export interface StaffCaseDetail extends StaffCaseSummary {
   readonly garage?: {
     readonly name: string;
     readonly placeId: string;
+    readonly description?: string;
+    readonly photoUrls?: readonly string[];
     readonly publicationState: string;
   };
-  readonly history: readonly { readonly action: string; readonly createdAt: string }[];
+  readonly history: readonly {
+    readonly action: string;
+    readonly createdAt: string;
+    readonly actorLabel?: string;
+  }[];
   readonly appeals: readonly { readonly message: string; readonly createdAt: string }[];
   readonly canAssign: boolean;
   readonly canEscalate: boolean;
   readonly conflictOfInterest: boolean;
+  /** Server affordances, not a replacement for transactional authorization. */
+  readonly allowedActions?: readonly StaffDecisionAction[];
+  readonly evidenceAvailable?: boolean;
+  readonly openAppeal?: boolean;
 }
 export interface StaffQueueFilter {
   readonly page?: number;

@@ -1,5 +1,6 @@
 import type { PersonalDataExport, Principal } from './access';
 import type { AccountProfile } from '../shared/account';
+import type { StaffCaseDecision } from '../shared/staff-decision';
 import type {
   AppealInput,
   ContentReportInput,
@@ -43,6 +44,11 @@ export interface ModerationLifecycleStore {
     principal: Principal,
     caseId: string,
     input: StaffCaseEscalation,
+  ): Promise<void> | void;
+  decideStaffCase?(
+    principal: Principal,
+    caseId: string,
+    input: StaffCaseDecision,
   ): Promise<void> | void;
 
   close?(): Promise<void>;

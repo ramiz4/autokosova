@@ -1,5 +1,8 @@
 import { assertCurrentStaffIdentity, assertStaffCandidate } from './staff-identity';
 import { PostgresStaffWorkspace } from './staff-workspace-store';
+import { PostgresReviewStore } from './review-store';
+import { assertCaseRevision } from './staff-case-revision';
+import { isStaffCaseDecision, type StaffCaseDecision } from '../shared/staff-decision';
 import type { AccountProfile } from '../shared/account';
 import type {
   StaffQueueFilter,
@@ -38,6 +41,7 @@ import {
 import { calculateOverallRating, type OwnReview } from './reviews';
 
 interface CaseRow {
+  readonly revision: number;
   readonly kind: string;
   readonly escalation_reason: string | null;
   readonly decided_by_user_id: string | null;
@@ -94,10 +98,12 @@ interface RepairRequestRow {
 export class PostgresModerationStore implements ModerationLifecycleStore {
   private readonly pool: pg.Pool;
   private readonly workspace: PostgresStaffWorkspace;
+  private readonly reviewDecisions: PostgresReviewStore;
 
   constructor(databaseUrl: string) {
     this.pool = new pg.Pool({ connectionString: databaseUrl });
     this.workspace = new PostgresStaffWorkspace(this.pool);
+    this.reviewDecisions = new PostgresReviewStore(this.pool);
   }
 
   validateStaffPrincipal(principal: Principal) {
@@ -125,6 +131,63 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
   }
   escalateStaffCase(principal: Principal, caseId: string, input: StaffCaseEscalation) {
     return this.workspace.escalate(principal, caseId, input);
+  }
+
+  async decideStaffCase(
+    principal: Principal,
+    caseId: string,
+    input: StaffCaseDecision,
+  ): Promise<void> {
+    if (!isStaffCaseDecision(input)) throw new AccessError(422, 'Case decision is invalid');
+    const detail = await this.workspace.get(principal, caseId);
+    if (detail.conflictOfInterest)
+      throw new AccessError(403, 'A person involved in a case cannot decide it');
+    if (!detail.allowedActions?.includes(input.action))
+      throw new AccessError(409, 'This action is not available for the current case');
+    // These are the existing domain writers, not another publication workflow. They repeat
+    // access/state checks and compare the expected revision while holding the case row lock.
+    if (input.action === 'publish_review' || input.action === 'reject_review') {
+      if (detail.kind !== 'review_submission' || caseId !== `review:${detail.subjectId}`)
+        throw new AccessError(409, 'Review decisions require their canonical submission case');
+      await this.reviewDecisions.decideReview(principal, detail.subjectId, {
+        caseRevision: input.revision,
+        checklist: input.checklist,
+        decision: input.action === 'publish_review' ? 'published' : 'rejected',
+        ...(input.action === 'reject_review' ? { rejectionReason: input.rejectionReason } : {}),
+      });
+      return;
+    }
+    if (input.action === 'request_information' && detail.kind === 'review_submission') {
+      await this.transaction(principal, async (client) => {
+        const record = await this.requireCaseAccess(client, principal, caseId, true);
+        assertCaseRevision(record.revision, input.revision);
+        await this.requireNoConflict(client, record, principal.userId);
+        if (
+          record.kind !== 'review_submission' ||
+          !['submitted', 'assigned', 'waiting_for_subject'].includes(record.status)
+        )
+          throw new AccessError(409, 'Only an open review case can request information');
+        if (record.status === 'waiting_for_subject' && record.reason_code === 'missing_information')
+          return;
+        await client.query(
+          "UPDATE moderation_case SET status='waiting_for_subject',reason_code='missing_information' WHERE id=$1",
+          [caseId],
+        );
+        await this.audit(
+          client,
+          principal.userId,
+          caseId,
+          'moderation_case',
+          'moderation-case-request_information',
+        );
+      });
+      return;
+    }
+    await this.applyModerationAction(principal, caseId, {
+      action: input.action,
+      reasonCode: input.reasonCode,
+      caseRevision: input.revision,
+    });
   }
 
   async close(): Promise<void> {
@@ -224,6 +287,7 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
     }
     return this.transaction(principal, async (client) => {
       const record = await this.requireCaseAccess(client, principal, caseId, true);
+      assertCaseRevision(record.revision, input.caseRevision);
       await this.requireNoConflict(client, record, principal.userId);
       if (record.kind !== 'report')
         throw new AccessError(409, 'Submission decisions use their dedicated verified workflow');
@@ -235,6 +299,12 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
       if (record.subject_type === 'data_deletion') {
         throw new AccessError(409, 'Data deletion uses its dedicated workflow');
       }
+      if (
+        input.action === 'request_information' &&
+        record.status === 'waiting_for_subject' &&
+        record.reason_code === input.reasonCode
+      )
+        return toCaseSummary(record);
       if (input.action === 'temporarily_hide' || input.action === 'restore') {
         await this.changeSubjectVisibility(client, record, input.action);
       }
@@ -246,10 +316,19 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
             : 'resolved';
       const result = await client.query<CaseRow>(
         `UPDATE moderation_case
-         SET status = $2, reason_code = $3, decided_by_user_id = $4, updated_at = now()
+         SET status = $2, reason_code = $3,
+             decided_by_user_id = CASE WHEN $5 THEN decided_by_user_id ELSE $4 END,
+             appeal_against_user_id = CASE WHEN $5 THEN appeal_against_user_id ELSE NULL END,
+             updated_at = now()
          WHERE id = $1
          RETURNING *`,
-        [caseId, status, input.reasonCode, principal.userId],
+        [
+          caseId,
+          status,
+          input.reasonCode,
+          principal.userId,
+          input.action === 'request_information',
+        ],
       );
       await this.audit(
         client,
@@ -257,6 +336,13 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
         caseId,
         'moderation_case',
         `moderation-case-${input.action}`,
+      );
+      await this.audit(
+        client,
+        principal.userId,
+        caseId,
+        'moderation_case',
+        `moderation-case-reason-${input.reasonCode}`,
       );
       return toCaseSummary(result.rows[0]!);
     });
@@ -338,13 +424,23 @@ export class PostgresModerationStore implements ModerationLifecycleStore {
     }
     return this.transaction(principal, async (client) => {
       await this.ensureUser(client, principal.userId);
-      const record = await this.getCase(client, input.caseId, true);
+      let record = await this.getCase(client, input.caseId);
       if (
         !['resolved', 'rejected'].includes(record.status) ||
         !(await this.canAppeal(client, principal, record))
       ) {
         throw new AccessError(403, 'Appeal is not available for this moderation case');
       }
+      // The requester can read their case, but RLS deliberately forbids arbitrary case updates.
+      // After that owner/member check, lock only this case in the existing transition context
+      // and repeat the authorization/state check before writing. No client role is changed.
+      await client.query("SELECT set_config('app.system_role','admin',true)");
+      record = await this.getCase(client, input.caseId, true);
+      if (
+        !['resolved', 'rejected'].includes(record.status) ||
+        !(await this.canAppeal(client, principal, record))
+      )
+        throw new AccessError(409, 'Appeal state changed while acquiring the case lock');
       const id = randomUUID();
       await client.query(
         `INSERT INTO moderation_appeal (id, case_id, appellant_user_id, message)
