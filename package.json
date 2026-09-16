@@ -9,6 +9,7 @@
     "start": "ng serve",
     "start:ssr": "node dist/autokosova/server/server.mjs",
     "build": "ng build --stats-json",
+    "build:headless-foundation-pilot": "ng build --configuration production,headless-foundation-pilot --stats-json",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:server": "tsx --test test/**/*.test.ts",
@@ -39,7 +40,8 @@
     "test:e2e:policy": "node --test test/e2e-*.test.mjs",
     "typecheck:e2e": "tsc --noEmit -p tsconfig.e2e.json",
     "test:staff:browser": "node scripts/staff-foundation-browser-smoke.mjs",
-    "test:headless-foundation:browser": "node scripts/headless-foundation-browser-smoke.mjs"
+    "test:headless-foundation:browser": "node scripts/headless-foundation-browser-smoke.mjs",
+    "test:headless-foundation:production": "node scripts/headless-foundation-browser-smoke.mjs --production-negative"
   },
   "private": true,
   "dependencies": {

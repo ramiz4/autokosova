@@ -21,12 +21,7 @@ import {
   BrnDialogTitle,
   BrnDialogTrigger,
 } from '@spartan-ng/brain/dialog';
-import {
-  BrnOverlay,
-  BrnOverlayClose,
-  BrnOverlayContent,
-  BrnOverlayTrigger,
-} from '@spartan-ng/brain/overlay';
+import { BrnOverlay, BrnOverlayClose, BrnOverlayContent } from '@spartan-ng/brain/overlay';
 
 /**
  * Internal, fixture-only proof for #128. It is not linked from product UI and
@@ -45,7 +40,6 @@ import {
     BrnOverlay,
     BrnOverlayClose,
     BrnOverlayContent,
-    BrnOverlayTrigger,
     BrnCollapsible,
     BrnCollapsibleContent,
     BrnCollapsibleTrigger,
@@ -92,6 +86,7 @@ import {
       </brn-dialog>
 
       <brn-overlay
+        #belowOverlay="brnOverlay"
         [attachPositions]="overlayPositions"
         [autoFocus]="false"
         [hasBackdrop]="false"
@@ -99,15 +94,46 @@ import {
         [state]="overlayState()"
         (stateChanged)="overlayState.set($event)"
       >
-        <button type="button" brnOverlayTrigger data-foundation-overlay-trigger>
+        <button
+          #belowOverlayAnchorElement
+          type="button"
+          (click)="openBelowOverlay()"
+          data-foundation-overlay-trigger="below"
+        >
           Open nonmodal overlay fixture
         </button>
         <ng-template brnOverlayContent>
-          <section class="foundation-pilot-panel p-4" data-foundation-overlay-panel>
+          <section class="foundation-pilot-panel p-4" data-foundation-overlay-panel="below">
             <p>Generic overlay: no dialog role and no focus trap.</p>
             <button type="button" brnOverlayClose data-foundation-overlay-close>
               Close overlay
             </button>
+          </section>
+        </ng-template>
+      </brn-overlay>
+
+      <brn-overlay
+        #aboveOverlay="brnOverlay"
+        [attachPositions]="overlayPositions"
+        [autoFocus]="false"
+        [hasBackdrop]="false"
+        [role]="null"
+        [state]="aboveOverlayState()"
+        (stateChanged)="aboveOverlayState.set($event)"
+      >
+        <button
+          #aboveOverlayAnchorElement
+          type="button"
+          (click)="openAboveOverlay()"
+          class="fixed bottom-3 left-3"
+          data-foundation-overlay-trigger="above"
+        >
+          Open above overlay fixture
+        </button>
+        <ng-template brnOverlayContent>
+          <section class="foundation-pilot-panel p-4" data-foundation-overlay-panel="above">
+            <p>Fallback above the explicit lower viewport anchor.</p>
+            <button type="button" brnOverlayClose>Close overlay</button>
           </section>
         </ng-template>
       </brn-overlay>
@@ -142,12 +168,31 @@ import {
 })
 export class HeadlessFoundationPilotComponent {
   readonly dialogState = signal<'closed' | 'open'>('closed');
+  readonly aboveOverlayState = signal<'closed' | 'open'>('closed');
   readonly overlayState = signal<'closed' | 'open'>('closed');
   readonly overlayPositions: ConnectedPosition[] = [
     { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 8 },
     { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -8 },
   ];
+  protected readonly aboveOverlayAnchor = viewChild<ElementRef<HTMLElement>>(
+    'aboveOverlayAnchorElement',
+  );
+  protected readonly belowOverlayAnchor = viewChild<ElementRef<HTMLElement>>(
+    'belowOverlayAnchorElement',
+  );
+  private readonly aboveOverlay = viewChild.required<BrnOverlay>('aboveOverlay');
+  private readonly belowOverlay = viewChild.required<BrnOverlay>('belowOverlay');
   private readonly nativeDialog = viewChild.required<ElementRef<HTMLDialogElement>>('nativeDialog');
+
+  protected openBelowOverlay(): void {
+    this.belowOverlay().setOrigin(this.belowOverlayAnchor()?.nativeElement);
+    this.belowOverlay().open();
+  }
+
+  protected openAboveOverlay(): void {
+    this.aboveOverlay().setOrigin(this.aboveOverlayAnchor()?.nativeElement);
+    this.aboveOverlay().open();
+  }
 
   protected openNativeDialog(): void {
     this.nativeDialog().nativeElement.showModal();

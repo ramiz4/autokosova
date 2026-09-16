@@ -11,15 +11,6 @@ const adminDraftNavigationGuard = (_: unknown, state: { url: string }) =>
   inject(AdminDraftGuardService).confirmContextChange(state.url);
 
 export const routes: Routes = [
-  {
-    data: { foundationFixture: true },
-    loadComponent: () =>
-      import('./headless-foundation-pilot.component').then(
-        (m) => m.HeadlessFoundationPilotComponent,
-      ),
-    path: '__foundation-ui-pilot',
-    pathMatch: 'full',
-  },
   ...localizedRoutes(''),
   ...localizedRoutes('sq'),
   ...localizedRoutes('en'),

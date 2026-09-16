@@ -33,18 +33,20 @@ No `tw-animate-css` stylesheet is imported.
 
 ## Fixture-only pilot
 
-`/__foundation-ui-pilot` is an unlinked, English-named internal fixture route;
-it contains only synthetic labels and no application data, forms or product
-workflow. Its component is lazy-loaded so normal routes do not load the pilot
-entry directly. It verifies the real installed APIs rather than copied
-blueprints:
+`/__foundation-ui-pilot` exists only in the
+`headless-foundation-pilot` Angular build configuration; the normal production
+route table and production bundle contain neither the route nor its lazy entry.
+It contains only synthetic labels and no application data, forms or product
+workflow. It verifies the real installed APIs rather than copied blueprints:
 
 - Brain Dialog has a labelled modal portal, its own backdrop and normal return
   focus. It disables outside-pointer dismissal so an opened native dialog does
   not accidentally dismiss the portal below it.
 - Generic Brain Overlay is nonmodal (`role=null`, no backdrop, no autofocus)
-  and uses explicit below/above connected positions. This is the anchor basis
-  for future field/header work; normal Brain Popover is deliberately not used
+  and sets each trigger `ElementRef` explicitly with `BrnOverlay.setOrigin()`
+  before opening. The test measures both the eight-pixel below placement and
+  the above fallback at a lower viewport anchor. This is the anchor basis for
+  future field/header work; normal Brain Popover is deliberately not used
   because its trigger always announces `aria-haspopup=dialog` and overrides
   the generic position selection.
 - Brain Collapsible exposes its real `aria-expanded` and content relationship.
@@ -56,19 +58,23 @@ The existing global tokens remain unchanged: `brand #0061ff`, `brand-dark
 #0038c9`, `ink #07143e`, `muted #536d98`, `sky-accent #68c6ff` and the Arial
 font stack. The existing native inquiry dialog SCSS is untouched.
 
-On the rebased Lucide baseline, the production initial browser bundle changed
-from 663.71 kB raw / 140.87 kB estimated transfer to 675.12 kB / 142.42 kB.
-The 131.39-kB raw Foundation fixture remains a lazy entry. The existing 500-kB
+On the rebased Staff/ZITADEL baseline, the ordinary production initial browser
+bundle is 696.70 kB raw / 149.97 kB estimated transfer, below its unchanged
+700-kB error budget. The Foundation fixture does not occur in that output; its
+131.35-kB raw entry exists only in the explicit test build. The existing 500-kB
 initial warning is deliberately not relaxed.
 
 ## Evidence and limits
 
-`npm run test:headless-foundation:browser` builds on the production SSR output,
+`npm run test:headless-foundation:browser` builds on the explicit test-only SSR output,
 reads the fixture HTML before client execution, then uses Chromium to prove
 successful hydration (no page errors), CDK portal anchoring, nonmodal overlay
 semantics, Dialog focus restoration, keyboard-driven menu focus/escape return,
 Collapsible ARIA state, and a native `:modal` dialog above an open Brain portal.
 It uses no screenshot, trace, video, user, credential or database data.
+`npm run test:headless-foundation:production` starts the ordinary production
+output and proves the fixture marker is unavailable both in SSR and after
+client navigation.
 
 The pilot does not migrate product dialogs, popovers, filters or menus. Each
 child must retain its own authorization, form, localization, responsive and
