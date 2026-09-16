@@ -1,10 +1,10 @@
-# Headless UI foundation
+# Headless UI contract
 
-**Status: IMPLEMENTED PILOT / awaiting review and merge.** GitHub issue #128
-records the user approval for the current pure Brain line and the narrow,
-unstyled CDK menu exception. This document fixes the resulting contract; it
-does not authorize any child issue before this Foundation is reviewed and
-integrated into `main`.
+The Foundation is integrated in `main` through issue #128 / PR #144 (merge
+`524659b9dd1f3536d6fa07c21acba1988d03a710`). GitHub issue #128 records the
+approved pure Brain line and the narrow, unstyled CDK-menu exception. This
+document fixes the resulting application contract; it is not a release or
+accessibility acceptance claim for a product widget.
 
 ## Approved, exact dependency contract
 
@@ -31,7 +31,7 @@ The architecture test enforces these exact pins and imports. It forbids legacy
 `hlm-tailwind-preset.css`, foreign theme/reset imports and Angular Material.
 No `tw-animate-css` stylesheet is imported.
 
-## Fixture-only pilot
+## Foundation pilot boundary
 
 `/__foundation-ui-pilot` exists only in the
 `headless-foundation-pilot` Angular build configuration; the normal production
@@ -64,6 +64,32 @@ bundle is 696.70 kB raw / 149.97 kB estimated transfer, below its unchanged
 131.35-kB raw entry exists only in the explicit test build. The existing 500-kB
 initial warning is deliberately not relaxed.
 
+## Product pattern and focus contracts
+
+Use a Brain dialog or alert dialog for a modal interaction. It owns the focus
+trap, backdrop and normal restore path; application code owns the accessible
+title/description, initial focus, allowed close policy and persistent-trigger
+fallback. Product dialogs do not use native `showModal()` paths. Native browser
+`beforeunload` remains browser-owned.
+
+Use the generic Brain overlay for a nonmodal panel whose origin or placement
+the application controls. Set the local trigger/origin and positions
+explicitly, without duplicating portal placement through absolute offset
+classes. A nonmodal navigation or link panel is not a menu or dialog: it has
+no focus trap or `aria-modal`, and a late `closed` transition must not close a
+different panel.
+
+Use direct CDK menu only for a real action menu. Close it before opening a
+dialog and restore focus to its persistent trigger or a stable page fallback,
+never to a destroyed menu item. Use Brain collapsible for disclosure. Native
+select, range, checkbox and details controls remain native where they already
+meet the product need.
+
+Async confirmation and dirty-guard callers must await their result. Context
+switch, destruction and cancellation before overlay opening settle the pending
+promise negatively exactly once; a late response must not mutate a new context
+or reopen an overlay.
+
 ## Evidence and limits
 
 `npm run test:headless-foundation:browser` builds on the explicit test-only SSR output,
@@ -77,10 +103,24 @@ output and proves the fixture marker is unavailable both in SSR and after
 client navigation.
 
 The pilot does not migrate product dialogs, popovers, filters or menus. Each
-child must retain its own authorization, form, localization, responsive and
-workflow tests. Screen-reader testing, broader visual/reflow coverage and the
-release gate remain work for the named downstream issues after this PR is
-reviewed and merged.
+product interaction retains its authorization, form, localization, responsive
+and workflow tests. Screen-reader testing and broader visual/reflow coverage
+remain separate release evidence.
+
+## CI contract
+
+Pull requests run `verify` and `development-start`. Full browser, provider and
+E2E acceptance is scheduled only on `main`: `E2E acceptance` runs
+`npm run test:e2e`; `Inquiries browser` runs the inquiry/private-list smokes
+and `npm run test:dialogs:browser`; account, footer, staff, favourites and
+OIDC workflows run their named synthetic browser paths. Scheduled workflows
+check out the immutable SHA that triggered the run.
+
+The presence of a script, or a future scheduled run, is not passing evidence
+for a current change. Record the exact SHA and completed run before treating a
+browser, visual or accessibility result as acceptance evidence. Manual
+screen-reader and approved synthetic visual comparisons remain separate,
+required release evidence.
 
 ## Non-negotiable constraints
 
