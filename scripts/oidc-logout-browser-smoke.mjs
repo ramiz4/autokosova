@@ -12,6 +12,7 @@ async function scenario(configured) {
     environment.ZITADEL_END_SESSION_ENDPOINT = '';
     environment.ZITADEL_POST_LOGOUT_URI = '';
   }
+  const unrelated = configured ? provider.addUnrelatedSession() : undefined;
   let browser;
   try {
     browser = await startBrowser(port, environment);
@@ -43,6 +44,7 @@ async function scenario(configured) {
       );
     }
     async function logout(locale, header) {
+      const sessionsBefore = provider.sessionCount;
       if (header) {
         await click('button[aria-controls="account-menu"]');
         await until(
@@ -73,7 +75,9 @@ async function scenario(configured) {
         await evaluate(`(async () => (await fetch('/api/me', {cache:'no-store'})).status)()`),
         401,
       );
-      assert.equal(provider.sessionCount, configured ? 0 : 1);
+      assert.equal(provider.sessionCount, configured ? sessionsBefore - 1 : sessionsBefore);
+      if (unrelated) assert.equal(provider.hasSession(unrelated), true);
+      assert.equal(provider.counters.selections, 0);
     }
     for (const locale of configured ? ['de', 'sq', 'en'] : ['en']) {
       for (const width of configured ? [360, 390, 430, 1280] : [390]) {
@@ -100,7 +104,7 @@ async function scenario(configured) {
         () => evaluate('document.body.textContent.includes("Test provider unavailable")'),
         'provider failure',
       );
-      assert.equal(provider.sessionCount, 1);
+      assert.equal(provider.sessionCount, 2);
       await browser.navigate(
         '/profile',
         '!!document.querySelector(\'main a[href^="/auth/login"]\')',

@@ -810,7 +810,13 @@ export function createServer(options: ServerOptions = {}) {
       if (!accessStore.finishOidcTransaction(query.state, transaction))
         return reply.code(401).send({ error: 'OIDC login was cancelled or expired' });
       accessStore.setVerifiedRoles(identity.subject, identity.roles);
-      const session = accessStore.createSession(identity.subject, undefined, profile);
+      const session = accessStore.createVerifiedOidcSession(
+        identity.subject,
+        profile,
+        options.oidcConfig.endSessionEndpoint && identity.canTargetLogout
+          ? tokens.idToken
+          : undefined,
+      );
       const previousSession = request.cookies['autokosova_session'];
       if (previousSession) accessStore.revokeSession(previousSession);
       const secure = process.env['NODE_ENV'] === 'production';

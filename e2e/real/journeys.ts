@@ -102,9 +102,7 @@ export async function fullLogout(
     origin: string;
     loginOrigin: string;
     endSessionEndpoint: string;
-    logoutConfirmSelector?: string;
   },
-  username?: string,
 ) {
   let endpointSeen = false,
     callbackSeen = false,
@@ -120,7 +118,9 @@ export async function fullLogout(
     if (url.origin === endpoint.origin && url.pathname === endpoint.pathname) {
       endpointSeen =
         url.searchParams.get('post_logout_redirect_uri') ===
-          config.origin + '/auth/logout/callback' && !!url.searchParams.get('state');
+          config.origin + '/auth/logout/callback' &&
+        !!url.searchParams.get('state') &&
+        !!url.searchParams.get('id_token_hint');
     }
     if (endpointSeen && url.origin === config.origin && url.pathname === '/auth/logout/callback')
       callbackSeen = true;
@@ -166,34 +166,11 @@ export async function fullLogout(
       .locator('#account-menu')
       .getByRole('button', { name: 'Abmelden', exact: true })
       .click();
-    if (config.logoutConfirmSelector) {
-      const confirmation = page.locator(config.logoutConfirmSelector);
-      await expect(confirmation).toBeVisible();
-      if (new URL(page.url()).origin !== config.loginOrigin)
-        throw new LogoutFailure('logout-return-invalid');
-      await confirmation.click();
-    } else {
-      await page.waitForURL((url) => url.href === config.origin + '/' || accountSelection(url), {
-        timeout: 45_000,
-      });
-      if (accountSelection(new URL(page.url()))) {
-        // Use the verified preferred_username, not the potentially abbreviated login input.
-        // ZITADEL Login V2 presents one button per session. Select only the account under test.
-        // Never click a generic provider button, another account, or a post-logout login link.
-        if (!username) throw new LogoutFailure('logout-account-selection');
-        const account = page
-          .getByRole('button')
-          .filter({ has: page.getByText(username, { exact: true }) });
-        await expect(account)
-          .toHaveCount(1)
-          .catch(() => {
-            throw new LogoutFailure('logout-account-selection');
-          });
-        if (!accountSelection(new URL(page.url())))
-          throw new LogoutFailure('logout-return-invalid');
-        await account.click();
-      }
-    }
+    await page.waitForURL((url) => url.href === config.origin + '/' || accountSelection(url), {
+      timeout: 45_000,
+    });
+    // A successful targeted logout needs no provider interaction. Never select any account.
+    if (accountSelection(new URL(page.url()))) throw new LogoutFailure('logout-account-selection');
     await page.waitForURL(config.origin + '/', { timeout: 45_000 });
     expect(endpointSeen).toBe(true);
     expect(callbackSeen).toBe(true);
@@ -210,7 +187,7 @@ export async function fullLogout(
             : !callbackSeen && callbackRedirected
               ? 'logout-redirect-not-followed'
               : !callbackSeen && accountSelection(new URL(page.url()))
-                ? 'logout-selection-no-return'
+                ? 'logout-account-selection'
                 : !callbackSeen && providerRedirected
                   ? 'logout-provider-page'
                   : !endpointSeen
