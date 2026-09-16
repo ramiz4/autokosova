@@ -37,11 +37,15 @@
     }
     @if (support(); as context) {
       <p class="mb-4 rounded-lg bg-amber-50 p-4">{{ label('supportHint') }}</p>
-      <app-garage-onboarding
-        #supportEditor
-        [supportContext]="context"
-        (supportSaved)="supportSaved($event)"
-      />
+      @defer (when support()) {
+        <app-garage-onboarding
+          #supportEditor
+          [supportContext]="context"
+          (supportSaved)="supportSaved($event)"
+        />
+      } @placeholder {
+        <p role="status" class="my-4">{{ label('loading') }}</p>
+      }
     } @else if (detail(); as current) {
       <button
         appButton="outline"
