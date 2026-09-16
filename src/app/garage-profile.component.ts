@@ -52,6 +52,7 @@ import {
   BrnDialogOverlay,
   BrnDialogTitle,
 } from '@spartan-ng/brain/dialog';
+import { BrnPopover, BrnPopoverContent, BrnPopoverTrigger } from '@spartan-ng/brain/popover';
 import { map } from 'rxjs';
 import { getCatalogPlace, VEHICLE_MAKE_LABELS } from '../shared/catalog';
 import {
@@ -115,6 +116,9 @@ const PROFILE_SECTIONS = new Set(['about', 'reviews', 'services', 'makes', 'loca
     BrnDialogDescription,
     BrnDialogOverlay,
     BrnDialogTitle,
+    BrnPopover,
+    BrnPopoverContent,
+    BrnPopoverTrigger,
     RouterLink,
     SiteFooterComponent,
     SiteHeaderComponent,
@@ -204,9 +208,10 @@ export class GarageProfileComponent {
   protected profile?: PublicGarageProfile;
   protected readonly repairSummary = signal('');
   protected reviews: readonly PublicGarageReview[] = [];
-  protected reviewServiceCategoryId = '';
+  protected readonly reviewFiltersState = signal<'open' | 'closed'>('closed');
+  protected readonly reviewServiceCategoryId = signal('');
   protected reviewState: 'error' | 'loading' | 'ready' = 'loading';
-  protected reviewVehicleMakeId = '';
+  protected readonly reviewVehicleMakeId = signal('');
   protected readonly shareOpen = signal(false);
   protected readonly shareReturnFocus = signal<HTMLElement | null>(null);
   protected readonly shareRestoreFocus =
@@ -238,14 +243,15 @@ export class GarageProfileComponent {
         this.closeGallery();
         this.closeContact();
         this.closeShare();
+        this.closeReviewFilters();
+        this.abortReviewLoad();
         void this.loadProfile(params.get('garageId'));
       });
     } else if (this.request) {
       this.pendingTasks.run(() => this.loadForServer(this.request!));
     }
     this.destroyRef.onDestroy(() => {
-      this.reviewGeneration++;
-      this.reviewController?.abort();
+      this.abortReviewLoad();
       this.contactReturnFocus()?.removeAttribute('data-contact-return-focus');
       this.shareContext++;
     });
@@ -554,6 +560,11 @@ export class GarageProfileComponent {
     await this.loadReviewsPage(garageId, requestUrl, page);
   }
 
+  protected async applyReviewFilters(): Promise<void> {
+    this.closeReviewFilters();
+    await this.loadReviews();
+  }
+
   private async loadReviewsPage(
     garageId = this.profile?.id,
     requestUrl?: string,
@@ -567,9 +578,10 @@ export class GarageProfileComponent {
     this.reviewState = 'loading';
     try {
       const query = new URLSearchParams({ page: String(page) });
-      if (this.reviewServiceCategoryId)
-        query.set('serviceCategoryId', this.reviewServiceCategoryId);
-      if (this.reviewVehicleMakeId) query.set('vehicleMakeId', this.reviewVehicleMakeId);
+      const serviceCategoryId = this.reviewServiceCategoryId();
+      const vehicleMakeId = this.reviewVehicleMakeId();
+      if (serviceCategoryId) query.set('serviceCategoryId', serviceCategoryId);
+      if (vehicleMakeId) query.set('vehicleMakeId', vehicleMakeId);
       const suffix = query.size ? `?${query}` : '';
       const response = await fetch(
         this.publicApiUrl(
@@ -601,6 +613,15 @@ export class GarageProfileComponent {
     this.sharePending = false;
     this.shareOpen.set(false);
     this.shareState.set(null);
+  }
+
+  private closeReviewFilters(): void {
+    this.reviewFiltersState.set('closed');
+  }
+
+  private abortReviewLoad(): void {
+    this.reviewGeneration++;
+    this.reviewController?.abort();
   }
 
   private shareContextCurrent(profileId: string, context: number): boolean {

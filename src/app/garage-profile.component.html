@@ -439,44 +439,59 @@
               <h2 id="reviews-title" class="text-xl font-bold">{{ ui('profile.ui.reviews') }}</h2>
               <p class="mt-2 text-sm text-muted">{{ ui('profile.ui.reviewIntro') }}</p>
             </div>
-            <details class="relative">
-              <summary
+            <brn-popover
+              align="end"
+              [sideOffset]="8"
+              [role]="null"
+              [state]="reviewFiltersState()"
+              (stateChanged)="reviewFiltersState.set($event)"
+            >
+              <button
+                type="button"
+                brnPopoverTrigger
+                [attr.aria-haspopup]="null"
                 class="flex min-h-11 items-center gap-2 rounded-lg border border-blue-200 px-3 text-sm font-semibold hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand"
               >
                 <lucide-icon [name]="ListFilterIcon" class="size-4" />{{ ui('profile.ui.filter') }}
-              </summary>
-              <div
-                class="absolute right-0 z-20 mt-2 grid w-[min(20rem,calc(100vw-3rem))] gap-3 rounded-xl border border-blue-100 bg-white p-4 shadow-xl"
-              >
-                <label class="grid gap-1 text-sm font-semibold"
-                  >{{ language.t('profile.filterService') }}
-                  <select
-                    [(ngModel)]="reviewServiceCategoryId"
-                    class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal"
-                  >
-                    <option value="">{{ language.t('profile.allServices') }}</option>
-                    @for (service of profile.serviceCategoryIds; track service) {
-                      <option [value]="service">{{ serviceLabel(service) }}</option>
-                    }
-                  </select>
-                </label>
-                <label class="grid gap-1 text-sm font-semibold"
-                  >{{ language.t('profile.filterMake') }}
-                  <select
-                    [(ngModel)]="reviewVehicleMakeId"
-                    class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal"
-                  >
-                    <option value="">{{ language.t('profile.allMakes') }}</option>
-                    @for (make of vehicleMakeOptions; track make[0]) {
-                      <option [value]="make[0]">{{ make[1] }}</option>
-                    }
-                  </select>
-                </label>
-                <button type="button" appButton size="compact" (click)="loadReviews()">
-                  {{ language.t('profile.filterReviews') }}
-                </button>
-              </div>
-            </details>
+              </button>
+              <ng-template brnPopoverContent>
+                <section
+                  role="group"
+                  [attr.aria-label]="ui('profile.ui.filter')"
+                  class="grid w-[min(20rem,calc(100vw-3rem))] gap-3 rounded-xl border border-blue-100 bg-white p-4 text-ink shadow-xl"
+                >
+                  <label class="grid gap-1 text-sm font-semibold"
+                    >{{ language.t('profile.filterService') }}
+                    <select
+                      [ngModel]="reviewServiceCategoryId()"
+                      (ngModelChange)="reviewServiceCategoryId.set($event)"
+                      class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal"
+                    >
+                      <option value="">{{ language.t('profile.allServices') }}</option>
+                      @for (service of profile.serviceCategoryIds; track service) {
+                        <option [value]="service">{{ serviceLabel(service) }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label class="grid gap-1 text-sm font-semibold"
+                    >{{ language.t('profile.filterMake') }}
+                    <select
+                      [ngModel]="reviewVehicleMakeId()"
+                      (ngModelChange)="reviewVehicleMakeId.set($event)"
+                      class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal"
+                    >
+                      <option value="">{{ language.t('profile.allMakes') }}</option>
+                      @for (make of vehicleMakeOptions; track make[0]) {
+                        <option [value]="make[0]">{{ make[1] }}</option>
+                      }
+                    </select>
+                  </label>
+                  <button type="button" appButton size="compact" (click)="applyReviewFilters()">
+                    {{ language.t('profile.filterReviews') }}
+                  </button>
+                </section>
+              </ng-template>
+            </brn-popover>
           </div>
           @if (reviewState === 'loading') {
             <p class="mt-5 text-sm text-muted" role="status">
