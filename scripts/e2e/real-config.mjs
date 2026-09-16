@@ -5,6 +5,7 @@ export function realConfiguration(env) {
   const required = [
     'E2E_REAL_BASE_URL',
     'E2E_REAL_ISSUER',
+    'E2E_REAL_END_SESSION_ENDPOINT',
     'E2E_REAL_GARAGE_LOGIN',
     'E2E_REAL_GARAGE_PASSWORD',
     'E2E_REAL_GARAGE_SUBJECT',
@@ -32,7 +33,20 @@ export function realConfiguration(env) {
     env.E2E_REAL_GARAGE_LOGIN === env.E2E_REAL_CUSTOMER_LOGIN
   )
     throw new Error('Two distinct real test accounts are required');
+  const endSession = new URL(env.E2E_REAL_END_SESSION_ENDPOINT);
+  if (
+    endSession.protocol !== 'https:' ||
+    endSession.origin !== issuer.origin ||
+    endSession.username ||
+    endSession.password ||
+    endSession.search ||
+    endSession.hash
+  )
+    throw new Error('An exact HTTPS issuer end-session endpoint is required');
   return {
+    issuer: env.E2E_REAL_ISSUER,
+    endSessionEndpoint: endSession.href,
+    logoutConfirmSelector: env.E2E_REAL_LOGOUT_CONFIRM_SELECTOR,
     origin: base.origin,
     loginOrigin: login.origin,
     usernameSelector:

@@ -44,7 +44,7 @@ Gefilterte lokale Läufe sind ausdrücklich Diagnose, keine vollständige Abnahm
 
 ## Verbindliche Szenarien
 
-Acht unabhängige Szenarien in fünf fachlichen Bereichen, jeweils Desktop 1280×900 und Mobil 390×844; Menü-/Sprachprüfungen zusätzlich bei 360/430 px:
+Das aktuelle Pflichtinventar in `scripts/e2e/policy.mjs` enthält 17 unabhängige Szenarien, jeweils Desktop 1280×900 und Mobil 390×844; Menü-/Sprachprüfungen zusätzlich bei 360/430 px:
 
 | ID | Nachweis |
 |---|---|
@@ -56,6 +56,10 @@ Acht unabhängige Szenarien in fünf fachlichen Bereichen, jeweils Desktop 1280�
 | `localized-navigation` | DE/SQ/EN, beide Kontotypen, explizite Rücksprünge, Tastatur/Fokus, Layout und private SSR-Header |
 | `error-feedback` | Tatsächliche Revisionskonflikte, CSRF-/Membership-Verweigerung, gezielter Netzwerkabbruch, keine falsche Bestätigung, Abbruchschutz |
 | `late-response` | Tatsächlich autorisierte, nur verzögerte Antwort darf nach Kontowechsel keine alten privaten Daten wiederherstellen |
+| `review-workflow`, `review-boundaries` | Bewertungsabläufe und zugehörige Berechtigungsgrenzen |
+| `admin-workflow`, `admin-boundaries` | Plattformverwaltung und zugehörige Berechtigungsgrenzen |
+| `real-runner-contract` | Synthetische Regression der realen Runner-Hilfen: Profildaten, Aktivierung und nachweisbare End-Session-Navigation; lokale 401 allein reicht nicht |
+| `real-harness-lifecycle` | Gebauter eigener App-Prozess, zufällige Test-DB, Laufzeit-Subject-Zuordnung und Cleanup; ohne echten Providerkontakt |
 
 Setup/zusätzliche Nachkontrolle darf API/SQL nutzen; die abzunehmende Neuanlage/Bearbeitung/Löschung
 führt normale Playwright-Bedienaktionen aus. Fehlerprovokation darf Requests abbrechen oder reale
@@ -79,7 +83,12 @@ sowie ausdrücklich erzeugte Screenshots bekannter synthetischer Anwendungsseite
 Videos, gespeicherten Auth-Sitzungen, Providerbilder oder Netzwerkdumps. Playwright-Diagnosetexte
 bleiben lokal; CI lädt ausschließlich die freigegebenen JSON-/PNG-Dateien hoch.
 
-### Technische Merge-Sperre: derzeit externe Einschränkung
+### Technische Merge-Sperre: historische Einschränkung und Einrichtung #119
+
+Seit der ausdrücklichen Adminfreigabe am 16.09.2026 ist `main` tatsächlich geschützt: aktuelle
+Branch-Basis, beide E2E-Checks und alle neun bisherigen Qualitätschecks (zehn verschiedene
+Checknamen insgesamt), jeweils von GitHub Actions, auch für Administratoren. Keine Force-Pushes
+oder Branch-Löschung. Der frühere Befund bleibt nachfolgend als historischer Nachweis erhalten.
 
 Bei Implementierungsbeginn am 15.09.2026 hatte der verfügbare GitHub-Zugang Push-, aber keine
 Administrationsrechte. Der Ruleset-Endpunkt meldete zusätzlich HTTP 403 mit der Anforderung
@@ -95,39 +104,174 @@ Es gibt keinen eigenen Schließungsbot. Der Implementierungs-PR schließt #112 d
 beim regulären Merge nach erfolgreicher Abnahme; der anschließende Main-Lauf wird separat geprüft.
 Ein dortiger Fehler wird behoben und nicht als bestandene Prüfung bezeichnet.
 
-## Separater echter ZITADEL-Durchlauf
+## Separater echter ZITADEL-Durchlauf (#119)
 
-`npm run test:e2e:real` ist ausdrücklich opt-in und kein PR-Pflichtcheck. Ohne vollständige
-Konfiguration beendet er sich mit **Exit 2 / NOT RUN**, ohne Browser oder Providerkontakt.
-Er startet/stoppt keine Anwendung oder Datenbank. Es werden ausschließlich die im Lauf selbst
-angelegten, eindeutig markierten Datensätze verändert und bereinigt. Zwei echte Konten werden
-nacheinander in isolierten Browserkontexten geprüft; eine lokale Ursprungssperre verhindert
-konkurrierende Läufe dieses Starters. Andere manuelle Bearbeitungen derselben Testkonten pausieren.
+Die echte Abnahme ist von `e2e-acceptance` getrennt. Für #119 müssen **beide Checks auf dem
+aktuellen Integrationsstand wirklich erfolgreich** sein. Die synthetischen Runner-Regressionen
+sind kein Ersatz für echte ZITADEL-Anmeldungen. Ein nur vorbereitetes Workflow und `NOT RUN`
+erfüllen dieses Gate nicht. Einrichtungs-/Nachweisstand: [ZITADEL-Abnahmebericht](../validation/E2E-ZITADEL-ACCEPTANCE.md).
 
-Laufzeitvariablen aus der bereits freigegebenen Secret-Verwaltung bereitstellen, nicht in Git:
+### Automatische Vertrauensgrenze in GitHub Actions
 
-| Variable | Bedeutung |
+Seit dem ausdrücklichen Nutzerauftrag vom 16.09.2026 gibt es **keine manuellen Environment-
+Approvals und keinen Wait Timer**. `e2e-zitadel` bleibt der isolierte Secret-Bereich und erlaubt
+serverseitig nur `main` und `refs/pull/*/merge`. Die zehn erforderlichen Main-Checks,
+aktuelle Main-Basis und Durchsetzung auch für Administratoren bleiben unverändert.
+
+Der Workflow verwendet reguläres `pull_request`, Main-Push und optionalen manuellen Main-Start.
+Ein automatischer Vorabjob ohne Checkout/Secrets prüft die ausdrücklich vertrauten Identitäten
+`ramiz4` (1623235) und `ramizloki` (235666066), ihre aktuellen Schreibrechte und sowohl den
+ursprünglichen als auch den erneut auslösenden Actor. Der PR-Autor muss ebenfalls dieser
+benannten Vertrauensmenge angehören; Repositoryzugehörigkeit allein reicht nicht.
+Ein PR muss offen, nicht Draft, intern, gegen `main` und auf dessen aktuellem Integrations-SHA
+sein. Forks, andere Autoren/Actors, Rechteverlust und veraltete Integrationen scheitern geschlossen.
+Dieselbe Prüfung läuft nach Installation/Build unmittelbar vor der Secret-Auflösung erneut.
+
+Die bewusst gewählte Vertrauensgrenze ist der eigene Entwicklungs-/Automatisierungskreis:
+Repository-Schreibrechte haben bei Einrichtung nur diese beiden Konten. Deren interner Code,
+Workflows und Abhängigkeiten gelten für die dedizierten Testzugänge als vertrauenswürdig.
+Das ist keine behauptete unabhängige Personenprüfung und keine Sandbox gegen einen bösartigen
+Repository-Writer, der Workflowdateien selbst ändern kann. Neue Schreibberechtigungen oder Apps
+mit Code-/Workflow-Schreibzugriff benötigen eine neue administrative Vertrauensentscheidung.
+Ungeprüften Fremdcode nicht automatisch in interne Branches übernehmen. Fork-Workflows bekommen
+keine Secrets; kein `pull_request_target`, privilegierter `workflow_run` oder künstlicher grüner Check.
+
+Der abschließende `e2e-zitadel`-Check akzeptiert nur erfolgreiche Vorprüfung **und** Integration.
+Untrusted/Skip/Abbruch/fehlende Konfiguration sind kein Erfolg. Keine Retries und kein
+`continue-on-error`. Workflowübergreifend dieselbe Concurrency-Gruppe
+`autokosova-real-zitadel-accounts`; laufende Abnahmen werden nicht abgebrochen. Der begrenzte
+GitHub-Pending-Slot ist keine garantierte Warteschlange aller Commits.
+
+### Environment, Vault und Verantwortlichkeiten
+
+Betriebsverantwortlich für Test-Vault, Service-Account, Rotation und Widerruf ist **Ramiz Loki**;
+das administrative Konto ist `ramiz4`. Der Service-Account ist auf 90 Tage begrenzt, Rotation
+spätestens **01.12.2026**. Wiederherstellungsinformationen bleiben außerhalb des CI-Test-Vaults.
+Die alte manuelle Reviewer-Regel wurde auf Nutzerauftrag entfernt, nicht durch einen
+Auto-Approve-Bot ersetzt. Die regulären automatischen Required Checks bleiben verbindlich.
+
+Ein eigener CI-Test-Vault enthält ausschließlich die beiden vorhandenen freigegebenen
+Kunden-/Werkstatt-Testzugänge und die benötigte Test-OIDC-Konfiguration. Keine produktiven Konten,
+Adminzugänge oder Kopie des gesamten bisherigen Administrations-/Privat-Eintrags. Der dedizierte
+Service-Account erhält **nur Lesezugriff auf diesen einen Vault**, keine Schreib-/Share-/Vault-
+Erstellungsrechte und keinen Zugriff auf weitere Vaults. Keine zusätzliche Connect-Infrastruktur.
+
+`OP_SERVICE_ACCOUNT_TOKEN` ist ausschließlich ein **Environment Secret**. `OP_CI_TEST_VAULT_ID`
+ist eine Environment Variable mit der Vault-ID. Alle folgenden Environment Variables tragen
+`op://<vault-id>/<item-id>/[section/]field`-Referenzen, niemals Klartextwerte:
+
+| Referenz-Variable | Verwendungszweck |
 |---|---|
-| `AUTOKOSOVA_E2E_REAL=1` | ausdrückliche lokale Testfreigabe |
-| `E2E_REAL_BASE_URL` | freigegebene laufende lokale App, z. B. `http://localhost:4200` |
-| `E2E_REAL_ISSUER` | exakter HTTPS-Issuer der Testinstanz |
-| `E2E_REAL_LOGIN_ORIGIN` | optional abweichender ausdrücklich freigegebener Login-Ursprung |
-| `E2E_REAL_CUSTOMER_LOGIN`, `E2E_REAL_CUSTOMER_PASSWORD`, `E2E_REAL_CUSTOMER_SUBJECT` | bestehendes Privat-Testkonto |
-| `E2E_REAL_GARAGE_LOGIN`, `E2E_REAL_GARAGE_PASSWORD`, `E2E_REAL_GARAGE_SUBJECT` | bestehendes Betreiber-Testkonto |
-| `E2E_REAL_HEADED=1` | optional sichtbarer Browser für reguläre menschliche MFA-Freigabe |
-| `E2E_REAL_USERNAME_SELECTOR`, `E2E_REAL_PASSWORD_SELECTOR`, `E2E_REAL_SUBMIT_SELECTOR` | optional konkrete Selektoren der freigegebenen Provider-Version; keine anderen Ursprünge freigeben |
+| `ZITADEL_ISSUER_REF` | Exakter Test-Issuer; auch Browser-Prüfgrenze |
+| `ZITADEL_CLIENT_ID_REF`, `ZITADEL_AUDIENCE_REF` | Registrierter PKCE-Testclient, gleiche Audience |
+| `ZITADEL_JWKS_URI_REF` | Signaturprüfung |
+| `ZITADEL_AUTHORIZATION_ENDPOINT_REF`, `ZITADEL_TOKEN_ENDPOINT_REF` | Bestehender Authorization-Code-/PKCE-Weg |
+| `ZITADEL_USERINFO_ENDPOINT_REF` | Verifizierte eigene Profilangaben |
+| `ZITADEL_REDIRECT_URI_REF` | Exakt `http://localhost:4200/auth/callback` |
+| `ZITADEL_END_SESSION_ENDPOINT_REF` | Tatsächlich zu durchlaufender Provider-Endpunkt |
+| `ZITADEL_POST_LOGOUT_URI_REF` | Exakt `http://localhost:4200/auth/logout/callback` |
+| `E2E_REAL_CUSTOMER_LOGIN_REF`, `E2E_REAL_CUSTOMER_PASSWORD_REF`, `E2E_REAL_CUSTOMER_SUBJECT_REF` | Vorhandenes Kundentestkonto |
+| `E2E_REAL_GARAGE_LOGIN_REF`, `E2E_REAL_GARAGE_PASSWORD_REF`, `E2E_REAL_GARAGE_SUBJECT_REF` | Vorhandenes Werkstatttestkonto |
+| `E2E_REAL_LOGIN_ORIGIN_REF` | Optional abweichender ausdrücklich freigegebener HTTPS-Login-Origin |
 
-Ein autorisierter lokaler `op run`-Aufruf kann diese Variablen zur Laufzeit bereitstellen. Der Starter
-selbst liest weder 1Password-Einträge noch Share-Links, `.env`-Dateien oder bestehende Browsersitzungen.
-Passwörter/Subjects niemals in Shell-Argumente oder Historie kopieren. Es gibt keine Provideränderung,
-keine MFA-Abschaltung und keine Umgehung zuvor blockierter Werkzeuge. Solange die tatsächliche
-Passworteingabe im verwendeten Werkzeug nicht freigegeben ist, den Live-Lauf nicht darüber erzwingen.
+Optionale nicht geheime Environment Variables für die konkrete Provider-Oberfläche:
+`E2E_REAL_USERNAME_SELECTOR`, `E2E_REAL_PASSWORD_SELECTOR`, `E2E_REAL_SUBMIT_SELECTOR` und
+`E2E_REAL_LOGOUT_CONFIRM_SELECTOR`. Letztere nur setzen, wenn die Provider-Version ausdrücklich
+einen Bestätigungsschritt benötigt. Kein generischer Klick auf beliebige Provider-Buttons.
 
-Der kleine Standalone-Runner verwendet dieselben CRUD-Hilfen und normale Providerformularaktionen,
-prüft Konto-ID/-typ über `/api/me` und meldet ausschließlich feste Schrittbezeichnungen/Status.
-Der Provider-Login hängt von der freigegebenen konkreten ZITADEL-Oberfläche ab und ist erst nach
-wirklichem Lauf bestätigt. Keine Traces, Screenshots, rohe Playwright-Fehler oder Auth-State-Dateien
-für diesen Modus. Ergebnis: `test-results/e2e-real/summary.json`; fehlende Freigabe ist kein Erfolg.
+Referenzprüfung weist fehlende Felder, Klartext, fremde Vault-IDs und ungültige Referenzen zurück.
+Die offizielle `1password/load-secrets-action` (v5.0.1, vollständiger geprüfter Commit-SHA,
+CLI 2.38.1) löst erst **nach Installation und Build** auf. `export-env: false`; Token nur im
+Resolver-Schritt, Felder nur über dessen Outputs im Testschritt. Keine `configure`-Action mit
+jobweitem Token und keine pauschale Weitergabe an nachfolgende Schritte. Maskierung ist ergänzend,
+nicht die Sicherheitsgrenze. Nicht auflösbare oder verweigerte Felder lassen den Schritt scheitern.
+
+Rotation: neue dedizierte Read-only-Service-Account-Credentials durch die zuständige Person
+bereitstellen, das Environment Secret sicher ersetzen, den alten Account widerrufen und den
+verweigerten Altzugriff sowie einen vollständigen neuen Lauf nachweisen. Auch bei Personal-,
+Scope- oder Sicherheitsänderungen rotieren/widerrufen; keine Passwörter der Providerkonten,
+MFA-Regeln oder Providerregistrierungen ohne gesonderte Freigabe ändern. Keine Tokens oder
+persönlichen Freigabelinks in Tickets, PRs oder Terminal-Historie hinterlegen.
+
+### Eigene Runner-Anwendung und geprüfte Abläufe
+
+CI verwendet eine eigene PostGIS-Service-DB als Kontrolldatenbank und daraus eine zufällige
+`ak_e2e_*`-Szenariodatenbank. Bestehende Migrationen und Demo-Workflow-Seeds verknüpfen die beiden
+tatsächlichen Subjects erst im Speicher/zur Laufzeit mit fiktiven Daten. Kein realer Subject in
+Git. Der gebaute SSR-Server startet auf `http://localhost:4200`, damit **beide schon registrierten
+Callbacks** passen. Kein Tunnel, Deployment oder Zugriff auf die Nutzer-App/-DB. Fehlende
+Registrierungen sind Blocker, keine Aufforderung zur Provideränderung.
+
+Prozessweitergabe erfolgt über Allowlisten: Migration nur lokale DB; Seed nur Test-Issuer und
+zwei Subjects; App nur benötigte OIDC-Konfiguration und lokale DB; Browser-Test nur Testzugänge
+und freigegebene Browser-Konfiguration. Weder der App-Prozess noch Chromium erhalten den
+1Password-Token. Chromium selbst erbt auch nicht die Testpasswörter; der Playwright-Prozess
+verwendet sie ausschließlich zur regulären Formulareingabe. Keine lokalen `.env`-Dateien oder
+bestehenden Browsersitzungen werden übernommen. Keine Passwort-Grant- oder Sitzungsinjektion.
+
+Beide Konten prüfen Login/Einstieg, tatsächlich gelieferte Profilfelder sowie Kontotyp, Rollen
+und Memberships getrennt. Zusätzliche UUID-markierte Anfrage/Werkstatt durchlaufen gemeinsame
+CRUD-Hilfen: Bearbeiten/Reload, Anfrage-Aktivierung, Entwurfsstatus und bestätigte Löschung samt
+Abwesenheit aus Verwaltung/öffentlicher Suche. Fremde direkte GET-/PUT-/PATCH-/DELETE-Anfragen
+müssen verweigert werden und greifen ausschließlich die zusätzlichen Testobjekte an. Der
+anschließende Kontowechsel verwendet denselben Browserkontext **ohne Cookie-/Storage-Reset**.
+
+Für die gehostete Logout-Sitzungsauswahl wird der frisch verifizierte `preferred_username`
+verwendet, nicht der möglicherweise abgekürzte Eingabe-Login. Nur eine exakt zugehörige
+Sitzungsschaltfläche darf gewählt werden; fehlende/mehrdeutige Treffer sind ein eigener Fehler.
+Die Regression verwendet tatsächliche HTTP-Weiterleitungen und überprüfte Auswahl-POSTs,
+nicht einen wirkungslosen Route-Mock auf einem Redirect-Ziel.
+
+Vollständiger Logout muss Navigation zum konfigurierten End-Session-Endpunkt, die Rückkehr über
+`/auth/logout/callback` und danach eine unauthentifizierte App zeigen. Ein lokaler Status 401
+allein gilt nicht als Erfolg. Die bekannte Login-V2-Logout-Seite wird über den exakten Kontonamen bedient, niemals über einen
+beliebigen Provider-Button. Provider-Version, Login-/Logout-Bestätigung und MFA sind erst durch
+einen echten Lauf bestätigt; kein synthetischer Test bescheinigt sie.
+
+Cleanup prüft die vom eigenen Lauf beobachteten IDs und UUID-Markierungen. Bestehende Kontodaten
+bleiben unverändert. Auch Fehlerpfade schließen Browser/Prozesse und entfernen ausschließlich
+die eigene Szenariodatenbank. Cleanupfehler verhindern Erfolg; ein extern beendeter Runner kann
+keinen gültigen erfolgreichen Abschluss nachweisen.
+
+### Commands und Nachweisdatei
+
+```sh
+# Bestehende, ausdrücklich freigegebene lokale Test-App: Werte aus dem freigegebenen Store im Prozess.
+AUTOKOSOVA_E2E_REAL=1 npm run test:e2e:real
+
+# Runner-Modus nach secretfreiem npm ci / Chromium-Installation / npm run build:
+# Erfordert zusätzlich eigene AUTOKOSOVA_E2E_DATABASE_URL und vollständige ZITADEL-Konfiguration.
+AUTOKOSOVA_E2E_REAL=1 E2E_REAL_ISOLATED=1 npm run test:e2e:real
+
+npm run typecheck:e2e
+npm run test:e2e:policy
+npm run test:e2e
+```
+
+Lokaler Modus verlangt `E2E_REAL_BASE_URL`, `E2E_REAL_ISSUER`,
+`E2E_REAL_END_SESSION_ENDPOINT` und jeweils `E2E_REAL_<CUSTOMER|GARAGE>_<LOGIN|PASSWORD|SUBJECT>`.
+Die oben beschriebenen optionalen Login-/Selektorvariablen gelten auch lokal.
+`E2E_REAL_HEADED=1` ist nur lokale Diagnose mit regulärer menschlicher MFA-Interaktion,
+kein CI-Ersatz. In CI sind eigene App/DB und exakter Checkout-SHA verpflichtend; Filter sind
+nicht erlaubt. Ohne vollständige Konfiguration: **Exit 2 / NOT RUN**, nicht Erfolg.
+
+`test-results/e2e-real/summary.json` enthält ausschließlich Modus, Commit, Lauf-ID/-Versuch,
+zufällige Nonce, die festen Kontotypen/Prüfschritte sowie Status/Cleanup. Der übergeordnete Starter
+verwirft alte Ergebnisse und prüft den frischen vollständigen Bericht **zusätzlich** zum
+Browser-Exitcode. Kein erfolgreiches Teilinventar, Retry-Ergebnis oder fehlender Login kann passen.
+Nur diese Datei wird für sieben Tage hochgeladen; keine Passwörter, Subjects, Providerbilder,
+Cookies, Auth-State, Traces, Videos, Netzwerkdumps oder rohen Browser-/Appfehler.
+
+Erforderliche Repositoryregeln müssen `e2e-acceptance` **und** `e2e-zitadel` auf aktueller
+Main-Basis verlangen. Die Implementierung eines Workflows ist keine eingerichtete Merge-Sperre.
+Solange Environment/Vault/automatische Vertrauensprüfung oder die echten PR-/Main-Läufe fehlen, bleibt
+#119 offen und Teil-PRs verwenden nur `Refs #119`. Keine zusätzliche manuelle Funktionsabnahme,
+kein Schließungsbot; die administrative Sicherheitsfreigabe ersetzt keine automatisierten Tests.
+
+Quellen (am 16.09.2026 geprüft): [1Password GitHub Action](https://developer.1password.com/docs/ci-cd/github-actions/),
+[Service-Account-Grenzen](https://developer.1password.com/docs/service-accounts/get-started/),
+[GitHub Environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
+Die Action-Version wurde zusätzlich am veröffentlichten v5.0.1-Commit und dessen `action.yml` geprüft.
 
 ## Übernommene und weiterhin spezialisierte Tests
 

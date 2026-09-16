@@ -5,6 +5,7 @@ const fake = {
   AUTOKOSOVA_E2E_REAL: '1',
   E2E_REAL_BASE_URL: 'http://localhost:4200',
   E2E_REAL_ISSUER: 'https://test-provider.example.invalid',
+  E2E_REAL_END_SESSION_ENDPOINT: 'https://test-provider.example.invalid/end_session',
   E2E_REAL_GARAGE_LOGIN: 'fake-garage',
   E2E_REAL_GARAGE_PASSWORD: 'not-a-real-password',
   E2E_REAL_GARAGE_SUBJECT: 'fake-garage-id',

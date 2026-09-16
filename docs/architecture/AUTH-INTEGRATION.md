@@ -220,3 +220,31 @@ Access-Token. Ein Provider-Abruffehler wird als solcher auf `/profile` angezeigt
 Login löst die Angaben neu auf. Alte Sitzungen nach dem Update einmal ab- und wieder anmelden.
 Sicherheitsgrenzen, Abnahmetests und der weiterhin offene echte Kunden-/Werkstatt-Login-Nachweis
 stehen in [ACCOUNT-PROFILE.md](ACCOUNT-PROFILE.md#ergänzender-nachweis-100-15092026).
+
+
+## Echte isolierte CI-Abnahme (#119)
+
+Der gesonderte Check `e2e-zitadel` ist für die echte Testprovider-Abnahme implementiert, aber
+nicht allein durch diese Dokumentation betriebsbereit oder bestanden. Er verwendet die bereits
+registrierte Testanwendung auf einem eigenen GitHub-Runner-App-Prozess mit
+`http://localhost:4200/auth/callback` und `http://localhost:4200/auth/logout/callback`.
+Die bisherigen Signatur-/Issuer-/Audience-/Nonce-/PKCE-/UserInfo-Prüfungen bleiben unverändert;
+es gibt keinen neuen Anmeldeweg oder Berechtigungs-Bypass.
+
+Die Testkonten werden ausschließlich über dedizierte 1Password-Vault-Referenzen zur Laufzeit
+bereitgestellt, ihre Subjects ausschließlich in der eigenen zufälligen Test-DB zugeordnet.
+Passwörter gehören nur in den Browser-Testprozess, nicht in App, Build oder Seeds. Kontotyp,
+Anwendungsrollen und konkrete Memberships bleiben getrennte Prüfungen. Der echte Browserlauf
+muss zusätzlich Provider-End-Session, Callback und Kontowechsel nachweisen.
+Die gehostete Logout-Auswahl verwendet den frisch verifizierten kanonischen Benutzernamen,
+nicht einen möglicherweise abgekürzten Anmeldenamen aus dem Test-Secret.
+
+Seit dem Nutzerauftrag vom 16.09.2026 erfolgt die CI ohne manuelle Environment-Approvals.
+Automatische Prüfung der benannten vertrauenswürdigen Konten, aktuellen Schreibrechte,
+PR-Herkunft und exakten aktuellen Integrations-/Main-SHAs läuft vor dem Checkout und erneut
+vor der Secret-Auflösung. Forks/untrusted Code erhalten keine Testzugänge. Die Required Checks
+und der begrenzte Read-only-CI-Vault bleiben aktiv. Fehlende Secrets/Callbacks/MFA-Voraussetzungen
+sind kein grüner Skip; bestehende Providerkonten, Registrierung oder Regeln werden nicht geändert.
+Einrichtung und Grenzen: [E2E-ACCEPTANCE.md](../development/E2E-ACCEPTANCE.md#separater-echter-zitadel-durchlauf-119).
+Offene externe Voraussetzungen und echte Nachweise: [Abnahmebericht #119](../validation/E2E-ZITADEL-ACCEPTANCE.md).
+Historische lokale und synthetische Nachweise oben behalten ihre ursprüngliche Abnahmegrenze.
