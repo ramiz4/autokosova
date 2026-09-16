@@ -93,8 +93,14 @@
               class="grid min-w-0 grid-cols-2 gap-x-[18px] gap-y-1 max-[480px]:grid-cols-1"
             >
               <div>
-                <label for="edit-make">{{ field('make') }}</label
-                ><select id="edit-make" formControlName="makeId">
+                <label for="edit-make" class="mb-[7px] mt-[14px] block text-[13px] font-semibold">{{
+                  field('make')
+                }}</label
+                ><select
+                  id="edit-make"
+                  formControlName="makeId"
+                  class="block min-h-[46px] w-full min-w-0 rounded-[9px] border border-[#cfd9e7] bg-white px-3 py-[11px] text-base text-[#07143e]"
+                >
                   <option value="">{{ language.t('common.optional') }}</option>
                   @for (id of makes; track id) {
                     <option [value]="id">{{ makeLabels[id] }}</option>
@@ -102,12 +108,27 @@
                 </select>
               </div>
               <div>
-                <label for="edit-model">{{ field('model') }}</label
-                ><input id="edit-model" formControlName="model" maxlength="120" />
+                <label
+                  for="edit-model"
+                  class="mb-[7px] mt-[14px] block text-[13px] font-semibold"
+                  >{{ field('model') }}</label
+                ><input
+                  id="edit-model"
+                  formControlName="model"
+                  maxlength="120"
+                  class="block min-h-[46px] w-full min-w-0 rounded-[9px] border border-[#cfd9e7] bg-white px-3 py-[11px] text-base text-[#07143e]"
+                />
               </div>
               <div>
-                <label for="edit-class">{{ field('class') }}</label
-                ><select id="edit-class" formControlName="vehicleClass">
+                <label
+                  for="edit-class"
+                  class="mb-[7px] mt-[14px] block text-[13px] font-semibold"
+                  >{{ field('class') }}</label
+                ><select
+                  id="edit-class"
+                  formControlName="vehicleClass"
+                  class="block min-h-[46px] w-full min-w-0 rounded-[9px] border border-[#cfd9e7] bg-white px-3 py-[11px] text-base text-[#07143e]"
+                >
                   <option value="">{{ language.t('common.optional') }}</option>
                   @for (id of classes; track id) {
                     <option [value]="id">{{ field(id) }}</option>
