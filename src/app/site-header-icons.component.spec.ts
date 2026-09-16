@@ -6,6 +6,8 @@ import { AccountSessionService } from './account-session.service';
 import { SiteHeaderComponent } from './site-header.component';
 import { LucideIconComponent } from './ui/lucide-icon.component';
 
+const accountPanel = () => document.querySelector<HTMLElement>('[data-account-panel]');
+
 describe.each(['', 'sq', 'en'])('Account menu icons for /%s', (locale) => {
   it.each(['customer', 'moderator', 'admin', 'garage'])(
     'renders consistent decorative icons without changing %s navigation',
@@ -43,9 +45,9 @@ describe.each(['', 'sq', 'en'])('Account menu icons for /%s', (locale) => {
       expect(page.querySelector('#mobile-navigation') === null).toBe(internal);
       expect(page.querySelector('.mobile-menu-toggle') === null).toBe(internal);
       expect(page.querySelector('app-language-switcher lucide-icon')).not.toBeNull();
-      page.querySelector<HTMLButtonElement>('button[aria-controls="account-menu"]')!.click();
+      page.querySelector<HTMLButtonElement>('button[data-account-trigger]')!.click();
       await fixture.whenStable();
-      const menu = page.querySelector('#account-menu')!;
+      const menu = accountPanel()!;
       const prefix = locale ? '/' + locale : '';
       const expectLinkIcon = (selector: string, name: string, path: string) => {
         const link = menu.querySelector<HTMLAnchorElement>(selector)!;

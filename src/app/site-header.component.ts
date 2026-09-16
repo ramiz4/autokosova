@@ -1,64 +1,56 @@
 import {
   LucideChevronDown,
-  LucideMessageCircle,
-  LucideHeart,
   LucideMenu,
-  LucideSettings,
-  LucideShieldCheck,
-  LucideStar,
   LucideUser,
-  LucideWrench,
   LucideX,
   type LucideIcon,
 } from '@lucide/angular';
 import {
   Component,
+  DestroyRef,
   ElementRef,
   afterNextRender,
   computed,
+  effect,
   inject,
   input,
   signal,
   viewChild,
 } from '@angular/core';
 
-import { accountNavigationCopy } from '../shared/account-navigation-copy';
-import { accountType } from '../shared/account';
 import { NgTemplateOutlet } from '@angular/common';
 
 import { AccountSessionService } from './account-session.service';
 
-import { Router, RouterLink } from '@angular/router';
+import { NavigationStart, Router, RouterLink } from '@angular/router';
+import type { ConnectedPosition } from '@angular/cdk/overlay';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs';
 import { LanguageService } from './language.service';
 import { LanguageSwitcherComponent } from './language-switcher.component';
 import { ButtonDirective } from './ui/button.directive';
 import { LucideIconComponent } from './ui/lucide-icon.component';
+import { SiteHeaderAccountPanelComponent } from './site-header-account-panel.component';
 
 @Component({
   selector: 'app-site-header',
-  host: { '(document:pointerdown)': 'dismissOutside($event)' },
+  host: { '(document:pointerdown)': 'dismissNavigationOutside($event)' },
   imports: [
     RouterLink,
     NgTemplateOutlet,
     LanguageSwitcherComponent,
     ButtonDirective,
     LucideIconComponent,
+    SiteHeaderAccountPanelComponent,
   ],
   templateUrl: './site-header.component.html',
 })
 export class SiteHeaderComponent {
-  readonly MessageCircleIcon: LucideIcon = LucideMessageCircle;
-  readonly SettingsIcon: LucideIcon = LucideSettings;
-  readonly ShieldCheckIcon: LucideIcon = LucideShieldCheck;
-  readonly StarIcon: LucideIcon = LucideStar;
   readonly ChevronDownIcon: LucideIcon = LucideChevronDown;
-  readonly HeartIcon: LucideIcon = LucideHeart;
   readonly MenuIcon: LucideIcon = LucideMenu;
   readonly UserIcon: LucideIcon = LucideUser;
-  readonly WrenchIcon: LucideIcon = LucideWrench;
   readonly XIcon: LucideIcon = LucideX;
 
-  protected readonly accountNavigationCopy = accountNavigationCopy;
   readonly compact = input(false);
   // Keep the logo consistent across landing, inquiry, search and onboarding navigation.
   readonly smallLogo = input(true);
@@ -79,57 +71,86 @@ export class SiteHeaderComponent {
     () => this.active() === 'admin' || this.active() === 'moderation',
   );
   protected readonly account = inject(AccountSessionService);
-  protected readonly accountType = accountType;
-  protected readonly accountPanel = signal<'account' | null>(null);
-  protected readonly logoutError = signal(false);
+  protected readonly panel = signal<'account' | 'navigation' | null>(null);
+  protected readonly accountOpen = computed(() => this.panel() === 'account');
+  protected readonly navigationOpen = computed(() => this.panel() === 'navigation');
+  protected readonly headerWidth = signal(0);
+  protected readonly headerPositions: ConnectedPosition[] = [
+    { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
+    { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -8 },
+  ];
   private readonly router = inject(Router);
-  private readonly accountButton = viewChild<ElementRef<HTMLButtonElement>>('accountButton');
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly headerAnchor = viewChild.required<ElementRef<HTMLElement>>('headerAnchor');
+  private readonly accountPanel = viewChild<SiteHeaderAccountPanelComponent>('accountPanel');
   protected readonly language = inject(LanguageService);
   private readonly element = inject(ElementRef<HTMLElement>);
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
-  protected readonly menuOpen = signal(false);
   protected readonly menuIcon = computed<LucideIcon>(() =>
-    this.menuOpen() ? this.XIcon : this.MenuIcon,
+    this.navigationOpen() ? this.XIcon : this.MenuIcon,
   );
 
   constructor() {
     afterNextRender(() => {
       void this.account.refresh();
+
+      const header = this.headerAnchor().nativeElement;
+      const measure = () => {
+        this.headerWidth.set(header.getBoundingClientRect().width);
+        this.accountPanel()?.updatePosition();
+      };
+      measure();
+      if (typeof ResizeObserver === 'undefined') return;
+      const observer = new ResizeObserver(measure);
+      observer.observe(header);
+      this.destroyRef.onDestroy(() => observer.disconnect());
     });
+
+    effect(() => {
+      if (this.account.state() === 'guest' && this.accountOpen()) {
+        this.accountPanel()?.closePanel();
+        this.panel.set(null);
+      }
+    });
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationStart => event instanceof NavigationStart),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => {
+        this.accountPanel()?.closePanel();
+        this.panel.set(null);
+      });
   }
-  protected togglePanel(panel: 'account'): void {
-    this.menuOpen.set(false);
-    this.accountPanel.set(this.accountPanel() === panel ? null : panel);
-    if (this.accountPanel() === 'account') void this.account.refresh();
+
+  protected onAccountState(state: 'open' | 'closed'): void {
+    if (state === 'open') {
+      const newlyOpened = !this.accountOpen();
+      this.panel.set('account');
+      if (newlyOpened) void this.account.refresh();
+    } else if (this.accountOpen()) {
+      this.panel.set(null);
+    }
   }
+
   protected toggleMenu(): void {
-    this.accountPanel.set(null);
-    this.menuOpen.set(!this.menuOpen());
-  }
-  protected async logout(): Promise<void> {
-    this.logoutError.set(false);
-    const result = await this.account.logout(this.language.language);
-    if (result === true) {
-      this.closeMenu();
-      void this.router.navigateByUrl(this.language.link('home'));
-    } else if (result !== 'redirect') this.logoutError.set(true);
+    this.accountPanel()?.closePanel();
+    this.panel.set(this.navigationOpen() ? null : 'navigation');
   }
 
-  protected closeMenu(restoreFocus = false): void {
-    const panel = this.accountPanel();
-    this.menuOpen.set(false);
-    this.accountPanel.set(null);
-    if (restoreFocus)
-      (panel === 'account' ? this.accountButton() : this.menuButton())?.nativeElement.focus();
+  protected closeNavigation(restoreFocus = false): void {
+    const wasOpen = this.navigationOpen();
+    this.panel.set(null);
+    if (restoreFocus && wasOpen) this.menuButton()?.nativeElement.focus();
   }
 
-  protected dismissOutside(event: PointerEvent): void {
+  protected dismissNavigationOutside(event: PointerEvent): void {
     if (
-      (this.menuOpen() || this.accountPanel()) &&
+      this.navigationOpen() &&
       event.target instanceof Node &&
       !this.element.nativeElement.contains(event.target)
     ) {
-      this.closeMenu();
+      this.closeNavigation();
     }
   }
 
