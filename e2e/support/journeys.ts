@@ -38,7 +38,8 @@ export async function inquiryAction(
   action: 'edit' | 'toggle' | 'delete',
 ): Promise<void> {
   await card(page, id).locator('[data-inquiry-menu]').click();
-  await card(page, id)
+  await page
+    .getByRole('menu')
     .locator(`[data-${action === 'toggle' ? 'toggle' : action}-inquiry]`)
     .click();
 }

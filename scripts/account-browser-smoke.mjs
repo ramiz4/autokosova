@@ -237,18 +237,18 @@ try {
       if (keyboardOpen) {
         await evaluate(`document.querySelector('[data-account-trigger]').focus()`);
         await key('Enter', 13);
-      } else await evaluate(`document.querySelector('button[brnOverlayTrigger]').click()`);
+      } else await evaluate(`document.querySelector('[data-account-trigger]').click()`);
       await until(
         () =>
           evaluate(
-            `document.querySelector('button[brnOverlayTrigger]')?.getAttribute('aria-expanded') === 'true' && !!document.querySelector('[data-account-panel]')`,
+            `document.querySelector('[data-account-trigger]')?.getAttribute('aria-expanded') === 'true' && !!document.querySelector('[data-account-panel]')`,
           ),
         'deferred account panel opening',
       );
       await evaluate(`(async () => {
         await document.fonts.ready;
         const selectors = ['header', '#desktop-navigation', 'header app-language-switcher',
-          'button[brnOverlayTrigger]', '.mobile-menu-toggle', '.site-logo'];
+          '[data-account-trigger]', '.mobile-menu-toggle', '.site-logo'];
         const elements = selectors.map((selector) => document.querySelector(selector));
         const box = (element) => {
           const rect = element.getBoundingClientRect();
@@ -354,16 +354,18 @@ try {
         smallTargets: 0,
         clipped: 0,
       });
-      assert.equal(await evaluate("document.querySelector('[data-account-details]').open"), false);
+      assert.equal(
+        await evaluate("document.querySelector('[data-account-details]')?.tagName"),
+        'SECTION',
+      );
+      assert.equal(
+        await evaluate("document.querySelector('[data-account-details] summary') === null"),
+        true,
+      );
       assert.equal(
         await evaluate("!!document.querySelector('[aria-controls=account-notifications]')"),
         false,
       );
-      await evaluate("document.querySelector('[data-account-details] summary').focus()");
-      await key('Enter', 13);
-      assert.equal(await evaluate("document.querySelector('[data-account-details]').open"), true);
-      await key('Enter', 13);
-      assert.equal(await evaluate("document.querySelector('[data-account-details]').open"), false);
       await openStableAccountMenu();
       await until(
         () => evaluate(`!!document.querySelector('[data-account-name]')`),
@@ -382,7 +384,7 @@ try {
       await until(
         () =>
           evaluate(
-            `!document.querySelector('[data-account-panel]') && document.activeElement.matches('button[brnOverlayTrigger]')`,
+            `!document.querySelector('[data-account-panel]') && document.activeElement.matches('[data-account-trigger]')`,
           ),
         'Escape focus restoration',
       );
@@ -395,7 +397,7 @@ try {
       await openStableAccountMenu(false);
       const outside = await evaluate(`(() => {
         const panel = document.querySelector('[data-account-panel]');
-        const trigger = document.querySelector('button[brnOverlayTrigger]');
+        const trigger = document.querySelector('[data-account-trigger]');
         const main = document.querySelector('main');
         const candidates = [
           [main.getBoundingClientRect().left + 8, Math.min(innerHeight - 8, main.getBoundingClientRect().top + 8)],

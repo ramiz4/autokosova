@@ -272,7 +272,7 @@ test('localized-navigation checks both account types, explicit destinations, key
       const menu = card(page, inquiries[0]).locator('[data-inquiry-menu]');
       await menu.focus();
       await page.keyboard.press('Enter');
-      await expect(card(page, inquiries[0]).locator('[data-delete-inquiry]')).toBeVisible();
+      await expect(page.getByRole('menu').locator('[data-delete-inquiry]')).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(menu).toBeFocused();
       await inquiryAction(page, inquiries[0], 'edit');
