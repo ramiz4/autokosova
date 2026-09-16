@@ -404,6 +404,27 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
     );
     if (own.rowCount) throw new AccessError(403, 'A member cannot verify their own garage');
   }
+  private async membershipAudit(
+    client: pg.PoolClient,
+    principal: Principal,
+    garageId: string,
+    userId: string,
+    before: string,
+    after: string,
+  ): Promise<void> {
+    // USER-2/3: preserve who changed, not only the garage's current membership list.
+    // The opaque compound subject is two IDs, never names, email or a support free text.
+    await client.query(
+      `INSERT INTO moderation_event(id,actor_user_id,subject_type,subject_id,event_type)
+       VALUES($1,$2,'garage_membership',$3,$4)`,
+      [
+        randomUUID(),
+        principal.userId,
+        JSON.stringify([garageId, userId]),
+        `membership-${before}-to-${after}`,
+      ],
+    );
+  }
   private async reasonAudit(
     client: pg.PoolClient,
     principal: Principal,
@@ -474,6 +495,14 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
       );
       if (input.state === 'active')
         await client.query("UPDATE app_user SET account_type='garage' WHERE id=$1", [input.userId]);
+      await this.membershipAudit(
+        client,
+        principal,
+        id,
+        input.userId,
+        prior ? `${prior.role}-${prior.state}` : 'absent',
+        `${input.role}-${input.state}`,
+      );
       await this.reasonAudit(
         client,
         principal,
@@ -508,6 +537,10 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
       );
       if (!source.rowCount || !target.rowCount)
         throw new AccessError(422, 'Select an active owner and existing active target account');
+      const previousTarget = await client.query<{ role: string; state: string }>(
+        'SELECT role,state FROM membership WHERE garage_id=$1 AND user_id=$2 FOR UPDATE',
+        [id, input.toUserId],
+      );
       await client.query(
         `INSERT INTO membership(user_id,garage_id,role,state,granted_by) VALUES($1,$2,'owner','active',$3)
         ON CONFLICT(user_id,garage_id) DO UPDATE SET role='owner',state='active',granted_by=EXCLUDED.granted_by,granted_at=now()`,
@@ -518,6 +551,23 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
         [id, input.fromUserId, principal.userId],
       );
       await client.query("UPDATE app_user SET account_type='garage' WHERE id=$1", [input.toUserId]);
+      const prior = previousTarget.rows[0];
+      await this.membershipAudit(
+        client,
+        principal,
+        id,
+        input.fromUserId,
+        'owner-active',
+        'editor-active',
+      );
+      await this.membershipAudit(
+        client,
+        principal,
+        id,
+        input.toUserId,
+        prior ? `${prior.role}-${prior.state}` : 'absent',
+        'owner-active',
+      );
       await this.reasonAudit(client, principal, id, 'garage-ownership-transferred', input.reason);
     });
   }

@@ -8,6 +8,7 @@ export async function seedAdminDemo(client, environment = process.env) {
     'demo-admin-owner',
     'demo-admin-editor',
     'demo-admin-next-owner',
+    'demo-admin-former-editor',
     'demo-admin-erase-requester',
   ];
   for (const id of actors) {
@@ -52,6 +53,12 @@ export async function seedAdminDemo(client, environment = process.env) {
       state: 'suspended',
       proof: true,
     },
+    {
+      id: 'demo-admin-garage-unrestorable',
+      name: 'DEMO · Wiederherstellung nicht zulässig',
+      state: 'suspended',
+      proof: false,
+    },
   ];
   for (const [index, item] of scenarios.entries()) {
     const known = await client.query(
@@ -76,7 +83,7 @@ export async function seedAdminDemo(client, environment = process.env) {
       ],
     );
     await client.query(
-      "INSERT INTO membership(user_id,garage_id,role,state,granted_by) VALUES('demo-admin-owner',$1,'owner','active',$2),('demo-admin-editor',$1,'editor','active',$2)",
+      "INSERT INTO membership(user_id,garage_id,role,state,granted_by) VALUES('demo-admin-owner',$1,'owner','active',$2),('demo-admin-editor',$1,'editor','active',$2),('demo-admin-former-editor',$1,'editor','revoked',$2)",
       [item.id, staffDemoOperator],
     );
     await client.query(
@@ -87,7 +94,7 @@ export async function seedAdminDemo(client, environment = process.env) {
       "INSERT INTO garage_service_category(garage_id,service_category_id) VALUES($1,'bremsen')",
       [item.id],
     );
-    const checked = item.state === 'published' || item.state === 'suspended';
+    const checked = item.proof && (item.state === 'published' || item.state === 'suspended');
     await client.query(
       'INSERT INTO garage_verification(garage_id,phone_state,contact_person_state,company_document_state,location_state) VALUES($1,$2,$2,$2,$2)',
       [item.id, checked ? 'verified' : 'not_checked'],

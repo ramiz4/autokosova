@@ -211,6 +211,23 @@ test(
         fromUserId: owner.userId,
         toUserId: 'demo-admin-next-owner',
       });
+      const transferHistory = await seed.query<{ subject_id: string; event_type: string }>(
+        "SELECT subject_id,event_type FROM moderation_event WHERE subject_type='garage_membership'",
+      );
+      assert.ok(
+        transferHistory.rows.some(
+          (e) =>
+            e.subject_id === JSON.stringify([memberId, owner.userId]) &&
+            e.event_type === 'membership-owner-active-to-editor-active',
+        ),
+      );
+      assert.ok(
+        transferHistory.rows.some(
+          (e) =>
+            e.subject_id === JSON.stringify([memberId, 'demo-admin-next-owner']) &&
+            e.event_type.endsWith('-to-owner-active'),
+        ),
+      );
       let transferred = await adminStore.garage(a, memberId);
       assert.ok(
         transferred.members.some(
@@ -293,6 +310,35 @@ test(
           verification: verified,
         }),
       );
+      const unavailable = await adminStore.garage(a, 'demo-admin-garage-unrestorable');
+      assert.ok(
+        unavailable.members.some(
+          (m) => m.userId === 'demo-admin-former-editor' && m.state === 'revoked',
+        ),
+      );
+      await assert.rejects(
+        domain.getPrivateGarage(principal('demo-admin-former-editor', 'customer'), unavailable.id),
+      );
+      await assert.rejects(
+        adminStore.decideGarage(a, unavailable.id, {
+          revision: unavailable.revision,
+          reason: 'company_verified',
+          decision: 'restore',
+          verification: verified,
+        }),
+        (error: unknown) => (error as { statusCode: number }).statusCode === 422,
+      );
+      await domain.deleteGarage(owner, unavailable.id);
+      const deleted = await adminStore.garage(a, unavailable.id);
+      assert.equal(deleted.deleted, true);
+      await assert.rejects(
+        adminStore.decideGarage(a, unavailable.id, {
+          revision: deleted.revision,
+          reason: 'company_verified',
+          decision: 'restore',
+          verification: verified,
+        }),
+      );
       const privacy = await adminStore.privacy(a);
       assert.equal(privacy.policy, undefined);
       assert.ok(privacy.requests.some((r) => r.status === 'blocked_by_policy'));
@@ -307,7 +353,33 @@ test(
         reportRetentionDays: 30,
         auditLogRetentionDays: 90,
       };
-      await lifecycle.configureRetentionPolicy(a, policy);
+      const policyRecord = await lifecycle.configureRetentionPolicy(a, policy);
+      assert.deepEqual(await lifecycle.configureRetentionPolicy(a, policy), policyRecord);
+      await assert.rejects(
+        lifecycle.configureRetentionPolicy(a, { ...policy, auditLogRetentionDays: 91 }),
+        (error: unknown) => (error as { statusCode: number }).statusCode === 409,
+      );
+      assert.equal(
+        (
+          await seed.query(
+            "SELECT count(*)::integer AS n FROM moderation_event WHERE event_type='retention-policy-configured' AND subject_id=$1",
+            [policy.version],
+          )
+        ).rows[0].n,
+        1,
+      );
+      await assert.rejects(
+        lifecycle.processPersonalDataDeletion(a, 'demo-admin-deletion-policy', 'OTHER-POLICY'),
+        (error: unknown) => (error as { statusCode: number }).statusCode === 409,
+      );
+      assert.equal(
+        (
+          await seed.query(
+            "SELECT status FROM data_deletion_request WHERE id='demo-admin-deletion-policy'",
+          )
+        ).rows[0].status,
+        'submitted',
+      );
       await assert.rejects(
         lifecycle.processPersonalDataDeletion(a, 'demo-admin-deletion-ownership'),
       );
@@ -363,6 +435,7 @@ test(
       const saved = await adminStore.garage(a, id);
       await seedDatabase(seed, 'demo-workflows', env);
       assert.deepEqual(await adminStore.garage(a, id), saved);
+      assert.deepEqual(await adminStore.garage(a, unavailable.id), deleted);
       assert.equal(
         (await seed.query("SELECT status FROM app_user WHERE id='demo-admin-erase-requester'"))
           .rows[0].status,
@@ -401,6 +474,17 @@ test(
               .statusCode,
             403,
           );
+        assert.equal(
+          (
+            await app.inject({
+              method: 'POST',
+              url: '/api/admin/lifecycle/data-deletion-requests/demo-admin-deletion-ownership/process',
+              headers: headers(adminSession),
+              payload: {},
+            })
+          ).statusCode,
+          400,
+        );
         const response = await app.inject({
           url: '/api/admin/management/garages/' + id,
           headers: headers(adminSession),

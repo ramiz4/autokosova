@@ -597,10 +597,16 @@ export class AccessStore implements ReviewStore {
     return [...this.deletionRequests.values()].map((request) => ({ ...request }));
   }
 
-  processPersonalDataDeletion(admin: Principal, requestId: string): void {
+  processPersonalDataDeletion(
+    admin: Principal,
+    requestId: string,
+    expectedPolicyVersion?: string,
+  ): void {
     this.requireAdmin(admin);
     const request = this.deletionRequests.get(requestId);
     if (!request) throw new AccessError(404, 'Data deletion request not found');
+    if (expectedPolicyVersion !== undefined && request.policyVersion !== expectedPolicyVersion)
+      throw new AccessError(409, 'The deletion policy changed; review the current policy');
     if (
       request.status !== 'submitted' ||
       !this.retentionPolicy ||

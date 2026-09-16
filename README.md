@@ -353,6 +353,7 @@ Automatisierte Abnahme: `npm run verify` mit lokaler DB, `npm run test:staff:bro
 | `demo-admin-garage-incomplete`  | Fehlender Unternehmensnachweis verhindert Veröffentlichung; Aufnahmeantrag begründet ablehnen                          |
 | `demo-admin-garage-members`     | Editor widerrufen, letzten Eigentümer schützen und an `demo-admin-next-owner` übertragen                               |
 | `demo-admin-garage-suspended`   | Administrative Sperre prüfen und nur bei gültigen Voraussetzungen zurücknehmen                                         |
+| `demo-admin-garage-unrestorable` | Administrative Sperre ohne Unternehmensnachweis; Wiederherstellung bleibt gesperrt. Widerrufene Zuordnung `demo-admin-former-editor` hat keinen Werkstattzugriff. |
 | `demo-admin-deletion-policy`    | Ohne freigegebene Policy gesperrt; keine erdachten Produktivfristen verwenden                                          |
 | `demo-admin-deletion-ownership` | Eigentumsübergabe oder andere erforderliche Betreiberentscheidung vor Löschung klären                                  |
 
@@ -363,3 +364,14 @@ Unter „Unterstützte Werkstattaufnahme“ einen tatsächlichen dokumentierten 
 Globale Rollen, Passwort, MFA und Identitätssperren bleiben in ZITADEL. Optional kann der Betreiber `AUTOKOSOVA_ADMIN_CONSOLE_URL` in der bestehenden lokalen/Serverkonfiguration hinterlegen; nur freigegebene HTTPS-URL ohne Zugangsdaten/Query/Fragment. Ohne Konfiguration zeigt die Seite den externen Weg, keine geratenen Links. „Lokale App-Sitzungen beenden“ ersetzt keine anbieterweite Kontosperre. Rollenabgleich und diese Grenze stehen in der Rollenreferenz.
 
 Abnahme: `npm run verify` mit eigener lokaler Datenbank, `npm run test:staff:browser` und `npm run test:e2e`. Die Pflichtfälle `admin-workflow` und `admin-boundaries` ergänzen Kunden-/Werkstatt-/Bewertungsabläufe auf Desktop/Mobil. Der neue DB-Test verwendet einen Nichtbesitzer ohne RLS-Bypass und prüft auch die tatsächliche owner-only Datenlöschung. Echte Betreiber-/Dateispeicher-/Malware-/Providerfreigaben bleiben von den synthetischen Testergebnissen getrennt.
+
+### Aktualisierung eines frühen Admin-Entwicklungsstands
+
+Die zwischenzeitlich lokale `080_administration.sql` wurde unverändert nach `082_administration.sql`
+verschoben, weil #99 die reguläre Migration `080_review_contribution_lock.sql` ergänzt hat.
+`db:migrate` erkennt ausschließlich den vollständig ausgeschriebenen alten Dateinamen in der
+Migrationshistorie, erhält dessen Ausführungszeit und führt die unabhängigen Review-Migrationen
+normal aus. Vorhandene Datensätze werden nicht zurückgesetzt; ein bloß vorhandenes Datenbankfeld
+wird nicht als erfolgreich ausgeführte Migration interpretiert. Widersprüchliche doppelte Einträge
+stoppen den Start. Die Aufwärtsmigration und erneuter Start sind in
+`test/administration-migration-postgres.test.ts` mit tatsächlich erhaltenen Änderungen geprüft.

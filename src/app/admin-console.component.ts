@@ -452,7 +452,7 @@ export class AdminConsoleComponent {
       return;
     await this.mutate(
       '/api/admin/lifecycle/data-deletion-requests/' + encodeURIComponent(id) + '/process',
-      {},
+      { policyVersion: version },
       () => this.load(this.page()),
     );
   }

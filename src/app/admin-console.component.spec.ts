@@ -202,3 +202,16 @@ it('ignores a stale candidate search so it cannot replace the newer selection li
   await pending;
   expect(component.candidates().map((u) => u.id)).toEqual(['new']);
 });
+
+it('submits exactly the deletion policy that the administrator confirmed', async () => {
+  const { component, fetch } = await render('privacy');
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  fetch.mockClear();
+  fetch
+    .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    .mockResolvedValue(new Response(JSON.stringify({ requests: [], page: 1, hasMore: false })));
+  await component.processDeletion('synthetic-request', 'SYNTHETIC-CONFIRMED');
+  const [path, options] = fetch.mock.calls[0];
+  expect(path).toContain('/synthetic-request/process');
+  expect(JSON.parse(options.body)).toEqual({ policyVersion: 'SYNTHETIC-CONFIRMED' });
+});

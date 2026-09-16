@@ -137,3 +137,18 @@ Adminentscheidungen zu Werkstätten verlangen einen festen Grund und die gelesen
 `DATA-3`: Eine ausdrücklich autorisierte Löschung darf owner-only Datensätze nicht nur aufgrund von RLS aus einer Adminabfrage verschwinden lassen und danach irrtümlich Erfolg melden. Der vorhandene Löschprozess wechselt ausschliesslich für die Datensätze des geprüften Antragstellers in dessen Owner-Kontext; eine Nichtbesitzer-Regression kontrolliert die tatsächliche Entfernung von Fahrzeug, Anfrage, Zuordnungen und Favoriten mit separater Prüfverbindung. Reguläre Admin-Browse-/Exportrechte werden dadurch nicht erweitert. Physische externe Dateilöschungen bleiben bis zum Worker-Abschluss als ausstehend erkennbar.
 
 Private Adminantworten verwenden `no-store`, Rollen-/Sitzungskontext wird nach Lesen erneut geprüft. UI verwirft Auswahl, Supportreferenz, Prüfwerte und Nachweisinhalte bei Kontowechsel. Konflikte melden keinen Erfolg; Wiederholungen werden anhand aktueller Revisionen oder vorhandener eindeutiger Schlüssel geprüft. Keine lokale Rollenvergabe, keine Provider-Secrets, keine produktive Aufbewahrungsfreigabe und kein Deployment durch diese Oberfläche.
+
+### Ergänzende Integritätsprüfungen der Administration
+
+`DATA-1/2`: Der Admin-Client übermittelt beim bestätigten Löschvorgang die angezeigte `policyVersion`.
+Der persistente HTTP-Vertrag verlangt sie; `processPersonalDataDeletion` vergleicht sie unter der
+Zeilensperre mit der am Antrag gebundenen Policy. Abweichungen ergeben `409` ohne Löschung.
+Wiederholtes Speichern derselben unveränderten Policy-Version ist idempotent, veränderte Werte
+benötigen eine neue freigegebene Version. Der Seed aktiviert weiterhin keine Policy.
+
+`USER-2/3`: Mitgliedschaftsänderungen und Eigentumsübergaben schreiben zusätzlich zur Garage-Aktion
+unveränderliche `garage_membership`-Ereignisse für die betroffenen Konten. Die Gegenstandskennung
+ist das JSON-Paar `[garageId, userId]`, der Ereignistyp nennt vorherige/neue Rolle und Zustand.
+Dadurch bleibt die Übergabe auch nach späteren Zuordnungsänderungen nachvollziehbar; keine Namen,
+E-Mail-Adressen oder Support-Freitexte werden in das Audit kopiert.
+Nachweise: `test/administration-postgres.test.ts` und `src/app/admin-console.component.spec.ts`.

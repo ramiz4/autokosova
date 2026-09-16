@@ -1585,12 +1585,25 @@ export function createServer(options: ServerOptions = {}) {
 
   app.post(
     '/api/admin/lifecycle/data-deletion-requests/:requestId/process',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          properties: { policyVersion: { type: 'string', minLength: 1, maxLength: 80 } },
+          required: ['policyVersion'],
+        },
+      },
+    },
     async (request, reply) => {
       try {
         const params = request.params as { requestId: string };
+        const principal = requirePrincipal(request, true);
+        const expected = (request.body as { policyVersion?: string } | undefined)?.policyVersion;
         const completed = await moderationStore.processPersonalDataDeletion(
-          requirePrincipal(request, true),
+          principal,
           params.requestId,
+          expected,
         );
         if (completed) {
           accessStore.revokeUserSessions(completed.userId);
