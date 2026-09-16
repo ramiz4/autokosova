@@ -344,11 +344,11 @@ test('error-feedback preserves unsaved edits on network, conflict, permission an
   expect((await (await api(page, app.origin, requestPath(inquiries[0]))).json()).symptom).toBe(
     current.symptom,
   );
-  await page.locator('#edit-symptom').press('Escape');
+  await page.keyboard.press('Escape');
   await expect(page.locator('[data-discard-edit]')).toBeVisible();
   await page.getByRole('button', { name: inquiriesCopy.de.keepEditing, exact: true }).click();
   await expect(page.locator('#edit-symptom')).toHaveValue('E2E UNSAVED TEXT');
-  await page.locator('#edit-symptom').press('Escape');
+  await page.keyboard.press('Escape');
   await page.locator('[data-discard-edit]').click();
   await app.login(page, 'garage');
   await readyGarages(page);
@@ -415,7 +415,7 @@ test('late-response cannot restore private garage data after another tab changes
     await page.bringToFront();
     // Trigger the real browser lifecycle listener; do not replace account/API state.
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-    await expect(page.locator('[aria-controls="account-menu"]')).toContainText('E2E other');
+    await expect(page.locator('[data-account-trigger]')).toContainText('E2E other');
     release();
     await expect(page.locator('#garage-name')).toHaveValue('');
     await expect(page.locator('body')).not.toContainText(responseName);

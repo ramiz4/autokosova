@@ -14,6 +14,7 @@ import {
   inject,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -23,6 +24,7 @@ import { StaffLayoutComponent } from './staff-layout.component';
 import { StaffDraftGuardService } from './staff-draft-guard.service';
 import { StaffReturnContextService } from './staff-return-context.service';
 import { ButtonDirective } from './ui/button.directive';
+import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
 import { staffCopy, staffLabel } from '../shared/staff-copy';
 import {
   STAFF_ESCALATION_REASONS,
@@ -47,10 +49,12 @@ interface StaffHttpError {
     FormsModule,
     DatePipe,
     ButtonDirective,
+    ConfirmationDialogComponent,
   ],
   templateUrl: './staff-workspace.component.html',
 })
 export class StaffWorkspaceComponent {
+  readonly confirmation = viewChild.required<ConfirmationDialogComponent>('confirmation');
   readonly account = inject(AccountSessionService);
   readonly language = inject(LanguageService);
   private readonly document = inject(DOCUMENT);
@@ -106,9 +110,11 @@ export class StaffWorkspaceComponent {
   private detailVersion = 0;
   private assignmentInitial = '';
   private escalationInitial: StaffEscalationReason | '' = '';
+  private disconnectDraftGuard: (() => void) | null = null;
   constructor() {
     afterNextRender(() => {
       this.ready.set(true);
+      this.disconnectDraftGuard = this.draftGuard.connect(() => this.confirmDiscardDraft());
       void this.account.refresh();
     });
     this.route.paramMap.subscribe((params) => {
@@ -123,6 +129,7 @@ export class StaffWorkspaceComponent {
     });
     effect(() => this.draftGuard.setDirty(this.hasUnsavedInput()));
     effect(() => {
+      this.confirmation()?.cancelPending();
       if (!this.account.dataContext()) {
         this.returnContext.clear();
         this.clearPrivate();
@@ -189,6 +196,7 @@ export class StaffWorkspaceComponent {
       ),
     );
     inject(DestroyRef).onDestroy(() => {
+      this.disconnectDraftGuard?.();
       this.generation++;
       this.controller?.abort();
       this.detailController?.abort();
@@ -486,17 +494,39 @@ export class StaffWorkspaceComponent {
     if (
       detail.assignedModeratorUserId &&
       detail.assignedModeratorUserId !== this.moderatorId &&
-      !window.confirm(`${this.copy().reassignHint}\n\n${detail.label}`)
+      !(await this.confirmation().ask({
+        title: this.copy().assign,
+        description: `${this.copy().reassignHint}\n\n${detail.label}`,
+        confirmLabel: this.copy().assign,
+        cancelLabel: this.copy().back,
+      }))
     )
       return;
+    if (detail !== this.detail() || this.busy() || !this.isAdmin() || !this.moderatorId) return;
     await this.mutate('assign', { moderatorUserId: this.moderatorId });
   }
   async escalate(): Promise<void> {
+    const detail = this.detail();
+    const reason = this.escalationReason;
     if (
-      this.escalationReason &&
-      window.confirm(`${this.copy().escalationConfirm}\n\n${this.detail()?.label ?? ''}`)
+      !detail ||
+      !reason ||
+      !(await this.confirmation().ask({
+        title: this.copy().escalate,
+        description: `${this.copy().escalationConfirm}\n\n${detail.label}`,
+        confirmLabel: this.copy().escalate,
+        cancelLabel: this.copy().back,
+      }))
     )
-      await this.mutate('escalate', { reason: this.escalationReason });
+      return;
+    if (
+      detail !== this.detail() ||
+      this.busy() ||
+      !this.allowed() ||
+      this.escalationReason !== reason
+    )
+      return;
+    await this.mutate('escalate', { reason });
   }
   async openEvidence(): Promise<void> {
     const detail = this.detail();
@@ -653,8 +683,19 @@ export class StaffWorkspaceComponent {
   onEscalationChange(): void {
     this.syncDraftGuard();
   }
-  canLeave(): boolean {
+  canLeave(): Promise<boolean> {
     return this.draftGuard.confirmDiscard();
+  }
+  private async confirmDiscardDraft(): Promise<boolean> {
+    const context = this.account.dataContext();
+    const discard = staffLabel('discardDraft', this.language.language);
+    const accepted = await this.confirmation().ask({
+      title: discard,
+      description: discard,
+      confirmLabel: discard,
+      cancelLabel: this.copy().back,
+    });
+    return accepted && context === this.account.dataContext() && this.hasUnsavedInput();
   }
   @HostListener('window:beforeunload', ['$event'])
   beforeUnload(event: BeforeUnloadEvent): void {

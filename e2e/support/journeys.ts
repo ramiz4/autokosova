@@ -51,13 +51,13 @@ export async function readyGarages(page: Page): Promise<void> {
   await expect(page.locator('[data-garages-loading]')).toHaveCount(0);
 }
 export async function logout(page: Page, origin: string): Promise<void> {
-  await page.locator('[aria-controls="account-menu"]').click();
+  await page.locator('[data-account-trigger]').click();
   await page
-    .locator('#account-menu')
+    .locator('[data-account-panel]')
     .getByRole('button', { name: /Abmelden|Sign out|Dil/ })
     .click();
   await expect.poll(async () => (await page.request.get(origin + '/api/me')).status()).toBe(401);
-  await expect(page.locator('#account-menu')).toHaveCount(0);
+  await expect(page.locator('[data-account-panel]')).toHaveCount(0);
 }
 
 export async function createInquiry(
@@ -107,8 +107,8 @@ export async function createInquiry(
   expect(id).toMatch(/^[a-zA-Z0-9_-]+$/);
   onCreated(id);
   await expect(form.getByRole('status')).toContainText(text.saved);
-  await page.locator('[aria-controls="account-menu"]').click();
-  await page.locator('[data-account-inquiries]').click();
+  await page.locator('[data-account-trigger]').click();
+  await page.locator('[data-account-panel] [data-account-inquiries]').click();
   await readyInquiries(page);
   await expect(card(page, id)).toContainText(symptom);
   return id;
@@ -256,16 +256,14 @@ export async function editGarage(
 export async function deleteGarage(page: Page, origin: string, id: string): Promise<void> {
   await garageButton(page, id).click();
   await expect(page.locator('[data-garage-actions] [data-delete-garage]')).toHaveCount(0);
-  page.once('dialog', async (dialog) => {
-    expect(dialog.type()).toBe('confirm');
-    await dialog.accept();
-  });
+  await page.locator('[data-delete-garage]').click();
+  await expect(page.locator('[data-confirmation-confirm]')).toBeVisible();
   const [response] = await Promise.all([
     page.waitForResponse(
       (response) =>
         response.url() === origin + garagePath(id) && response.request().method() === 'DELETE',
     ),
-    page.locator('[data-delete-garage]').click(),
+    page.locator('[data-confirmation-confirm]').click(),
   ]);
   expect(response.status()).toBe(204);
   await readyGarages(page);

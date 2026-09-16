@@ -1,8 +1,8 @@
 import { expect, test } from '../support/application';
 
 async function confirm(page: import('@playwright/test').Page, selector: string) {
-  page.once('dialog', (dialog) => dialog.accept());
   await page.locator(selector).click();
+  await page.locator('[data-confirmation-confirm]').click();
 }
 
 test('admin-context publishes the complete review in one confirmed write and keeps contextual navigation honest', async ({

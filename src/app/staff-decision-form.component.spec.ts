@@ -51,11 +51,11 @@ it.each(['de', 'sq', 'en'])(
     expect(component.valid()).toBe(false);
     component.visitMonthMatches = true;
     expect(component.valid()).toBe(true);
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    component.submit();
+    const confirm = vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(false);
+    await component.submit();
     expect(decisions).toHaveLength(0);
-    confirm.mockReturnValue(true);
-    component.submit();
+    confirm.mockResolvedValue(true);
+    await component.submit();
     expect(decisions[0]).toEqual({
       action: 'publish_review',
       revision: 7,
@@ -64,7 +64,7 @@ it.each(['de', 'sq', 'en'])(
     fixture.componentRef.setInput('busy', true);
     await fixture.whenStable();
     expect(page.querySelector<HTMLFieldSetElement>('fieldset')!.disabled).toBe(true);
-    component.submit();
+    await component.submit();
     expect(decisions).toHaveLength(1);
   },
 );
@@ -113,8 +113,8 @@ it('blocks a stale decision until a conscious current read while retaining all l
   expect(component.garageMatches).toBe(true);
   fixture.componentRef.setInput('stale', false);
   await fixture.whenStable();
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
-  component.submit();
+  vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(true);
+  await component.submit();
   expect(decisions).toHaveLength(1);
 });
 it('keeps permitted information requests visible next to review decisions, including missing proof', async () => {

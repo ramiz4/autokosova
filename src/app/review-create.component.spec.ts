@@ -134,7 +134,7 @@ it('forgets private drafts and ignores late success after account switch', async
 it('protects an optional-make-only draft on navigation', async () => {
   const { component } = await render();
   component.form.vehicleMakeId = 'skoda';
-  vi.spyOn(window, 'confirm').mockReturnValue(false);
+  vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(false);
   expect(component.hasDraft()).toBe(true);
-  expect(component.canLeave()).toBe(false);
+  await expect(component.canLeave()).resolves.toBe(false);
 });

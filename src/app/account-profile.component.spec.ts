@@ -24,6 +24,10 @@ beforeEach(() =>
   ),
 );
 afterEach(() => vi.unstubAllGlobals());
+
+const accountPanel = () => document.querySelector<HTMLElement>('[data-account-panel]');
+const accountTrigger = (page: HTMLElement) =>
+  page.querySelector<HTMLButtonElement>('[data-account-trigger]')!;
 async function render(path = '/profile') {
   await TestBed.configureTestingModule({
     imports: [AccountProfileComponent],
@@ -72,17 +76,23 @@ it.each(['de', 'sq', 'en'] as const)(
     expect(page.querySelector('main input, main textarea, main select')).toBeNull();
     expect(TestBed.inject(Meta).getTag("name='robots'")?.content).toBe('noindex, nofollow');
     expect(page.querySelector('main app-language-switcher a[href="/en/profile"]')).toBeTruthy();
-    const toggle = page.querySelector<HTMLButtonElement>('[aria-controls="account-menu"]')!;
+    const toggle = accountTrigger(page);
+    toggle.focus();
     toggle.click();
     await vi.waitFor(() => expect(TestBed.inject(AccountSessionService).state()).toBe('ready'));
     await fixture.whenStable();
-    expect(page.querySelector('[data-account-name]')?.textContent).toContain(identity.displayName);
-    expect(page.querySelector('[data-account-menu-roles]')?.children).toHaveLength(1);
-    expect(page.querySelector('[data-account-profile]')?.getAttribute('href')).toBe(path);
-    toggle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    const overlayTrigger = page.querySelector<HTMLButtonElement>('button[brnOverlayTrigger]')!;
+    const panel = accountPanel()!;
+    expect(overlayTrigger.getAttribute('aria-expanded')).toBe('true');
+    expect(document.getElementById(overlayTrigger.getAttribute('aria-controls')!)).not.toBeNull();
+    expect(panel.querySelector('[data-account-name]')?.textContent).toContain(identity.displayName);
+    expect(panel.querySelector('[data-account-menu-roles]')?.children).toHaveLength(1);
+    expect(panel.querySelector('[data-account-profile]')?.getAttribute('href')).toBe(path);
+    overlayTrigger.focus();
+    overlayTrigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await fixture.whenStable();
-    expect(page.querySelector('#account-menu')).toBeNull();
-    expect(document.activeElement).toBe(toggle);
+    expect(accountPanel()).toBeNull();
+    expect(document.activeElement).toBe(overlayTrigger);
   },
 );
 
@@ -164,9 +174,9 @@ it('does not race provider logout with client-side home navigation from either l
   await fixture.whenStable();
   expect(logout).toHaveBeenCalledWith('sq');
   expect(navigate).not.toHaveBeenCalled();
-  page.querySelector<HTMLButtonElement>('[aria-controls="account-menu"]')!.click();
+  accountTrigger(page).click();
   await fixture.whenStable();
-  page.querySelector<HTMLButtonElement>('#account-menu button')!.click();
+  accountPanel()!.querySelector<HTMLButtonElement>('button')!.click();
   await fixture.whenStable();
   expect(logout).toHaveBeenCalledTimes(2);
   expect(navigate).not.toHaveBeenCalled();

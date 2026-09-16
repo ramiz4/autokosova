@@ -9,6 +9,7 @@ import {
   inject,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -17,6 +18,7 @@ import { AccountSessionService } from './account-session.service';
 import { LanguageService } from './language.service';
 import { SiteHeaderComponent } from './site-header.component';
 import { ButtonDirective } from './ui/button.directive';
+import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
 import { reviewLabel } from '../shared/review-copy';
 import {
   REVIEW_RATING_FIELDS,
@@ -35,11 +37,18 @@ import { ReviewHttpError, reviewJson, reviewCsrf, reviewError } from './review-h
 
 @Component({
   selector: 'app-review-create',
-  imports: [SiteHeaderComponent, RouterLink, FormsModule, ButtonDirective],
+  imports: [
+    SiteHeaderComponent,
+    RouterLink,
+    FormsModule,
+    ButtonDirective,
+    ConfirmationDialogComponent,
+  ],
   templateUrl: './review-create.component.html',
   host: { '(window:beforeunload)': 'beforeUnload($event)' },
 })
 export class ReviewCreateComponent {
+  readonly confirmation = viewChild.required<ConfirmationDialogComponent>('confirmation');
   readonly account = inject(AccountSessionService);
   readonly language = inject(LanguageService);
   private readonly document = inject(DOCUMENT);
@@ -92,6 +101,7 @@ export class ReviewCreateComponent {
       const context = this.account.dataContext(),
         id = this.garageId(),
         ready = this.ready();
+      this.confirmation().cancelPending();
       this.generation++;
       this.controller.abort();
       this.controller = new AbortController();
@@ -150,8 +160,16 @@ export class ReviewCreateComponent {
         this.fields.some((f) => this.form[f] !== 0))
     );
   }
-  canLeave(): boolean {
-    return !this.busy() && (!this.hasDraft() || window.confirm(this.label('discard')));
+  async canLeave(): Promise<boolean> {
+    if (this.busy() || !this.hasDraft()) return !this.busy();
+    const context = this.account.dataContext();
+    const accepted = await this.confirmation().ask({
+      title: this.label('discard'),
+      description: this.label('discard'),
+      confirmLabel: this.label('discard'),
+      cancelLabel: this.label('cancel'),
+    });
+    return accepted && context === this.account.dataContext() && !this.busy() && this.hasDraft();
   }
   beforeUnload(event: BeforeUnloadEvent): void {
     if (this.busy() || this.hasDraft()) {

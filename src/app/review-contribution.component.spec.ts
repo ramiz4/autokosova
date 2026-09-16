@@ -53,10 +53,10 @@ it.each(['de', 'sq', 'en'])(
     vi.stubGlobal('fetch', fetch);
     component.start();
     component.text = 'DEMO – Neue Antwort auf den unveränderten Kundenbericht.';
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const confirm = vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(false);
     await component.save();
     expect(fetch).not.toHaveBeenCalled();
-    confirm.mockReturnValue(true);
+    confirm.mockResolvedValue(true);
     await component.save();
     expect(fetch).toHaveBeenCalledOnce();
     const body = JSON.parse(fetch.mock.calls[0][1].body);
@@ -75,7 +75,7 @@ it('does not offer a response merely because a regular account is signed in', as
 });
 it('preserves unsaved input on conflict instead of asserting a save', async () => {
   const { component } = await render();
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(true);
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 409 })));
   component.start();
   component.text = 'DEMO – Nicht gespeicherte Antwort für einen Konflikttest.';
@@ -87,7 +87,7 @@ it('preserves unsaved input on conflict instead of asserting a save', async () =
 });
 it('discards private edit state and ignores a late success after account context changes', async () => {
   const { fixture, component, account } = await render();
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  vi.spyOn(component.confirmation(), 'ask').mockResolvedValue(true);
   let finish!: (response: Response) => void;
   vi.stubGlobal(
     'fetch',
@@ -103,6 +103,7 @@ it('discards private edit state and ignores a late success after account context
   component.start();
   component.text = 'DEMO – Antwort des vorherigen privaten Kontokontexts.';
   const pending = component.save();
+  await Promise.resolve();
   account.dataContext.set({});
   await fixture.whenStable();
   finish(new Response(null, { status: 204 }));
