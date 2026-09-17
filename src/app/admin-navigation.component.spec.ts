@@ -43,7 +43,7 @@ it('uses one native mobile section select and keeps admin work grouped', async (
   ]);
   expect(page.querySelectorAll('button')).toHaveLength(0);
   expect(page.querySelector('nav a[aria-current="page"]')?.textContent).toContain(
-    'Open admin tasks',
+    'Dashboard',
   );
 });
 

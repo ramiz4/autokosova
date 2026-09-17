@@ -11,7 +11,7 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
   takeOver: ['Fall selbst übernehmen', 'Take over case', 'Merr përsipër rastin'],
   caseWorker: ['Bearbeiter', 'Case worker', 'Përgjegjësi i rastit'],
   administration: ['Administration', 'Administration', 'Administrimi'],
-  overview: ['Offene Admin-Aufgaben', 'Open admin tasks', 'Detyrat administrative të hapura'],
+  overview: ['Dashboard', 'Dashboard', 'Dashboard'],
   reviews: ['Bewertungen', 'Reviews', 'Vlerësimet'],
   reports: ['Meldungen', 'Reports', 'Raportimet'],
   garages: ['Werkstätten', 'Garages', 'Serviset'],
