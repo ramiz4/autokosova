@@ -285,7 +285,9 @@
             @if (form.controls.symptom.value) {
               <div>
                 <dt class="font-bold">{{ text('symptom') }}</dt>
-                <dd class="whitespace-pre-wrap wrap-break-word">{{ form.controls.symptom.value }}</dd>
+                <dd class="whitespace-pre-wrap wrap-break-word">
+                  {{ form.controls.symptom.value }}
+                </dd>
               </div>
             }
             <div>
