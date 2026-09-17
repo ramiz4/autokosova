@@ -91,20 +91,30 @@ export class AdminNavigationComponent {
   readonly admin = input(true);
   readonly staffCopy = staffCopy;
 
-  private readonly icons: Record<Section, LucideIcon> = {
-    overview: LucideHouse,
-    reviews: LucideStar,
-    reports: LucideFileText,
-    appeals: LucideMessageCircle,
-    garages: LucideBuilding2,
-    users: LucideUsers,
-    privacy: LucideShieldCheck,
-    audit: LucideClock,
-    catalog: LucideSettings,
+  readonly overviewIcon: LucideIcon = LucideHouse;
+  readonly reviewsIcon: LucideIcon = LucideStar;
+  readonly reportsIcon: LucideIcon = LucideFileText;
+  readonly appealsIcon: LucideIcon = LucideMessageCircle;
+  readonly garagesIcon: LucideIcon = LucideBuilding2;
+  readonly usersIcon: LucideIcon = LucideUsers;
+  readonly privacyIcon: LucideIcon = LucideShieldCheck;
+  readonly auditIcon: LucideIcon = LucideClock;
+  readonly catalogIcon: LucideIcon = LucideSettings;
+
+  private readonly iconMap: Record<Section, LucideIcon> = {
+    overview: this.overviewIcon,
+    reviews: this.reviewsIcon,
+    reports: this.reportsIcon,
+    appeals: this.appealsIcon,
+    garages: this.garagesIcon,
+    users: this.usersIcon,
+    privacy: this.privacyIcon,
+    audit: this.auditIcon,
+    catalog: this.catalogIcon,
   };
 
   icon(section: Section): LucideIcon {
-    return this.icons[section];
+    return this.iconMap[section];
   }
 
   groups(): readonly { readonly label: string; readonly sections: readonly Section[] }[] {
