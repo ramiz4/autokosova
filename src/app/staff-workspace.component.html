@@ -451,16 +451,13 @@
     } @else {
       <!-- ── Queue toolbar ─────────────────────────────────────────── -->
       <div class="mt-6 space-y-3" aria-label="{{ copy().cases }}">
+        <!-- domain badge only on the generic queue where domain isn't in the page title -->
         @if (staffDomain) {
-          <p
-            data-domain-badge
-            class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700"
-          >
-            <span class="text-muted">{{ adminLabel('domainLocked') }}</span>
-            {{ adminLabel(staffDomain) }}
+          <p data-domain-badge class="sr-only" aria-hidden="true">
+            {{ adminLabel('domainLocked') }} {{ adminLabel(staffDomain) }}
           </p>
         }
-        <!-- 1. Segmented queue-state tabs + "Meine Fälle" shortcut -->
+        <!-- 1. Segmented queue-state tabs + "Meine Fälle" shortcut (only on generic queue) -->
         <div class="flex items-center gap-3">
           <div role="tablist" data-queue-tabs class="flex flex-1 gap-1 rounded-xl bg-slate-100 p-1">
             @for (item of ['todo', 'waiting', 'done']; track item) {
@@ -479,7 +476,7 @@
               </button>
             }
           </div>
-          @if (isAdmin() && adminOnly) {
+          @if (isAdmin() && adminOnly && !staffDomain) {
             <button
               type="button"
               data-my-cases
@@ -694,28 +691,34 @@
       </div>
 
       <!-- ── Pagination ────────────────────────────────────────────── -->
-      <div class="mt-6 flex gap-3">
-        <button
-          appButton="outline"
-          [size]="'compact'"
-          type="button"
-          [disabled]="page() <= 1 || loading()"
-          data-previous-cases
-          (click)="goPage(page() - 1)"
-        >
-          {{ copy().previous }}
-        </button>
-        <button
-          appButton="outline"
-          [size]="'compact'"
-          type="button"
-          [disabled]="!hasMore() || loading()"
-          data-next-cases
-          (click)="goPage(page() + 1)"
-        >
-          {{ copy().next }}
-        </button>
-      </div>
+      @if (page() > 1 || hasMore()) {
+        <div class="mt-6 flex gap-3">
+          @if (page() > 1) {
+            <button
+              appButton="outline"
+              [size]="'compact'"
+              type="button"
+              [disabled]="loading()"
+              data-previous-cases
+              (click)="goPage(page() - 1)"
+            >
+              {{ copy().previous }}
+            </button>
+          }
+          @if (hasMore()) {
+            <button
+              appButton="outline"
+              [size]="'compact'"
+              type="button"
+              [disabled]="loading()"
+              data-next-cases
+              (click)="goPage(page() + 1)"
+            >
+              {{ copy().next }}
+            </button>
+          }
+        </div>
+      }
     }
     <p class="mt-6 text-sm text-muted">{{ copy().refreshHint }}</p>
   }
