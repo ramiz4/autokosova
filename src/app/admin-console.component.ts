@@ -319,8 +319,7 @@ export class AdminConsoleComponent {
     const context = `${garageId}|${validTab}|${params.get('requestId') ?? ''}|${params.get('status') ?? ''}|${validPage}`;
     if (context === this.routeContext) return;
     this.routeContext = context;
-    this.status =
-      params.get('status') ?? (this.section === 'privacy' ? 'submitted' : '');
+    this.status = params.get('status') ?? (this.section === 'privacy' ? 'submitted' : '');
     if (this.section === 'garages' && validGarage) {
       this.page.set(validPage);
       if (this.detail()?.id === garageId) {
@@ -355,11 +354,7 @@ export class AdminConsoleComponent {
     }
     try {
       const section =
-        this.section === 'support'
-          ? 'users'
-          : this.section === 'policy'
-            ? 'privacy'
-            : this.section;
+        this.section === 'support' ? 'users' : this.section === 'policy' ? 'privacy' : this.section;
       const data = await this.json<
         AdminPage<AdminUser> &
           AdminPage<AdminGarageSummary> &

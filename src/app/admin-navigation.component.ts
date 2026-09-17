@@ -20,14 +20,7 @@ import {
 } from '@autokosova/icons';
 
 type Section =
-  | 'overview'
-  | AdminCaseSection
-  | 'garages'
-  | 'users'
-  | 'privacy'
-  | 'policy'
-  | 'audit'
-  | 'catalog';
+  'overview' | AdminCaseSection | 'garages' | 'users' | 'privacy' | 'policy' | 'audit' | 'catalog';
 
 /** One compact internal navigator; it deliberately has no role-switching controls. */
 @Component({
@@ -36,7 +29,12 @@ type Section =
   template: `
     <nav class="hidden lg:block" [attr.aria-label]="adminLabel('administration')">
       @for (group of groups(); track group.label) {
-        <section [class.mt-5]="group.label" [class.pt-4]="group.label" [class.border-t]="group.label" [class.border-slate-100]="group.label">
+        <section
+          [class.mt-5]="group.label"
+          [class.pt-4]="group.label"
+          [class.border-t]="group.label"
+          [class.border-slate-100]="group.label"
+        >
           @if (group.label) {
             <p class="mb-1 px-2.5 text-[10px] font-bold tracking-widest text-slate-400 uppercase">
               {{ group.label }}

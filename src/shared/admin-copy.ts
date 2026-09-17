@@ -17,11 +17,7 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
   garages: ['Werkstätten', 'Garages', 'Serviset'],
   users: ['Benutzer und Zuordnungen', 'Users and memberships', 'Përdoruesit dhe anëtarësimet'],
   privacy: ['Löschaufträge', 'Deletion requests', 'Kërkesat për fshirje'],
-  policy: [
-    'Datenschutzrichtlinie',
-    'Data protection policy',
-    'Politika e mbrojtjes së të dhënave',
-  ],
+  policy: ['Datenschutzrichtlinie', 'Data protection policy', 'Politika e mbrojtjes së të dhënave'],
   audit: ['Ereignisprotokoll', 'Audit trail', 'Historiku i ngjarjeve'],
   catalog: ['Katalog und Pflegewege', 'Catalog and maintenance', 'Katalogu dhe mirëmbajtja'],
   settings: ['Einstellungen', 'Settings', 'Cilësimet'],
@@ -372,42 +368,22 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Unique name for this policy version, e.g. "2024-01-v1"',
     'Emër unik për këtë version, p.sh. "2024-01-v1"',
   ],
-  operatorApprovalReference: [
-    'Freigabereferenz',
-    'Approval reference',
-    'Referenca e miratimit',
-  ],
+  operatorApprovalReference: ['Freigabereferenz', 'Approval reference', 'Referenca e miratimit'],
   approvalReferenceHint: [
     'Aktenzeichen, Protokollnummer o.ä. des Freigabedokuments',
     'File number, protocol number etc. of the approval document',
     'Numri i dosjes, protokollit etj. të dokumentit të miratimit',
   ],
-  policyIdentification: [
-    'Identifikation',
-    'Identification',
-    'Identifikimi',
-  ],
-  retentionPeriodsTitle: [
-    'Aufbewahrungsfristen',
-    'Retention periods',
-    'Periudhat e ruajtjes',
-  ],
+  policyIdentification: ['Identifikation', 'Identification', 'Identifikimi'],
+  retentionPeriodsTitle: ['Aufbewahrungsfristen', 'Retention periods', 'Periudhat e ruajtjes'],
   retentionPeriodsHint: [
     'Wie lange Daten nach Abschluss eines Vorgangs aufbewahrt werden (in Tagen).',
     'How long data is retained after a case is closed (in days).',
     'Sa kohë ruhen të dhënat pas mbylljes së një rasti (në ditë).',
   ],
   days: ['Tage', 'days', 'ditë'],
-  reviewEvidenceRetentionDays: [
-    'Besuchsnachweise',
-    'Visit evidence',
-    'Dëshmitë e vizitës',
-  ],
-  repairRequestRetentionDays: [
-    'Reparaturanfragen',
-    'Repair requests',
-    'Kërkesat për riparim',
-  ],
+  reviewEvidenceRetentionDays: ['Besuchsnachweise', 'Visit evidence', 'Dëshmitë e vizitës'],
+  repairRequestRetentionDays: ['Reparaturanfragen', 'Repair requests', 'Kërkesat për riparim'],
   reportRetentionDays: ['Meldungen', 'Reports', 'Raportimet'],
   auditLogRetentionDays: ['Ereignisprotokoll', 'Audit trail', 'Historiku'],
   publicReviewHandling: [
@@ -426,11 +402,7 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'All public reviews are permanently and irrevocably removed.',
     'Të gjitha vlerësimet publike hiqen përgjithmonë dhe parevokueshëm.',
   ],
-  retain_anonymized: [
-    'Anonymisiert behalten',
-    'Retain anonymized',
-    'Ruaj të anonimizuara',
-  ],
+  retain_anonymized: ['Anonymisiert behalten', 'Retain anonymized', 'Ruaj të anonimizuara'],
   retainAnonymizedDescription: [
     'Bewertungen bleiben öffentlich sichtbar, der Kundenbezug wird vollständig entfernt.',
     'Reviews remain publicly visible, all links to the customer are removed.',
@@ -446,11 +418,7 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'The operator approval covers these exact values and version on the required business/legal basis.',
     'Miratimi i operatorit mbulon këto vlera dhe këtë version mbi bazën e nevojshme profesionale/ligjore.',
   ],
-  savePolicy: [
-    'Regel hinterlegen',
-    'Record policy',
-    'Regjistro rregullin',
-  ],
+  savePolicy: ['Regel hinterlegen', 'Record policy', 'Regjistro rregullin'],
   policyHint: [
     'Keine Standardfrist oder rechtliche Freigabe durch die Demo. Neue Versionen ersetzen keine dokumentierten Entscheidungen.',
     'The demo provides no default period or legal approval. New versions do not replace documented decisions.',

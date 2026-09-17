@@ -42,9 +42,7 @@ it('uses one native mobile section select and keeps admin work grouped', async (
     'catalog',
   ]);
   expect(page.querySelectorAll('button')).toHaveLength(0);
-  expect(page.querySelector('nav a[aria-current="page"]')?.textContent).toContain(
-    'Dashboard',
-  );
+  expect(page.querySelector('nav a[aria-current="page"]')?.textContent).toContain('Dashboard');
 });
 
 it('links each domain case section to its own admin route', async () => {
