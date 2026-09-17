@@ -356,7 +356,7 @@
               {{ label('reviewFilter') }}
             </button>
           }
-          @if (staffDomain !== 'appeals') {
+          @if (!staffDomain) {
             <button
               appButton="outline"
               type="button"
@@ -445,7 +445,7 @@
                 />{{ copy().escalation }}</label
               >
             }
-            @if (staffDomain !== 'appeals') {
+            @if (!staffDomain) {
               <label class="flex min-h-11 items-center gap-3"
                 ><input
                   type="checkbox"
@@ -458,7 +458,7 @@
           </form>
         </details>
         @if (
-          filterKind ||
+          (!staffDomain && filterKind) ||
           filterPriority ||
           filterAssignee ||
           filterStatus ||
@@ -468,7 +468,7 @@
           queue !== 'todo'
         ) {
           <div data-active-filters class="mt-2 flex flex-wrap items-center gap-3 text-sm">
-            @if (filterKind) {
+            @if (!staffDomain && filterKind) {
               <span>{{ label(filterKind) }}</span>
             }
             @if (filterPriority) {

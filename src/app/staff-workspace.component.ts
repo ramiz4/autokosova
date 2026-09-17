@@ -327,7 +327,7 @@ export class StaffWorkspaceComponent {
   resetFilters(): void {
     this.filterStatus = '';
     this.filterAssignee = '';
-    this.filterKind = '';
+    if (!this.staffDomain) this.filterKind = '';
     this.filterPriority = '';
     this.onlyEscalated = false;
     this.onlyUnassigned = false;
