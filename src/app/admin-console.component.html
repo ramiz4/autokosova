@@ -23,16 +23,16 @@
         </button>
       </div>
     }
-    @if (success()) {
-      <p
-        data-admin-result
-        tabindex="-1"
-        role="status"
-        class="mt-5 rounded-xl bg-emerald-50 p-4 text-emerald-900"
-      >
-        {{ success() }}
-      </p>
-    }
+    <!-- Live region for E2E assertions; visual feedback is shown via the toast overlay -->
+    <p
+      data-admin-result
+      tabindex="-1"
+      role="status"
+      class="sr-only"
+      aria-live="polite"
+    >
+      {{ toast.current()?.message ?? '' }}
+    </p>
     @if (loading()) {
       <p role="status" class="mt-4">{{ label('loading') }}</p>
     }

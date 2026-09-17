@@ -33,11 +33,6 @@
         </button>
       </div>
     }
-    @if (success()) {
-      <p role="status" class="mt-5 rounded-xl bg-emerald-50 p-4 text-emerald-900">
-        {{ success() }}
-      </p>
-    }
     @if (loading()) {
       <p role="status" class="mt-5">{{ copy().loading }}</p>
     }

@@ -4,13 +4,14 @@ import type { AdminCaseSection } from '../shared/administration';
 import { AdminNavigationComponent } from './admin-navigation.component';
 import { LanguageService } from './language.service';
 import { SiteHeaderComponent } from './site-header.component';
+import { ToastComponent } from './ui/toast.component';
 import { staffCopy } from '../shared/staff-copy';
 import { footerCopy } from '../shared/footer-copy';
 
 /** Shared staff chrome. Public header/footer defaults remain owned by public pages. */
 @Component({
   selector: 'app-staff-layout',
-  imports: [AdminNavigationComponent, RouterLink, SiteHeaderComponent],
+  imports: [AdminNavigationComponent, RouterLink, SiteHeaderComponent, ToastComponent],
   template: `
     <div class="border-b border-slate-200 bg-white">
       <app-site-header [compact]="true" [active]="admin() ? 'admin' : 'moderation'" />
@@ -46,6 +47,7 @@ import { footerCopy } from '../shared/footer-copy';
         <a [routerLink]="language.link('imprint')">{{ footer().imprintTitle }}</a>
       </div>
     </div>
+    <app-toast />
   `,
 })
 export class StaffLayoutComponent {

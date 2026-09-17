@@ -24,6 +24,7 @@ import { StaffLayoutComponent } from './staff-layout.component';
 import { StaffDraftGuardService } from './staff-draft-guard.service';
 import { StaffReturnContextService } from './staff-return-context.service';
 import { ButtonDirective } from './ui/button.directive';
+import { ToastService } from './ui/toast.service';
 import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
 import { staffCopy, staffLabel } from '../shared/staff-copy';
 import {
@@ -62,6 +63,7 @@ export class StaffWorkspaceComponent {
   private readonly router = inject(Router);
   private readonly draftGuard = inject(StaffDraftGuardService);
   private readonly returnContext = inject(StaffReturnContextService);
+  private readonly toast = inject(ToastService);
   readonly adminOnly = inject(ActivatedRoute).snapshot.data['adminOnly'] === true;
   /** Set on `/admin/reviews|reports|appeals`; locks the kind/appeal filter to that domain. */
   readonly staffDomain = inject(ActivatedRoute).snapshot.data['staffDomain'] as
@@ -82,7 +84,6 @@ export class StaffWorkspaceComponent {
   readonly loading = signal(false);
   readonly busy = signal(false);
   readonly error = signal('');
-  readonly success = signal('');
   readonly resultAvailable = signal(false);
   readonly stale = signal(false);
   readonly nextAvailable = signal(true);
@@ -178,7 +179,6 @@ export class StaffWorkspaceComponent {
       this.evidenceText.set(null);
       this.moderators.set([]);
       this.error.set('');
-      this.success.set('');
       this.resultAvailable.set(false);
       this.stale.set(false);
       this.nextAvailable.set(true);
@@ -283,7 +283,7 @@ export class StaffWorkspaceComponent {
         !this.route.snapshot.paramMap.get('caseId') &&
         this.returnContext.takeEscalation(context)
       )
-        this.success.set(this.label('outcome_escalate'));
+        this.toast.show(this.label('outcome_escalate'));
     } catch (error) {
       if (generation === this.generation && context === this.account.dataContext()) {
         this.cases.set([]);
@@ -373,7 +373,6 @@ export class StaffWorkspaceComponent {
     this.loading.set(true);
     this.error.set('');
     if (options.resetResult) {
-      this.success.set('');
       this.resultAvailable.set(false);
       this.nextAvailable.set(true);
     }
@@ -456,7 +455,7 @@ export class StaffWorkspaceComponent {
         }
         if (!data.hasMore || requestedPage >= 10000) {
           this.nextAvailable.set(false);
-          this.success.set(this.copy().noNext);
+          this.toast.show(this.copy().noNext);
           return;
         }
         requestedPage++;
@@ -574,7 +573,6 @@ export class StaffWorkspaceComponent {
       context = this.account.dataContext();
     this.busy.set(true);
     this.error.set('');
-    this.success.set('');
     try {
       const csrf =
         this.document.cookie
@@ -593,14 +591,14 @@ export class StaffWorkspaceComponent {
       if (generation !== this.generation || context !== this.account.dataContext()) return;
       if (action === 'assign') {
         if (!(await this.readCurrent(detail.id))) return;
-        this.success.set(
+        this.toast.show(
           `${this.label('caseAssignedTo')} ${this.detail()?.assignedModeratorLabel ?? ''}`.trim(),
         );
       } else if (action === 'decide') {
         if (!(await this.readCurrent(detail.id))) return;
         this.resultAvailable.set(true);
         this.nextAvailable.set(true);
-        this.success.set(this.decisionOutcome(body));
+        this.toast.show(this.decisionOutcome(body));
       } else {
         const target = this.listUrl();
         this.clearPrivate();
@@ -781,7 +779,6 @@ export class StaffWorkspaceComponent {
       return;
     }
     if (freshRead) {
-      this.success.set('');
       if (this.detail()) this.stale.set(true);
     }
     this.error.set(status === 422 ? this.label('invalidDecision') : this.copy().error);
