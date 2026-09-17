@@ -753,100 +753,86 @@
             </button>
           </section>
         } @else {
-          <details class="mt-5 rounded-xl bg-slate-50 p-4">
-            <summary class="min-h-11 cursor-pointer py-2 font-semibold">
-              {{ label('provider') }}
-            </summary>
-            <p class="mt-3 text-sm text-muted">{{ label('providerHint') }}</p>
-            <p class="mt-2 text-sm text-muted">{{ label('rolesHint') }}</p>
+          <!-- Identity provider info banner -->
+          <div class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div class="min-w-0">
+              <p class="text-sm font-semibold">{{ label('provider') }}</p>
+              <p class="mt-0.5 text-xs text-muted">{{ label('rolesHint') }}</p>
+            </div>
             @if (consoleUrl()) {
-              <a
-                appButton="outline"
-                [size]="'compact'"
-                class="mt-4"
-                [href]="consoleUrl()"
-                target="_blank"
-                rel="noopener noreferrer"
-                >{{ label('providerOpen') }}</a
-              >
+              <a appButton="outline" [size]="'compact'" [href]="consoleUrl()" target="_blank" rel="noopener noreferrer">
+                {{ label('providerOpen') }}
+              </a>
             } @else {
-              <p class="mt-3 text-sm text-muted">{{ label('providerMissing') }}</p>
+              <p class="text-xs text-muted">{{ label('providerMissing') }}</p>
             }
-          </details>
-          <div
-            class="mt-4 divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white"
-            data-admin-users
-          >
+          </div>
+
+          <!-- User list -->
+          <div class="mt-4 divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white" data-admin-users>
             @for (person of users(); track person.id) {
-              <article class="p-4 sm:p-5" [attr.data-admin-user-id]="person.id">
+              <article class="px-4 py-4 sm:px-5" [attr.data-admin-user-id]="person.id">
+
+                <!-- Header: name + status/type badges -->
                 <div class="flex flex-wrap items-start justify-between gap-2">
-                  <h2 class="font-bold break-words">{{ person.label }}</h2>
-                  <div class="flex flex-wrap gap-1">
+                  <div class="min-w-0 flex-1">
+                    <h2 class="font-semibold break-all">{{ person.label }}</h2>
+                    @if (person.roles.length) {
+                      <div class="mt-1.5 flex flex-wrap gap-1">
+                        @for (role of person.roles; track role) {
+                          <span class="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-brand-dark">
+                            {{ role }}
+                          </span>
+                        }
+                      </div>
+                    }
+                  </div>
+                  <div class="flex shrink-0 flex-wrap gap-1">
                     <span
-                      class="rounded-full px-2 py-0.5 text-xs font-semibold"
+                      class="rounded-full px-2.5 py-0.5 text-xs font-semibold"
                       [class.bg-emerald-100]="person.status === 'active'"
                       [class.text-emerald-800]="person.status === 'active'"
-                      [class.bg-slate-100]="person.status !== 'active'"
-                      [class.text-slate-600]="person.status !== 'active'"
-                    >
-                      {{ label(person.status) }}
-                    </span>
-                    <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                      [class.bg-rose-100]="person.status !== 'active'"
+                      [class.text-rose-700]="person.status !== 'active'"
+                    >{{ label(person.status) }}</span>
+                    <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600">
                       {{ label(person.accountType) }}
                     </span>
                   </div>
                 </div>
+
+                <!-- Garage memberships -->
                 @if (person.memberships.length) {
-                  <ul class="mt-3 grid gap-1.5">
+                  <ul class="mt-3 grid gap-1">
                     @for (membership of person.memberships; track membership.garageId) {
-                      <li class="text-sm break-words">
+                      <li class="flex flex-wrap items-center gap-1.5 text-sm">
                         <a
                           data-user-garage
-                          class="inline-flex min-h-8 items-center font-semibold text-brand-dark underline underline-offset-4"
-                          [href]="
-                            link('garages') + '?garageId=' + membership.garageId + '&tab=team'
-                          "
-                          >{{ membership.garageName }}</a
-                        >
-                        <span class="text-muted">
-                          · {{ label(membership.role) }} · {{ label(membership.state) }}</span
-                        >
+                          class="font-medium text-brand-dark underline underline-offset-4 break-all"
+                          [href]="link('garages') + '?garageId=' + membership.garageId + '&tab=team'"
+                        >{{ membership.garageName }}</a>
+                        <span class="text-xs text-muted">· {{ label(membership.role) }} · {{ label(membership.state) }}</span>
                       </li>
                     }
                   </ul>
                 }
-                <details data-account-security class="mt-3">
-                  <summary
-                    class="min-h-9 cursor-pointer py-2 text-sm font-semibold text-brand-dark"
-                  >
-                    {{ label('security') }}
-                  </summary>
-                  <div class="mt-2 flex flex-wrap gap-1.5">
-                    @for (role of person.roles; track role) {
-                      <span
-                        class="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-brand-dark"
-                      >
-                        {{ role }}
-                      </span>
-                    }
-                  </div>
-                  @if (person.rolesVerifiedAt) {
-                    <p class="mt-2 text-xs text-muted">
-                      {{ label('rolesVerifiedAt') }}:
-                      {{ person.rolesVerifiedAt | date: 'dd.MM.yyyy HH:mm' }}
-                    </p>
-                  }
+
+                <!-- Action row -->
+                <div class="mt-3 flex flex-wrap items-center gap-4" data-account-security>
                   <button
                     appButton="outline"
                     [size]="'compact'"
-                    class="mt-3"
                     type="button"
                     [disabled]="busy()"
                     (click)="revokeSessions(person.id)"
-                  >
-                    {{ label('sessions') }}
-                  </button>
-                </details>
+                  >{{ label('sessions') }}</button>
+                  @if (person.rolesVerifiedAt) {
+                    <p class="text-xs text-muted">
+                      {{ label('rolesVerifiedAt') }}: {{ person.rolesVerifiedAt | date: 'dd.MM.yyyy HH:mm' }}
+                    </p>
+                  }
+                </div>
+
               </article>
             } @empty {
               @if (!loading() && !error()) {
