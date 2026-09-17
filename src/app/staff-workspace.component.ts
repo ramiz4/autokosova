@@ -331,7 +331,7 @@ export class StaffWorkspaceComponent {
     this.filterPriority = '';
     this.onlyEscalated = false;
     this.onlyUnassigned = false;
-    this.onlyAppeal = false;
+    if (this.staffDomain !== 'appeals') this.onlyAppeal = false;
     this.queue = 'todo';
     this.applyFilters();
   }

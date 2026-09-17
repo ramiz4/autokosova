@@ -187,3 +187,37 @@ it('falls back to the admin overview when no domain and no case are known', asyn
   component.back();
   expect(navigate).toHaveBeenCalledWith('/admin');
 });
+
+it('resetFilters preserves the locked kind on /admin/reviews', async () => {
+  const { component } = await render(
+    { adminOnly: true, staffDomain: 'reviews' },
+    { query: { priority: 'high' } },
+  );
+  expect(component.filterKind).toBe('review_submission');
+  component.filterPriority = 'high';
+  component.resetFilters();
+  expect(component.filterKind).toBe('review_submission');
+  expect(component.filterPriority).toBe('');
+});
+
+it('resetFilters preserves the locked appeal flag on /admin/appeals', async () => {
+  const { component } = await render(
+    { adminOnly: true, staffDomain: 'appeals' },
+    { query: { priority: 'high' } },
+  );
+  expect(component.onlyAppeal).toBe(true);
+  component.filterPriority = 'high';
+  component.resetFilters();
+  expect(component.onlyAppeal).toBe(true);
+  expect(component.filterPriority).toBe('');
+});
+
+it('shows the domain badge on a domain page', async () => {
+  const { page } = await render({ adminOnly: true, staffDomain: 'reviews' });
+  expect(page.querySelector('[data-domain-badge]')).not.toBeNull();
+});
+
+it('hides the domain badge on the generic admin queue', async () => {
+  const { page } = await render({ adminOnly: true });
+  expect(page.querySelector('[data-domain-badge]')).toBeNull();
+});
