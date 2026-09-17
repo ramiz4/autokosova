@@ -85,6 +85,7 @@ export class GarageManagementComponent {
         this.failedPhotos.set(new Set());
         this.message.set('');
         if (!context && accountState === 'guest') this.state.set('forbidden');
+        if (context && accountState === 'ready') void this.refresh();
       });
     });
     afterNextRender(() => void this.refresh());

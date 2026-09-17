@@ -69,7 +69,7 @@ export async function checkProfile(page: Page, origin: string, kind: 'customer' 
     expect(identity[field]!.length).toBeGreaterThan(0);
     await expect(page.locator(selector)).toHaveText(identity[field]!);
   }
-  await page.goto(origin + (kind === 'customer' ? '/inquiries' : '/garages/new'));
+  await page.goto(origin + (kind === 'customer' ? '/inquiries' : '/garages/manage'));
 }
 
 export async function toggleInquiry(page: Page, origin: string, id: string) {
@@ -83,9 +83,11 @@ export async function toggleInquiry(page: Page, origin: string, id: string) {
       .toBe(active);
     await page.reload();
     await readyInquiries(page);
-    await expect(
-      card(page, id).locator(active ? '[data-inquiry-search]' : '[data-inquiry-search-disabled]'),
-    ).toBeVisible();
+    await card(page, id).locator('[data-inquiry-menu]').click();
+    if (active) await expect(page.getByRole('menu').locator('[data-inquiry-search]')).toBeVisible();
+    else
+      await expect(page.getByRole('menu').locator('[data-inquiry-search-disabled]')).toBeDisabled();
+    await page.keyboard.press('Escape');
   }
 }
 

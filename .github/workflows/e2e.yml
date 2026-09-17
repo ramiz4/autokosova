@@ -55,8 +55,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: e2e-acceptance-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            test-results/e2e/acceptance.json
-            test-results/e2e/browser/**/*.png
+          path: test-results/e2e/acceptance.json
           if-no-files-found: error
           retention-days: 7

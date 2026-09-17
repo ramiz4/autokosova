@@ -155,6 +155,7 @@ it.each(['de', 'sq', 'en'] as const)(
       routePath(locale, 'request'),
     );
     expect(page.querySelectorAll('[data-inquiry-card]')).toHaveLength(1);
+    expect(page.querySelector('[data-inquiry-card]')?.textContent).toContain(detail.symptom);
     page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
     await fixture.whenStable();
     const href = actionMenu()!.querySelector('[data-inquiry-search]')!.getAttribute('href')!;

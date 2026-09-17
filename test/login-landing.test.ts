@@ -29,7 +29,7 @@ test('landing prioritizes verified staff roles, then account purpose, and ignore
       const prefix = locale === 'de' ? '' : '/' + locale;
       for (const [session, path] of [
         [customer, '/inquiries'],
-        [owner, '/garages/new'],
+        [owner, '/garages/manage'],
         [admin, '/admin'],
         [moderator, '/moderation'],
         [both, '/admin'],

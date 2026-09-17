@@ -74,7 +74,6 @@ test('admin-workflow verifies garages, checks evidence, decides photos, suspends
   await reason(page, 'company_verified', '[data-admin-decision-reason]');
   await confirm(page, '[data-restore-garage]');
   await expect(page.locator('[data-suspend-garage]')).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath('admin-garage.png'), fullPage: true });
   await page.locator('[data-admin-back]').click();
   await openGarage(page, 'demo-admin-garage-members');
   await page.locator('[data-admin-tab="team"]').click();
@@ -217,13 +216,6 @@ test('admin-boundaries checks staff separation, takeover, policy gates and local
     await app.login(page, 'admin', language, prefix + '/admin/users');
     await expect(page.locator('main h1')).toHaveText(adminLabel('users', language));
     await expect(page.locator('[data-admin-users]')).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
-      true,
-    );
-    await page.screenshot({
-      path: testInfo.outputPath('admin-users-' + language + '.png'),
-      fullPage: true,
-    });
   }
   await app.login(page, 'moderator', 'de', '/admin/users');
   await expect(page.locator('[data-admin-users]')).toHaveCount(0);

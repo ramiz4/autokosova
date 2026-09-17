@@ -105,9 +105,9 @@ Navigation mit isolierten Browserfixtures. **Diese Fixtures sind kein DB-Nachwei
 
 `npm run test:e2e` prüft die Kunden-/Werkstattabläufe mit Playwright Test,
 gebauter Anwendung, eigenständiger PostgreSQL-Datenbank und signiertem Test-OIDC.
-Die vorherigen DB-/Demo-Smoketests wurden einschließlich Menü-/Tastatur-/Kontrastnachweisen
-in diese Abnahme übernommen. Die gezielt simulierten Fehler-/Listen-Revalidierungstests bleiben
-separat bestehen. Commands, Testinventar, Isolation und Nachweisgrenzen:
+Die vorherigen DB-/Demo-Smoketests wurden einschließlich fachlicher Menü- und
+Tastaturabläufe in diese Abnahme übernommen. Die gezielt simulierten Fehler-/Listen-Revalidierungstests
+bleiben separat bestehen. Commands, Testinventar, Isolation und Nachweisgrenzen:
 [Automatisierte E2E-Abnahme](../development/E2E-ACCEPTANCE.md).
 
 ## Bedienung seit #107
