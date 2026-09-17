@@ -1,5 +1,5 @@
 import { adminLabel } from '../shared/admin-copy';
-import type { AdminOverview } from '../shared/administration';
+import type { AdminCaseSection } from '../shared/administration';
 import { StaffDecisionFormComponent } from './staff-decision-form.component';
 import type { StaffCaseDecision } from '../shared/staff-decision';
 import { DOCUMENT, DatePipe } from '@angular/common';
@@ -16,7 +16,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AccountSessionService } from './account-session.service';
 import { LanguageService } from './language.service';
@@ -45,7 +45,6 @@ interface StaffHttpError {
   imports: [
     StaffDecisionFormComponent,
     StaffLayoutComponent,
-    RouterLink,
     FormsModule,
     DatePipe,
     ButtonDirective,
@@ -64,6 +63,9 @@ export class StaffWorkspaceComponent {
   private readonly draftGuard = inject(StaffDraftGuardService);
   private readonly returnContext = inject(StaffReturnContextService);
   readonly adminOnly = inject(ActivatedRoute).snapshot.data['adminOnly'] === true;
+  /** Set on `/admin/reviews|reports|appeals`; locks the kind/appeal filter to that domain. */
+  readonly staffDomain = inject(ActivatedRoute).snapshot.data['staffDomain'] as
+    AdminCaseSection | undefined;
   readonly copy = computed(() => staffCopy(this.language.language));
   readonly isAdmin = computed(() => this.account.identity()?.roles.includes('admin') ?? false);
   /** `/moderation` stays compatible for admins as the same queue narrowed to their assignments. */
@@ -73,7 +75,6 @@ export class StaffWorkspaceComponent {
       this.isAdmin() ||
       (!this.adminOnly && (this.account.identity()?.roles.includes('moderator') ?? false)),
   );
-  readonly adminOverview = signal<AdminOverview | null>(null);
   adminLabel(key: string) {
     return adminLabel(key, this.language.language);
   }
@@ -145,12 +146,17 @@ export class StaffWorkspaceComponent {
   }
   private applyRouteQuery(query: import('@angular/router').ParamMap): void {
     this.filterStatus = query.get('status') ?? '';
-    this.filterKind = query.get('kind') ?? '';
+    this.filterKind =
+      this.staffDomain === 'reviews'
+        ? 'review_submission'
+        : this.staffDomain === 'reports'
+          ? 'report'
+          : (query.get('kind') ?? '');
     this.filterPriority = query.get('priority') ?? '';
     this.filterAssignee = query.get('assignedUserId') ?? '';
     this.onlyEscalated = query.get('escalated') === 'true';
     this.onlyUnassigned = query.get('unassigned') === 'true';
-    this.onlyAppeal = query.get('appeal') === 'true';
+    this.onlyAppeal = this.staffDomain === 'appeals' ? true : query.get('appeal') === 'true';
     this.actionableOnly = query.get('actionable') !== 'false';
     const requestedPage = Number(query.get('page'));
     this.page.set(Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1);
@@ -167,7 +173,6 @@ export class StaffWorkspaceComponent {
       this.controller?.abort();
       this.detailController?.abort();
       this.detailVersion++;
-      this.adminOverview.set(null);
       this.cases.set([]);
       this.detail.set(null);
       this.evidenceText.set(null);
@@ -205,6 +210,16 @@ export class StaffWorkspaceComponent {
   }
   label(value: string): string {
     return staffLabel(value, this.language.language);
+  }
+  pageTitle(): string {
+    if (this.staffDomain) return adminLabel(this.staffDomain, this.language.language);
+    return this.adminOnly ? this.copy().cases : this.copy().myCases;
+  }
+  pageIntro(): string {
+    if (this.staffDomain === 'reviews') return this.copy().reviewsIntro;
+    if (this.staffDomain === 'reports') return this.copy().reportsIntro;
+    if (this.staffDomain === 'appeals') return this.copy().appealsIntro;
+    return this.adminOnly ? this.copy().adminIntro : this.copy().ownIntro;
   }
   queueLabel(value: 'todo' | 'waiting' | 'done'): string {
     return this.copy()[value];
@@ -269,18 +284,6 @@ export class StaffWorkspaceComponent {
         this.returnContext.takeEscalation(context)
       )
         this.success.set(this.label('outcome_escalate'));
-      if (this.isAdmin()) {
-        const overview = await fetch('/api/admin/management/overview', {
-          credentials: 'same-origin',
-          cache: 'no-store',
-          signal: this.controller.signal,
-        });
-        if (overview.ok) {
-          const value = (await overview.json()) as AdminOverview;
-          if (generation === this.generation && context === this.account.dataContext())
-            this.adminOverview.set(value);
-        }
-      }
     } catch (error) {
       if (generation === this.generation && context === this.account.dataContext()) {
         this.cases.set([]);
@@ -342,20 +345,6 @@ export class StaffWorkspaceComponent {
   async open(item: StaffCaseSummary | string, updateUrl = true): Promise<void> {
     if (this.busy()) return;
     const id = typeof item === 'string' ? item : item.id;
-    if (typeof item !== 'string' && this.adminOnly && item.kind === 'garage_submission') {
-      await this.router.navigateByUrl(
-        this.language.link('admin-section', 'garages') +
-          `?garageId=${encodeURIComponent(item.subjectId)}&tab=review`,
-      );
-      return;
-    }
-    if (typeof item !== 'string' && this.adminOnly && item.kind === 'data_deletion') {
-      await this.router.navigateByUrl(
-        this.language.link('admin-section', 'privacy') +
-          `?requestId=${encodeURIComponent(item.subjectId)}`,
-      );
-      return;
-    }
     if (updateUrl && this.route.snapshot.paramMap.get('caseId') !== id) {
       const context = this.account.dataContext();
       if (context && !this.route.snapshot.paramMap.get('caseId'))
@@ -629,7 +618,21 @@ export class StaffWorkspaceComponent {
     const query = this.router.url.includes('?')
       ? this.router.url.slice(this.router.url.indexOf('?'))
       : '';
-    return this.language.link(this.adminOnly ? 'admin' : 'moderation') + query;
+    return this.listBaseUrl() + query;
+  }
+  /** Domain locked on `/admin/reviews|reports|appeals`; otherwise derived from the loaded case,
+   * so a direct `/admin/cases/:id` deep link still returns to the right subpage. */
+  private listBaseUrl(): string {
+    if (!this.adminOnly) return this.language.link('moderation');
+    if (this.staffDomain) return this.language.link('admin-section', this.staffDomain);
+    const current = this.detail();
+    if (current) {
+      if (current.openAppeal) return this.language.link('admin-section', 'appeals');
+      if (current.kind === 'review_submission')
+        return this.language.link('admin-section', 'reviews');
+      if (current.kind === 'report') return this.language.link('admin-section', 'reports');
+    }
+    return this.language.link('admin');
   }
   reloadLatest(): void {
     const detail = this.detail();

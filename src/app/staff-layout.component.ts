@@ -1,5 +1,6 @@
 import { Component, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import type { AdminCaseSection } from '../shared/administration';
 import { AdminNavigationComponent } from './admin-navigation.component';
 import { LanguageService } from './language.service';
 import { SiteHeaderComponent } from './site-header.component';
@@ -51,7 +52,14 @@ export class StaffLayoutComponent {
   readonly language = inject(LanguageService);
   readonly admin = input(true);
   readonly active = input<
-    'overview' | 'garages' | 'users' | 'privacy' | 'audit' | 'catalog' | 'moderation'
+    | 'overview'
+    | 'garages'
+    | 'users'
+    | 'privacy'
+    | 'audit'
+    | 'catalog'
+    | AdminCaseSection
+    | 'moderation'
   >('overview');
   readonly copy = () => staffCopy(this.language.language);
   readonly footer = () => footerCopy[this.language.language];

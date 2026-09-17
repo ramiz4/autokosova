@@ -10,7 +10,9 @@ test('admin-context publishes the complete review in one confirmed write and kee
   app,
 }) => {
   await app.login(page, 'admin');
-  await page.locator('[data-case-id="garage:demo-admin-garage-pending"] [data-open-case]').click();
+  // A task deep link (no originating case queue lists garage checks any more; #192 moved that
+  // entry point to the admin overview and the garage list itself).
+  await page.goto(app.origin + '/admin/garages?garageId=demo-admin-garage-pending&tab=review');
   await expect(page).toHaveURL(/admin\/garages\?garageId=demo-admin-garage-pending/);
   await expect(page.locator('[data-admin-garage]')).toBeVisible();
   // The four checks are visible without an action selector or an intermediate save.

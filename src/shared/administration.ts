@@ -93,7 +93,25 @@ export interface AdminOverview {
   readonly escalatedCases: number;
   readonly pendingDeletions: number;
   readonly blockedDeletions: number;
+  readonly openReviews: number;
+  readonly openReports: number;
+  readonly openAppeals: number;
 }
+
+/** Sections routed to `AdminConsoleComponent`, each `/admin/<section>`. */
+export const ADMIN_MANAGEMENT_SECTIONS = [
+  'garages',
+  'users',
+  'privacy',
+  'audit',
+  'catalog',
+  'support',
+] as const;
+export type AdminManagementSection = (typeof ADMIN_MANAGEMENT_SECTIONS)[number];
+
+/** Domain-named case queues routed to `StaffWorkspaceComponent`, each `/admin/<section>`. */
+export const ADMIN_CASE_SECTIONS = ['reviews', 'reports', 'appeals'] as const;
+export type AdminCaseSection = (typeof ADMIN_CASE_SECTIONS)[number];
 export interface AdminPrivacy {
   readonly requests: readonly AdminPrivacyRequest[];
   readonly page: number;

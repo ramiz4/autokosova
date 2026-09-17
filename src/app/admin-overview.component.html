@@ -1,0 +1,178 @@
+<app-staff-layout [admin]="allowed()" active="overview">
+  <h1 tabindex="-1" class="text-3xl font-bold tracking-tight">{{ adminLabel('overview') }}</h1>
+  <p class="mt-2 max-w-3xl text-muted">{{ adminLabel('intro') }}</p>
+  @if (account.state() === 'guest') {
+    <section class="mt-8 rounded-2xl border border-slate-200 bg-white p-6">
+      <p>{{ copy().guest }}</p>
+      <a appButton class="mt-4" [href]="loginUrl()">{{ copy().login }}</a>
+    </section>
+  } @else if (account.state() === 'loading' || !ready()) {
+    <p role="status" class="mt-8">{{ copy().loading }}</p>
+  } @else if (account.state() === 'error') {
+    <p role="alert" class="mt-8">{{ copy().error }}</p>
+    <button appButton="outline" type="button" (click)="account.refresh()">
+      {{ copy().retry }}
+    </button>
+  } @else if (!allowed()) {
+    <p role="alert" class="mt-8">{{ copy().denied }}</p>
+  } @else {
+    @if (error()) {
+      <div class="mt-5 rounded-xl bg-rose-50 p-4 text-rose-900" role="alert">
+        <p>{{ error() }}</p>
+        <button
+          appButton="outline"
+          class="mt-3"
+          type="button"
+          [disabled]="loading()"
+          (click)="load()"
+        >
+          {{ copy().retry }}
+        </button>
+      </div>
+    }
+    @if (loading()) {
+      <p role="status" class="mt-5">{{ copy().loading }}</p>
+    }
+    @if (overview(); as data) {
+      @if (
+        data.openReviews === 0 &&
+        data.openReports === 0 &&
+        data.openAppeals === 0 &&
+        data.pendingGarages === 0 &&
+        data.pendingDeletions === 0
+      ) {
+        <p
+          data-admin-all-clear
+          class="mt-8 rounded-xl border border-emerald-200 bg-emerald-50 p-5 font-semibold text-emerald-800"
+          role="status"
+        >
+          {{ adminLabel('allClear') }}
+        </p>
+      }
+      <div data-admin-overview class="mt-6 space-y-8">
+        <section>
+          <h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-muted">
+            {{ adminLabel('caseTasksSection') }}
+          </h2>
+          <div class="grid gap-3 sm:grid-cols-3">
+            <a
+              data-open-reviews
+              class="group flex flex-col gap-1 rounded-xl border bg-white p-5 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-dark"
+              [class.border-l-4]="data.openReviews > 0"
+              [class.border-brand-dark]="data.openReviews > 0"
+              [class.border-slate-200]="data.openReviews === 0"
+              [routerLink]="language.link('admin-section', 'reviews')"
+            >
+              <span
+                class="text-3xl font-bold"
+                [class.text-brand-dark]="data.openReviews > 0"
+                [class.text-slate-400]="data.openReviews === 0"
+                >{{ data.openReviews }}</span
+              >
+              <span class="font-semibold" [class.text-muted]="data.openReviews === 0">
+                {{ adminLabel('reviews') }}
+              </span>
+              <span class="text-sm text-muted">{{ adminLabel('reviewsDesc') }}</span>
+            </a>
+            <a
+              data-open-reports
+              class="group flex flex-col gap-1 rounded-xl border bg-white p-5 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-dark"
+              [class.border-l-4]="data.openReports > 0"
+              [class.border-brand-dark]="data.openReports > 0"
+              [class.border-slate-200]="data.openReports === 0"
+              [routerLink]="language.link('admin-section', 'reports')"
+            >
+              <span
+                class="text-3xl font-bold"
+                [class.text-brand-dark]="data.openReports > 0"
+                [class.text-slate-400]="data.openReports === 0"
+                >{{ data.openReports }}</span
+              >
+              <span class="font-semibold" [class.text-muted]="data.openReports === 0">
+                {{ adminLabel('reports') }}
+              </span>
+              <span class="text-sm text-muted">{{ adminLabel('reportsDesc') }}</span>
+            </a>
+            <a
+              data-open-appeals
+              class="group flex flex-col gap-1 rounded-xl border bg-white p-5 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-dark"
+              [class.border-l-4]="data.openAppeals > 0"
+              [class.border-brand-dark]="data.openAppeals > 0"
+              [class.border-slate-200]="data.openAppeals === 0"
+              [routerLink]="language.link('admin-section', 'appeals')"
+            >
+              <span
+                class="text-3xl font-bold"
+                [class.text-brand-dark]="data.openAppeals > 0"
+                [class.text-slate-400]="data.openAppeals === 0"
+                >{{ data.openAppeals }}</span
+              >
+              <span class="font-semibold" [class.text-muted]="data.openAppeals === 0">
+                {{ adminLabel('appeals') }}
+              </span>
+              <span class="text-sm text-muted">{{ adminLabel('appealsDesc') }}</span>
+            </a>
+          </div>
+        </section>
+        <section>
+          <h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-muted">
+            {{ adminLabel('operationalSection') }}
+          </h2>
+          <div class="grid gap-3 sm:grid-cols-3">
+            <a
+              data-pending-garages
+              class="group flex flex-col gap-1 rounded-xl border bg-white p-5 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-dark"
+              [class.border-l-4]="data.pendingGarages > 0"
+              [class.border-brand-dark]="data.pendingGarages > 0"
+              [class.border-slate-200]="data.pendingGarages === 0"
+              [routerLink]="language.link('admin-section', 'garages')"
+              [queryParams]="{ status: 'pending_review' }"
+            >
+              <span
+                class="text-3xl font-bold"
+                [class.text-brand-dark]="data.pendingGarages > 0"
+                [class.text-slate-400]="data.pendingGarages === 0"
+                >{{ data.pendingGarages }}</span
+              >
+              <span class="font-semibold" [class.text-muted]="data.pendingGarages === 0">
+                {{ adminLabel('pendingGarages') }}
+              </span>
+              <span class="text-sm text-muted">{{ adminLabel('pendingGaragesDesc') }}</span>
+            </a>
+            <a
+              data-pending-deletions
+              class="group flex flex-col gap-1 rounded-xl border bg-white p-5 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-dark"
+              [class.border-l-4]="data.pendingDeletions > 0"
+              [class.border-brand-dark]="data.pendingDeletions > 0"
+              [class.border-slate-200]="data.pendingDeletions === 0"
+              [routerLink]="language.link('admin-section', 'privacy')"
+              [queryParams]="{ status: 'submitted' }"
+            >
+              <span
+                class="text-3xl font-bold"
+                [class.text-brand-dark]="data.pendingDeletions > 0"
+                [class.text-slate-400]="data.pendingDeletions === 0"
+                >{{ data.pendingDeletions }}</span
+              >
+              <span class="font-semibold" [class.text-muted]="data.pendingDeletions === 0">
+                {{ adminLabel('pendingDeletions') }}
+              </span>
+              <span class="text-sm text-muted">{{ adminLabel('pendingDeletionsDesc') }}</span>
+            </a>
+            @if (data.blockedDeletions > 0) {
+              <a
+                data-blocked-deletions
+                class="group flex flex-col gap-1 rounded-xl border border-l-4 border-amber-500 bg-white p-5 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-dark"
+                [routerLink]="language.link('admin-section', 'privacy')"
+                [queryParams]="{ status: 'blocked' }"
+              >
+                <span class="text-3xl font-bold text-amber-600">{{ data.blockedDeletions }}</span>
+                <span class="font-semibold">{{ adminLabel('blockedDeletions') }}</span>
+              </a>
+            }
+          </div>
+        </section>
+      </div>
+    }
+  }
+</app-staff-layout>

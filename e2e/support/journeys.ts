@@ -286,7 +286,8 @@ export async function deleteGarage(page: Page, origin: string, id: string): Prom
 /** Exercise the actual visible staff navigation at each viewport, never hidden duplicates. */
 export async function staffSection(
   page: Page,
-  section: 'garages' | 'users' | 'privacy' | 'audit' | 'catalog',
+  section:
+    'garages' | 'users' | 'privacy' | 'audit' | 'catalog' | 'reviews' | 'reports' | 'appeals',
 ): Promise<void> {
   const current = page.locator('[data-admin-garage], [data-staff-case]');
   if (await current.count()) await expect(current).toHaveAttribute('aria-busy', 'false');

@@ -1,5 +1,6 @@
 import { registerAdministrationRoutes } from './administration-routes';
 import type { PostgresAdministrationStore } from './administration-store';
+import { ADMIN_CASE_SECTIONS, ADMIN_MANAGEMENT_SECTIONS } from '../shared/administration';
 import { registerReviewWorkflowRoutes } from './review-workflow-routes';
 import type { LocalDemoFileStore } from './local-demo-files';
 import { registerStaffRoutes } from './staff-routes';
@@ -166,6 +167,11 @@ const repairRequestBodySchema = {
   type: 'object',
 };
 
+const adminSections = [...ADMIN_MANAGEMENT_SECTIONS, ...ADMIN_CASE_SECTIONS].join('|');
+const safeReturnToPattern = new RegExp(
+  `^(/(?:(?:sq|en)/)?(?:admin(?:/(?:${adminSections}))?|moderation|profile|reviews|inquiries|favorites|inquiry|anfrage|garages(?:/[A-Za-z0-9_-]{1,128}(?:/reviews/new)?)?))(?:\\?([^#]*))?$`,
+);
+
 function safeReturnTo(value: unknown): string {
   // This value crosses the OIDC boundary. Parse it once only: encoded paths, fragments and an
   // unknown query key are rejected instead of being decoded into a second redirect target.
@@ -185,9 +191,7 @@ function safeReturnTo(value: unknown): string {
     /^(\/(?:sq\/|en\/)?admin\/(?:garages|privacy))(?:\?([^#]*))?$/,
   );
   if (administration) return safeAdministrationReturn(administration[1], administration[2]);
-  const match = value.match(
-    /^(\/(?:(?:sq|en)\/)?(?:admin(?:\/(?:garages|users|privacy|audit|catalog|support))?|moderation|profile|reviews|inquiries|favorites|inquiry|anfrage|garages(?:\/[A-Za-z0-9_-]{1,128}(?:\/reviews\/new)?)?))(?:\?([^#]*))?$/,
-  );
+  const match = value.match(safeReturnToPattern);
   if (!match) return '/';
   const path = match[1].replace(/\/anfrage$/, '/inquiry');
   const isGarageProfile = /\/garages\/(?!new$)[A-Za-z0-9_-]{1,128}$/.test(path);

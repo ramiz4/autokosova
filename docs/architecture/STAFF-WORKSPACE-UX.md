@@ -4,7 +4,7 @@ Admin und Moderation benutzen eine gemeinsame Shell und die vorhandenen Fachproz
 
 ## Navigation und Lebensdauer
 
-`/admin` zeigt handlungsbereite Fälle, `/moderation` die eigenen zugewiesenen Fälle. `todo`, `waiting` und `done` sind Ansichten über bestehende Zustände, keine neue Statusmaschine. Bearbeiter, Priorität, Fallart, Widerspruch und Seitenzahl sind begrenzte Filter. Adminzähler benutzen dieselben serverseitigen Prädikate wie ihre Direktziele; leere Zähler dominieren den Einstieg nicht.
+`/admin` zeigt seit #192 eine schreibgeschützte Übersicht „Offene Admin-Aufgaben“ mit fachlich benannten Zählern und direkten Einstiegen; keine Fallzeilen mehr auf dieser Seite. `/admin/reviews`, `/admin/reports` und `/admin/appeals` sind derselbe handlungsbereite Fallarbeitsplatz, je auf seinen fachlichen Filter (`kind` beziehungsweise `appeal`) gesperrt; `/moderation` bleibt unverändert die eigenen zugewiesenen Fälle. `todo`, `waiting` und `done` sind Ansichten über bestehende Zustände, keine neue Statusmaschine. Bearbeiter, Priorität, Fallart (ausserhalb von `/admin/reviews`/`/admin/reports`) und Seitenzahl sind begrenzte Filter. Zähler benutzen dieselben serverseitigen Prädikate wie ihre Direktziele; leere Zähler dominieren den Einstieg nicht.
 
 Fall-IDs stehen in `/admin/cases/:caseId` beziehungsweise `/moderation/cases/:caseId`. Werkstattaufgaben führen unmittelbar zu `/admin/garages?garageId=…&tab=review`, Datenschutzaufgaben zu `/admin/privacy?requestId=…`. Die Sprachpräfixe `/sq` und `/en` bleiben erhalten. Alte Verwaltungsbereiche bleiben erreichbar; unterstützte Werkstattaufnahme ist eine Aktion im Werkstattbereich.
 
