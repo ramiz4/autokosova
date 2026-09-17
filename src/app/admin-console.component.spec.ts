@@ -9,6 +9,7 @@ import { LanguageService } from './language.service';
 import { adminLabel } from '../shared/admin-copy';
 import type { AdminGarageDetail } from '../shared/administration';
 import type { AppLanguage } from '../shared/i18n';
+import { ToastService } from './ui/toast.service';
 
 @Component({ selector: 'app-staff-layout', template: '<ng-content />' })
 class StaffLayoutStub {
@@ -172,7 +173,7 @@ it('keeps the loaded revision and unsaved checks on a conflict, with no success 
   expect(component.verification.phone).toBe('verified');
   expect(component.dirty()).toBe(true);
   expect(component.stale()).toBe(true);
-  expect(component.success()).toBe('');
+  expect(TestBed.inject(ToastService).current()).toBeNull();
   expect(component.error()).not.toBe('');
 });
 it('uses equality for a reverted review draft and leaves a cancelled context untouched', async () => {
@@ -227,7 +228,7 @@ it('prevents duplicate writes and discards a late result after logout', async ()
   expect(component.detail()).toBeNull();
   expect(component.latitude).toBeNull();
   expect(component.query).toBe('');
-  expect(component.success()).toBe('');
+  expect(TestBed.inject(ToastService).current()).toBeNull();
 });
 it('ignores a stale candidate search so it cannot replace the newer selection list', async () => {
   const { component, fetch } = await render('users');
@@ -328,7 +329,7 @@ it('refreshes privacy during its own save and does not report a stale policy as 
   await component.savePolicy();
   expect(fetch).toHaveBeenCalledTimes(2);
   expect(component.privacy()?.policy?.version).toBe('SYNTHETIC');
-  expect(component.success()).toBe(adminLabel('policySaved', 'de'));
+  expect(TestBed.inject(ToastService).current()?.message).toBe(adminLabel('policySaved', 'de'));
   expect(component.policyDirty()).toBe(false);
 });
 
@@ -341,6 +342,6 @@ it('does not announce a fresh garage state after a failed post-write read', asyn
     .mockResolvedValueOnce(new Response('{}', { status: 503 }));
   await component.saveVerification();
   expect(component.error()).not.toBe('');
-  expect(component.success()).toBe('');
+  expect(TestBed.inject(ToastService).current()).toBeNull();
   expect(component.stale()).toBe(true);
 });

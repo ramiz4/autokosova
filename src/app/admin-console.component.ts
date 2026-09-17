@@ -21,6 +21,7 @@ import { ButtonDirective } from './ui/button.directive';
 import { AdminAccountComboboxComponent } from './admin-account-combobox.component';
 import { AdminDraftGuardService } from './admin-draft-guard.service';
 import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
+import { ToastService } from './ui/toast.service';
 import { adminLabel } from '../shared/admin-copy';
 import {
   ADMIN_REASON_CODES,
@@ -61,13 +62,13 @@ export class AdminConsoleComponent {
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
   private candidateRead = 0;
+  protected readonly toast = inject(ToastService);
   readonly allowed = computed(() => this.account.identity()?.roles.includes('admin') === true);
   readonly ready = signal(false);
   readonly loading = signal(false);
   readonly busy = signal(false);
   readonly stale = signal(false);
   readonly error = signal('');
-  readonly success = signal('');
   readonly page = signal(1);
   readonly hasMore = signal(false);
   readonly users = signal<readonly AdminUser[]>([]);
@@ -223,7 +224,6 @@ export class AdminConsoleComponent {
     this.proof.set('');
     this.support.set(null);
     this.error.set('');
-    this.success.set('');
     this.consoleUrl.set('');
     this.loading.set(false);
     this.busy.set(false);
@@ -348,12 +348,13 @@ export class AdminConsoleComponent {
     if (this.query) q.set('query', this.query);
     if (this.status && this.section === 'garages') q.set('status', this.status);
     if (this.status && this.section === 'privacy') q.set('status', this.status);
-    if (this.section === 'privacy') {
+    if (this.section === 'privacy' || this.section === 'policy') {
       const requestId = this.currentParam('requestId');
       if (requestId && /^[A-Za-z0-9_-]{1,200}$/.test(requestId)) q.set('requestId', requestId);
     }
     try {
-      const section = this.section === 'support' ? 'users' : this.section;
+      const section =
+        this.section === 'support' ? 'users' : this.section === 'policy' ? 'privacy' : this.section;
       const data = await this.json<
         AdminPage<AdminUser> &
           AdminPage<AdminGarageSummary> &
@@ -749,7 +750,7 @@ export class AdminConsoleComponent {
         this.clearSubmittedGarageInput(action);
         await this.openGarage(detail.id, this.detailTab, false, true);
         if (!this.error()) {
-          this.success.set(this.label(result));
+          this.toast.show(this.label(result));
           this.focusResult();
         } else if (this.detail()) this.stale.set(true);
       },
@@ -874,7 +875,7 @@ export class AdminConsoleComponent {
   async supportSaved(id: string) {
     this.support.set(null);
     await this.openGarage(id, this.detailTab, false, true);
-    this.success.set(this.label('saved'));
+    this.toast.show(this.label('saved'));
   }
   validPolicy() {
     return (
@@ -974,7 +975,7 @@ export class AdminConsoleComponent {
         this.policyBaseline = this.policySnapshot();
         await this.load(this.page(), true);
         if (!this.error()) {
-          this.success.set(this.label('policySaved'));
+          this.toast.show(this.label('policySaved'));
           this.focusResult();
         }
       },
@@ -987,7 +988,7 @@ export class AdminConsoleComponent {
       async () => {
         await this.load(this.page(), true);
         if (!this.error()) {
-          this.success.set(this.label('refreshDone'));
+          this.toast.show(this.label('refreshDone'));
           this.focusResult();
         }
       },
@@ -1009,7 +1010,7 @@ export class AdminConsoleComponent {
       async () => {
         await this.load(this.page(), true);
         if (!this.error()) {
-          this.success.set(this.label('deletionProcessed'));
+          this.toast.show(this.label('deletionProcessed'));
           this.focusResult();
         }
       },
@@ -1031,7 +1032,6 @@ export class AdminConsoleComponent {
     const generation = this.generation;
     this.busy.set(true);
     this.error.set('');
-    this.success.set('');
     try {
       const csrf =
         this.document.cookie

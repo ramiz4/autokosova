@@ -103,6 +103,7 @@ export const ADMIN_MANAGEMENT_SECTIONS = [
   'garages',
   'users',
   'privacy',
+  'policy',
   'audit',
   'catalog',
   'support',
