@@ -14,12 +14,12 @@ import { staffCopy } from '../shared/staff-copy';
     <div class="border-b border-slate-200 bg-white">
       <app-site-header [compact]="true" [active]="admin() ? 'admin' : 'moderation'" />
     </div>
-    <div class="mx-auto max-w-7xl px-4 py-4 text-ink sm:px-6 sm:py-6">
+    <div class="mx-auto max-w-340 px-4 py-4 text-ink sm:px-6 sm:py-6">
       <div class="mb-4 lg:hidden">
         <app-admin-navigation [admin]="admin()" [active]="active()" />
       </div>
-      <div class="lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-8">
-        <aside class="hidden border-r border-slate-200 pr-4 lg:block">
+      <div class="lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
+        <aside class="hidden border-r border-slate-200 pr-6 lg:block">
           <div class="sticky top-6">
             <app-admin-navigation [admin]="admin()" [active]="active()" />
           </div>
