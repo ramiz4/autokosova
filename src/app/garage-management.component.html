@@ -1,0 +1,124 @@
+<div class="min-h-screen bg-brand/5 font-sans text-ink">
+  <app-confirmation-dialog #confirmation />
+  <app-auth-required-dialog
+    [open]="account.state() === 'guest'"
+    [loginAvailable]="account.loginAvailable() !== false"
+    [loginUrl]="loginUrl()"
+  />
+  <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
+    <app-site-header
+      [compact]="true"
+      active="garage"
+      [loginReturnTo]="language.link('garage-management')"
+    />
+  </div>
+  <main class="mx-auto w-full max-w-340 px-4 pt-6 pb-14 sm:px-6">
+    <header class="my-8 flex flex-wrap items-center justify-between gap-5">
+      <div>
+        <h1 class="text-[clamp(28px,4vw,36px)] font-bold tracking-[-.035em]">
+          {{ management.title }}
+        </h1>
+        <p class="mt-3 text-[15px] text-muted">{{ management.intro }}</p>
+      </div>
+      <a
+        appButton
+        size="compact"
+        data-new-garage
+        class="max-[480px]:w-full"
+        [routerLink]="language.link('onboarding')"
+        ><lucide-icon [name]="PlusIcon" class="size-5" />{{ management.create }}</a
+      >
+    </header>
+    @if (message()) {
+      <p role="status" class="mb-4 rounded-xl bg-white p-4">{{ message() }}</p>
+    }
+    @switch (state()) {
+      @case ('loading') {
+        <p class="rounded-2xl bg-white p-8" role="status">{{ management.loading }}</p>
+      }
+      @case ('error') {
+        <button appButton="outline" data-garages-error type="button" (click)="refresh()">
+          {{ management.retry }}
+        </button>
+      }
+      @case ('forbidden') {
+        <p class="rounded-2xl bg-white p-8">{{ management.forbidden }}</p>
+      }
+      @case ('ready') {
+        @if (!garages().length) {
+          <p data-garages-empty class="rounded-2xl bg-white p-8">{{ management.empty }}</p>
+        }
+        <ul class="grid gap-5 md:grid-cols-2">
+          @for (garage of garages(); track garage.id) {
+            <li
+              class="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+            >
+              <div class="relative flex h-48 items-center justify-center bg-slate-100 sm:h-52">
+                @if (photoUrl(garage); as photo) {
+                  <img
+                    data-garage-photo
+                    [src]="photo"
+                    alt=""
+                    width="560"
+                    height="224"
+                    loading="lazy"
+                    referrerpolicy="no-referrer"
+                    class="h-full w-full object-cover"
+                    (error)="photoFailed(garage.id)"
+                  />
+                } @else {
+                  <lucide-icon [name]="ShieldCheckIcon" class="size-12 text-brand" />
+                }
+                <span
+                  [class]="
+                    garage.publicationState === 'published'
+                      ? 'absolute top-3 right-3 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm'
+                      : 'absolute top-3 right-3 rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand-dark shadow-sm'
+                  "
+                  >{{ stateLabel(garage.publicationState) }}</span
+                >
+              </div>
+              <div class="flex grow flex-col p-5 sm:p-6">
+                <h2 class="text-xl leading-7 font-bold">{{ garage.name }}</h2>
+                <p class="mt-2 flex items-center gap-1.5 text-sm text-muted">
+                  <lucide-icon [name]="MapPinIcon" class="size-4" />{{ placeLabel(garage.placeId) }}
+                </p>
+                <ul class="mt-4 flex flex-wrap gap-2">
+                  @for (service of garage.serviceCategoryIds?.slice(0, 3) ?? []; track service) {
+                    <li
+                      class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-600"
+                    >
+                      {{ language.serviceLabel(service) }}
+                    </li>
+                  }
+                </ul>
+              </div>
+              <div
+                class="mt-auto grid gap-2 border-t border-slate-100 px-5 py-2 sm:px-6"
+                [class.grid-cols-2]="garage.canDelete"
+              >
+                <a
+                  class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                  data-edit-garage
+                  [routerLink]="editLink(garage.id)"
+                  ><lucide-icon [name]="PencilIcon" class="size-4" />{{ management.edit }}</a
+                >
+                @if (garage.canDelete) {
+                  <button
+                    type="button"
+                    data-delete-garage
+                    class="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg px-2 text-sm font-semibold text-muted hover:bg-rose-50 hover:text-rose-800 focus-visible:outline-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-60"
+                    [disabled]="deletingId() === garage.id"
+                    (click)="remove(garage)"
+                  >
+                    <lucide-icon [name]="TrashIcon" class="size-4" />{{ management.remove }}
+                  </button>
+                }
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    }
+  </main>
+</div>

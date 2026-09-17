@@ -9,6 +9,7 @@ const de = {
   inactive: 'Inaktiv',
   sort: 'Neueste zuerst',
   filterLabel: 'Anfragen filtern',
+  search: 'Anfragen durchsuchen…',
   actions: 'Weitere Aktionen',
   edit: 'Bearbeiten',
   deactivate: 'Deaktivieren',
@@ -57,10 +58,8 @@ const de = {
   attachmentsKept:
     'Vorhandene Anhänge bleiben unverändert. Neue Dateien werden hier nicht hochgeladen.',
   closeEditor: 'Editor schließen',
-  privateLabel: 'Privat',
   viewShort: 'Details',
   findShort: 'Werkstätten finden',
-  activateToSearch: 'Zum Suchen im Menü aktivieren.',
   emptyIconLabel: 'Gespeicherte Anfragen',
   title: 'Meine Anfragen',
   description:
@@ -105,6 +104,7 @@ export const inquiriesCopy: Readonly<
     inactive: 'Joaktive',
     sort: 'Më të rejat së pari',
     filterLabel: 'Filtro kërkesat',
+    search: 'Kërko kërkesat…',
     actions: 'Veprime të tjera',
     edit: 'Ndrysho',
     deactivate: 'Çaktivizo',
@@ -152,10 +152,8 @@ export const inquiriesCopy: Readonly<
     attachmentsKept:
       'Bashkëngjitjet ekzistuese mbeten të pandryshuara. Këtu nuk ngarkohen skedarë të rinj.',
     closeEditor: 'Mbyll redaktorin',
-    privateLabel: 'Private',
     viewShort: 'Detaje',
     findShort: 'Gjej servise',
-    activateToSearch: 'Aktivizoje në meny për të kërkuar.',
     emptyIconLabel: 'Kërkesat e ruajtura',
     title: 'Kërkesat e mia',
     description:
@@ -194,6 +192,7 @@ export const inquiriesCopy: Readonly<
     inactive: 'Inactive',
     sort: 'Newest first',
     filterLabel: 'Filter inquiries',
+    search: 'Search inquiries…',
     actions: 'More actions',
     edit: 'Edit',
     deactivate: 'Deactivate',
@@ -239,10 +238,8 @@ export const inquiriesCopy: Readonly<
     validation: 'Check the service, locations, vehicle details and date order.',
     attachmentsKept: 'Existing attachments stay unchanged. New files are not uploaded here.',
     closeEditor: 'Close editor',
-    privateLabel: 'Private',
     viewShort: 'Details',
     findShort: 'Find garages',
-    activateToSearch: 'Activate in the menu to search.',
     emptyIconLabel: 'Saved inquiries',
     title: 'My inquiries',
     description:

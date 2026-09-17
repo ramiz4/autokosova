@@ -10,9 +10,9 @@ import {
 } from '@angular/ssr/node';
 import { join } from 'node:path';
 import { createServer, isNoIndexPath } from './server/app';
-import { AccessStore } from './server/access';
 import { isAccountPagePath } from './server/account-profile';
 import { readZitadelOidcConfig } from './server/oidc';
+import { accessStoreForRuntime } from './server/runtime-access-store';
 import {
   PostgresRepairRequestStore,
   UnavailableRepairRequestStore,
@@ -30,7 +30,7 @@ const databaseUrl = process.env['DATABASE_URL'];
 if (process.env['NODE_ENV'] === 'production' && !databaseUrl) {
   throw new Error('DATABASE_URL is required for a production server.');
 }
-const accessStore = new AccessStore();
+const accessStore = accessStoreForRuntime();
 const app = createServer({
   accessStore,
   ...(databaseUrl ? { administrationStore: new PostgresAdministrationStore(databaseUrl) } : {}),

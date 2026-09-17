@@ -1,9 +1,8 @@
 import {
   LucideArrowRight,
   LucideBadgeCheck,
-  LucideChevronDown,
   LucideClock,
-  LucideEllipsis,
+  LucideEllipsisVertical,
   LucideFileText,
   LucideGlobe,
   LucideInfo,
@@ -19,7 +18,9 @@ import type { AdminSupportContext } from '../shared/administration';
 import { garageManagementCopy } from '../shared/garage-management-copy';
 import { accountType } from '../shared/account';
 import { DOCUMENT, isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
-import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
+import { CdkMenuTrigger } from '@angular/cdk/menu';
+import { HlmDropdownMenuImports } from '@autokosova/ui/dropdown-menu';
+import { ActionMenuImports } from './ui/action-menu.directive';
 import {
   afterNextRender,
   ChangeDetectorRef,
@@ -36,7 +37,7 @@ import {
   untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CATALOG_PLACES, SERVICE_CATEGORY_LABELS, VEHICLE_MAKE_LABELS } from '../shared/catalog';
 import {
   GARAGE_LANGUAGES,
@@ -53,6 +54,7 @@ import type {
 import { LanguageService } from './language.service';
 import { AccountSessionService } from './account-session.service';
 import { SiteHeaderComponent } from './site-header.component';
+import { ButtonDirective } from './ui/button.directive';
 import { LucideIconComponent } from './ui/lucide-icon.component';
 import { MultiSelectComponent, type SelectionOption } from './ui/multi-select.component';
 import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
@@ -101,12 +103,12 @@ function blankForm(): Form {
     RouterLink,
     NgTemplateOutlet,
     SiteHeaderComponent,
+    ButtonDirective,
     LucideIconComponent,
     MultiSelectComponent,
     ConfirmationDialogComponent,
-    CdkMenu,
-    CdkMenuItem,
-    CdkMenuTrigger,
+    HlmDropdownMenuImports,
+    ActionMenuImports,
   ],
   templateUrl: './garage-onboarding.component.html',
   styleUrl: './garage-onboarding.component.scss',
@@ -118,9 +120,8 @@ export class GarageOnboardingComponent {
   readonly confirmation = viewChild.required<ConfirmationDialogComponent>('confirmation');
   readonly ArrowRightIcon: LucideIcon = LucideArrowRight;
   readonly BadgeCheckIcon: LucideIcon = LucideBadgeCheck;
-  readonly ChevronDownIcon: LucideIcon = LucideChevronDown;
   readonly ClockIcon: LucideIcon = LucideClock;
-  readonly EllipsisIcon: LucideIcon = LucideEllipsis;
+  readonly EllipsisIcon: LucideIcon = LucideEllipsisVertical;
   readonly FileTextIcon: LucideIcon = LucideFileText;
   readonly GlobeIcon: LucideIcon = LucideGlobe;
   readonly InfoIcon: LucideIcon = LucideInfo;
@@ -144,6 +145,8 @@ export class GarageOnboardingComponent {
   protected readonly account = inject(AccountSessionService);
   protected readonly accountType = accountType;
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -163,30 +166,19 @@ export class GarageOnboardingComponent {
   protected get management() {
     return garageManagementCopy[this.language.language];
   }
-  protected readonly overviewMenuPositions = [
-    { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
-    { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -8 },
-  ] satisfies CdkMenuTrigger['menuPosition'];
   protected publicationState: GaragePublicationState = 'draft';
   protected locationVerified = false;
   protected statusKnown = true;
   protected savedSnapshot = JSON.stringify(this.form);
   protected owned: OwnedGarage[] = [];
-  protected overviewSearch = '';
-  protected overviewState: GaragePublicationState | 'all' = 'all';
-  protected overviewSort: 'updated' | 'name' = 'updated';
   protected ownedLoadFailed = false;
   protected ownedLoading = false;
   protected ownedLoaded = false;
-  protected editing = false;
+  protected editing = this.route.snapshot.data['editor'] === true;
   protected activeSection = 'garage-basics';
   private readonly workspaceTitle = viewChild<ElementRef<HTMLElement>>('workspaceTitle');
   protected get managing(): boolean {
-    return (
-      !this.supportMode &&
-      this.account.signedIn() &&
-      accountType(this.account.identity()) === 'garage'
-    );
+    return !this.supportMode && this.route.snapshot.data['editor'] === true;
   }
   protected get showForm(): boolean {
     return this.supportMode || !this.managing || this.editing;
@@ -198,41 +190,6 @@ export class GarageOnboardingComponent {
         this.account.identity()?.userId === this.dataOwnerId &&
         !this.account.busy())
     );
-  }
-  protected get filteredOwned(): OwnedGarage[] {
-    const query = this.overviewSearch.trim().toLocaleLowerCase();
-    return this.owned
-      .filter((garage) => {
-        const matchesState =
-          this.overviewState === 'all' || garage.publicationState === this.overviewState;
-        const matchesQuery =
-          !query ||
-          [garage.name, this.placeLabel(garage.placeId), ...this.serviceLabels(garage)]
-            .join(' ')
-            .toLocaleLowerCase()
-            .includes(query);
-        return matchesState && matchesQuery;
-      })
-      .sort((left, right) => {
-        if (this.overviewSort === 'name')
-          return (
-            left.name.localeCompare(right.name, this.language.language) ||
-            left.id.localeCompare(right.id)
-          );
-        const leftTime = left.updatedAt ? Date.parse(left.updatedAt) : Number.NEGATIVE_INFINITY;
-        const rightTime = right.updatedAt ? Date.parse(right.updatedAt) : Number.NEGATIVE_INFINITY;
-        return (
-          rightTime - leftTime ||
-          left.name.localeCompare(right.name, this.language.language) ||
-          left.id.localeCompare(right.id)
-        );
-      });
-  }
-  protected get publishedCount(): number {
-    return this.owned.filter((garage) => garage.publicationState === 'published').length;
-  }
-  protected get draftCount(): number {
-    return this.owned.filter((garage) => garage.publicationState === 'draft').length;
   }
   protected placeLabel(placeId: string): string {
     return CATALOG_PLACES.find((place) => place.id === placeId)?.label ?? placeId;
@@ -253,9 +210,6 @@ export class GarageOnboardingComponent {
       { day: '2-digit', month: 'short', year: 'numeric' },
     ).format(new Date(value));
   }
-  protected cardDescription(garage: OwnedGarage): string {
-    return garage.description?.trim() || this.management.descriptionUnavailable;
-  }
   private captureContext() {
     const userId = this.account.identity()?.userId;
     this.dataOwnerId ??= userId;
@@ -275,9 +229,7 @@ export class GarageOnboardingComponent {
   }
   protected async backToOverview(): Promise<void> {
     if (!(await this.canLeave())) return;
-    this.clearForm();
-    this.editing = false;
-    this.focusTitle();
+    void this.router.navigateByUrl(this.language.link('garage-management'));
   }
   protected readonly places = CATALOG_PLACES;
   protected get copy() {
@@ -301,7 +253,11 @@ export class GarageOnboardingComponent {
     }));
   }
   protected get loginUrl(): string {
-    return '/auth/login?returnTo=' + encodeURIComponent(this.language.link('onboarding'));
+    const editorId = this.route.snapshot.paramMap.get('garageId');
+    const returnTo = editorId
+      ? this.language.link('garage-management-edit', editorId)
+      : this.language.link('onboarding');
+    return '/auth/login?returnTo=' + encodeURIComponent(returnTo);
   }
   protected get unchanged(): boolean {
     return JSON.stringify(this.form) === this.savedSnapshot;
@@ -451,7 +407,6 @@ export class GarageOnboardingComponent {
         }
         if (state === 'ready' && id) {
           this.dataOwnerId = id;
-          if (this.browser && !this.ownedLoaded && !this.ownedLoading) void this.loadOwned();
         }
         this.cdr.markForCheck();
       });
@@ -478,8 +433,8 @@ export class GarageOnboardingComponent {
   protected async refreshSession(): Promise<void> {
     await this.account.refresh();
     this.needsLogin = !this.account.signedIn();
-    if (this.account.signedIn()) await this.loadOwned();
-    else this.owned = [];
+    const editorId = this.route.snapshot.paramMap.get('garageId');
+    if (editorId && this.account.signedIn()) await this.open(editorId);
     this.cdr.markForCheck();
   }
   private async loadOwned(): Promise<void> {
@@ -624,6 +579,12 @@ export class GarageOnboardingComponent {
         this.editing = true;
         await this.account.refresh();
         if (!this.currentContext(context)) return;
+        if (this.route.snapshot.data['create'] === true) {
+          await this.router.navigateByUrl(
+            this.language.link('garage-management-edit', this.garageId),
+          );
+          return;
+        }
       }
       this.form = profile;
       this.savedSnapshot = JSON.stringify(this.form);

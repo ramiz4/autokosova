@@ -1,28 +1,27 @@
 import {
-  LucideArrowRight,
   LucideCar,
+  LucideCalendarDays,
   LucideCheck,
-  LucideChevronDown,
-  LucideChevronRight,
-  LucideClock,
-  LucideEllipsis,
+  LucideEllipsisVertical,
+  LucideEye,
   LucideFileText,
   LucideGlobe,
-  LucideInfo,
   LucideMapPin,
   LucidePause,
   LucidePencil,
   LucidePlus,
-  LucideShieldCheck,
+  LucideSearch,
   LucideTrash2,
-  LucideUser,
   LucideWrench,
+  LucideX,
   type LucideIcon,
 } from '@lucide/angular';
 import { DOCUMENT } from '@angular/common';
-import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
+import { CdkMenuTrigger } from '@angular/cdk/menu';
+import { HlmDropdownMenuImports } from '@autokosova/ui/dropdown-menu';
 import {
   Component,
+  computed,
   DestroyRef,
   Injector,
   afterNextRender,
@@ -40,7 +39,6 @@ import { requestCopy, type RequestCopyKey } from '../shared/request-copy';
 import {
   buildRepairRequestSearchParams,
   REPAIR_REQUEST_SERVICE_CATEGORIES,
-  type RepairRequestVehicle,
 } from '../shared/repair-request';
 import type { RepairRequestSummary } from '../shared/saved-repair-request';
 import { AccountSessionService } from './account-session.service';
@@ -51,6 +49,11 @@ import { InquiryEditorComponent } from './inquiry-editor.component';
 import { InquiryDeleteDialogComponent } from './inquiry-delete-dialog.component';
 import { LucideIconComponent } from './ui/lucide-icon.component';
 import { ButtonDirective } from './ui/button.directive';
+import { AuthRequiredDialogComponent } from './ui/auth-required-dialog.component';
+import { ActionMenuImports } from './ui/action-menu.directive';
+import { SelectFieldComponent, type SelectFieldOption } from './ui/select-field.component';
+
+type InquiryToast = 'updated' | 'deactivated' | 'reactivated' | 'deleted';
 
 @Component({
   selector: 'app-inquiries',
@@ -61,62 +64,66 @@ import { ButtonDirective } from './ui/button.directive';
     LucideIconComponent,
     InquiryEditorComponent,
     InquiryDeleteDialogComponent,
-    CdkMenu,
-    CdkMenuItem,
-    CdkMenuTrigger,
+    HlmDropdownMenuImports,
+    AuthRequiredDialogComponent,
+    SelectFieldComponent,
+    ActionMenuImports,
   ],
-  styleUrl: './inquiries.component.scss',
   providers: [SavedRepairRequestsService],
   templateUrl: './inquiries.component.html',
 })
 export class InquiriesComponent {
-  readonly ArrowRightIcon: LucideIcon = LucideArrowRight;
   readonly CarIcon: LucideIcon = LucideCar;
+  readonly CalendarIcon: LucideIcon = LucideCalendarDays;
   readonly CheckIcon: LucideIcon = LucideCheck;
-  readonly ChevronDownIcon: LucideIcon = LucideChevronDown;
-  readonly ChevronRightIcon: LucideIcon = LucideChevronRight;
-  readonly ClockIcon: LucideIcon = LucideClock;
-  readonly EllipsisIcon: LucideIcon = LucideEllipsis;
+  readonly EllipsisIcon: LucideIcon = LucideEllipsisVertical;
+  readonly EyeIcon: LucideIcon = LucideEye;
   readonly FileTextIcon: LucideIcon = LucideFileText;
   readonly GlobeIcon: LucideIcon = LucideGlobe;
-  readonly InfoIcon: LucideIcon = LucideInfo;
   readonly MapPinIcon: LucideIcon = LucideMapPin;
   readonly PauseIcon: LucideIcon = LucidePause;
   readonly PencilIcon: LucideIcon = LucidePencil;
   readonly PlusIcon: LucideIcon = LucidePlus;
-  readonly ShieldCheckIcon: LucideIcon = LucideShieldCheck;
+  readonly SearchIcon: LucideIcon = LucideSearch;
   readonly TrashIcon: LucideIcon = LucideTrash2;
-  readonly UserIcon: LucideIcon = LucideUser;
   readonly WrenchIcon: LucideIcon = LucideWrench;
+  readonly XIcon: LucideIcon = LucideX;
 
   protected readonly account = inject(AccountSessionService);
   protected readonly language = inject(LanguageService);
   protected readonly saved = inject(SavedRepairRequestsService);
+  protected readonly inquirySearch = signal('');
+  protected readonly visibleRequests = computed(() => {
+    const query = this.inquirySearch().trim().toLocaleLowerCase(this.language.language);
+    if (!query) return this.saved.requests();
+    return this.saved
+      .requests()
+      .filter((request) =>
+        [
+          this.language.serviceLabel(request.serviceCategoryId),
+          request.symptomPreview ?? '',
+          this.vehicleLabel(request.vehicle),
+          ...request.areas.map((area) => this.placeLabel(area.placeId)),
+        ]
+          .join(' ')
+          .toLocaleLowerCase(this.language.language)
+          .includes(query),
+      );
+  });
 
   protected readonly filters = ['all', 'active', 'inactive'] as const;
-  protected readonly actionsMenuPositions = [
-    {
-      originX: 'end',
-      originY: 'bottom',
-      overlayX: 'end',
-      overlayY: 'top',
-      offsetY: 6,
-    },
-    {
-      originX: 'end',
-      originY: 'top',
-      overlayX: 'end',
-      overlayY: 'bottom',
-      offsetY: -6,
-    },
-  ] satisfies CdkMenuTrigger['menuPosition'];
+  protected filterOptions(): readonly SelectFieldOption[] {
+    return this.filters.map((filter) => ({ value: filter, label: this.text(filter) }));
+  }
   protected readonly editingId = signal<string | null>(null);
   protected readonly deleting = signal<RepairRequestSummary | null>(null);
+  protected readonly toast = signal<InquiryToast | null>(null);
   private readonly editor = viewChild(InquiryEditorComponent);
   private readonly actionMenus = viewChildren(CdkMenuTrigger);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
+  private toastTimer?: ReturnType<typeof setTimeout>;
 
   constructor() {
     effect(() => {
@@ -128,16 +135,32 @@ export class InquiriesComponent {
       });
     });
     effect(() => this.language.setPageText(this.text('title'), this.text('description'), true));
+    effect(() => {
+      const notice = this.saved.notice();
+      untracked(() => this.showToast(notice));
+    });
     // Browser-only session validation; no private data is fetched into SSR/TransferState.
     afterNextRender(() => {
       void this.account.refresh();
     });
+    this.destroyRef.onDestroy(() => clearTimeout(this.toastTimer));
+  }
+  protected dismissToast(): void {
+    clearTimeout(this.toastTimer);
+    this.toastTimer = undefined;
+    this.toast.set(null);
   }
 
   canLeave(): boolean | Promise<boolean> {
     return this.account.state() !== 'ready' || this.account.busy()
       ? true
       : (this.editor()?.canLeave() ?? true);
+  }
+  private showToast(notice: InquiryToast | null): void {
+    clearTimeout(this.toastTimer);
+    this.toastTimer = undefined;
+    this.toast.set(notice);
+    if (notice) this.toastTimer = setTimeout(() => this.dismissToast(), 5000);
   }
   protected async edit(request: RepairRequestSummary, menu: CdkMenuTrigger): Promise<void> {
     if (this.saved.writeState() === 'saving') return;
@@ -233,37 +256,5 @@ export class InquiriesComponent {
       dateStyle: 'medium',
       ...(calendar ? { timeZone: 'UTC' } : { timeStyle: 'short' as const }),
     }).format(new Date(calendar ? `${value}T00:00:00Z` : value));
-  }
-
-  protected vehicleEntries(
-    vehicle: RepairRequestVehicle | undefined,
-  ): readonly { label: string; value: string }[] {
-    if (!vehicle) return [];
-    const labels: Readonly<Record<keyof RepairRequestVehicle, RequestCopyKey>> = {
-      makeId: 'make',
-      model: 'model',
-      year: 'year',
-      vehicleClass: 'class',
-      fuel: 'fuel',
-      engineDetails: 'engine',
-      transmissionDetails: 'transmission',
-      mileageKm: 'mileage',
-    };
-    return (Object.keys(labels) as (keyof RepairRequestVehicle)[]).flatMap((key) => {
-      const value = vehicle[key];
-      if (value === undefined || value === '') return [];
-      let display = String(value);
-      if (key === 'makeId') display = VEHICLE_MAKE_LABELS[display] ?? display;
-      else if (
-        key === 'vehicleClass' ||
-        key === 'fuel' ||
-        (key === 'transmissionDetails' &&
-          ['manual', 'automatic', 'semiAutomatic', 'other'].includes(display))
-      ) {
-        display = this.requestText(display as RequestCopyKey);
-      } else if (key === 'mileageKm')
-        display = `${Number(value).toLocaleString(this.language.language)} km`;
-      return [{ label: this.requestText(labels[key]), value: display }];
-    });
   }
 }

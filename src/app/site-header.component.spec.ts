@@ -331,7 +331,9 @@ it('keeps a garage operator in the business menu even after deleting the last ga
   await fixture.whenStable();
   const menu = accountPanel()!;
   expect(menu.textContent).toContain('Werkstattbetreiber');
-  expect(menu.querySelector('[data-account-garages]')?.getAttribute('href')).toBe('/garages/new');
+  expect(menu.querySelector('[data-account-garages]')?.getAttribute('href')).toBe(
+    '/garages/manage',
+  );
   expect(menu.querySelector('[data-account-inquiries]')).toBeNull();
   expect(menu.querySelector('[data-account-favorites]')?.getAttribute('href')).toBe('/favorites');
 });

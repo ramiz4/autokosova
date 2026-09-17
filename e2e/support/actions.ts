@@ -73,9 +73,6 @@ export async function checkActions(
   const disabledSearch = card(page, inactiveId).locator('[data-inquiry-search-disabled]');
   await expect(disabledSearch).toBeDisabled();
   await expect(disabledSearch).toHaveAttribute('aria-describedby', 'search-help-' + inactiveId);
-  await expect(card(page, inactiveId).locator('[data-inquiry-search-help]')).toHaveText(
-    text.activateToSearch,
-  );
   await expect(card(page, inactiveId).locator('[data-inquiry-search]')).toHaveCount(0);
   for (const [id, active] of [
     [activeId, true],

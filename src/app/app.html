@@ -1,6 +1,6 @@
 <a
   href="#hauptinhalt"
-  class="fixed left-4 top-4 z-[60] -translate-y-24 rounded-xl bg-white p-4 font-bold text-ink focus:translate-y-0"
+  class="fixed left-4 top-4 z-60 -translate-y-24 rounded-xl bg-white p-4 font-bold text-ink focus:translate-y-0"
   >{{ language.t('landing.skip') }}</a
 >
 <main id="hauptinhalt" tabindex="-1" class="bg-white font-sans text-ink">
@@ -8,7 +8,7 @@
     <app-site-header [compact]="true" />
   </div>
   <section
-    class="relative isolate min-h-dvh bg-[#082544] px-4 py-12 sm:px-8 sm:py-16 lg:px-12 lg:py-20 2xl:flex 2xl:flex-col"
+    class="relative isolate min-h-dvh bg-black/80 px-4 py-12 sm:px-8 sm:py-16 lg:px-12 lg:py-20 2xl:flex 2xl:flex-col"
     aria-labelledby="landing-title"
   >
     <picture class="pointer-events-none absolute inset-0 -z-20">
@@ -25,8 +25,8 @@
     <div
       class="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(1,24,47,0.87)_0%,rgba(1,24,47,0.64)_39%,rgba(1,24,47,0.16)_75%),linear-gradient(0deg,rgba(1,21,41,0.65),transparent_60%)]"
     ></div>
-    <div class="relative mx-auto w-full max-w-[1360px] 2xl:my-auto">
-      <div class="max-w-[790px] 2xl:max-w-[62%]">
+    <div class="relative mx-auto w-full max-w-340 2xl:my-auto">
+      <div class="max-w-197.5 2xl:max-w-[62%]">
         <h1
           id="landing-title"
           class="text-[clamp(2.35rem,5.3vw,4.8rem)] font-bold leading-[0.98] tracking-[-0.035em] text-white 2xl:text-[clamp(4.8rem,4vw,6.25rem)]"
@@ -36,7 +36,7 @@
           <span class="mt-1 block text-sky-accent">{{ language.t('landing.titleAccent') }}</span>
         </h1>
         <p
-          class="mt-5 max-w-[630px] text-lg leading-[1.35] text-blue-100 sm:text-xl lg:text-[26px] 2xl:max-w-[760px] 2xl:text-3xl"
+          class="mt-5 max-w-157.5 text-lg leading-[1.35] text-blue-100 sm:text-xl lg:text-[26px] 2xl:max-w-190 2xl:text-3xl"
         >
           {{ language.t('landing.intro') }}
         </p>
@@ -55,7 +55,7 @@
             appButton
             shape="pill"
             [routerLink]="language.link('request')"
-            class="w-full rounded-full border-sky-accent/50 px-6 py-4 text-lg shadow-[0_8px_36px_-8px_#008cff] sm:min-w-[425px] lg:min-h-[70px] lg:text-2xl"
+            class="w-full rounded-full border-sky-accent/50 px-6 py-4 text-lg shadow-xl shadow-brand/40 sm:min-w-106.25 lg:min-h-17.5 lg:text-2xl"
             >{{ language.t('landing.request') }}
             <lucide-icon [name]="ArrowRightIcon" class="size-7"
           /></a>
@@ -68,7 +68,7 @@
         </div>
       </div>
       <aside
-        class="mt-6 flex max-w-[480px] items-center gap-5 rounded-3xl border border-white/30 bg-slate-900/55 p-5 text-white backdrop-blur-md xl:absolute xl:bottom-16 xl:right-0 xl:mt-0 xl:p-6 2xl:bottom-8 2xl:right-6"
+        class="mt-6 flex max-w-120 items-center gap-5 rounded-3xl border border-white/30 bg-slate-900/55 p-5 text-white backdrop-blur-md xl:absolute xl:bottom-16 xl:right-0 xl:mt-0 xl:p-6 2xl:bottom-8 2xl:right-6"
       >
         <span
           class="flex size-16 shrink-0 items-center justify-center rounded-full border border-white/60 bg-white/10 text-sky-accent"
@@ -87,7 +87,7 @@
     class="relative z-10 -mt-1 rounded-t-[36px] bg-white px-6 py-8 lg:-mt-5 lg:rounded-t-[48px] lg:px-12 lg:py-9"
     [attr.aria-label]="language.t('landing.benefits')"
   >
-    <div class="mx-auto grid max-w-[1360px] gap-7 lg:grid-cols-3 lg:gap-8">
+    <div class="mx-auto grid max-w-340 gap-7 lg:grid-cols-3 lg:gap-8">
       <app-benefit-card
         [icon]="ClockIcon"
         [title]="language.t('landing.timeTitle')"
@@ -108,8 +108,8 @@
     </div>
   </section>
 
-  <section class="bg-[#f3f7fd] px-6 py-16 sm:px-10 lg:py-24" aria-labelledby="search-heading">
-    <div class="mx-auto grid max-w-[1360px] items-center gap-10 lg:grid-cols-2 lg:gap-20">
+  <section class="bg-brand/5 px-6 py-16 sm:px-10 lg:py-24" aria-labelledby="search-heading">
+    <div class="mx-auto grid max-w-340 items-center gap-10 lg:grid-cols-2 lg:gap-20">
       <div>
         <p class="text-xs font-bold tracking-[0.18em] text-brand-dark">
           {{ language.t('landing.searchEyebrow') }}

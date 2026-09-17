@@ -59,9 +59,9 @@ export interface SelectionOption {
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1">
           @for (value of selectedValues; track value) {
             <span
-              class="inline-flex min-w-0 max-w-full items-center rounded-lg bg-blue-50 pl-2 text-xs text-[#284878]"
+              class="inline-flex min-w-0 max-w-full items-center rounded-lg bg-blue-50 pl-2 text-xs text-brand-dark"
             >
-              <span class="break-words">{{ optionLabel(value) }}</span>
+              <span class="wrap-break-word">{{ optionLabel(value) }}</span>
               <button
                 type="button"
                 class="flex size-11 shrink-0 items-center justify-center rounded-lg hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-brand"

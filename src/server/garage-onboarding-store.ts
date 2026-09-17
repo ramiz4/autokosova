@@ -6,6 +6,7 @@ import {
 } from '../shared/administration';
 import { randomUUID } from 'node:crypto';
 import type { OwnGarageMembership } from '../shared/account';
+import { LOCAL_DEMO_PHOTOS, isLocalDemoGarageId } from '../shared/local-demo';
 import pg from 'pg';
 import { AccessError, DuplicateGarageError, type Principal, type GarageConsent } from './access';
 import {
@@ -29,6 +30,7 @@ export interface OwnedGarageSummary {
   readonly description?: string;
   readonly id: string;
   readonly name: string;
+  readonly photoId?: string;
   readonly placeId: string;
   readonly publicationState: GaragePublicationState;
   readonly serviceCategoryIds: readonly string[];
@@ -204,10 +206,17 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
   async listOwnedGarages(principal: Principal) {
     return this.transaction(principal, async (client) => {
       const result = await client.query<
-        Omit<OwnedGarageSummary, 'updatedAt'> & { readonly updatedAt?: Date }
+        Omit<OwnedGarageSummary, 'photoId' | 'updatedAt'> & {
+          readonly photoId?: string | null;
+          readonly updatedAt?: Date;
+        }
       >(
         `SELECT w.id, w.name, w.publication_state AS "publicationState", w.place_id AS "placeId",
           w.description, w.updated_at AS "updatedAt",
+          CASE WHEN w.publication_state='published' THEN
+            (SELECT p.id FROM garage_photo p WHERE p.garage_id=w.id AND p.visibility='approved'
+              ORDER BY p.created_at,p.id LIMIT 1)
+          END AS "photoId",
           ARRAY(SELECT service_category_id FROM garage_service_category WHERE garage_id=w.id
             ORDER BY service_category_id) AS "serviceCategoryIds",
           EXISTS(SELECT 1 FROM membership owner WHERE owner.garage_id=w.id
@@ -217,10 +226,18 @@ export class PostgresGarageOnboardingStore implements GarageOnboardingStore {
          ORDER BY w.name,w.id`,
         [principal.userId],
       );
-      return result.rows.map(({ updatedAt, ...garage }) => ({
-        ...garage,
-        ...(updatedAt ? { updatedAt: updatedAt.toISOString() } : {}),
-      }));
+      return result.rows.map(({ photoId, updatedAt, ...garage }) => {
+        const effectivePhotoId =
+          photoId ??
+          (garage.publicationState === 'published' && isLocalDemoGarageId(garage.id)
+            ? LOCAL_DEMO_PHOTOS[0].id
+            : undefined);
+        return {
+          ...garage,
+          ...(effectivePhotoId ? { photoId: effectivePhotoId } : {}),
+          ...(updatedAt ? { updatedAt: updatedAt.toISOString() } : {}),
+        };
+      });
     });
   }
   async getPrivateGarage(principal: Principal, id: string): Promise<PrivateGarage> {

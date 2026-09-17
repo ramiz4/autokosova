@@ -10,7 +10,13 @@ it.each(['', 'sq', 'en'])(
   async (locale) => {
     const base = locale ? `/${locale}` : '';
     const router = TestBed.inject(Router);
-    for (const path of ['/inquiry', '/garages/new', '/garages/demo', '/garages']) {
+    for (const path of [
+      '/inquiry',
+      '/garages/new',
+      '/garages/manage',
+      '/garages/demo',
+      '/garages',
+    ]) {
       await router.navigateByUrl(base + path);
       expect(router.url).toBe(base + path);
     }
@@ -18,6 +24,10 @@ it.each(['', 'sq', 'en'])(
     expect(TestBed.inject(LanguageService).switchUrl('en')).toBe('/en/garages/demo');
     expect(routePath('sq', 'request')).toBe('/sq/inquiry');
     expect(routePath('sq', 'onboarding')).toBe('/sq/garages/new');
+    expect(routePath('sq', 'garage-management')).toBe('/sq/garages/manage');
+    expect(routePath('sq', 'garage-management-edit', 'demo')).toBe('/sq/garages/manage/demo/edit');
+    expect(routePath('sq', 'inquiry-detail', 'request-1')).toBe('/sq/inquiries/request-1');
+    expect(routePath('sq', 'review-detail', 'review-1')).toBe('/sq/reviews/review-1');
   },
   15_000,
 );
@@ -37,6 +47,8 @@ it.each(['', 'sq', 'en'])('redirects old German links to English paths for /%s',
   }
   await router.navigateByUrl(base + '/suche?service=bremsen&places=xk-pristina:20');
   expect(router.url).toBe(base + '/garages?service=bremsen&places=xk-pristina:20');
+  await router.navigateByUrl(base + '/inquires/request-1');
+  expect(router.url).toBe(base + '/inquiries/request-1');
 });
 
 // Non-landing pages must not pull their component code into the initial shell.
@@ -57,6 +69,18 @@ describe.each(['', 'sq', 'en'])('Route bundle boundaries for /%s', (locale) => {
     ['inquiry', () => import('./repair-request.component').then((m) => m.RepairRequestComponent)],
     ['garages', () => import('./search-handoff.component').then((m) => m.SearchHandoffComponent)],
     [
+      'inquiries/:inquiryId',
+      () => import('./inquiry-detail.component').then((m) => m.InquiryDetailComponent),
+    ],
+    [
+      'reviews/:reviewId',
+      () => import('./review-detail.component').then((m) => m.ReviewDetailComponent),
+    ],
+    [
+      'garages/manage',
+      () => import('./garage-management.component').then((m) => m.GarageManagementComponent),
+    ],
+    [
       'garages/:garageId',
       () => import('./garage-profile.component').then((m) => m.GarageProfileComponent),
     ],
@@ -69,5 +93,6 @@ describe.each(['', 'sq', 'en'])('Route bundle boundaries for /%s', (locale) => {
       expect(route.canDeactivate).toHaveLength(1);
       expect(route.data?.['ownsFooter']).toBe(true);
     }
+    if (path === 'reviews/:reviewId') expect(route.canDeactivate).toHaveLength(1);
   });
 });

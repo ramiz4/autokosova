@@ -85,7 +85,7 @@ describe.each(['', 'sq', 'en'])('Account menu icons for /%s', (locale) => {
         expect(menu.querySelector('[data-account-staff="moderation"]')).toBeNull();
       }
       if (role === 'garage') {
-        expectLinkIcon('[data-account-garages]', 'wrench', '/garages/new');
+        expectLinkIcon('[data-account-garages]', 'wrench', '/garages/manage');
         expect(menu.querySelector('[data-account-inquiries]')).toBeNull();
       } else {
         expectLinkIcon('[data-account-inquiries]', 'message-circle', '/inquiries');

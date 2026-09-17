@@ -87,6 +87,12 @@ function localizedRoutes(prefix: string): Routes {
         import('./account-profile.component').then((module) => module.AccountProfileComponent),
     },
     {
+      path: `${childPrefix}inquiries/:inquiryId`,
+      pathMatch: 'full',
+      loadComponent: () =>
+        import('./inquiry-detail.component').then((module) => module.InquiryDetailComponent),
+    },
+    {
       path: `${childPrefix}inquiries`,
       canDeactivate: [
         (component: import('./inquiries.component').InquiriesComponent | null) =>
@@ -103,13 +109,19 @@ function localizedRoutes(prefix: string): Routes {
         import('./favorites.component').then((module) => module.FavoritesComponent),
     },
     {
+      path: `${childPrefix}reviews/:reviewId`,
+      pathMatch: 'full',
+      loadComponent: () =>
+        import('./review-detail.component').then((module) => module.ReviewDetailComponent),
+      canDeactivate: [
+        (component: import('./review-detail.component').ReviewDetailComponent | null) =>
+          component?.canLeave() ?? true,
+      ],
+    },
+    {
       path: `${childPrefix}reviews`,
       pathMatch: 'full',
       loadComponent: () => import('./reviews.component').then((m) => m.ReviewsComponent),
-      canDeactivate: [
-        (component: import('./reviews.component').ReviewsComponent | null) =>
-          component?.canLeave() ?? true,
-      ],
     },
     {
       path: `${childPrefix}garages/:garageId/reviews/new`,
@@ -121,6 +133,10 @@ function localizedRoutes(prefix: string): Routes {
       ],
     },
     // Compatibility redirects only; generated links always use English route names.
+    {
+      path: `${childPrefix}inquires/:inquiryId`,
+      redirectTo: ({ params }) => `${childPrefix}inquiries/${params['inquiryId']}`,
+    },
     {
       path: `${childPrefix}anfrage`,
       pathMatch: 'full',
@@ -136,12 +152,30 @@ function localizedRoutes(prefix: string): Routes {
       redirectTo: `${childPrefix}garages/:garageId`,
     },
     {
+      path: `${childPrefix}garages/manage`,
+      pathMatch: 'full',
+      loadComponent: () =>
+        import('./garage-management.component').then((module) => module.GarageManagementComponent),
+    },
+    {
+      path: `${childPrefix}garages/manage/:garageId/edit`,
+      pathMatch: 'full',
+      loadComponent: () =>
+        import('./garage-onboarding.component').then((module) => module.GarageOnboardingComponent),
+      data: { editor: true },
+      canDeactivate: [
+        (component: import('./garage-onboarding.component').GarageOnboardingComponent | null) =>
+          component?.canLeave() ?? true,
+      ],
+    },
+    {
       loadComponent: () =>
         import('./garage-onboarding.component').then((module) => module.GarageOnboardingComponent),
       canDeactivate: [
         (component: import('./garage-onboarding.component').GarageOnboardingComponent | null) =>
           component?.canLeave() ?? true,
       ],
+      data: { create: true },
       path: `${childPrefix}garages/new`,
     },
     {

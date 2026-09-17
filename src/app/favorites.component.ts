@@ -1,11 +1,5 @@
-import {
-  LucideChevronLeft,
-  LucideHeart,
-  LucideSearch,
-  LucideShieldCheck,
-  type LucideIcon,
-} from '@lucide/angular';
-import { Component, afterNextRender, effect, inject, signal } from '@angular/core';
+import { LucideHeart, LucideSearch, type LucideIcon } from '@lucide/angular';
+import { Component, afterNextRender, effect, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { favoritesCopy, type FavoritesCopyKey } from '../shared/favorites-copy';
 import { AccountSessionService } from './account-session.service';
@@ -16,6 +10,7 @@ import { FavoriteNoticeComponent } from './favorite-notice.component';
 import { LanguageService } from './language.service';
 import { SiteHeaderComponent } from './site-header.component';
 import { ButtonDirective } from './ui/button.directive';
+import { AuthRequiredDialogComponent } from './ui/auth-required-dialog.component';
 import { LucideIconComponent } from './ui/lucide-icon.component';
 
 @Component({
@@ -27,30 +22,21 @@ import { LucideIconComponent } from './ui/lucide-icon.component';
     LucideIconComponent,
     FavoriteGarageCardComponent,
     FavoriteNoticeComponent,
+    AuthRequiredDialogComponent,
   ],
   providers: [FavoriteProfilesService],
   templateUrl: './favorites.component.html',
 })
 export class FavoritesComponent {
-  readonly ChevronLeftIcon: LucideIcon = LucideChevronLeft;
   readonly HeartIcon: LucideIcon = LucideHeart;
   readonly SearchIcon: LucideIcon = LucideSearch;
-  readonly ShieldCheckIcon: LucideIcon = LucideShieldCheck;
 
   protected readonly account = inject(AccountSessionService);
   protected readonly favorites = inject(FavoritesService);
   protected readonly profiles = inject(FavoriteProfilesService);
   protected readonly language = inject(LanguageService);
-  protected readonly expired = signal(false);
-  private hadSession = false;
   constructor() {
     effect(() => this.language.setPageText(this.text('title'), this.text('description'), true));
-    effect(() => {
-      if (this.account.state() === 'ready') {
-        this.hadSession = true;
-        this.expired.set(false);
-      } else if (this.account.state() === 'guest' && this.hadSession) this.expired.set(true);
-    });
     afterNextRender(() => {
       void this.favorites.load();
     });

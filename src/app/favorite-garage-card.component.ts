@@ -1,6 +1,6 @@
 import {
-  LucideArrowRight,
   LucideBadgeCheck,
+  LucideEye,
   LucideHeart,
   LucideInfo,
   LucideMapPin,
@@ -24,8 +24,8 @@ import { RatingStarsComponent } from './ui/rating-stars.component';
   templateUrl: './favorite-garage-card.component.html',
 })
 export class FavoriteGarageCardComponent {
-  readonly ArrowRightIcon: LucideIcon = LucideArrowRight;
   readonly BadgeCheckIcon: LucideIcon = LucideBadgeCheck;
+  readonly EyeIcon: LucideIcon = LucideEye;
   readonly HeartIcon: LucideIcon = LucideHeart;
   readonly InfoIcon: LucideIcon = LucideInfo;
   readonly MapPinIcon: LucideIcon = LucideMapPin;

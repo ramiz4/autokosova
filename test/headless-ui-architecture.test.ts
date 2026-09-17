@@ -62,7 +62,7 @@ test('Headless foundation admits only the approved Brain and CDK menu packages',
       if (!specifier.startsWith('@spartan-ng/') && !specifier.startsWith('@angular/cdk/')) continue;
       assert.match(
         specifier,
-        /^@spartan-ng\/brain\/(?:dialog|alert-dialog|overlay|popover|collapsible)$|^@angular\/cdk\/(?:menu|overlay|layout|a11y)$/,
+        /^@spartan-ng\/brain\/(?:dialog|alert-dialog|overlay|popover|collapsible|select|core)$|^@angular\/cdk\/(?:menu|overlay|layout|a11y|coercion)$/,
         `${file} imports an unapproved Headless/CDK entry point: ${specifier}`,
       );
     }

@@ -74,7 +74,7 @@ it.each(['de', 'sq', 'en'] as const)(
     expect(page.querySelector('[data-copy-username]')).not.toBeNull();
     expect(page.querySelector('[data-copy-user-id]')).not.toBeNull();
     expect(page.querySelector('[data-account-garages]')?.getAttribute('href')).toBe(
-      routePath(locale, 'onboarding'),
+      routePath(locale, 'garage-management'),
     );
     expect(page.querySelector('[data-account-inquiries]')).toBeNull();
     expect(page.querySelector('main input, main textarea, main select')).toBeNull();
@@ -132,13 +132,13 @@ it('clears private UI on expiry, offers a local login return and distinguishes m
   await fixture.whenStable();
   expect(page.querySelector('[data-account-id]')).toBeNull();
   expect(page.textContent).not.toContain(identity.email);
-  expect(page.querySelector('main a[href^="/auth/login"]')?.getAttribute('href')).toBe(
+  expect(document.querySelector('[data-auth-login]')?.getAttribute('href')).toBe(
     '/auth/login?returnTo=%2Fsq%2Fprofile',
   );
   account.loginAvailable.set(false);
   await fixture.whenStable();
-  expect(page.querySelector('main a[href^="/auth/login"]')).toBeNull();
-  expect(page.textContent).toContain(accountCopy.sq['account.loginUnavailable']);
+  expect(document.querySelector('[data-auth-login]')).toBeNull();
+  expect(document.body.textContent).toContain(accountCopy.sq['account.loginUnavailable']);
 });
 
 it('reports confirmed clipboard copies and keeps values selectable when copying fails', async () => {

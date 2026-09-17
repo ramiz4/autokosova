@@ -42,19 +42,19 @@ export interface ConfirmationRequest {
       (stateChanged)="state.set($event)"
       (closed)="closed($event)"
     >
-      <brn-alert-dialog-overlay class="bg-[#07143e85]" />
+      <brn-alert-dialog-overlay class="bg-black/80" />
       <ng-template brnAlertDialogContent>
         @let content = request();
         @if (content) {
           <section
             data-confirmation-dialog
-            class="app-dialog-panel w-[min(760px,calc(100vw-24px))] max-h-[calc(100dvh-24px)] rounded-[20px] border border-[#dbe5f2] bg-white text-ink shadow-[0_24px_100px_#07143e35]"
+            class="app-dialog-panel w-[min(760px,calc(100vw-24px))] max-h-[calc(100dvh-24px)] rounded-[20px] border border-slate-200 bg-white text-ink shadow-2xl shadow-ink/20"
             (keydown.escape)="$event.preventDefault(); $event.stopPropagation(); choose(false)"
           >
-            <header class="app-dialog-header px-[26px] pt-[26px]">
+            <header class="app-dialog-header px-6.5 pt-6.5">
               <h2 brnAlertDialogTitle class="text-2xl font-bold">{{ content.title }}</h2>
             </header>
-            <div class="app-dialog-body px-[26px] pt-4">
+            <div class="app-dialog-body px-6.5 pt-4">
               <p
                 brnAlertDialogDescription
                 class="whitespace-pre-line text-sm leading-[1.65] text-muted"
@@ -63,7 +63,7 @@ export interface ConfirmationRequest {
               </p>
             </div>
             <footer
-              class="app-dialog-footer flex flex-wrap justify-end gap-[10px] px-[26px] pt-[18px] pb-[26px]"
+              class="app-dialog-footer flex flex-wrap justify-end gap-2.5 px-6.5 pt-4.5 pb-6.5"
             >
               <button
                 type="button"

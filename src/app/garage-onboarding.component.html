@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-[#f2f7fc] text-ink">
+<div class="min-h-screen bg-brand/5 font-sans text-ink">
   <app-confirmation-dialog #confirmation />
   @if (!supportMode) {
     <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
@@ -13,7 +13,7 @@
   @if (workspaceVisible) {
     @if (!managing && !supportMode) {
       <header
-        class="relative isolate min-h-[272px] overflow-hidden px-5 pt-8 pb-20 sm:px-10 lg:h-[272px] lg:px-16"
+        class="relative isolate min-h-68 overflow-hidden px-5 pt-8 pb-20 sm:px-10 lg:h-68 lg:px-16"
         aria-labelledby="onboarding-hero-title"
       >
         <img
@@ -25,9 +25,9 @@
           class="absolute inset-0 -z-20 h-full w-full object-cover object-[75%_54%]"
         />
         <div
-          class="absolute inset-0 -z-10 bg-gradient-to-r from-slate-950/80 via-slate-950/55 to-transparent"
+          class="absolute inset-0 -z-10 bg-linear-to-r from-slate-950/80 via-slate-950/55 to-transparent"
         ></div>
-        <div class="mx-auto max-w-[1360px]">
+        <div class="mx-auto max-w-340">
           <h1
             id="onboarding-hero-title"
             class="max-w-xl text-4xl leading-[1.08] font-bold whitespace-pre-line tracking-tight text-white sm:text-[44px]"
@@ -43,77 +43,66 @@
     <div
       [class]="
         managing && editing
-          ? 'relative mx-auto grid max-w-[1240px] gap-5 px-4 py-7 sm:px-8 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:py-10'
-          : managing || supportMode
-            ? 'relative mx-auto grid max-w-[1200px] gap-4 px-4 py-8 sm:px-8'
-            : 'relative mx-auto -mt-10 grid max-w-[1360px] gap-4 px-4 pb-16 lg:grid-cols-[minmax(0,2.15fr)_minmax(290px,1fr)] lg:px-5'
+          ? 'relative mx-auto grid w-full max-w-340 gap-6 px-4 pt-6 pb-14 sm:px-6 max-[480px]:pt-4 max-[480px]:pb-8'
+          : managing
+            ? 'relative mx-auto w-full max-w-340 px-4 pt-6 pb-14 sm:px-6 max-[480px]:pt-4 max-[480px]:pb-8'
+            : supportMode
+              ? 'relative mx-auto grid max-w-300 gap-4 px-4 py-8 sm:px-8'
+              : 'relative mx-auto -mt-10 grid max-w-340 gap-4 px-4 pb-16 lg:grid-cols-[minmax(0,2.15fr)_minmax(290px,1fr)] lg:px-5'
       "
     >
       <section
         [class]="
-          managing && editing
+          managing
             ? 'relative min-w-0'
             : 'min-w-0 rounded-2xl border border-white/85 bg-white/87 p-5 shadow-xl shadow-blue-900/5 backdrop-blur-sm sm:px-8 sm:py-6 lg:px-10'
         "
         [attr.aria-labelledby]="managing && !editing ? 'workspace-title' : 'form-title'"
       >
-        @if (managing && editing) {
-          <button
-            data-garages-back
-            type="button"
-            class="editor-back"
-            [disabled]="sending || loading"
-            (click)="backToOverview()"
+        @if (!(managing && !editing)) {
+          <div [class.mt-8]="managing && editing" class="flex flex-wrap items-center gap-3">
+            <h2
+              #workspaceTitle
+              [attr.aria-level]="managing ? 1 : null"
+              tabindex="-1"
+              id="form-title"
+              class="text-[clamp(28px,4vw,36px)] font-bold leading-[1.2] tracking-[-.035em]"
+            >
+              {{
+                garageId
+                  ? management.editTitle + ': ' + form.name
+                  : managing
+                    ? management.create
+                    : copy.title
+              }}
+            </h2>
+            @if (!supportMode && garageId && statusKnown) {
+              <ng-container
+                [ngTemplateOutlet]="publicationBadge"
+                [ngTemplateOutletContext]="{ $implicit: publicationState }"
+              />
+            }
+          </div>
+          <p
+            [class]="
+              managing && editing
+                ? 'page-subtitle mt-3 text-[15px] leading-relaxed text-muted'
+                : 'mt-1 text-muted'
+            "
           >
-            <lucide-icon [name]="ArrowRightIcon" class="size-4 rotate-180" />{{ management.back }}
-          </button>
+            {{
+              garageId || accountType(account.identity()) === 'garage'
+                ? managing && editing
+                  ? management.editorIntro
+                  : management.intro
+                : copy.intro
+            }}
+          </p>
         }
-        <h2
-          #workspaceTitle
-          [attr.aria-level]="managing ? 1 : null"
-          tabindex="-1"
-          id="form-title"
-          class="text-3xl font-bold tracking-tight sm:text-[34px]"
-        >
-          {{
-            garageId
-              ? management.editTitle + ': ' + form.name
-              : managing
-                ? editing
-                  ? management.create
-                  : management.title
-                : copy.title
-          }}
-        </h2>
-        <p [class]="managing && editing ? 'editor-intro' : 'mt-1 text-muted'">
-          {{
-            garageId || accountType(account.identity()) === 'garage'
-              ? managing && editing
-                ? management.editorIntro
-                : management.intro
-              : copy.intro
-          }}
-        </p>
-        @if (managing && editing && garageId) {
-          <img
-            class="editor-illustration"
-            src="/images/garage-management/editor-garage-illustration.svg"
-            alt=""
-            width="560"
-            height="260"
-          />
-        }
-        @if (!supportMode && garageId) {
-          @if (statusKnown) {
-            <ng-container
-              [ngTemplateOutlet]="publicationBadge"
-              [ngTemplateOutletContext]="{ $implicit: publicationState }"
-            />
-          } @else {
-            <p data-garage-status-unavailable class="mt-4 text-sm text-muted" role="status">
-              {{ management.statusUnavailable }}
-            </p>
-          }
+        @if (!supportMode && garageId && !statusKnown) {
+          <p data-garage-status-unavailable class="mt-4 text-sm text-muted" role="status">
+            {{ management.statusUnavailable }}
+          </p>
         }
         @if (managing && !editing) {
           <section
@@ -121,51 +110,30 @@
             data-garages-overview
             [attr.aria-busy]="ownedLoading || loading"
           >
-            <header class="garage-management-hero">
-              <div class="garage-management-copy">
-                <h1 #workspaceTitle tabindex="-1" id="workspace-title">{{ management.title }}</h1>
-                <p>{{ management.intro }}</p>
-                <div class="garage-metrics" aria-label="{{ management.title }}">
-                  <article>
-                    <span class="metric-icon"
-                      ><lucide-icon [name]="ShieldCheckIcon" class="size-6"
-                    /></span>
-                    <strong>{{ owned.length }}</strong
-                    ><span>{{ management.title }}</span>
-                  </article>
-                  <article>
-                    <span class="metric-icon metric-icon-success"
-                      ><lucide-icon [name]="BadgeCheckIcon" class="size-6"
-                    /></span>
-                    <strong>{{ publishedCount }}</strong
-                    ><span>{{ copy.statePublished }}</span>
-                  </article>
-                  <article>
-                    <span class="metric-icon"
-                      ><lucide-icon [name]="FileTextIcon" class="size-6"
-                    /></span>
-                    <strong>{{ draftCount }}</strong
-                    ><span>{{ copy.stateDraft }}</span>
-                  </article>
-                </div>
-              </div>
-              <div class="garage-management-art">
-                <img
-                  src="/images/garage-management/garage-management-hero.png"
-                  alt=""
-                  width="1536"
-                  height="1024"
-                />
-                <button
-                  data-new-garage
-                  type="button"
-                  class="new-garage"
-                  [disabled]="sending || loading"
-                  (click)="reset()"
+            <header class="garage-management-heading my-8">
+              <div class="min-w-0">
+                <h1
+                  #workspaceTitle
+                  tabindex="-1"
+                  id="workspace-title"
+                  class="text-[clamp(28px,4vw,36px)] font-bold leading-[1.2] tracking-[-.035em]"
                 >
-                  <lucide-icon [name]="PlusIcon" class="size-5" />{{ management.create }}
-                </button>
+                  {{ management.title }}
+                </h1>
+                <p class="page-subtitle mt-3 text-[15px] leading-relaxed text-muted">
+                  {{ management.intro }}
+                </p>
               </div>
+              <button
+                appButton
+                data-new-garage
+                type="button"
+                class="max-[480px]:w-full"
+                [disabled]="sending || loading"
+                (click)="reset()"
+              >
+                <lucide-icon [name]="PlusIcon" class="size-5" />{{ management.create }}
+              </button>
             </header>
             @if (ownedLoading || !ownedLoaded) {
               <div class="garage-state" role="status" data-garages-loading>
@@ -182,45 +150,11 @@
                 {{ management.retry }}
               </button>
             } @else {
-              <div class="garage-toolbar">
-                <label class="garage-search"
-                  ><lucide-icon [name]="SearchIcon" class="size-5" /><span class="sr-only">{{
-                    management.search
-                  }}</span>
-                  <input
-                    type="search"
-                    [(ngModel)]="overviewSearch"
-                    [placeholder]="management.search"
-                  />
-                </label>
-                <div class="garage-toolbar-selects">
-                  <label
-                    ><span class="sr-only">{{ management.allStates }}</span
-                    ><select [(ngModel)]="overviewState">
-                      <option value="all">{{ management.allStates }}</option>
-                      <option value="draft">{{ copy.stateDraft }}</option>
-                      <option value="pending_review">{{ copy.statePending }}</option>
-                      <option value="published">{{ copy.statePublished }}</option>
-                      <option value="rejected">{{ copy.stateRejected }}</option>
-                      <option value="suspended">{{ copy.stateSuspended }}</option></select
-                    ><lucide-icon [name]="ChevronDownIcon" class="size-4"
-                  /></label>
-                  <label
-                    ><span class="sr-only">{{ management.sortUpdated }}</span
-                    ><select [(ngModel)]="overviewSort">
-                      <option value="updated">{{ management.sortUpdated }}</option>
-                      <option value="name">{{ management.sortName }}</option></select
-                    ><lucide-icon [name]="ChevronDownIcon" class="size-4"
-                  /></label>
-                </div>
-              </div>
               @if (!owned.length) {
                 <div data-garages-empty class="garage-state">{{ management.empty }}</div>
-              } @else if (!filteredOwned.length) {
-                <div data-garages-no-results class="garage-state">{{ management.noResults }}</div>
               } @else {
                 <ul class="garage-list">
-                  @for (garage of filteredOwned; track garage.id) {
+                  @for (garage of owned; track garage.id) {
                     <li class="garage-card" [attr.data-garage-card]="garage.id">
                       <div class="garage-thumbnail" aria-hidden="true">
                         <lucide-icon [name]="ShieldCheckIcon" class="size-9" />
@@ -238,7 +172,6 @@
                             placeLabel(garage.placeId)
                           }}
                         </p>
-                        <p class="garage-description">{{ cardDescription(garage) }}</p>
                         <ul class="garage-chips" [attr.aria-label]="management.title">
                           @for (service of visibleServices(garage); track service) {
                             <li>{{ service }}</li>
@@ -260,34 +193,36 @@
                           >
                         </p>
                         <p>
-                          <lucide-icon [name]="GlobeIcon" class="size-5" /><span
-                            >{{ management.publicProfile
-                            }}<strong>{{ stateHelpFor(garage.publicationState) }}</strong></span
-                          >
+                          <lucide-icon [name]="GlobeIcon" class="size-5" /><span>{{
+                            management.publicProfile
+                          }}</span>
                         </p>
                       </div>
                       <div class="garage-actions">
                         <button
                           type="button"
+                          appActionMenuTrigger
                           [id]="'garage-actions-' + garage.id"
-                          [cdkMenuTriggerFor]="garageActions"
-                          [cdkMenuPosition]="overviewMenuPositions"
+                          [hlmDropdownMenuTrigger]="garageActions"
                           #actionsMenu="cdkMenuTriggerFor"
                           [disabled]="sending || loading"
                           [attr.aria-label]="management.actions + ': ' + garage.name"
                           [attr.data-garage-menu]="garage.id"
                         >
-                          <lucide-icon [name]="EllipsisIcon" class="size-6" />
+                          <lucide-icon [name]="EllipsisIcon" class="size-5" />
                         </button>
                         <ng-template #garageActions
                           ><div
-                            cdkMenu
+                            hlmDropdownMenu
+                            appActionMenuPanel
+                            [sideOffset]="8"
                             class="garage-actions-menu"
                             [attr.aria-labelledby]="'garage-actions-' + garage.id"
                           >
                             @if (garage.publicationState === 'published') {
                               <a
-                                cdkMenuItem
+                                hlmDropdownMenuItem
+                                appActionMenuItem
                                 [routerLink]="language.link('garage', garage.id)"
                                 data-public-garage
                                 ><lucide-icon [name]="GlobeIcon" class="size-4" />{{
@@ -297,36 +232,37 @@
                             }
                             <button
                               type="button"
-                              cdkMenuItem
-                              (cdkMenuItemTriggered)="openFromOverview(garage, actionsMenu)"
+                              hlmDropdownMenuItem
+                              appActionMenuItem
+                              (triggered)="openFromOverview(garage, actionsMenu)"
                               [disabled]="sending || loading"
-                              [cdkMenuItemDisabled]="sending || loading"
                               [attr.data-owned-garage]="garage.id"
                             >
                               <lucide-icon [name]="PencilIcon" class="size-4" />{{
                                 management.edit
                               }}
                             </button>
-                            <button type="button" cdkMenuItem disabled [cdkMenuItemDisabled]="true">
+                            <button type="button" hlmDropdownMenuItem appActionMenuItem disabled>
                               <lucide-icon [name]="FileTextIcon" class="size-4" />{{
                                 management.duplicate
                               }}
                               <span>{{ management.unavailable }}</span>
                             </button>
-                            <button type="button" cdkMenuItem disabled [cdkMenuItemDisabled]="true">
+                            <button type="button" hlmDropdownMenuItem appActionMenuItem disabled>
                               <lucide-icon [name]="FileTextIcon" class="size-4" />{{
                                 management.statistics
                               }}
                               <span>{{ management.unavailable }}</span>
                             </button>
-                            <div role="separator"></div>
+                            <hlm-dropdown-menu-separator class="bg-slate-100" />
                             <button
                               type="button"
-                              cdkMenuItem
+                              hlmDropdownMenuItem
+                              appActionMenuItem
+                              variant="destructive"
                               class="delete"
-                              (cdkMenuItemTriggered)="removeOwned(garage, actionsMenu)"
+                              (triggered)="removeOwned(garage, actionsMenu)"
                               [disabled]="!garage.canDelete || sending || loading"
-                              [cdkMenuItemDisabled]="!garage.canDelete || sending || loading"
                               data-delete-garage
                             >
                               <lucide-icon [name]="FileTextIcon" class="size-4" />{{
@@ -339,13 +275,6 @@
                     </li>
                   }
                 </ul>
-                <p class="garage-results">
-                  {{
-                    management.results
-                      .replace('{visible}', '' + filteredOwned.length)
-                      .replace('{total}', '' + owned.length)
-                  }}
-                </p>
               }
             }
           </section>
@@ -367,34 +296,6 @@
           </p>
         }
         @if (showForm) {
-          @if (managing && editing && garageId) {
-            <nav class="editor-section-nav" aria-label="{{ management.editTitle }}">
-              @for (
-                section of [
-                  { id: 'garage-basics', number: 1, title: copy.basics, help: copy.basicsHelp },
-                  { id: 'garage-contact', number: 2, title: copy.contact, help: copy.contactHelp },
-                  {
-                    id: 'garage-capabilities',
-                    number: 3,
-                    title: copy.capabilities,
-                    help: copy.capabilitiesHelp,
-                  },
-                ];
-                track section.id
-              ) {
-                <button
-                  type="button"
-                  [class.active]="activeSection === section.id"
-                  [attr.aria-current]="activeSection === section.id ? 'step' : null"
-                  (click)="navigateToSection(section.id)"
-                >
-                  <span>{{ section.number }}</span
-                  ><strong>{{ section.title }}</strong
-                  ><small>{{ section.help }}</small>
-                </button>
-              }
-            </nav>
-          }
           <form
             #formElement
             [class]="managing && editing ? 'garage-editor-form' : 'mt-6 space-y-6'"
@@ -680,6 +581,16 @@
               >
                 {{ management.cancel }}
               </button>
+              @if (!supportMode && garageId) {
+                <button
+                  type="button"
+                  class="min-h-12 rounded-lg border border-blue-200 px-5 py-2 text-sm font-semibold text-brand disabled:opacity-50"
+                  [disabled]="sending || loading"
+                  (click)="open(garageId)"
+                >
+                  {{ copy.reload }}
+                </button>
+              }
               <div class="min-w-0 flex-1">
                 <button
                   data-save-garage
@@ -694,19 +605,11 @@
               </div>
             </div>
             @if (!supportMode && garageId) {
-              <div class="flex flex-wrap gap-3 text-sm">
-                <button
-                  type="button"
-                  class="min-h-11 rounded-lg border border-blue-200 px-3 text-brand"
-                  [disabled]="sending || loading"
-                  (click)="open(garageId)"
-                >
-                  {{ copy.reload }}
-                </button>
+              <div class="grid gap-3 text-sm sm:flex sm:flex-wrap">
                 @if (publicationState === 'draft' || publicationState === 'rejected') {
                   <button
                     type="button"
-                    class="min-h-11 rounded-lg border border-blue-200 px-3 text-brand disabled:opacity-50"
+                    class="min-h-11 w-full rounded-lg border border-blue-200 px-3 py-2 text-brand disabled:opacity-50 sm:w-auto"
                     [disabled]="sending || loading || !unchanged || !statusKnown"
                     (click)="submitForReview()"
                   >
@@ -738,84 +641,6 @@
           </form>
         }
       </section>
-      @if (managing && editing && garageId) {
-        <aside class="editor-sidebar" aria-label="{{ management.preview }}">
-          <section class="editor-sidebar-card editor-preview-card">
-            <div class="editor-card-heading">
-              <span><lucide-icon [name]="InfoIcon" class="size-5" /></span>
-              <div>
-                <h2>{{ management.preview }}</h2>
-                <p>{{ management.previewHelp }}</p>
-              </div>
-            </div>
-            @if (previewUnsaved) {
-              <p class="editor-preview-unsaved" role="status">{{ management.previewUnsaved }}</p>
-            }
-            <div class="editor-preview-fallback" aria-hidden="true">
-              <lucide-icon [name]="ShieldCheckIcon" class="size-10" />
-            </div>
-            <h3>{{ form.name }}</h3>
-            @if (previewPlace) {
-              <p class="editor-preview-place">
-                <lucide-icon [name]="MapPinIcon" class="size-4" />{{ previewPlace }}
-              </p>
-            }
-            <div class="editor-preview-chips">
-              @for (item of previewServices.slice(0, 3); track item) {
-                <span>{{ item }}</span>
-              }
-              @for (item of previewMakes.slice(0, 2); track item) {
-                <span>{{ item }}</span>
-              }
-              @for (item of previewLanguages.slice(0, 2); track item) {
-                <span>{{ item }}</span>
-              }
-            </div>
-            <p class="editor-private-note">
-              <lucide-icon [name]="ShieldCheckIcon" class="size-4" />{{ management.privateContact }}
-            </p>
-          </section>
-          <section class="editor-sidebar-card editor-meta-card">
-            <p>
-              <lucide-icon [name]="InfoIcon" class="size-5" /><span
-                >{{ management.statusMeta
-                }}<strong>{{
-                  statusKnown ? stateHelpFor(publicationState) : management.statusUnavailable
-                }}</strong></span
-              >
-            </p>
-            <p>
-              <lucide-icon [name]="BadgeCheckIcon" class="size-5" /><span
-                >{{ management.publicProfile }}<strong>{{ stateLabel }}</strong></span
-              >
-            </p>
-          </section>
-          <section class="editor-sidebar-card editor-tip-card">
-            <lucide-icon [name]="InfoIcon" class="size-6" />
-            <div>
-              <h2>{{ management.tipTitle }}</h2>
-              <p>{{ management.tip }}</p>
-            </div>
-          </section>
-          @if (canDelete) {
-            <section data-garage-danger class="editor-sidebar-card editor-danger-card">
-              <lucide-icon [name]="InfoIcon" class="size-6" />
-              <div>
-                <h2>{{ management.deleteTitle }}</h2>
-                <p>{{ management.deleteHelp }}</p>
-              </div>
-              <button
-                data-delete-garage
-                type="button"
-                [disabled]="sending || loading"
-                (click)="remove()"
-              >
-                {{ management.remove }}
-              </button>
-            </section>
-          }
-        </aside>
-      }
       @if (!managing && !supportMode) {
         <aside class="space-y-4" [attr.aria-label]="copy.nextTitle">
           <section class="info-card">
@@ -885,11 +710,18 @@
 </div>
 
 <ng-template #publicationBadge let-state>
-  <div class="mt-3" data-garage-status [attr.data-state]="state">
+  <div data-garage-status [attr.data-state]="state">
     <span
-      class="inline-flex rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-brand-dark"
-      >{{ stateLabelFor(state) }}</span
+      [class]="
+        state === 'published'
+          ? 'inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-800'
+          : 'inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-brand-dark'
+      "
     >
-    <p class="mt-2 text-sm leading-relaxed text-muted">{{ stateHelpFor(state) }}</p>
+      @if (state === 'published') {
+        <lucide-icon [name]="BadgeCheckIcon" class="size-4" />
+      }
+      {{ stateLabelFor(state) }}</span
+    >
   </div>
 </ng-template>

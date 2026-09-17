@@ -91,7 +91,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
     SiteHeaderComponent,
   ],
   selector: 'app-search-handoff',
-  template: ` <main class="min-h-screen bg-[#f4f8fe] text-ink" aria-labelledby="search-title">
+  template: ` <main class="min-h-screen bg-brand/5 text-ink" aria-labelledby="search-title">
     <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
       <app-site-header [compact]="true" active="search" />
     </div>
@@ -99,13 +99,13 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
     @if (state === 'loading' && !response) {
       <section
         data-search-skeleton
-        class="mx-auto w-[calc(100%_-_1.5rem)] max-w-[1360px] px-4 py-6 sm:px-6 lg:w-[calc(100%_-_4rem)]"
+        class="mx-auto w-[calc(100%-1.5rem)] max-w-340 px-4 py-6 sm:px-6 lg:w-[calc(100%-4rem)]"
         aria-hidden="true"
       >
         <div
           class="grid animate-pulse gap-5 motion-reduce:animate-none xl:grid-cols-[minmax(280px,320px)_minmax(0,1fr)]"
         >
-          <div class="hidden h-[420px] rounded-2xl bg-white shadow-sm xl:block"></div>
+          <div class="hidden h-105 rounded-2xl bg-white shadow-sm xl:block"></div>
           <div>
             <div class="mb-5 flex items-center justify-between gap-4">
               <span class="h-7 w-64 max-w-2/3 rounded-lg bg-slate-200"></span>
@@ -151,7 +151,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
     }
     @if (response) {
       <section
-        class="mx-auto w-[calc(100%_-_1.5rem)] max-w-[1360px] px-4 py-6 sm:px-6 lg:w-[calc(100%_-_4rem)]"
+        class="mx-auto w-[calc(100%-1.5rem)] max-w-340 px-4 py-6 sm:px-6 lg:w-[calc(100%-4rem)]"
       >
         @let expandedFilters = filtersExpanded();
         <div class="grid gap-5 xl:grid-cols-[minmax(280px,320px)_minmax(0,1fr)]">
@@ -292,7 +292,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                       class="grid gap-3 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm transition hover:border-brand/30 hover:shadow-md sm:grid-cols-[205px_minmax(0,1fr)]"
                     >
                       <div
-                        class="relative h-48 min-h-[144px] overflow-hidden rounded-xl bg-slate-100 sm:h-36"
+                        class="relative h-48 min-h-36 overflow-hidden rounded-xl bg-slate-100 sm:h-36"
                       >
                         @if (photoIds(garage).length) {
                           <img
@@ -313,7 +313,7 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                             height="768"
                             decoding="async"
                             [attr.loading]="index < 3 ? 'eager' : 'lazy'"
-                            class="h-full min-h-[144px] w-full object-cover"
+                            class="h-full min-h-36 w-full object-cover"
                           />
                           <span
                             class="absolute bottom-2 left-2 rounded bg-slate-950/75 px-2 py-1 text-xs font-bold text-white"
@@ -322,9 +322,9 @@ type SearchState = 'error' | 'invalid' | 'loading' | 'ready';
                           <span class="sr-only">{{ ui('search.ui.noPhoto') }}</span>
                         }
                       </div>
-                      <div class="relative p-3 sm:min-h-[144px] sm:pr-48">
+                      <div class="relative p-3 sm:min-h-36 sm:pr-48">
                         <div class="flex items-center gap-2 pr-10 sm:pr-0">
-                          <h2 class="min-w-0 text-xl font-bold tracking-tight break-words">
+                          <h2 class="min-w-0 text-xl font-bold tracking-tight wrap-break-word">
                             {{ garage.name }}
                           </h2>
                           @if (garage.companyDataVerified) {
