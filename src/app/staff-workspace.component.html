@@ -42,63 +42,133 @@
       <p role="status" class="mt-5">{{ copy().loading }}</p>
     }
     @if (detail(); as current) {
-      <button
-        appButton="outline"
-        type="button"
-        class="my-5"
-        [disabled]="busy()"
-        data-back-cases
-        (click)="back()"
-      >
-        {{ copy().back }}
-      </button>
+      <div class="mt-5 flex flex-wrap items-center gap-2">
+        <button
+          appButton="outline"
+          [size]="'compact'"
+          type="button"
+          [disabled]="busy()"
+          data-back-cases
+          (click)="back()"
+        >
+          {{ copy().back }}
+        </button>
+      </div>
       <section
         data-staff-case
-        class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-8"
+        class="mt-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-8"
         [attr.aria-busy]="busy()"
       >
-        <p class="text-sm font-semibold text-brand-dark">
-          {{ label(current.kind) }} · {{ label(current.priority) }}
-        </p>
-        <h2 data-case-heading tabindex="-1" class="mt-2 text-2xl font-bold">
-          {{ current.label || label(current.kind) }}
-        </h2>
-        <p class="mt-2">
-          {{ copy().status }}: <strong data-case-status>{{ label(current.status) }}</strong>
-        </p>
-        <p data-case-assignee class="mt-2 text-sm text-muted">
-          {{
-            current.assignedModeratorLabel || current.assignedModeratorUserId || copy().unassigned
-          }}
-        </p>
-        <p class="mt-2 text-sm text-muted">
-          {{ copy().created }}: {{ current.createdAt | date: 'dd.MM.yyyy HH:mm' }}
-        </p>
+        <!-- Case header -->
+        <div class="flex flex-wrap items-start gap-3">
+          <div class="flex-1">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span
+                class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700"
+              >
+                {{ label(current.kind) }}
+              </span>
+              @if (current.priority === 'high') {
+                <span
+                  class="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800"
+                >
+                  {{ copy().high }}
+                </span>
+              }
+              @if (current.escalation) {
+                <span
+                  class="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800"
+                  data-case-escalation
+                >
+                  {{ copy().escalation }}
+                </span>
+              }
+            </div>
+            <h2 data-case-heading tabindex="-1" class="mt-2 text-2xl font-bold">
+              {{ current.label || label(current.kind) }}
+            </h2>
+          </div>
+          <span
+            class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold"
+            [class.bg-amber-100]="current.status === 'submitted'"
+            [class.text-amber-800]="current.status === 'submitted'"
+            [class.bg-blue-100]="
+              current.status === 'assigned' || current.status === 'waiting_for_subject'
+            "
+            [class.text-blue-800]="
+              current.status === 'assigned' || current.status === 'waiting_for_subject'
+            "
+            [class.bg-emerald-100]="current.status === 'resolved'"
+            [class.text-emerald-800]="current.status === 'resolved'"
+            [class.bg-slate-100]="
+              current.status !== 'submitted' &&
+              current.status !== 'assigned' &&
+              current.status !== 'waiting_for_subject' &&
+              current.status !== 'resolved'
+            "
+            [class.text-slate-600]="
+              current.status !== 'submitted' &&
+              current.status !== 'assigned' &&
+              current.status !== 'waiting_for_subject' &&
+              current.status !== 'resolved'
+            "
+          >
+            <span data-case-status>{{ label(current.status) }}</span>
+          </span>
+        </div>
+        <dl class="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+          <div data-case-assignee>
+            <dt class="inline text-muted">{{ adminLabel('caseWorker') }}:</dt>
+            <dd class="inline font-semibold">
+              {{
+                current.assignedModeratorLabel ||
+                  current.assignedModeratorUserId ||
+                  copy().unassigned
+              }}
+            </dd>
+          </div>
+          <div>
+            <dt class="inline text-muted">{{ copy().created }}:</dt>
+            <dd class="inline">{{ current.createdAt | date: 'dd.MM.yyyy HH:mm' }}</dd>
+          </div>
+        </dl>
         @if (current.escalation) {
-          <p data-case-escalation class="mt-4 rounded-lg bg-amber-50 p-3">
-            {{ copy().escalation }}: {{ label(current.escalation.reason) }}
-          </p>
+          <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+            <p class="text-sm font-semibold">
+              {{ copy().escalation }}: {{ label(current.escalation.reason) }}
+            </p>
+          </div>
         }
         @if (current.conflictOfInterest) {
-          <p role="alert" class="mt-4 rounded-lg bg-amber-50 p-3">{{ copy().interest }}</p>
+          <p
+            role="alert"
+            class="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-rose-900"
+          >
+            {{ copy().interest }}
+          </p>
         }
         @if (current.appealContext; as appealContext) {
-          <section data-appeal-context class="mt-4 rounded-lg bg-amber-50 p-4">
+          <section
+            data-appeal-context
+            class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4"
+          >
             <h3 class="font-bold">{{ label('originalDecision') }}</h3>
-            <p>{{ label(appealContext.originalDecision) }}</p>
+            <p class="mt-1">{{ label(appealContext.originalDecision) }}</p>
             @if (appealContext.originalReason) {
-              <p class="mt-2">{{ copy().reason }}: {{ label(appealContext.originalReason) }}</p>
+              <p class="mt-2 text-sm">
+                {{ copy().reason }}: {{ label(appealContext.originalReason) }}
+              </p>
             }
             @if (current.appeals[0]; as appeal) {
               <h4 class="mt-3 font-semibold">{{ label('appealMessage') }}</h4>
-              <p class="mt-1 whitespace-pre-wrap break-words">{{ appeal.message }}</p>
+              <p class="mt-1 whitespace-pre-wrap break-words text-sm">{{ appeal.message }}</p>
             }
           </section>
         }
         @if (current.canAssign) {
           <form
             data-case-assignment
-            class="mt-6 grid gap-3 border-y border-slate-200 py-5 sm:max-w-lg"
+            class="mt-6 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:max-w-lg"
             (ngSubmit)="assign()"
           >
             @if (
@@ -108,6 +178,7 @@
               <button
                 data-take-case
                 appButton="outline"
+                [size]="'compact'"
                 type="button"
                 [disabled]="busy()"
                 (click)="takeOver()"
@@ -115,20 +186,22 @@
                 {{ adminLabel('takeOver') }}
               </button>
             }
-            <label class="font-semibold" for="staff-assignee">{{ adminLabel('caseWorker') }}</label>
-            <select
-              id="staff-assignee"
-              name="moderator"
-              class="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
-              [(ngModel)]="moderatorId"
-              (ngModelChange)="onAssignmentChange()"
-              [disabled]="busy()"
-            >
-              <option value="">{{ copy().choose }}</option>
-              @for (person of moderators(); track person.userId) {
-                <option [value]="person.userId">{{ person.label }}</option>
-              }
-            </select>
+            <label class="grid gap-1.5 text-sm font-semibold" for="staff-assignee"
+              >{{ adminLabel('caseWorker') }}
+              <select
+                id="staff-assignee"
+                name="moderator"
+                class="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal"
+                [(ngModel)]="moderatorId"
+                (ngModelChange)="onAssignmentChange()"
+                [disabled]="busy()"
+              >
+                <option value="">{{ copy().choose }}</option>
+                @for (person of moderators(); track person.userId) {
+                  <option [value]="person.userId">{{ person.label }}</option>
+                }
+              </select>
+            </label>
             @if (!moderators().length) {
               <p class="text-sm text-muted">{{ copy().noModerators }}</p>
             }
@@ -137,7 +210,13 @@
             ) {
               <p class="text-sm text-amber-900">{{ copy().reassignHint }}</p>
             }
-            <button data-assign appButton type="submit" [disabled]="busy() || !moderatorId">
+            <button
+              data-assign
+              appButton
+              [size]="'compact'"
+              type="submit"
+              [disabled]="busy() || !moderatorId"
+            >
               {{ copy().assign }}
             </button>
           </form>
@@ -149,46 +228,64 @@
           (current.allowedActions?.includes('publish_review') ||
             current.allowedActions?.includes('reject_review'))
         ) {
-          <p data-review-guidance class="mt-6 max-w-3xl rounded-xl bg-blue-50 p-4 text-brand-dark">
+          <p data-review-guidance class="mt-6 rounded-xl bg-blue-50 p-4 text-sm text-brand-dark">
             {{ label('reviewGuidance') }}
           </p>
         }
         @if (current.review; as review) {
           <div class="mt-6 grid gap-6 border-t border-slate-200 pt-6 lg:grid-cols-2">
-            <div class="grid gap-3">
+            <div class="grid gap-4">
               <h3 class="font-bold">{{ label('reviewContent') }}</h3>
-              <p>{{ copy().visit }}: {{ review.visitMonth }}</p>
-              <p>{{ copy().service }}: {{ language.serviceLabel(review.serviceCategoryId) }}</p>
-              <p class="whitespace-pre-wrap break-words">{{ review.text }}</p>
-              <dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+              <dl class="grid gap-1 text-sm">
+                <div>
+                  <dt class="inline text-muted">{{ copy().visit }}:</dt>
+                  <dd class="inline">{{ review.visitMonth }}</dd>
+                </div>
+                <div>
+                  <dt class="inline text-muted">{{ copy().service }}:</dt>
+                  <dd class="inline">{{ language.serviceLabel(review.serviceCategoryId) }}</dd>
+                </div>
+                <div>
+                  <dt class="inline text-muted">{{ copy().reviewStatus }}:</dt>
+                  <dd class="inline">{{ label(review.publicationState) }}</dd>
+                </div>
+                <div>
+                  <dt class="inline text-muted">{{ copy().evidenceStatus }}:</dt>
+                  <dd class="inline">{{ label(review.evidenceStatus) }}</dd>
+                </div>
+              </dl>
+              <p class="whitespace-pre-wrap break-words text-sm">{{ review.text }}</p>
+              <dl class="grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3 text-sm">
                 @for (
                   criterion of ['workQuality', 'communication', 'priceTransparency', 'punctuality'];
                   track criterion
                 ) {
                   <div>
-                    <dt>{{ label(criterion) }}</dt>
-                    <dd>{{ $any(review.ratings)[criterion] }} / 5</dd>
+                    <dt class="text-xs text-muted">{{ label(criterion) }}</dt>
+                    <dd class="font-semibold">{{ $any(review.ratings)[criterion] }} / 5</dd>
                   </div>
                 }
               </dl>
               @if (review.garageResponse; as response) {
-                <h3 class="font-bold">{{ label('garageResponse') }}</h3>
-                <p class="text-sm">{{ response.createdAt | date: 'dd.MM.yyyy HH:mm' }}</p>
-                <p class="whitespace-pre-wrap break-words">{{ response.text }}</p>
+                <div class="rounded-lg border border-slate-200 p-3">
+                  <h4 class="text-sm font-bold">{{ label('garageResponse') }}</h4>
+                  <p class="mt-1 text-xs text-muted">
+                    {{ response.createdAt | date: 'dd.MM.yyyy HH:mm' }}
+                  </p>
+                  <p class="mt-2 whitespace-pre-wrap break-words text-sm">{{ response.text }}</p>
+                </div>
               }
               @if (review.updates?.length) {
-                <h3 class="font-bold">{{ label('updates') }}</h3>
+                <h4 class="font-bold">{{ label('updates') }}</h4>
+                @for (update of review.updates; track $index) {
+                  <div class="rounded-lg border border-slate-100 p-3">
+                    <p class="text-xs text-muted">
+                      {{ label(update.kind) }} · {{ update.createdAt | date: 'dd.MM.yyyy HH:mm' }}
+                    </p>
+                    <p class="mt-1 whitespace-pre-wrap break-words text-sm">{{ update.text }}</p>
+                  </div>
+                }
               }
-              @for (update of review.updates; track $index) {
-                <p class="text-sm">
-                  {{ label(update.kind) }} · {{ update.createdAt | date: 'dd.MM.yyyy HH:mm' }}
-                </p>
-                <p class="whitespace-pre-wrap break-words">{{ update.text }}</p>
-              }
-              <p>
-                {{ copy().reviewStatus }}: {{ label(review.publicationState) }} ·
-                {{ copy().evidenceStatus }}: {{ label(review.evidenceStatus) }}
-              </p>
             </div>
             <aside class="rounded-xl bg-slate-50 p-4" data-evidence-panel>
               <h3 class="font-bold">{{ label('reviewEvidence') }}</h3>
@@ -196,8 +293,9 @@
                 <button
                   data-evidence
                   appButton="outline"
+                  [size]="'compact'"
                   type="button"
-                  class="mt-4"
+                  class="mt-3"
                   [disabled]="busy()"
                   (click)="openEvidence()"
                 >
@@ -217,9 +315,27 @@
         }
         @if (current.garage; as garage) {
           <div class="mt-6 border-t border-slate-200 pt-6">
-            <h3 class="font-bold">{{ label('description') }}</h3>
-            <p class="mt-3 whitespace-pre-wrap break-words">{{ garage.description }}</p>
-            <p class="mt-3">{{ label(garage.publicationState) }}</p>
+            <div class="flex flex-wrap items-center gap-2">
+              <h3 class="font-bold">{{ label('description') }}</h3>
+              <span
+                class="rounded-full px-2 py-0.5 text-xs font-semibold"
+                [class.bg-emerald-100]="garage.publicationState === 'published'"
+                [class.text-emerald-800]="garage.publicationState === 'published'"
+                [class.bg-amber-100]="garage.publicationState === 'pending_review'"
+                [class.text-amber-800]="garage.publicationState === 'pending_review'"
+                [class.bg-slate-100]="
+                  garage.publicationState !== 'published' &&
+                  garage.publicationState !== 'pending_review'
+                "
+                [class.text-slate-600]="
+                  garage.publicationState !== 'published' &&
+                  garage.publicationState !== 'pending_review'
+                "
+              >
+                {{ label(garage.publicationState) }}
+              </span>
+            </div>
+            <p class="mt-3 whitespace-pre-wrap break-words text-sm">{{ garage.description }}</p>
             @if (garage.photoUrls?.length) {
               <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 @for (url of garage.photoUrls; track url) {
@@ -233,14 +349,17 @@
                 }
               </div>
             }
-            <p class="mt-3 text-sm text-muted">{{ label('mediaBoundary') }}</p>
+            <p class="mt-3 text-xs text-muted">{{ label('mediaBoundary') }}</p>
           </div>
         }
         @if (current.report; as report) {
-          <div class="mt-6">
+          <div class="mt-6 rounded-xl border border-slate-200 p-4">
             <h3 class="font-bold">{{ copy().reportDetails }}</h3>
-            <p>{{ label(report.category) }}</p>
-            <p class="mt-2 whitespace-pre-wrap break-words">{{ report.details }}</p>
+            <span
+              class="mt-2 inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700"
+              >{{ label(report.category) }}</span
+            >
+            <p class="mt-3 whitespace-pre-wrap break-words text-sm">{{ report.details }}</p>
           </div>
         }
         <app-staff-decision-form
@@ -253,11 +372,12 @@
         />
         @if (resultAvailable()) {
           <section class="mt-5 rounded-xl bg-emerald-50 p-4 text-emerald-900" role="status">
-            <p>{{ copy().success }}</p>
+            <p class="font-semibold">{{ copy().success }}</p>
             @if (nextAvailable()) {
               <button
                 data-next-case
                 appButton="outline"
+                [size]="'compact'"
                 type="button"
                 class="mt-3"
                 (click)="nextEligibleCase()"
@@ -277,24 +397,27 @@
               {{ copy().escalate }}
             </summary>
             <form class="mt-3 grid gap-3 sm:max-w-lg" (ngSubmit)="escalate()">
-              <label class="font-semibold" for="staff-escalation">{{ copy().reason }}</label
-              ><select
-                id="staff-escalation"
-                name="reason"
-                class="min-h-11 rounded-lg border border-slate-300 bg-white px-3"
-                [(ngModel)]="escalationReason"
-                (ngModelChange)="onEscalationChange()"
-                [disabled]="busy()"
-              >
-                <option value="">{{ copy().choose }}</option>
-                @for (reason of reasons; track reason) {
-                  <option [value]="reason">{{ label(reason) }}</option>
-                }
-              </select>
+              <label class="grid gap-1.5 text-sm font-semibold" for="staff-escalation"
+                >{{ copy().reason }}
+                <select
+                  id="staff-escalation"
+                  name="reason"
+                  class="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal"
+                  [(ngModel)]="escalationReason"
+                  (ngModelChange)="onEscalationChange()"
+                  [disabled]="busy()"
+                >
+                  <option value="">{{ copy().choose }}</option>
+                  @for (reason of reasons; track reason) {
+                    <option [value]="reason">{{ label(reason) }}</option>
+                  }
+                </select>
+              </label>
               <p class="text-sm text-muted">{{ copy().escalationConfirm }}</p>
               <button
                 data-escalate
                 appButton="outline"
+                [size]="'compact'"
                 type="submit"
                 [disabled]="busy() || !escalationReason"
               >
@@ -308,11 +431,18 @@
           @if (!current.history.length) {
             <p class="mt-2 text-sm text-muted">{{ copy().noHistory }}</p>
           }
-          <ol class="mt-3 grid gap-2 text-sm">
+          <ol class="mt-3 grid gap-2">
             @for (event of current.history; track $index) {
-              <li class="break-words">
-                {{ event.createdAt | date: 'dd.MM.yyyy HH:mm' }} · {{ event.actorLabel }} ·
-                {{ label(event.action) }}
+              <li class="flex gap-4 rounded-lg border border-slate-100 p-3 text-sm">
+                <time class="w-32 shrink-0 text-xs text-muted pt-0.5">{{
+                  event.createdAt | date: 'dd.MM.yyyy HH:mm'
+                }}</time>
+                <div class="min-w-0 break-words">
+                  <span class="font-semibold">{{ label(event.action) }}</span>
+                  @if (event.actorLabel) {
+                    <span class="text-muted"> · {{ event.actorLabel }}</span>
+                  }
+                </div>
               </li>
             }
           </ol>
