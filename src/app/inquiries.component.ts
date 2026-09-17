@@ -15,7 +15,7 @@ import {
   LucideWrench,
   LucideX,
   type LucideIcon,
-} from '@lucide/angular';
+} from '@autokosova/icons';
 import { DOCUMENT } from '@angular/common';
 import { CdkMenuTrigger } from '@angular/cdk/menu';
 import { HlmDropdownMenuImports } from '@autokosova/ui/dropdown-menu';

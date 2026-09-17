@@ -1,4 +1,4 @@
-import { LucideHeart, LucideSearch, type LucideIcon } from '@lucide/angular';
+import { LucideHeart, LucideSearch, type LucideIcon } from '@autokosova/icons';
 import { Component, afterNextRender, effect, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { favoritesCopy, type FavoritesCopyKey } from '../shared/favorites-copy';

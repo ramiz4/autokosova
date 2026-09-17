@@ -18,7 +18,7 @@ import {
   LucideWrench,
   LucideX,
   type LucideIcon,
-} from '@lucide/angular';
+} from '@autokosova/icons';
 import { AccountSessionService } from './account-session.service';
 import type { PublicGarageReview, PublicReviewPage } from '../shared/reviews';
 import { reviewLabel } from '../shared/review-copy';

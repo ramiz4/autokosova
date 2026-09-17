@@ -190,15 +190,14 @@ try {
       assert.equal(geometry.columns[0], geometry.columns[1]);
       if (width < 640) assert.ok(geometry.columns[2] > geometry.columns[0]);
       else assert.equal(geometry.columns[0], geometry.columns[2]);
-      await evaluate(`document.querySelector('${selector} button[brnOverlayTrigger]').focus()`);
+      await evaluate(`document.querySelector('${selector} summary').focus()`);
       await key('Enter', 13);
-      const isOpen = `document.querySelector('${selector} button[brnOverlayTrigger]')
-          .getAttribute('aria-expanded') === 'true' &&
-        !!document.querySelector('.cdk-overlay-container nav')`;
+      const isOpen = `document.querySelector('${selector} details').open === true &&
+        document.querySelector('${selector} nav').getClientRects().length > 0`;
       await until(() => evaluate(isOpen), 'keyboard language menu opening');
       const menuInBounds = await evaluate(`(() => {
-        const trigger = document.querySelector('${selector} button[brnOverlayTrigger]');
-        const menu = document.querySelector('.cdk-overlay-container nav');
+        const trigger = document.querySelector('${selector} summary');
+        const menu = document.querySelector('${selector} nav');
         const expectedLinks = [
           '/privacy',
           '/sq/privacy',
@@ -216,25 +215,20 @@ try {
       })()`);
       assert.ok(menuInBounds, `${locale} ${width}px language menu position`);
       await until(
-        () =>
-          evaluate(
-            `document.activeElement === document.querySelector('.cdk-overlay-container nav a')`,
-          ),
+        () => evaluate(`document.activeElement === document.querySelector('${selector} nav a')`),
         'language menu initial link focus',
       );
       await key('Tab', 9);
       assert.ok(
         await evaluate(
-          `document.activeElement === document.querySelectorAll('.cdk-overlay-container nav a')[1]`,
+          `document.activeElement === document.querySelectorAll('${selector} nav a')[1]`,
         ),
       );
       // Retrying Escape also waits for hydration to attach the Angular key handler.
       await until(async () => {
         await key('Escape', 27);
-        return evaluate(`document.querySelector('${selector} button[brnOverlayTrigger]')
-            .getAttribute('aria-expanded') === 'false' &&
-          !document.querySelector('.cdk-overlay-container nav') &&
-          document.activeElement === document.querySelector('${selector} button[brnOverlayTrigger]')`);
+        return evaluate(`document.querySelector('${selector} details').open === false &&
+          document.activeElement === document.querySelector('${selector} summary')`);
       }, 'Escape and focus restoration');
       const focusVisible = await evaluate(`document.activeElement.matches(':focus-visible') &&
         parseFloat(getComputedStyle(document.activeElement).outlineWidth) >= 2`);

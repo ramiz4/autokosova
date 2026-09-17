@@ -10,7 +10,7 @@ import {
   LucideThumbsUp,
   LucideVan,
   type LucideIcon,
-} from '@lucide/angular';
+} from '@autokosova/icons';
 import { SearchAreasComponent, type SearchArea } from './ui/search-areas.component';
 import { isPlatformBrowser } from '@angular/common';
 import {

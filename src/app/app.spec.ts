@@ -112,12 +112,13 @@ describe('Homepage', () => {
     expect(page.querySelector('h1')?.textContent).toContain('Para se të nisesh.');
     expect(page.querySelector('a[href="/sq/inquiry"]')).toBeTruthy();
     expect(page.querySelector('header a[href="/sq/garages"]')).toBeTruthy();
-    const trigger = page.querySelector<HTMLButtonElement>(
-      'app-site-header app-language-switcher button[brnOverlayTrigger]',
+    const details = page.querySelector<HTMLDetailsElement>(
+      'app-site-header app-language-switcher details',
     )!;
+    const trigger = details.querySelector<HTMLElement>('summary')!;
     trigger.click();
-    await fixture.whenRenderingDone();
-    const links = [...document.querySelectorAll<HTMLAnchorElement>('.cdk-overlay-container nav a')];
+    await fixture.whenStable();
+    const links = [...details.querySelectorAll<HTMLAnchorElement>('nav a')];
     expect(links.find((link) => link.getAttribute('href') === '/en')?.textContent).toContain(
       'English',
     );
@@ -126,7 +127,7 @@ describe('Homepage', () => {
     ).toContain('Shqip');
     links[0].dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
     await fixture.whenStable();
-    expect(document.querySelector('.cdk-overlay-container nav')).toBeNull();
+    expect(details.open).toBe(false);
   });
 
   it('keeps optional analytics a deliberate, reversible choice in the shared footer', async () => {

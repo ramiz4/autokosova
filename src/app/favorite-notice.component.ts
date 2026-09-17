@@ -5,7 +5,7 @@ import {
   LucideUser,
   LucideX,
   type LucideIcon,
-} from '@lucide/angular';
+} from '@autokosova/icons';
 import { Component, computed, inject, input } from '@angular/core';
 import { FavoritesService } from './favorites.service';
 import { LanguageService } from './language.service';

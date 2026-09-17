@@ -1,7 +1,7 @@
 import type { Locator } from '@playwright/test';
 import { test, expect } from '../support/application';
 
-test('language-switcher keeps native locale links and uses a nonmodal eight-pixel overlay', async ({
+test('language-switcher keeps native locale links in a nonmodal eight-pixel menu', async ({
   app,
   page,
 }) => {
@@ -12,13 +12,13 @@ test('language-switcher keeps native locale links and uses a nonmodal eight-pixe
 
   await page.goto(app.origin + path);
   const header = page.locator('app-site-header app-language-switcher');
-  const headerTrigger = header.locator('button[brnOverlayTrigger]');
-  await expect(headerTrigger).toHaveAttribute('aria-expanded', 'false');
-  await expect(headerTrigger).not.toHaveAttribute('aria-haspopup');
+  const headerDetails = header.locator('details');
+  const headerTrigger = headerDetails.locator('summary');
+  await expect(headerDetails).not.toHaveAttribute('open');
   await headerTrigger.focus();
   await page.keyboard.press('Enter');
 
-  const headerPanel = page.locator('.cdk-overlay-container nav').last();
+  const headerPanel = headerDetails.locator('nav');
   await expect(headerPanel).toBeVisible();
   await expect(headerPanel).not.toHaveAttribute('role', 'dialog');
   await expect(headerPanel.locator('[role="menuitem"], [role="dialog"]')).toHaveCount(0);
@@ -44,21 +44,24 @@ test('language-switcher keeps native locale links and uses a nonmodal eight-pixe
   expect(headerGeometry.panel.left).toBeGreaterThanOrEqual(0);
   expect(headerGeometry.panel.right).toBeLessThanOrEqual(headerGeometry.viewport.width);
   await page.keyboard.press('Escape');
-  await expect(headerPanel).toHaveCount(0);
+  await expect(headerPanel).not.toBeVisible();
+  await expect(headerDetails).not.toHaveAttribute('open');
   await expect(headerTrigger).toBeFocused();
 
   const footer = page.locator('app-site-footer app-language-switcher');
-  const footerTrigger = footer.locator('button[brnOverlayTrigger]');
+  const footerDetails = footer.locator('details');
+  const footerTrigger = footerDetails.locator('summary');
   await footerTrigger.scrollIntoViewIfNeeded();
   await footerTrigger.click();
-  const footerPanel = page.locator('.cdk-overlay-container nav').last();
+  const footerPanel = footerDetails.locator('nav');
   await expect(footerPanel).toBeVisible();
   const footerGeometry = await geometry(footerTrigger, footerPanel);
   expect(footerGeometry.panel.bottom).toBeLessThanOrEqual(footerGeometry.anchor.top - 7);
   expect(footerGeometry.panel.left).toBeGreaterThanOrEqual(0);
   expect(footerGeometry.panel.right).toBeLessThanOrEqual(footerGeometry.viewport.width);
   await page.locator('main').click({ position: { x: 1, y: 1 } });
-  await expect(footerPanel).toHaveCount(0);
+  await expect(footerPanel).not.toBeVisible();
+  await expect(footerDetails).not.toHaveAttribute('open');
 });
 
 async function geometry(anchor: Locator, panel: Locator) {

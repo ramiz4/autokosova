@@ -19,7 +19,7 @@ import {
   LucideMessageSquarePlus,
   LucideSearch,
   type LucideIcon,
-} from '@lucide/angular';
+} from '@autokosova/icons';
 import { AccountSessionService } from './account-session.service';
 import { LanguageService } from './language.service';
 import { SiteHeaderComponent } from './site-header.component';

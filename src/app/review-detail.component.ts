@@ -5,7 +5,7 @@ import {
   LucideCalendarDays,
   LucideFileText,
   type LucideIcon,
-} from '@lucide/angular';
+} from '@autokosova/icons';
 import { reviewLabel } from '../shared/review-copy';
 import type { OwnReviewDetail } from '../shared/reviews';
 import { AccountSessionService } from './account-session.service';

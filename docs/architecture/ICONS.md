@@ -1,9 +1,13 @@
 # Component-local Lucide icons
 
-Application icons use the exact pinned `@lucide/angular` dependency. Import only the concrete icons a standalone component needs and expose each as a typed `readonly` field. Do not add icon registries, providers, namespace imports, string lookups, or a shared icon barrel.
+Application icons use the pinned `@ng-icons/lucide` SVG data through the bounded
+`@autokosova/icons` facade. Import only the concrete icons a standalone component
+needs and expose each as a typed `readonly` field. Do not add runtime registries,
+providers, namespace imports or string lookups. Adding a new icon requires an
+explicit facade export so the production bundle remains reviewable.
 
 ```ts
-import { LucideHouse, type LucideIcon } from '@lucide/angular';
+import { LucideHouse, type LucideIcon } from '@autokosova/icons';
 import { LucideIconComponent } from './ui/lucide-icon.component';
 
 // Add LucideIconComponent to the consuming component's imports.
@@ -16,9 +20,13 @@ readonly HomeIcon: LucideIcon = LucideHouse;
 
 ## Library API boundary
 
-Lucide v1 uses `<svg [lucideIcon]="reference">`, not the legacy `<lucide-icon [name]>` selector. The small local `LucideIconComponent` preserves our reference-only template contract and host styling while delegating all SVG rendering to `LucideDynamicIcon`. It contains no icon assets, registry, or mutable global configuration. Its required input accepts `LucideIcon`, not strings.
-
-Sources: [Lucide migration](https://lucide.dev/guide/angular/migration), [reference imports](https://lucide.dev/guide/angular/getting-started), [types](https://lucide.dev/guide/angular/advanced/typescript).
+The small local `LucideIconComponent` preserves the reference-only template
+contract and host styling while delegating safe SVG insertion to `NgIcon`.
+`LucideIcon` contains the fixed Lucide name and SVG from the compile-time facade;
+callers never pass arbitrary strings or HTML. There is no mutable global icon
+configuration. The previous `@lucide/angular` component catalog is intentionally
+not a runtime dependency because its generated Angular metadata added about
+198 kB to the shared initial chunk.
 
 ## Styling, state and accessibility
 
@@ -36,4 +44,7 @@ Icons are decorative and unfocusable. Keep accessible names, pressed/expanded st
 
 After `npm run build`, run `node scripts/icons-browser-smoke.mjs` for a real Chromium check of the built SSR application. It creates and cleans up its own loopback server, checks DE/SQ/EN at mobile/desktop widths, verifies SVG/host dimensions and inherited colors, exercises hydrated mobile-menu signal changes, and checks vehicle sizing and fill. It uses only public synthetic pages and does not require a database or real account.
 
-Explicit imports exclude unused icons, but do not imply a smaller bundle than hand-written paths. Review actual production build output; the existing warning and error budgets must not be raised to hide migration costs.
+The production build and `scripts/bundle-report.mjs` remain the source of truth
+for bundle size. Issue #189 moved icon data out of the initial graph and tightened
+the initial warning/error budgets to 490/500 kB; those limits must not be raised
+to hide migration costs.

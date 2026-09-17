@@ -6,7 +6,7 @@ import {
   LucideMapPin,
   LucideWrench,
   type LucideIcon,
-} from '@lucide/angular';
+} from '@autokosova/icons';
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { getCatalogPlace } from '../shared/catalog';

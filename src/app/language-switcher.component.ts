@@ -1,53 +1,50 @@
-import { LucideChevronDown, type LucideIcon } from '@lucide/angular';
-import type { ConnectedPosition } from '@angular/cdk/overlay';
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
-import { BrnOverlay, BrnOverlayContent, BrnOverlayTrigger } from '@spartan-ng/brain/overlay';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  HostListener,
+  inject,
+  input,
+  viewChild,
+} from '@angular/core';
 import { LanguageService } from './language.service';
-import { LucideIconComponent } from './ui/lucide-icon.component';
 
 @Component({
   selector: 'app-language-switcher',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BrnOverlay, BrnOverlayContent, BrnOverlayTrigger, LucideIconComponent],
   template: `
     @if (compact()) {
-      <brn-overlay
-        [attachPositions]="positions()"
-        [attachTo]="languageButton"
-        [autoFocus]="true"
-        [closeOnOutsidePointerEvents]="true"
-        [hasBackdrop]="false"
-        [role]="null"
-        scrollStrategy="reposition"
-        [state]="state()"
-        (stateChanged)="state.set($event)"
-      >
-        <button
-          #languageButton
-          brnOverlayTrigger
-          type="button"
-          class="flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-lg px-2 text-sm font-semibold leading-none text-ink focus-visible:outline-2 focus-visible:outline-brand"
+      <details #languageDetails name="language-switcher" class="group relative">
+        <summary
+          class="flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-lg px-2 text-sm font-semibold leading-none text-ink focus-visible:outline-2 focus-visible:outline-brand [&::-webkit-details-marker]:hidden"
           [attr.aria-label]="language.t('a11y.language')"
+          (click)="toggle($event, languageDetails)"
         >
           <span class="block leading-none">{{ language.language.toUpperCase() }}</span>
-          <lucide-icon [name]="ChevronDownIcon" class="size-4" />
-        </button>
-        <ng-template brnOverlayContent>
-          <nav
-            class="min-w-32 rounded-xl border border-blue-100 bg-white p-2 shadow-xl"
-            [attr.aria-label]="language.t('a11y.language')"
-          >
-            @for (item of language.languages; track item) {
-              <a
-                [attr.aria-current]="language.language === item ? 'page' : null"
-                [href]="language.switchUrl(item)"
-                class="flex min-h-11 items-center rounded-lg px-3 text-sm text-ink hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand aria-[current=page]:bg-blue-50"
-                >{{ language.languageLabels[item] }}</a
-              >
-            }
-          </nav>
-        </ng-template>
-      </brn-overlay>
+          <span
+            aria-hidden="true"
+            class="mb-1 size-2.5 rotate-45 border-r-2 border-b-2 border-current transition-transform group-open:mt-1 group-open:mb-0 group-open:rotate-225"
+          ></span>
+        </summary>
+        <nav
+          [class.bottom-full]="placement() === 'above'"
+          [class.mb-2]="placement() === 'above'"
+          [class.top-full]="placement() === 'below'"
+          [class.mt-2]="placement() === 'below'"
+          class="absolute right-0 z-50 min-w-32 rounded-xl border border-blue-100 bg-white p-2 shadow-xl"
+          [attr.aria-label]="language.t('a11y.language')"
+          (keydown.escape)="close($event, languageDetails)"
+        >
+          @for (item of language.languages; track item) {
+            <a
+              [attr.aria-current]="language.language === item ? 'page' : null"
+              [href]="language.switchUrl(item)"
+              class="flex min-h-11 items-center rounded-lg px-3 text-sm text-ink hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-brand aria-[current=page]:bg-blue-50"
+              >{{ language.languageLabels[item] }}</a
+            >
+          }
+        </nav>
+      </details>
     } @else if (segmented()) {
       <nav
         class="grid grid-cols-3 gap-1 rounded-xl bg-slate-50 p-1 text-sm font-semibold"
@@ -80,28 +77,30 @@ import { LucideIconComponent } from './ui/lucide-icon.component';
   `,
 })
 export class LanguageSwitcherComponent {
-  readonly ChevronDownIcon: LucideIcon = LucideChevronDown;
-
   readonly compact = input(false);
   readonly segmented = input(false);
   readonly placement = input<'above' | 'below'>('below');
-  protected readonly state = signal<'closed' | 'open'>('closed');
-  protected readonly positions = computed<ConnectedPosition[]>(() => {
-    const above: ConnectedPosition = {
-      originX: 'end',
-      originY: 'top',
-      overlayX: 'end',
-      overlayY: 'bottom',
-      offsetY: -8,
-    };
-    const below: ConnectedPosition = {
-      originX: 'end',
-      originY: 'bottom',
-      overlayX: 'end',
-      overlayY: 'top',
-      offsetY: 8,
-    };
-    return this.placement() === 'above' ? [above, below] : [below, above];
-  });
   protected readonly language = inject(LanguageService);
+  private readonly details = viewChild<ElementRef<HTMLDetailsElement>>('languageDetails');
+
+  @HostListener('document:pointerdown', ['$event'])
+  protected closeOutside(event: PointerEvent): void {
+    const details = this.details()?.nativeElement;
+    if (details?.open && event.target instanceof Node && !details.contains(event.target)) {
+      details.open = false;
+    }
+  }
+
+  protected close(event: Event, details: HTMLDetailsElement): void {
+    event.preventDefault();
+    event.stopPropagation();
+    details.open = false;
+    details.querySelector('summary')?.focus();
+  }
+
+  protected toggle(event: Event, details: HTMLDetailsElement): void {
+    event.preventDefault();
+    details.open = !details.open;
+    if (details.open) queueMicrotask(() => details.querySelector<HTMLAnchorElement>('a')?.focus());
+  }
 }

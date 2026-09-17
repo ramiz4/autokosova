@@ -1,4 +1,4 @@
-import { LucideChevronDown, LucideSearch, LucideX, type LucideIcon } from '@lucide/angular';
+import { LucideChevronDown, LucideSearch, LucideX, type LucideIcon } from '@autokosova/icons';
 import { isPlatformBrowser } from '@angular/common';
 import type { ConnectedPosition } from '@angular/cdk/overlay';
 import {

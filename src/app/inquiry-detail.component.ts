@@ -1,6 +1,6 @@
 import { Component, DestroyRef, afterNextRender, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { LucideArrowLeft, LucideMapPin, LucidePaperclip, type LucideIcon } from '@lucide/angular';
+import { LucideArrowLeft, LucideMapPin, LucidePaperclip, type LucideIcon } from '@autokosova/icons';
 import { getCatalogPlace, VEHICLE_MAKE_LABELS } from '../shared/catalog';
 import { inquiriesCopy, type InquiriesCopyKey } from '../shared/inquiries-copy';
 import { requestCopy, type RequestCopyKey } from '../shared/request-copy';

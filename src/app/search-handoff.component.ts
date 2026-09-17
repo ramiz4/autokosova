@@ -6,7 +6,7 @@ import {
   LucideMapPin,
   LucideStar,
   type LucideIcon,
-} from '@lucide/angular';
+} from '@autokosova/icons';
 import { FavoritesService } from './favorites.service';
 import { FavoriteNoticeComponent } from './favorite-notice.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
