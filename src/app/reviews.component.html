@@ -279,10 +279,9 @@
                     <div class="shrink-0">
                       <button
                         type="button"
-                        class="review-menu-trigger"
+                        appActionMenuTrigger
                         [id]="'review-actions-' + review.id"
-                        [cdkMenuTriggerFor]="reviewActions"
-                        [cdkMenuPosition]="actionsMenuPositions"
+                        [hlmDropdownMenuTrigger]="reviewActions"
                         #actionsMenu="cdkMenuTriggerFor"
                         [attr.aria-label]="
                           label('reviewActions') +
@@ -292,47 +291,50 @@
                         [disabled]="loading() || busy()"
                         [attr.data-review-menu]="review.id"
                       >
-                        <lucide-icon [name]="EllipsisIcon" class="size-6" /></button
+                        <lucide-icon [name]="EllipsisIcon" class="size-5" /></button
                       ><ng-template #reviewActions
                         ><div
-                          cdkMenu
-                          class="review-actions-menu"
+                          hlmDropdownMenu
+                          appActionMenuPanel
+                          [sideOffset]="8"
                           [attr.aria-labelledby]="'review-actions-' + review.id"
                         >
-                          <button
-                            type="button"
-                            cdkMenuItem
-                            (cdkMenuItemTriggered)="openFromMenu(review, 'view', actionsMenu)"
+                          <a
+                            hlmDropdownMenuItem
+                            appActionMenuItem
+                            [routerLink]="language.link('review-detail', review.id)"
                             data-open-own-review
                           >
                             <lucide-icon [name]="EyeIcon" class="size-4" />{{ label('details') }}
-                          </button>
+                          </a>
                           @if (
                             review.evidenceFileId &&
                             review.evidenceStatus !== 'deleted_after_retention'
                           ) {
-                            <button
-                              type="button"
-                              cdkMenuItem
-                              (cdkMenuItemTriggered)="openFromMenu(review, 'evidence', actionsMenu)"
+                            <a
+                              hlmDropdownMenuItem
+                              appActionMenuItem
+                              [routerLink]="language.link('review-detail', review.id)"
+                              [queryParams]="{ action: 'evidence' }"
                               data-open-own-evidence-menu
                             >
                               <lucide-icon [name]="EvidenceIcon" class="size-4" />{{
                                 label('openEvidence')
                               }}
-                            </button>
+                            </a>
                           }
                           @if (review.publicationState === 'published') {
-                            <button
-                              type="button"
-                              cdkMenuItem
-                              (cdkMenuItemTriggered)="openFromMenu(review, 'update', actionsMenu)"
+                            <a
+                              hlmDropdownMenuItem
+                              appActionMenuItem
+                              [routerLink]="language.link('review-detail', review.id)"
+                              [queryParams]="{ action: 'update' }"
                               data-open-own-review-update
                             >
                               <lucide-icon [name]="UpdateIcon" class="size-4" />{{
                                 label('update')
                               }}
-                            </button>
+                            </a>
                           }
                         </div></ng-template
                       >

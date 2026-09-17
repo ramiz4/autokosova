@@ -90,45 +90,6 @@
   border-top: 1px solid #dbe6f3;
   padding: 1.25rem;
 }
-.review-menu-trigger {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border-radius: 50%;
-  background: #edf5ff;
-  color: #075bb6;
-}
-.review-menu-trigger:hover,
-.review-menu-trigger[aria-expanded='true'] {
-  background: #dcecff;
-  color: #005bc4;
-}
-.review-actions-menu {
-  width: min(260px, calc(100vw - 2rem));
-  padding: 0.4rem;
-  border: 1px solid #dbe4f0;
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 12px 30px #17355c20;
-}
-.review-actions-menu button {
-  display: flex;
-  width: 100%;
-  min-height: 44px;
-  align-items: center;
-  gap: 0.65rem;
-  border-radius: 8px;
-  padding: 0.6rem 0.7rem;
-  color: #07143e;
-  text-align: left;
-  font-size: 0.875rem;
-}
-.review-actions-menu button:hover,
-.review-actions-menu button:focus-visible {
-  background: #f1f5fb;
-  outline: 0;
-}
 .status-badge {
   display: inline-flex;
   min-height: 26px;

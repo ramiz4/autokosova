@@ -24,9 +24,11 @@ export type AppRoute =
   | 'monetization'
   | 'profile'
   | 'inquiries'
+  | 'inquiry-detail'
   | 'favorites'
   | 'admin-section'
   | 'reviews'
+  | 'review-detail'
   | 'review-new'
   | 'admin'
   | 'moderation'
@@ -133,6 +135,7 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
     monetization: '/monetization',
     profile: '/profile',
     inquiries: '/inquiries',
+    'inquiry-detail': `/inquiries/${encodeURIComponent(parameter ?? '')}`,
     favorites: '/favorites',
     'admin-section':
       '/admin/' +
@@ -140,6 +143,7 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
         ? parameter
         : 'garages'),
     reviews: '/reviews',
+    'review-detail': `/reviews/${encodeURIComponent(parameter ?? '')}`,
     'review-new': `/garages/${encodeURIComponent(parameter ?? '')}/reviews/new`,
     admin: '/admin',
     moderation: '/moderation',
@@ -161,11 +165,15 @@ function identifyRoute(path: string): { readonly parameter?: string; readonly ro
   if (normalized === '/admin') return { route: 'admin' };
   if (normalized === '/moderation') return { route: 'moderation' };
   if (normalized === '/reviews') return { route: 'reviews' };
+  const reviewDetail = normalized.match(/^\/reviews\/([^/]+)$/);
+  if (reviewDetail) return { route: 'review-detail', parameter: reviewDetail[1] };
   const newReview = normalized.match(/^\/garages\/([A-Za-z0-9_-]+)\/reviews\/new$/);
   if (newReview) return { route: 'review-new', parameter: newReview[1] };
   if (normalized === '/profile') return { route: 'profile' };
   if (normalized === '/favorites') return { route: 'favorites' };
   if (normalized === '/inquiries') return { route: 'inquiries' };
+  const inquiryDetail = normalized.match(/^\/inquiries\/([^/]+)$/);
+  if (inquiryDetail) return { route: 'inquiry-detail', parameter: inquiryDetail[1] };
   if (normalized === '/monetization' || normalized === '/monetarisierung') {
     return { route: 'monetization' };
   }

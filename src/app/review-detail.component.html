@@ -1,0 +1,148 @@
+<div class="min-h-screen bg-brand/5 font-sans text-ink">
+  <app-auth-required-dialog
+    [open]="account.state() === 'guest'"
+    [loginAvailable]="account.loginAvailable() !== false"
+    [loginUrl]="loginUrl()"
+  />
+  <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
+    <app-site-header [compact]="true" active="reviews" [loginReturnTo]="routeUrl()" />
+  </div>
+  <main class="mx-auto w-full max-w-340 px-4 pt-6 pb-14 sm:px-6">
+    <a appButton="outline" size="compact" [routerLink]="language.link('reviews')"
+      ><lucide-icon [name]="ArrowLeftIcon" class="size-4" />{{ label('own') }}</a
+    >
+    @switch (state()) {
+      @case ('loading') {
+        <p class="mt-8 rounded-2xl bg-white p-8" role="status">{{ label('loading') }}</p>
+      }
+      @case ('error') {
+        <button appButton="outline" class="mt-8" type="button" (click)="load()">
+          {{ label('retry') }}
+        </button>
+      }
+      @case ('missing') {
+        <p class="mt-8 rounded-2xl bg-white p-8" role="alert">{{ label('unavailable') }}</p>
+      }
+      @case ('ready') {
+        @if (detail(); as review) {
+          <article
+            class="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+          >
+            <div class="grid lg:grid-cols-[minmax(0,1fr)_320px]">
+              <div class="p-6 sm:p-8">
+                <div class="flex gap-5">
+                  @if (photoUrl(review); as photo) {
+                    <img
+                      [src]="photo"
+                      alt=""
+                      width="128"
+                      height="128"
+                      class="size-28 rounded-xl object-cover"
+                    />
+                  }
+                  <div>
+                    <h1 class="text-[clamp(28px,4vw,36px)] font-bold">{{ review.garageName }}</h1>
+                    <p class="mt-2 text-sm text-muted">
+                      {{ language.serviceLabel(review.serviceCategoryId) }} ·
+                      {{ review.visitMonth }}
+                    </p>
+                    <div class="mt-4 flex items-center gap-2 font-semibold">
+                      <app-rating-stars
+                        [rating]="review.ratings.overall"
+                        [label]="review.ratings.overall + ' / 5'"
+                      /><span>{{ review.ratings.overall }} / 5</span>
+                    </div>
+                  </div>
+                </div>
+                <p class="mt-6 whitespace-pre-wrap text-base leading-7">{{ review.text }}</p>
+                <dl class="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div class="rounded-lg bg-blue-50 p-3">
+                    <dt class="text-xs text-muted">{{ label('workQuality') }}</dt>
+                    <dd class="mt-1 font-bold">{{ review.ratings.workQuality }}/5</dd>
+                  </div>
+                  <div class="rounded-lg bg-blue-50 p-3">
+                    <dt class="text-xs text-muted">{{ label('communication') }}</dt>
+                    <dd class="mt-1 font-bold">{{ review.ratings.communication }}/5</dd>
+                  </div>
+                  <div class="rounded-lg bg-blue-50 p-3">
+                    <dt class="text-xs text-muted">{{ label('priceTransparency') }}</dt>
+                    <dd class="mt-1 font-bold">{{ review.ratings.priceTransparency }}/5</dd>
+                  </div>
+                  <div class="rounded-lg bg-blue-50 p-3">
+                    <dt class="text-xs text-muted">{{ label('punctuality') }}</dt>
+                    <dd class="mt-1 font-bold">{{ review.ratings.punctuality }}/5</dd>
+                  </div>
+                </dl>
+                @for (update of review.updates; track $index) {
+                  <section class="mt-6 border-l-4 border-blue-100 pl-4">
+                    <h2 class="text-sm font-semibold">
+                      {{ label(update.kind) }} · {{ submittedAt(update.createdAt) }}
+                    </h2>
+                    <p class="mt-2 whitespace-pre-wrap leading-6">{{ update.text }}</p>
+                  </section>
+                }
+              </div>
+              <aside class="border-t border-slate-200 p-6 sm:p-8 lg:border-t-0 lg:border-l">
+                <p class="flex items-center gap-2 text-sm text-muted">
+                  <lucide-icon [name]="CalendarIcon" class="size-5 text-brand" />{{
+                    submittedAt(review.submittedAt)
+                  }}
+                </p>
+                <dl class="mt-6 grid gap-5">
+                  <div>
+                    <dt class="text-xs font-semibold text-muted">{{ label('month') }}</dt>
+                    <dd class="mt-1 font-medium">{{ review.visitMonth }}</dd>
+                  </div>
+                  <div>
+                    <dt class="text-xs font-semibold text-muted">{{ label('status') }}</dt>
+                    <dd class="mt-2">
+                      <span
+                        class="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-brand-dark"
+                        >{{ label(review.publicationState) }}</span
+                      >
+                    </dd>
+                  </div>
+                  <div>
+                    <dt class="text-xs font-semibold text-muted">{{ label('evidenceStatus') }}</dt>
+                    <dd class="mt-2">
+                      <span
+                        class="rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-800"
+                        >{{ label(review.evidenceStatus) }}</span
+                      >
+                    </dd>
+                  </div>
+                </dl>
+                @if (review.evidenceFileId && review.evidenceStatus !== 'deleted_after_retention') {
+                  <button
+                    appButton="outline"
+                    size="compact"
+                    class="mt-6 w-full"
+                    type="button"
+                    [disabled]="busy()"
+                    (click)="openEvidence()"
+                  >
+                    <lucide-icon [name]="EvidenceIcon" class="size-4" />{{ label('openEvidence') }}
+                  </button>
+                }
+                @if (evidence(); as content) {
+                  <pre
+                    class="mt-4 max-w-full rounded-xl bg-slate-50 p-4 text-sm whitespace-pre-wrap wrap-break-word"
+                    >{{ content }}</pre>
+                }
+              </aside>
+            </div>
+          </article>
+          @if (review.publicationState === 'published') {
+            <app-review-contribution
+              mode="update"
+              [reviewId]="review.id"
+              [garageId]="review.garageId"
+              [startRequested]="startUpdate()"
+              (changed)="load()"
+            />
+          }
+        }
+      }
+    }
+  </main>
+</div>

@@ -32,6 +32,7 @@
       </div>
       <a
         appButton
+        size="compact"
         data-new-inquiry
         class="max-[480px]:w-full"
         [routerLink]="language.link('request')"
@@ -104,53 +105,49 @@
             </button>
           </div>
         }
-        <div class="workspace grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_250px]">
+        <div class="workspace grid items-start gap-7">
           <section class="request-column min-w-0" [attr.aria-label]="text('title')">
-            <div class="mb-4.5 flex flex-wrap items-center justify-between gap-3">
-              <div
-                class="flex gap-0.75 rounded-xl bg-brand/10 p-1 max-[480px]:w-full"
-                role="group"
-                [attr.aria-label]="text('filterLabel')"
+            <div class="mb-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(240px,.42fr)]">
+              <label
+                class="review-search flex min-h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-muted shadow-sm"
               >
-                @for (filter of filters; track filter) {
-                  <button
-                    type="button"
-                    [attr.data-inquiry-filter]="filter"
-                    [attr.aria-pressed]="saved.activity() === filter"
-                    [disabled]="saved.writeState() === 'saving'"
-                    (click)="saved.filter(filter)"
-                    [class]="
-                      saved.activity() === filter
-                        ? 'min-h-11 rounded-[9px] bg-white px-3.75 py-2.5 text-[13px] font-semibold text-ink shadow-sm shadow-brand/10 max-[480px]:flex-1 max-[480px]:px-2'
-                        : 'min-h-11 rounded-[9px] px-3.75 py-2.5 text-[13px] font-semibold text-slate-600 max-[480px]:flex-1 max-[480px]:px-2'
-                    "
-                  >
-                    {{ text(filter) }}
-                  </button>
-                }
-              </div>
-              <span class="flex gap-1.5 text-xs text-muted max-[480px]:hidden"
-                ><lucide-icon [name]="ClockIcon" class="size-4" />{{ text('sort') }}</span
-              >
+                <span class="sr-only">{{ text('search') }}</span>
+                <lucide-icon [name]="SearchIcon" class="size-5" />
+                <input
+                  type="search"
+                  class="min-w-0 flex-1 border-0 bg-transparent text-sm text-ink outline-none"
+                  [value]="inquirySearch()"
+                  [placeholder]="text('search')"
+                  (input)="inquirySearch.set($any($event.target).value)"
+                />
+              </label>
+              <app-select-field
+                [label]="text('filterLabel')"
+                [value]="saved.activity()"
+                [options]="filterOptions()"
+                (valueChange)="saved.filter($any($event))"
+              />
             </div>
             <ul
               data-inquiries-list
               class="request-list grid gap-4"
               [attr.aria-busy]="saved.state() === 'loading' || saved.writeState() === 'saving'"
             >
-              @for (request of saved.requests(); track request.id) {
+              @for (request of visibleRequests(); track request.id) {
                 <li>
                   <article
                     [attr.data-inquiry-id]="request.id"
                     data-inquiry-card
-                    class="wrap-anywhere rounded-2xl border border-slate-200 bg-white p-5.5 shadow-sm shadow-brand/5 max-[480px]:p-4"
+                    class="wrap-anywhere grid min-w-0 gap-4 overflow-visible rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-brand/5 md:grid-cols-[80px_minmax(0,1fr)_300px] md:items-start"
                   >
-                    <div class="flex items-start gap-3 max-[480px]:gap-2.5">
+                    <div
+                      class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 md:contents"
+                    >
                       <span
                         [class]="
                           request.active
-                            ? 'flex size-11.5 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand max-[480px]:size-9.5'
-                            : 'flex size-11.5 shrink-0 items-center justify-center rounded-xl bg-brand/5 text-slate-500 max-[480px]:size-9.5'
+                            ? 'flex size-14 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand md:col-start-1 md:row-span-2 md:size-20'
+                            : 'flex size-14 shrink-0 items-center justify-center rounded-xl bg-brand/5 text-slate-500 md:col-start-1 md:row-span-2 md:size-20'
                         "
                         ><lucide-icon [name]="WrenchIcon" class="size-6"
                       /></span>
@@ -159,74 +156,110 @@
                           <h2 class="text-lg font-bold leading-[1.35] tracking-[-.02em]">
                             {{ language.serviceLabel(request.serviceCategoryId) }}
                           </h2>
-                          <span
-                            [class]="
-                              request.active
-                                ? 'status-badge inline-flex items-center gap-1.25 rounded-full bg-brand/10 px-2 py-1 text-[11px] font-semibold text-emerald-800'
-                                : 'status-badge inline-flex items-center gap-1.25 rounded-full bg-brand/5 px-2 py-1 text-[11px] font-semibold text-slate-600'
-                            "
-                            ><span
-                              aria-hidden="true"
-                              class="size-1.25 rounded-full bg-current"
-                            ></span
-                            >{{ text(request.active ? 'active' : 'inactive') }}</span
-                          >
                         </div>
-                        <p class="saved-date mt-1.5 text-xs leading-relaxed text-muted">
-                          {{ text(request.revision > 1 ? 'updatedOn' : 'savedOn') }}
-                          <time
-                            [attr.datetime]="
-                              request.revision > 1 ? request.updatedAt : request.createdAt
-                            "
-                            >{{
-                              date(request.revision > 1 ? request.updatedAt : request.createdAt)
-                            }}</time
-                          >
-                        </p>
                       </div>
-                      <div class="actions shrink-0" data-inquiry-actions>
-                        <button
-                          type="button"
-                          class="flex size-11 items-center justify-center rounded-[9px] border border-slate-300 bg-brand/10 text-brand-dark hover:border-slate-400 hover:bg-brand/15 hover:text-brand-dark aria-expanded:border-slate-400 aria-expanded:bg-brand/15 aria-expanded:text-brand-dark"
-                          [id]="'actions-trigger-' + request.id"
-                          [attr.title]="text('actions')"
-                          [cdkMenuTriggerFor]="requestActions"
-                          [cdkMenuPosition]="actionsMenuPositions"
-                          #actionsMenu="cdkMenuTriggerFor"
-                          [attr.aria-label]="
-                            text('actions') +
-                            ': ' +
-                            language.serviceLabel(request.serviceCategoryId)
-                          "
-                          [disabled]="saved.writeState() === 'saving'"
-                          data-inquiry-menu
-                        >
-                          <lucide-icon [name]="EllipsisIcon" class="size-6" [strokeWidth]="4" />
-                        </button>
+                      <div
+                        class="actions flex shrink-0 flex-col gap-3 md:col-start-3 md:row-span-2 md:h-full md:w-full md:border-l md:border-slate-200 md:pl-6"
+                        data-inquiry-actions
+                      >
+                        <div class="flex w-full items-start justify-between gap-3">
+                          <p
+                            class="saved-date flex items-center gap-2 text-sm leading-6 text-muted max-md:hidden"
+                          >
+                            <lucide-icon [name]="CalendarIcon" class="size-5 text-brand" />
+                            {{ text(request.revision > 1 ? 'updatedOn' : 'savedOn') }}
+                            <time
+                              [attr.datetime]="
+                                request.revision > 1 ? request.updatedAt : request.createdAt
+                              "
+                              >{{
+                                date(request.revision > 1 ? request.updatedAt : request.createdAt)
+                              }}</time
+                            >
+                          </p>
+                          <button
+                            type="button"
+                            appActionMenuTrigger
+                            [id]="'actions-trigger-' + request.id"
+                            [attr.title]="text('actions')"
+                            [hlmDropdownMenuTrigger]="requestActions"
+                            #actionsMenu="cdkMenuTriggerFor"
+                            [attr.aria-label]="
+                              text('actions') +
+                              ': ' +
+                              language.serviceLabel(request.serviceCategoryId)
+                            "
+                            [disabled]="saved.writeState() === 'saving'"
+                            data-inquiry-menu
+                          >
+                            <lucide-icon [name]="EllipsisIcon" class="size-5" />
+                          </button>
+                        </div>
                         <ng-template #requestActions>
                           <div
-                            cdkMenu
-                            class="z-15 w-[min(224px,calc(100vw-64px))] rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-brand/20"
+                            hlmDropdownMenu
+                            appActionMenuPanel
+                            [sideOffset]="8"
                             [attr.aria-labelledby]="'actions-trigger-' + request.id"
                           >
+                            <a
+                              hlmDropdownMenuItem
+                              appActionMenuItem
+                              [attr.aria-disabled]="saved.writeState() === 'saving' ? 'true' : null"
+                              [class.pointer-events-none]="saved.writeState() === 'saving'"
+                              [routerLink]="language.link('inquiry-detail', request.id)"
+                              (click)="
+                                saved.writeState() === 'saving' ? $event.preventDefault() : null
+                              "
+                              data-inquiry-view
+                            >
+                              <lucide-icon [name]="EyeIcon" class="size-4" />{{ text('view') }}
+                            </a>
+                            @if (searchQuery(request); as query) {
+                              <a
+                                hlmDropdownMenuItem
+                                appActionMenuItem
+                                [attr.aria-disabled]="
+                                  saved.writeState() === 'saving' ? 'true' : null
+                                "
+                                [class.pointer-events-none]="saved.writeState() === 'saving'"
+                                [routerLink]="language.link('search')"
+                                [queryParams]="query"
+                                (click)="
+                                  saved.writeState() === 'saving' ? $event.preventDefault() : null
+                                "
+                                data-inquiry-search
+                              >
+                                <lucide-icon [name]="SearchIcon" class="size-4" />{{ text('find') }}
+                              </a>
+                            } @else {
+                              <button
+                                type="button"
+                                hlmDropdownMenuItem
+                                appActionMenuItem
+                                disabled
+                                [disabled]="true"
+                                data-inquiry-search-disabled
+                              >
+                                <lucide-icon [name]="SearchIcon" class="size-4" />{{ text('find') }}
+                              </button>
+                            }
                             <button
                               type="button"
-                              cdkMenuItem
-                              class="flex min-h-11 w-full items-center gap-2.5 rounded-[7px] p-2.5 text-left text-sm hover:bg-brand/5"
+                              hlmDropdownMenuItem
+                              appActionMenuItem
                               [disabled]="saved.writeState() === 'saving'"
-                              [cdkMenuItemDisabled]="saved.writeState() === 'saving'"
-                              (cdkMenuItemTriggered)="edit(request, actionsMenu)"
+                              (triggered)="edit(request, actionsMenu)"
                               data-edit-inquiry
                             >
                               <lucide-icon [name]="PencilIcon" class="size-4" />{{ text('edit') }}
                             </button>
                             <button
                               type="button"
-                              cdkMenuItem
-                              class="flex min-h-11 w-full items-center gap-2.5 rounded-[7px] p-2.5 text-left text-sm hover:bg-brand/5"
+                              hlmDropdownMenuItem
+                              appActionMenuItem
                               [disabled]="saved.writeState() === 'saving'"
-                              [cdkMenuItemDisabled]="saved.writeState() === 'saving'"
-                              (cdkMenuItemTriggered)="deactivate(request, actionsMenu)"
+                              (triggered)="deactivate(request, actionsMenu)"
                               data-toggle-inquiry
                             >
                               <lucide-icon
@@ -234,14 +267,14 @@
                                 class="size-4"
                               />{{ text(request.active ? 'deactivate' : 'reactivate') }}
                             </button>
-                            <div role="separator" class="mx-1 my-1.5 h-px bg-brand/5"></div>
+                            <hlm-dropdown-menu-separator class="bg-slate-100" />
                             <button
                               type="button"
-                              cdkMenuItem
-                              class="flex min-h-11 w-full items-center gap-2.5 rounded-[7px] p-2.5 text-left text-sm text-rose-700 hover:bg-brand/5"
+                              hlmDropdownMenuItem
+                              appActionMenuItem
+                              variant="destructive"
                               [disabled]="saved.writeState() === 'saving'"
-                              [cdkMenuItemDisabled]="saved.writeState() === 'saving'"
-                              (cdkMenuItemTriggered)="confirmDelete(request, actionsMenu)"
+                              (triggered)="confirmDelete(request, actionsMenu)"
                               data-delete-inquiry
                             >
                               <lucide-icon [name]="TrashIcon" class="size-4" />{{
@@ -250,16 +283,17 @@
                             </button>
                           </div>
                         </ng-template>
+                        <span
+                          [class]="
+                            request.active
+                              ? 'status-badge inline-flex min-h-6.5 self-start items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800'
+                              : 'status-badge inline-flex min-h-6.5 self-start items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600'
+                          "
+                          >{{ text(request.active ? 'active' : 'inactive') }}</span
+                        >
                       </div>
                     </div>
-                    @if (request.symptomPreview) {
-                      <p
-                        class="my-4.5 line-clamp-2 whitespace-pre-wrap text-sm leading-[1.65] text-slate-700"
-                      >
-                        {{ request.symptomPreview }}
-                      </p>
-                    }
-                    <div class="request-meta mt-3.5 mb-4.5 grid gap-3">
+                    <div class="request-meta grid gap-3 md:col-start-2 md:row-start-2">
                       <p
                         class="vehicle flex items-center gap-2 text-[13px] font-medium text-slate-600"
                       >
@@ -289,67 +323,11 @@
                         }
                       </ul>
                     </div>
-                    <div
-                      class="card-footer grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2.5 border-t border-slate-100 pt-3.5"
-                    >
-                      <button
-                        type="button"
-                        class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg p-2 text-[13px] font-semibold text-slate-600 hover:bg-brand/5 hover:text-brand-dark"
-                        data-inquiry-view
-                        [attr.aria-label]="
-                          text(saved.selectedId() === request.id ? 'close' : 'view') +
-                          ': ' +
-                          language.serviceLabel(request.serviceCategoryId)
-                        "
-                        [attr.aria-expanded]="saved.selectedId() === request.id"
-                        [attr.aria-controls]="'inquiry-detail-' + request.id"
-                        [disabled]="saved.writeState() === 'saving'"
-                        (click)="saved.toggleDetail(request.id)"
-                      >
-                        {{ text('viewShort')
-                        }}<lucide-icon
-                          [name]="ChevronDownIcon"
-                          class="size-4"
-                          [class.rotate-180]="saved.selectedId() === request.id"
-                        />
-                      </button>
-                      <div class="grid min-w-0 justify-items-end gap-1.5">
-                        @if (searchQuery(request); as query) {
-                          <a
-                            appButton
-                            size="compact"
-                            class="max-w-full max-[480px]:gap-2 max-[480px]:px-3 max-[480px]:text-[13px]"
-                            data-inquiry-search
-                            [attr.aria-label]="text('find')"
-                            [routerLink]="language.link('search')"
-                            [queryParams]="query"
-                            >{{ text('findShort')
-                            }}<lucide-icon [name]="ArrowRightIcon" class="size-4"
-                          /></a>
-                        } @else {
-                          <button
-                            type="button"
-                            appButton="outline"
-                            size="compact"
-                            disabled
-                            class="max-w-full disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-brand/5 disabled:text-slate-600 max-[480px]:gap-2 max-[480px]:px-3 max-[480px]:text-[13px]"
-                            data-inquiry-search-disabled
-                            [attr.aria-label]="text('find')"
-                            [attr.aria-describedby]="
-                              !request.active ? 'search-help-' + request.id : null
-                            "
-                          >
-                            {{ text('findShort')
-                            }}<lucide-icon [name]="ArrowRightIcon" class="size-4" />
-                          </button>
-                        }
-                      </div>
-                    </div>
-                    @if (saved.selectedId() === request.id) {
+                    @if (saved.selectedId() === request.id && !!editingId()) {
                       <section
                         [id]="'inquiry-detail-' + request.id"
                         [attr.aria-label]="text('savedDetails')"
-                        class="mt-6 border-t border-slate-200 pt-5"
+                        class="hidden"
                       >
                         @switch (saved.detailState()) {
                           @case ('loading') {
@@ -526,22 +504,7 @@
                 {{ text('more') }}
               </button>
             }
-            <p class="mt-5.5 flex gap-2 text-xs leading-[1.7] text-muted">
-              <lucide-icon [name]="ShieldCheckIcon" class="size-4" />{{ text('searchHelp') }}
-            </p>
           </section>
-          <aside class="help-column hidden pt-17.5 lg:block">
-            <div class="rounded-2xl border border-blue-100 bg-white p-6">
-              <h2 class="text-[15px] font-bold leading-6">{{ text('privacyTitle') }}</h2>
-              <p class="mt-2.5 text-[13px] leading-7 text-muted">{{ text('privacyBody') }}</p>
-              <div class="privacy-divider my-6 border-t border-blue-100"></div>
-              <h3 class="text-[15px] font-bold leading-6">{{ text('nextTitle') }}</h3>
-              <p class="mt-2.5 text-[13px] leading-7 text-muted">{{ text('nextBody') }}</p>
-            </div>
-            <p class="mt-5.5 flex gap-2 px-2 text-xs leading-[1.7] text-muted">
-              <lucide-icon [name]="InfoIcon" class="size-4" />{{ text('statusHelp') }}
-            </p>
-          </aside>
         </div>
         @if (editingId() === saved.detail()?.id) {
           @if (saved.detail(); as detail) {

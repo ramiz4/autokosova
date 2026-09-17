@@ -354,61 +354,10 @@
 .garage-actions {
   align-self: start;
 }
-.garage-actions > button {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border-radius: 50%;
-  background: #edf5ff;
-  color: #07143e;
-}
-.garage-actions > button:hover,
-.garage-actions > button[aria-expanded='true'] {
-  background: #dcecff;
-  color: #0061ff;
-}
-.garage-actions-menu {
-  z-index: 20;
-  width: min(245px, calc(100vw - 32px));
-  padding: 6px;
-  border: 1px solid #dbe4f0;
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 12px 30px #17355c20;
-}
-.garage-actions-menu :is(button, a) {
-  display: flex;
-  width: 100%;
-  min-height: 42px;
-  align-items: center;
-  gap: 10px;
-  border-radius: 7px;
-  padding: 9px 10px;
-  color: #07143e;
-  text-align: left;
-  font-size: 14px;
-}
-.garage-actions-menu :is(button, a):not(:disabled):hover,
-.garage-actions-menu :is(button, a):focus-visible {
-  background: #f1f5fb;
-  outline: 0;
-}
-.garage-actions-menu button:disabled {
-  color: #8091ad;
-}
 .garage-actions-menu button span {
   margin-left: auto;
   color: #8091ad;
   font-size: 11px;
-}
-.garage-actions-menu [role='separator'] {
-  height: 1px;
-  margin: 6px 4px;
-  background: #dbe5f2;
-}
-.garage-actions-menu .delete {
-  color: #d92d20;
 }
 .garage-state {
   border: 1px solid #dbe5f2;

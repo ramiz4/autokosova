@@ -1,5 +1,6 @@
 import { DOCUMENT } from '@angular/common';
-import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
+import { CdkMenuTrigger } from '@angular/cdk/menu';
+import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
 import {
   Component,
   DestroyRef,
@@ -26,6 +27,7 @@ import { LanguageService } from './language.service';
 import { SiteHeaderComponent } from './site-header.component';
 import { ButtonDirective } from './ui/button.directive';
 import { AuthRequiredDialogComponent } from './ui/auth-required-dialog.component';
+import { ActionMenuImports } from './ui/action-menu.directive';
 import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
 import { LucideIconComponent } from './ui/lucide-icon.component';
 import { RatingStarsComponent } from './ui/rating-stars.component';
@@ -54,10 +56,9 @@ type ReviewAction = 'view' | 'evidence' | 'update';
     LucideIconComponent,
     RatingStarsComponent,
     SelectFieldComponent,
-    CdkMenu,
-    CdkMenuItem,
-    CdkMenuTrigger,
+    HlmDropdownMenuImports,
     AuthRequiredDialogComponent,
+    ActionMenuImports,
   ],
   styleUrl: './reviews.component.scss',
   templateUrl: './reviews.component.html',
@@ -97,10 +98,6 @@ export class ReviewsComponent {
     'withdrawn',
   ];
   readonly sorts: readonly OwnReviewSort[] = ['submitted_desc', 'submitted_asc'];
-  readonly actionsMenuPositions = [
-    { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
-    { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -8 },
-  ] satisfies CdkMenuTrigger['menuPosition'];
   private readonly actionMenus = viewChildren(CdkMenuTrigger);
   private readonly document = inject(DOCUMENT);
   private dirty = false;

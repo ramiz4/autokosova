@@ -26,6 +26,8 @@ it.each(['', 'sq', 'en'])(
     expect(routePath('sq', 'onboarding')).toBe('/sq/garages/new');
     expect(routePath('sq', 'garage-management')).toBe('/sq/garages/manage');
     expect(routePath('sq', 'garage-management-edit', 'demo')).toBe('/sq/garages/manage/demo/edit');
+    expect(routePath('sq', 'inquiry-detail', 'request-1')).toBe('/sq/inquiries/request-1');
+    expect(routePath('sq', 'review-detail', 'review-1')).toBe('/sq/reviews/review-1');
   },
   15_000,
 );
@@ -64,6 +66,14 @@ describe.each(['', 'sq', 'en'])('Route bundle boundaries for /%s', (locale) => {
     ['monetization', () => import('./monetization.component').then((m) => m.MonetizationComponent)],
     ['inquiry', () => import('./repair-request.component').then((m) => m.RepairRequestComponent)],
     ['garages', () => import('./search-handoff.component').then((m) => m.SearchHandoffComponent)],
+    [
+      'inquiries/:inquiryId',
+      () => import('./inquiry-detail.component').then((m) => m.InquiryDetailComponent),
+    ],
+    [
+      'reviews/:reviewId',
+      () => import('./review-detail.component').then((m) => m.ReviewDetailComponent),
+    ],
     [
       'garages/manage',
       () => import('./garage-management.component').then((m) => m.GarageManagementComponent),

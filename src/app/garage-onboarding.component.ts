@@ -2,7 +2,7 @@ import {
   LucideArrowRight,
   LucideBadgeCheck,
   LucideClock,
-  LucideEllipsis,
+  LucideEllipsisVertical,
   LucideFileText,
   LucideGlobe,
   LucideInfo,
@@ -18,7 +18,9 @@ import type { AdminSupportContext } from '../shared/administration';
 import { garageManagementCopy } from '../shared/garage-management-copy';
 import { accountType } from '../shared/account';
 import { DOCUMENT, isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
-import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
+import { CdkMenuTrigger } from '@angular/cdk/menu';
+import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
+import { ActionMenuImports } from './ui/action-menu.directive';
 import {
   afterNextRender,
   ChangeDetectorRef,
@@ -105,9 +107,8 @@ function blankForm(): Form {
     LucideIconComponent,
     MultiSelectComponent,
     ConfirmationDialogComponent,
-    CdkMenu,
-    CdkMenuItem,
-    CdkMenuTrigger,
+    HlmDropdownMenuImports,
+    ActionMenuImports,
   ],
   templateUrl: './garage-onboarding.component.html',
   styleUrl: './garage-onboarding.component.scss',
@@ -120,7 +121,7 @@ export class GarageOnboardingComponent {
   readonly ArrowRightIcon: LucideIcon = LucideArrowRight;
   readonly BadgeCheckIcon: LucideIcon = LucideBadgeCheck;
   readonly ClockIcon: LucideIcon = LucideClock;
-  readonly EllipsisIcon: LucideIcon = LucideEllipsis;
+  readonly EllipsisIcon: LucideIcon = LucideEllipsisVertical;
   readonly FileTextIcon: LucideIcon = LucideFileText;
   readonly GlobeIcon: LucideIcon = LucideGlobe;
   readonly InfoIcon: LucideIcon = LucideInfo;
@@ -165,10 +166,6 @@ export class GarageOnboardingComponent {
   protected get management() {
     return garageManagementCopy[this.language.language];
   }
-  protected readonly overviewMenuPositions = [
-    { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
-    { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -8 },
-  ] satisfies CdkMenuTrigger['menuPosition'];
   protected publicationState: GaragePublicationState = 'draft';
   protected locationVerified = false;
   protected statusKnown = true;

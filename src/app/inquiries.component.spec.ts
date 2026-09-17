@@ -61,6 +61,14 @@ let current: OwnAccount | null;
 let listResponse: () => Response;
 let detailResponse: () => Response;
 beforeEach(() => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    },
+  );
   current = identity;
   listResponse = () => json(pageData);
   detailResponse = () => json(detail);
@@ -116,8 +124,8 @@ function actionMenu(): HTMLElement | null {
   return document.querySelector<HTMLElement>('[role="menu"]');
 }
 
-function actionItem(selector: string): HTMLButtonElement | null {
-  return actionMenu()?.querySelector<HTMLButtonElement>(selector) ?? null;
+function actionItem(selector: string): HTMLElement | null {
+  return actionMenu()?.querySelector<HTMLElement>(selector) ?? null;
 }
 
 function dispatchMenuKey(target: EventTarget, key: string, shiftKey = false): void {
@@ -141,13 +149,15 @@ it.each(['de', 'sq', 'en'] as const)(
   'uses the canonical %s overview, readonly details and only approved search filters',
   async (locale) => {
     const path = routePath(locale, 'inquiries');
-    const { page, service, fixture } = await render(path);
+    const { page, fixture } = await render(path);
     expect(page.querySelector('h1')?.textContent).toContain(inquiriesCopy[locale].title);
     expect(page.querySelector('[data-new-inquiry]')?.getAttribute('href')).toBe(
       routePath(locale, 'request'),
     );
     expect(page.querySelectorAll('[data-inquiry-card]')).toHaveLength(1);
-    const href = page.querySelector('[data-inquiry-search]')!.getAttribute('href')!;
+    page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!.click();
+    await fixture.whenStable();
+    const href = actionMenu()!.querySelector('[data-inquiry-search]')!.getAttribute('href')!;
     const search = new URL(href, 'http://localhost');
     expect(search.pathname).toBe(routePath(locale, 'search'));
     expect([...search.searchParams.keys()].sort()).toEqual(['places', 'service']);
@@ -155,17 +165,10 @@ it.each(['de', 'sq', 'en'] as const)(
     expect(search.searchParams.get('service')).toBe('bremsen');
     expect(href).not.toContain('PRIVATE');
     expect(href).not.toContain(detail.id);
-    page.querySelector<HTMLButtonElement>('[data-inquiry-view]')!.click();
-    await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
-    await fixture.whenStable();
-    expect(page.querySelector('[data-inquiry-detail]')?.textContent).toContain(detail.symptom);
-    expect(page.querySelector('[data-inquiry-detail] b, [data-inquiry-detail] img')).toBeNull();
-    expect(
-      page.querySelector('[data-inquiry-detail] input, [data-inquiry-detail] textarea'),
-    ).toBeNull();
-    expect(page.querySelector('time[datetime="2026-10-02"]')).toBeTruthy();
-    expect(page.querySelector('time[datetime="2026-10-06"]')).toBeTruthy();
-    expect(page.querySelector('[data-inquiry-detail]')?.textContent).toContain('0 km');
+    expect(actionMenu()!.querySelector('[data-inquiry-view]')?.getAttribute('href')).toBe(
+      routePath(locale, 'inquiry-detail', detail.id),
+    );
+    expect(page.querySelector('[data-inquiry-detail]')).toBeNull();
     expect(page.textContent).not.toContain('PRIVATE-FILE-ID');
     expect(TestBed.inject(RepairRequestDraft).read()).toEqual({
       symptom: 'UNSAVED-DRAFT',
@@ -234,13 +237,6 @@ it('distinguishes empty, retry, missing detail and expired session without readi
   service.reload();
   await vi.waitFor(() => expect(service.state()).toBe('ready'));
   await fixture.whenStable();
-  detailResponse = () => json({}, 404);
-  page.querySelector<HTMLButtonElement>('[data-inquiry-view]')!.click();
-  await vi.waitFor(() => expect(service.detailState()).toBe('missing'));
-  await fixture.whenStable();
-  expect(page.querySelector('main [role="alert"]')?.textContent).toContain(
-    inquiriesCopy.sq.missing,
-  );
   current = null;
   TestBed.inject(AccountSessionService).invalidate();
   await fixture.whenStable();
@@ -518,7 +514,7 @@ it.each(['de', 'sq', 'en'] as const)(
   async (locale) => {
     const { page, fixture, service } = await render(routePath(locale, 'inquiries'));
     const originalCard = page.querySelector('[data-inquiry-card]');
-    page.querySelector<HTMLButtonElement>('[data-inquiry-view]')!.click();
+    await service.toggleDetail(detail.id);
     await vi.waitFor(() => expect(service.detailState()).toBe('ready'));
     await fixture.whenStable();
     const calls = vi
@@ -538,11 +534,7 @@ it.each(['de', 'sq', 'en'] as const)(
       expect(page.querySelector('.status-badge')?.textContent?.trim()).toBe(
         inquiriesCopy[locale][active ? 'active' : 'inactive'],
       );
-      expect(page.querySelector('[data-inquiry-detail-status]')?.textContent?.trim()).toBe(
-        inquiriesCopy[locale][active ? 'active' : 'inactive'],
-      );
       expect(service.detail()?.symptom).toBe(detail.symptom);
-      expect(page.querySelector('[data-inquiry-search]') !== null).toBe(active);
     }
     expect(
       vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('?limit')).length,
@@ -579,7 +571,7 @@ it.each(['de', 'sq', 'en'] as const)(
 );
 
 it.each(['de', 'sq', 'en'] as const)(
-  'groups management in a named menu and keeps a two-action footer in %s',
+  'groups every card action in a named menu in %s',
   async (locale) => {
     listResponse = () =>
       json({
@@ -597,35 +589,40 @@ it.each(['de', 'sq', 'en'] as const)(
     const copy = inquiriesCopy[locale];
     const cards = page.querySelectorAll<HTMLElement>('[data-inquiry-card]');
     for (const [index, card] of Array.from(cards).entries()) {
-      const footer = card.querySelector('.card-footer')!;
-      expect(footer.querySelectorAll('button, a')).toHaveLength(2);
-      expect(
-        footer.querySelector('[data-edit-inquiry], [data-toggle-inquiry], [data-delete-inquiry]'),
-      ).toBeNull();
-      expect(footer.querySelector('[data-inquiry-view]')?.textContent?.trim()).toBe(copy.viewShort);
-      if (index === 1) {
-        const search = footer.querySelector<HTMLButtonElement>('[data-inquiry-search-disabled]')!;
-        expect(search.disabled).toBe(true);
-        expect(search.textContent?.trim()).toBe(copy.findShort);
-        expect(footer.querySelector('[data-inquiry-search]')).toBeNull();
-      }
+      expect(card.className).toContain('md:grid-cols-[80px_minmax(0,1fr)_300px]');
+      expect(card.querySelector('.status-badge span')).toBeNull();
+      expect(card.querySelector('[data-inquiry-actions]')?.className).toContain('md:border-l');
+      expect(card.querySelector('.saved-date svg')?.classList).toContain('lucide-calendar-days');
+      expect(card.querySelector('.status-badge')?.className).toContain('self-start');
+      expect(card.querySelector('.card-footer')).toBeNull();
       const trigger = card.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!;
       expect(trigger.getAttribute('aria-haspopup')).toBe('menu');
       expect(trigger.getAttribute('aria-label')).toContain(copy.actions);
-      expect(trigger.querySelector('svg')?.getAttribute('stroke-width')).toBe('4');
+      expect(trigger.className).toContain('rounded-full');
+      expect(trigger.querySelector('svg')?.getAttribute('stroke-width')).toBe('2');
+      expect(trigger.querySelector('svg')?.classList).toContain('lucide-ellipsis-vertical');
       trigger.click();
       await fixture.whenStable();
       const menu = actionMenu()!;
+      expect(menu.className).toContain('ring-0');
       expect(menu.getAttribute('aria-labelledby')).toBe(trigger.id);
       expect(trigger.getAttribute('aria-controls')).toBe(menu.id);
       expect(trigger.getAttribute('aria-expanded')).toBe('true');
-      const items = menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+      const items = menu.querySelectorAll<HTMLElement>('[role="menuitem"]');
       expect(Array.from(items, (item) => item.textContent?.trim())).toEqual([
+        copy.view,
+        copy.find,
         copy.edit,
         index === 0 ? copy.deactivate : copy.reactivate,
         copy.deleteConfirm,
       ]);
-      expect(menu.querySelector('[role="separator"]')?.nextElementSibling).toBe(items[2]);
+      expect(menu.querySelector('[data-slot="dropdown-menu-separator"]')?.nextElementSibling).toBe(
+        items[4],
+      );
+      if (index === 1)
+        expect(
+          menu.querySelector<HTMLButtonElement>('[data-inquiry-search-disabled]')?.disabled,
+        ).toBe(true);
       expect(document.activeElement).toBe(items[0]);
       trigger.click();
       await fixture.whenStable();
@@ -639,12 +636,12 @@ it('navigates the action menu with arrows, Home and End and restores focus on Es
   const trigger = page.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!;
   trigger.click();
   await fixture.whenStable();
-  const items = actionMenu()!.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+  const items = actionMenu()!.querySelectorAll<HTMLElement>('[role="menuitem"]');
   for (const [key, index] of [
     ['ArrowDown', 1],
-    ['End', 2],
+    ['End', 4],
     ['ArrowDown', 0],
-    ['ArrowUp', 2],
+    ['ArrowUp', 4],
     ['Home', 0],
   ] as const) {
     dispatchMenuKey(document.activeElement!, key);
@@ -657,14 +654,14 @@ it('navigates the action menu with arrows, Home and End and restores focus on Es
   expect(document.activeElement).toBe(trigger);
   dispatchMenuKey(trigger, 'Enter');
   await fixture.whenStable();
-  expect(document.activeElement).toBe(actionItem('[data-edit-inquiry]'));
+  expect(document.activeElement).toBe(actionItem('[data-inquiry-view]'));
   dispatchMenuKey(document.activeElement!, 'Tab');
   await fixture.whenStable();
   expect(actionMenu()).toBeNull();
   trigger.focus();
   dispatchMenuKey(trigger, 'Space');
   await fixture.whenStable();
-  expect(document.activeElement).toBe(actionItem('[data-edit-inquiry]'));
+  expect(document.activeElement).toBe(actionItem('[data-inquiry-view]'));
   dispatchMenuKey(document.activeElement!, 'd');
   await vi.waitFor(() => expect(document.activeElement).toBe(actionItem('[data-toggle-inquiry]')));
   dispatchMenuKey(document.activeElement!, 'Escape');
@@ -677,7 +674,7 @@ it('navigates the action menu with arrows, Home and End and restores focus on Es
   expect(actionMenu()).toBeNull();
   for (const [key, selector] of [
     ['ArrowUp', '[data-delete-inquiry]'],
-    ['ArrowDown', '[data-edit-inquiry]'],
+    ['ArrowDown', '[data-inquiry-view]'],
   ] as const) {
     dispatchMenuKey(trigger, key);
     await fixture.whenStable();
@@ -711,13 +708,12 @@ it('blocks management and details while a write is pending', async () => {
   await fixture.whenStable();
   service.writeState.set('saving');
   await fixture.whenStable();
-  for (const button of [
-    ...actionMenu()!.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'),
-    ...page.querySelectorAll<HTMLButtonElement>('[data-inquiry-menu], [data-inquiry-view]'),
-  ]) {
-    expect(button.disabled).toBe(true);
-    button.click();
+  for (const item of actionMenu()!.querySelectorAll<HTMLElement>('[role="menuitem"]')) {
+    if (item instanceof HTMLButtonElement) expect(item.disabled).toBe(true);
+    else expect(item.getAttribute('aria-disabled')).toBe('true');
+    item.click();
   }
+  expect(trigger.disabled).toBe(true);
   await fixture.whenStable();
   expect(mutate).not.toHaveBeenCalled();
   expect(page.querySelector('[data-inquiry-editor]')).toBeNull();

@@ -86,7 +86,10 @@ it('closes the CDK menu before either dialog owns focus and restores the persist
   expect(document.querySelector('[role="menu"]')).toBeNull();
   await vi.waitFor(() => expect(saved.detailState()).toBe('ready'));
   await fixture.whenStable();
-  expect(document.querySelector('[data-inquiry-editor]')).toBeTruthy();
+  const editor = document.querySelector<HTMLElement>('[data-inquiry-editor]')!;
+  expect(editor.className).toContain('max-h-[min(820px,calc(100dvh-48px))]');
+  expect(editor.textContent).not.toContain('PRIVAT');
+  expect(page.querySelector('[id^="inquiry-detail-"]')?.className).toContain('hidden');
   expect(document.activeElement).toBe(document.querySelector('#edit-service'));
 
   document

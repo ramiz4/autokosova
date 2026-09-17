@@ -1,27 +1,27 @@
 import {
-  LucideArrowRight,
   LucideCar,
+  LucideCalendarDays,
   LucideCheck,
-  LucideChevronDown,
-  LucideClock,
-  LucideEllipsis,
+  LucideEllipsisVertical,
+  LucideEye,
   LucideFileText,
   LucideGlobe,
-  LucideInfo,
   LucideMapPin,
   LucidePause,
   LucidePencil,
   LucidePlus,
-  LucideShieldCheck,
+  LucideSearch,
   LucideTrash2,
   LucideWrench,
   LucideX,
   type LucideIcon,
 } from '@lucide/angular';
 import { DOCUMENT } from '@angular/common';
-import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from '@angular/cdk/menu';
+import { CdkMenuTrigger } from '@angular/cdk/menu';
+import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
 import {
   Component,
+  computed,
   DestroyRef,
   Injector,
   afterNextRender,
@@ -51,6 +51,8 @@ import { InquiryDeleteDialogComponent } from './inquiry-delete-dialog.component'
 import { LucideIconComponent } from './ui/lucide-icon.component';
 import { ButtonDirective } from './ui/button.directive';
 import { AuthRequiredDialogComponent } from './ui/auth-required-dialog.component';
+import { ActionMenuImports } from './ui/action-menu.directive';
+import { SelectFieldComponent, type SelectFieldOption } from './ui/select-field.component';
 
 type InquiryToast = 'updated' | 'deactivated' | 'reactivated' | 'deleted';
 
@@ -63,29 +65,27 @@ type InquiryToast = 'updated' | 'deactivated' | 'reactivated' | 'deleted';
     LucideIconComponent,
     InquiryEditorComponent,
     InquiryDeleteDialogComponent,
-    CdkMenu,
-    CdkMenuItem,
-    CdkMenuTrigger,
+    HlmDropdownMenuImports,
     AuthRequiredDialogComponent,
+    SelectFieldComponent,
+    ActionMenuImports,
   ],
   providers: [SavedRepairRequestsService],
   templateUrl: './inquiries.component.html',
 })
 export class InquiriesComponent {
-  readonly ArrowRightIcon: LucideIcon = LucideArrowRight;
   readonly CarIcon: LucideIcon = LucideCar;
+  readonly CalendarIcon: LucideIcon = LucideCalendarDays;
   readonly CheckIcon: LucideIcon = LucideCheck;
-  readonly ChevronDownIcon: LucideIcon = LucideChevronDown;
-  readonly ClockIcon: LucideIcon = LucideClock;
-  readonly EllipsisIcon: LucideIcon = LucideEllipsis;
+  readonly EllipsisIcon: LucideIcon = LucideEllipsisVertical;
+  readonly EyeIcon: LucideIcon = LucideEye;
   readonly FileTextIcon: LucideIcon = LucideFileText;
   readonly GlobeIcon: LucideIcon = LucideGlobe;
-  readonly InfoIcon: LucideIcon = LucideInfo;
   readonly MapPinIcon: LucideIcon = LucideMapPin;
   readonly PauseIcon: LucideIcon = LucidePause;
   readonly PencilIcon: LucideIcon = LucidePencil;
   readonly PlusIcon: LucideIcon = LucidePlus;
-  readonly ShieldCheckIcon: LucideIcon = LucideShieldCheck;
+  readonly SearchIcon: LucideIcon = LucideSearch;
   readonly TrashIcon: LucideIcon = LucideTrash2;
   readonly WrenchIcon: LucideIcon = LucideWrench;
   readonly XIcon: LucideIcon = LucideX;
@@ -93,24 +93,29 @@ export class InquiriesComponent {
   protected readonly account = inject(AccountSessionService);
   protected readonly language = inject(LanguageService);
   protected readonly saved = inject(SavedRepairRequestsService);
+  protected readonly inquirySearch = signal('');
+  protected readonly visibleRequests = computed(() => {
+    const query = this.inquirySearch().trim().toLocaleLowerCase(this.language.language);
+    if (!query) return this.saved.requests();
+    return this.saved
+      .requests()
+      .filter((request) =>
+        [
+          this.language.serviceLabel(request.serviceCategoryId),
+          request.symptomPreview ?? '',
+          this.vehicleLabel(request.vehicle),
+          ...request.areas.map((area) => this.placeLabel(area.placeId)),
+        ]
+          .join(' ')
+          .toLocaleLowerCase(this.language.language)
+          .includes(query),
+      );
+  });
 
   protected readonly filters = ['all', 'active', 'inactive'] as const;
-  protected readonly actionsMenuPositions = [
-    {
-      originX: 'end',
-      originY: 'bottom',
-      overlayX: 'end',
-      overlayY: 'top',
-      offsetY: 6,
-    },
-    {
-      originX: 'end',
-      originY: 'top',
-      overlayX: 'end',
-      overlayY: 'bottom',
-      offsetY: -6,
-    },
-  ] satisfies CdkMenuTrigger['menuPosition'];
+  protected filterOptions(): readonly SelectFieldOption[] {
+    return this.filters.map((filter) => ({ value: filter, label: this.text(filter) }));
+  }
   protected readonly editingId = signal<string | null>(null);
   protected readonly deleting = signal<RepairRequestSummary | null>(null);
   protected readonly toast = signal<InquiryToast | null>(null);

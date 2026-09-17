@@ -87,6 +87,12 @@ function localizedRoutes(prefix: string): Routes {
         import('./account-profile.component').then((module) => module.AccountProfileComponent),
     },
     {
+      path: `${childPrefix}inquiries/:inquiryId`,
+      pathMatch: 'full',
+      loadComponent: () =>
+        import('./inquiry-detail.component').then((module) => module.InquiryDetailComponent),
+    },
+    {
       path: `${childPrefix}inquiries`,
       canDeactivate: [
         (component: import('./inquiries.component').InquiriesComponent | null) =>
@@ -101,6 +107,12 @@ function localizedRoutes(prefix: string): Routes {
       pathMatch: 'full',
       loadComponent: () =>
         import('./favorites.component').then((module) => module.FavoritesComponent),
+    },
+    {
+      path: `${childPrefix}reviews/:reviewId`,
+      pathMatch: 'full',
+      loadComponent: () =>
+        import('./review-detail.component').then((module) => module.ReviewDetailComponent),
     },
     {
       path: `${childPrefix}reviews`,
@@ -121,6 +133,10 @@ function localizedRoutes(prefix: string): Routes {
       ],
     },
     // Compatibility redirects only; generated links always use English route names.
+    {
+      path: `${childPrefix}inquires/:inquiryId`,
+      redirectTo: ({ params }) => `${childPrefix}inquiries/${params['inquiryId']}`,
+    },
     {
       path: `${childPrefix}anfrage`,
       pathMatch: 'full',

@@ -201,25 +201,28 @@
                       <div class="garage-actions">
                         <button
                           type="button"
+                          appActionMenuTrigger
                           [id]="'garage-actions-' + garage.id"
-                          [cdkMenuTriggerFor]="garageActions"
-                          [cdkMenuPosition]="overviewMenuPositions"
+                          [hlmDropdownMenuTrigger]="garageActions"
                           #actionsMenu="cdkMenuTriggerFor"
                           [disabled]="sending || loading"
                           [attr.aria-label]="management.actions + ': ' + garage.name"
                           [attr.data-garage-menu]="garage.id"
                         >
-                          <lucide-icon [name]="EllipsisIcon" class="size-6" />
+                          <lucide-icon [name]="EllipsisIcon" class="size-5" />
                         </button>
                         <ng-template #garageActions
                           ><div
-                            cdkMenu
+                            hlmDropdownMenu
+                            appActionMenuPanel
+                            [sideOffset]="8"
                             class="garage-actions-menu"
                             [attr.aria-labelledby]="'garage-actions-' + garage.id"
                           >
                             @if (garage.publicationState === 'published') {
                               <a
-                                cdkMenuItem
+                                hlmDropdownMenuItem
+                                appActionMenuItem
                                 [routerLink]="language.link('garage', garage.id)"
                                 data-public-garage
                                 ><lucide-icon [name]="GlobeIcon" class="size-4" />{{
@@ -229,36 +232,37 @@
                             }
                             <button
                               type="button"
-                              cdkMenuItem
-                              (cdkMenuItemTriggered)="openFromOverview(garage, actionsMenu)"
+                              hlmDropdownMenuItem
+                              appActionMenuItem
+                              (triggered)="openFromOverview(garage, actionsMenu)"
                               [disabled]="sending || loading"
-                              [cdkMenuItemDisabled]="sending || loading"
                               [attr.data-owned-garage]="garage.id"
                             >
                               <lucide-icon [name]="PencilIcon" class="size-4" />{{
                                 management.edit
                               }}
                             </button>
-                            <button type="button" cdkMenuItem disabled [cdkMenuItemDisabled]="true">
+                            <button type="button" hlmDropdownMenuItem appActionMenuItem disabled>
                               <lucide-icon [name]="FileTextIcon" class="size-4" />{{
                                 management.duplicate
                               }}
                               <span>{{ management.unavailable }}</span>
                             </button>
-                            <button type="button" cdkMenuItem disabled [cdkMenuItemDisabled]="true">
+                            <button type="button" hlmDropdownMenuItem appActionMenuItem disabled>
                               <lucide-icon [name]="FileTextIcon" class="size-4" />{{
                                 management.statistics
                               }}
                               <span>{{ management.unavailable }}</span>
                             </button>
-                            <div role="separator"></div>
+                            <hlm-dropdown-menu-separator class="bg-slate-100" />
                             <button
                               type="button"
-                              cdkMenuItem
+                              hlmDropdownMenuItem
+                              appActionMenuItem
+                              variant="destructive"
                               class="delete"
-                              (cdkMenuItemTriggered)="removeOwned(garage, actionsMenu)"
+                              (triggered)="removeOwned(garage, actionsMenu)"
                               [disabled]="!garage.canDelete || sending || loading"
-                              [cdkMenuItemDisabled]="!garage.canDelete || sending || loading"
                               data-delete-garage
                             >
                               <lucide-icon [name]="FileTextIcon" class="size-4" />{{
