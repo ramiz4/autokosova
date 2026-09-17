@@ -854,7 +854,7 @@ export function createServer(options: ServerOptions = {}) {
         if (current?.userId === principal.userId) {
           if (current.roles.has('admin')) destination = `${prefix}/admin`;
           else if (current.roles.has('moderator')) destination = `${prefix}/moderation`;
-          else if (type === 'garage') destination = `${prefix}/garages/new`;
+          else if (type === 'garage') destination = `${prefix}/garages/manage`;
           else if (type === 'customer') destination = `${prefix}/inquiries`;
         }
       } catch {

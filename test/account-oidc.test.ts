@@ -170,7 +170,10 @@ test('signed OIDC callback exposes only own profile, replaces roles and invalida
           headers: { cookie: previous },
         });
         assert.equal(landing.statusCode, 302);
-        assert.equal(landing.headers.location, prefix + (member ? '/garages/new' : '/inquiries'));
+        assert.equal(
+          landing.headers.location,
+          prefix + (member ? '/garages/manage' : '/inquiries'),
+        );
         assert.equal(landing.headers['cache-control'], 'private, no-store');
         assert.equal(landing.cookies.length, 0);
       }

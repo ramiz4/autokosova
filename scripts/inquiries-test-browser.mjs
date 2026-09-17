@@ -6,6 +6,7 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { chromium } from '@playwright/test';
 
 export async function until(check, label) {
   const deadline = Date.now() + 20_000;
@@ -42,7 +43,15 @@ async function stop(child) {
 
 /** Native CDP driver; does not intercept or replace application API responses. */
 export async function startBrowser(port, environment) {
-  const chrome = [process.env.CHROME_BIN, 'google-chrome', 'chromium', 'chromium-browser'].find(
+  const chrome = [
+    process.env.CHROME_BIN,
+    'google-chrome',
+    'chromium',
+    'chromium-browser',
+    // Playwright is already the supported local browser runtime for the other smoke suites.
+    // Its executable remains a native Chromium/CDP target; we only use it as a fallback.
+    chromium.executablePath(),
+  ].find(
     (candidate) =>
       candidate && spawnSync(candidate, ['--version'], { stdio: 'ignore' }).status === 0,
   );

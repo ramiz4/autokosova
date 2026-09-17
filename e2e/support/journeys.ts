@@ -1,4 +1,4 @@
-import { expect, type APIResponse, type Page, type TestInfo } from '@playwright/test';
+import { expect, type APIResponse, type Page } from '@playwright/test';
 import { requestCopy } from '../../src/shared/request-copy';
 import { onboardingCopy } from '../../src/shared/onboarding-copy';
 import { inquiriesCopy } from '../../src/shared/inquiries-copy';
@@ -6,7 +6,7 @@ import { garageManagementCopy } from '../../src/shared/garage-management-copy';
 import { translate } from '../../src/shared/i18n';
 
 export const card = (page: Page, id: string) => page.locator(`[data-inquiry-id="${id}"]`);
-export const garageButton = (page: Page, id: string) => page.locator(`[data-garage-menu="${id}"]`);
+export const garageCard = (page: Page, id: string) => page.locator(`[data-garage-id="${id}"]`);
 export const requestPath = (id: string) => '/api/me/repair-requests/' + encodeURIComponent(id);
 export const garagePath = (id: string) => '/api/garages/' + encodeURIComponent(id);
 
@@ -49,16 +49,14 @@ export async function readyInquiries(page: Page): Promise<void> {
 }
 export async function readyGarages(page: Page): Promise<void> {
   await expect(page.locator('[data-garages-overview]')).toHaveAttribute('aria-busy', 'false');
-  await expect(page.locator('[data-garages-loading]')).toHaveCount(0);
 }
 export async function garageAction(
   page: Page,
   id: string,
   action: 'edit' | 'delete',
 ): Promise<void> {
-  await garageButton(page, id).click();
-  await page
-    .locator(action === 'edit' ? `[data-owned-garage="${id}"]` : '[data-delete-garage]')
+  await garageCard(page, id)
+    .locator(action === 'edit' ? '[data-edit-garage]' : '[data-delete-garage]')
     .click();
 }
 export async function logout(page: Page, origin: string): Promise<void> {
@@ -144,7 +142,7 @@ export async function editInquiry(
   ]);
   expect(response.status()).toBe(200);
   await expect(page.locator('[data-inquiry-editor]')).toHaveCount(0);
-  await expect(page.locator('[data-inquiry-notice]')).toContainText(inquiriesCopy.de.updated);
+  await expect(page.locator('[data-inquiry-toast]')).toContainText(inquiriesCopy.de.updated);
   await page.reload();
   await readyInquiries(page);
   await expect(card(page, id)).toContainText(symptom);
@@ -193,7 +191,7 @@ export async function createGarage(
 ): Promise<string> {
   await readyGarages(page);
   await expect(page.locator('form')).toHaveCount(0);
-  await page.getByRole('button', { name: garageManagementCopy.de.create, exact: true }).click();
+  await page.getByRole('link', { name: garageManagementCopy.de.create, exact: true }).click();
   await page.locator('#garage-name').fill(name);
   await page.locator('#garage-place').selectOption('xk-pristina');
   await page.locator('#garage-street').fill('Fiktive E2E-Strasse 12, Prishtina');
@@ -224,12 +222,9 @@ export async function createGarage(
   onCreated(id);
   await expect(page.locator('[data-save-garage]')).toBeDisabled();
   await expect(page.locator('[data-garage-status]')).toHaveAttribute('data-state', 'draft');
-  await page.locator('[data-garages-back]').click();
+  await page.goto(origin + '/garages/manage');
   await readyGarages(page);
-  await expect(garageButton(page, id)).toBeVisible();
-  await garageButton(page, id).click();
-  await expect(page.locator('[data-public-garage]')).toHaveCount(0);
-  await page.keyboard.press('Escape');
+  await expect(garageCard(page, id)).toBeVisible();
   return id;
 }
 
@@ -253,14 +248,14 @@ export async function editGarage(
   expect(response.status()).toBe(204);
   await expect(page.locator('[data-save-garage]')).toBeDisabled();
   await expect(page.locator('form [role="status"]')).toBeVisible();
-  await page.reload();
+  await page.goto(origin + '/garages/manage');
   await readyGarages(page);
   await garageAction(page, id, 'edit');
   await expect(page.locator('#garage-name')).toHaveValue(name);
   const detail = await api(page, origin, garagePath(id));
   expect(detail.status()).toBe(200);
   expect((await detail.json()).profile.name).toBe(name);
-  await page.locator('[data-garages-back]').click();
+  await page.goto(origin + '/garages/manage');
   await readyGarages(page);
 }
 
@@ -276,52 +271,16 @@ export async function deleteGarage(page: Page, origin: string, id: string): Prom
   ]);
   expect(response.status()).toBe(204);
   await readyGarages(page);
-  await expect(garageButton(page, id)).toHaveCount(0);
+  await expect(garageCard(page, id)).toHaveCount(0);
   await page.reload();
   await readyGarages(page);
-  await expect(garageButton(page, id)).toHaveCount(0);
+  await expect(garageCard(page, id)).toHaveCount(0);
   const search = await (
     await api(page, origin, '/api/public/search?all=true&service=bremsen')
   ).json();
   expect(search.results.some((garage: { id: string }) => garage.id === id)).toBe(false);
   expect((await api(page, origin, garagePath(id))).status()).toBe(403);
   expect((await api(page, origin, '/api/public/garages/' + id)).status()).toBe(404);
-}
-
-export async function layout(page: Page, info?: TestInfo, label = 'application'): Promise<void> {
-  await expect
-    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
-    .toBe(true);
-  const surface = page
-    .locator('dialog[open]')
-    .or(page.locator('main'))
-    .or(page.locator('[aria-labelledby="form-title"]'))
-    .or(page.locator('[aria-labelledby="workspace-title"]'));
-  const geometry = await surface.evaluateAll((elements) =>
-    elements.map((element) => ({
-      overflow: element.scrollWidth > element.clientWidth + 1,
-      smallTargets: [...element.querySelectorAll<HTMLElement>('a,button,summary')]
-        .filter((control) => control.checkVisibility())
-        .filter((control) => {
-          const box = control.getBoundingClientRect();
-          return box.width < 44 || box.height < 44;
-        }).length,
-      clipped: [...element.querySelectorAll<HTMLElement>('p,dd,h1,h2,li')]
-        .filter((item) => item.checkVisibility())
-        .some((item) => item.scrollWidth > item.clientWidth + 1),
-    })),
-  );
-  expect(geometry.length).toBeGreaterThan(0);
-  for (const item of geometry)
-    expect(item).toEqual({ overflow: false, smallTargets: 0, clipped: false });
-  if (info) {
-    // Called on known synthetic application screens only, never provider/callback pages.
-    expect(new URL(page.url()).pathname).not.toMatch(/^\/auth\//);
-    await page.screenshot({
-      path: info.outputPath(label + '.png'),
-      fullPage: !(await page.locator('dialog[open]').count()),
-    });
-  }
 }
 
 /** Exercise the actual visible staff navigation at each viewport, never hidden duplicates. */

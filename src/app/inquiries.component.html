@@ -157,6 +157,11 @@
                             {{ language.serviceLabel(request.serviceCategoryId) }}
                           </h2>
                         </div>
+                        @if (request.symptomPreview) {
+                          <p class="mt-1 text-sm leading-6 text-slate-700">
+                            {{ request.symptomPreview }}
+                          </p>
+                        }
                       </div>
                       <div
                         class="actions flex shrink-0 flex-col gap-3 md:col-start-3 md:row-span-2 md:h-full md:w-full md:border-l md:border-slate-200 md:pl-6"

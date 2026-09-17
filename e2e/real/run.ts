@@ -103,7 +103,7 @@ async function main() {
     const inquiry = await (await api(customer, config.origin, requestPath(inquiryId))).json();
     await step('garage-login', async () => {
       garageUsername = (await signIn(garage, config, config.accounts[1])).username;
-      await expect(garage).toHaveURL(config.origin + '/garages/new');
+      await expect(garage).toHaveURL(config.origin + '/garages/manage');
       await readyGarages(garage);
       result.accounts.push('garage');
     });
@@ -187,7 +187,7 @@ async function main() {
     await step('account-switch', async () => {
       const switched = await signIn(customer, config, config.accounts[1]);
       expect(switched.username).toBe(garageUsername);
-      await expect(customer).toHaveURL(config.origin + '/garages/new');
+      await expect(customer).toHaveURL(config.origin + '/garages/manage');
       await readyGarages(customer);
       expect(
         (await (await api(customer, config.origin, '/api/me/garages')).json()).garages,

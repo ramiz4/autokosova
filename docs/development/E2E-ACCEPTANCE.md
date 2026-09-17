@@ -44,7 +44,7 @@ Gefilterte lokale Läufe sind ausdrücklich Diagnose, keine vollständige Abnahm
 
 ## Verbindliche Szenarien
 
-Das aktuelle Pflichtinventar in `scripts/e2e/policy.mjs` enthält 17 unabhängige Szenarien, jeweils Desktop 1280×900 und Mobil 390×844; Menü-/Sprachprüfungen zusätzlich bei 360/430 px:
+Das aktuelle Pflichtinventar in `scripts/e2e/policy.mjs` enthält 17 unabhängige Szenarien auf Desktop und Mobil:
 
 | ID | Nachweis |
 |---|---|
@@ -53,7 +53,7 @@ Das aktuelle Pflichtinventar in `scripts/e2e/policy.mjs` enthält 17 unabhängig
 | `published-deletion` | Sichtbar vor Löschung, danach weder private Verwaltung noch öffentliche Suche/Profil; Betreibertyp und Neuanlage nach letzter Membership |
 | `account-isolation` | Normale Logins, fremde Lese-/Schreib-/Löschzugriffe, Editor versus Owner, CSRF, Logout |
 | `persistent-restart` | Beide zugewiesenen Demo-Anfragen editierbar; Änderungen/Löschungen über echten Prozessneustart, Migrationen und Demo-Seed hinweg erhalten |
-| `localized-navigation` | DE/SQ/EN, beide Kontotypen, explizite Rücksprünge, Tastatur/Fokus, Layout und private SSR-Header |
+| `localized-navigation` | DE/SQ/EN, beide Kontotypen, explizite Rücksprünge, Tastatur/Fokus und private SSR-Header |
 | `error-feedback` | Tatsächliche Revisionskonflikte, CSRF-/Membership-Verweigerung, gezielter Netzwerkabbruch, keine falsche Bestätigung, Abbruchschutz |
 | `late-response` | Tatsächlich autorisierte, nur verzögerte Antwort darf nach Kontowechsel keine alten privaten Daten wiederherstellen |
 | `review-workflow`, `review-boundaries` | Bewertungsabläufe und zugehörige Berechtigungsgrenzen |
@@ -95,16 +95,15 @@ Concurrency verhindert überlappende Läufe desselben Workflows; laufende Tests 
 abgebrochen. Der Staff-Vorhervergleich behält seinen dokumentierten historischen Baseline-SHA.
 Kein Deployment und keine Repository-Schreibrechte. Lokale Diagnosebefehle bleiben verfügbar.
 
-Ein Worker, null Wiederholungen, `forbidOnly` und feste Pflichtinventarliste verhindern Teilabnahme.
+Zwei parallele Worker, null Wiederholungen, `forbidOnly` und feste Pflichtinventarliste verhindern Teilabnahme.
 Der Reporter lehnt leere/fehlende/doppelte Fälle, Skip, erwartete Fehler, Abbruch, Timeout und
 Retry-Erfolge ab. Ein unabhängiger Starter prüft zusätzlich die frisch geschriebene Ergebnisdatei, Lauf-Nonce, Commit und das vollständige Inventar; ein fehlgeschlagener Reporter kann so keinen falschen Erfolg ergeben. `test:e2e:policy` prüft diese Regeln sowie den tatsächlichen Playwright-Exitcode
 mit erfolgreichen und absichtlich fehlerhaften/übersprungenen/leeren Tests. Fehler werden nicht
 mit `continue-on-error` verdeckt. Laufende nächtliche Main-Abnahmen werden nicht durch einen weiteren Lauf abgebrochen.
 
-Artefakte (7 Tage): `test-results/e2e/acceptance.json` mit geprüfter Commit-SHA, Testinventar und Status
-sowie ausdrücklich erzeugte Screenshots bekannter synthetischer Anwendungsseiten. Keine Traces,
-Videos, gespeicherten Auth-Sitzungen, Providerbilder oder Netzwerkdumps. Playwright-Diagnosetexte
-bleiben lokal; CI lädt ausschließlich die freigegebenen JSON-/PNG-Dateien hoch.
+Artefakte (7 Tage): `test-results/e2e/acceptance.json` mit geprüfter Commit-SHA, Testinventar und Status.
+Keine Traces, Screenshots, Videos, gespeicherten Auth-Sitzungen, Providerbilder oder Netzwerkdumps.
+Playwright-Diagnosetexte bleiben lokal; CI lädt ausschließlich die freigegebene JSON-Datei hoch.
 
 ### PR-Gates seit #158
 

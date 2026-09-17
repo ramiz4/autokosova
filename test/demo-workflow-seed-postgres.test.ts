@@ -35,6 +35,18 @@ test(
          WHERE id = ANY($1::text[])`,
         [demoWorkflowRequests.map((request) => request.id)],
       );
+      const requestId = 'demo-request-prishtina-bremsen';
+      const fixture = demoWorkflowRequests.find((request) => request.id === requestId);
+      assert.ok(fixture, 'The workflow request fixture must exist');
+      const customerBinding = await client.query<{ user_id: string }>(
+        `SELECT binding.user_id
+         FROM local_demo_account_entity entity
+         JOIN local_demo_account_binding binding ON binding.account_type = entity.account_type
+         WHERE entity.entity_type = 'repair_request'
+           AND entity.entity_id = $1
+           AND entity.account_type = 'customer'`,
+        [requestId],
+      );
       const publicReviews = await reviews.listPublicReviews('demo-prishtina-bremsen', {});
       const publicSearch = await search.searchPublicGarages({
         areas: [{ placeId: 'xk-pristina', radiusKm: 5 }],
@@ -43,8 +55,8 @@ test(
         serviceCategoryId: 'bremsen',
       });
       const privateRequest = await repairRequests.getRepairRequest(
-        'demo-workflow-requester-a',
-        'demo-request-prishtina-bremsen',
+        customerBinding.rows[0]?.user_id ?? fixture.ownerUserId,
+        requestId,
       );
 
       assert.equal(garageRows.rows[0].count, String(demoGarages.length));
@@ -65,7 +77,7 @@ test(
       assert.equal(JSON.stringify(publicReviews).includes('demo-workflow-reviewer'), false);
       assert.equal(JSON.stringify(publicReviews).includes('demo-evidence'), false);
       assert.equal(JSON.stringify(publicSearch).includes('demo-request'), false);
-      assert.equal(privateRequest.id, 'demo-request-prishtina-bremsen');
+      assert.equal(privateRequest.id, requestId);
       assert.equal(privateRequest.symptom, 'Fiktive lokale Anfrage: Bremsen prüfen.');
       await assert.rejects(() =>
         repairRequests.getRepairRequest(

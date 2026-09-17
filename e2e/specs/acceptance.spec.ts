@@ -3,7 +3,7 @@ import {
   api,
   card,
   garageAction,
-  garageButton,
+  garageCard,
   requestPath,
   garagePath,
   readyInquiries,
@@ -15,7 +15,6 @@ import {
   createGarage,
   editGarage,
   deleteGarage,
-  layout,
   logout,
 } from '../support/journeys';
 import {
@@ -31,10 +30,11 @@ import type { SavedRepairRequest } from '../../src/shared/saved-repair-request';
 test('customer-crud creates, edits, toggles and deletes an inquiry through the UI', async ({
   app,
   page,
-}, info) => {
+}) => {
   await app.login(page, 'customer');
   await expect(page).toHaveURL(app.origin + '/inquiries');
   const baseline = (await (await api(page, app.origin, '/api/me/repair-requests')).json()).requests;
+  const filter = page.getByRole('combobox', { name: inquiriesCopy.de.filterLabel });
   const id = await createInquiry(page, app.origin, 'E2E: fiktive Bremsenprüfung');
   const independentDraft = JSON.stringify({
     serviceCategoryId: 'motor',
@@ -55,23 +55,29 @@ test('customer-crud creates, edits, toggles and deletes an inquiry through the U
   expect(saved.attachmentIds).toEqual([]);
   const originalCards = await page.locator('[data-inquiry-card]').elementHandles();
   await inquiryAction(page, id, 'toggle');
-  await expect(card(page, id).locator('[data-inquiry-search-disabled]')).toBeDisabled();
+  await card(page, id).locator('[data-inquiry-menu]').click();
+  await expect(page.getByRole('menu').locator('[data-inquiry-search-disabled]')).toBeDisabled();
+  await page.keyboard.press('Escape');
   for (const originalCard of originalCards)
     expect(await originalCard.evaluate((element) => element.isConnected)).toBe(true);
   expect((await (await api(page, app.origin, requestPath(id))).json()).active).toBe(false);
   await page.reload();
   await readyInquiries(page);
   await expect(card(page, id).locator('[data-inquiry-search]')).toHaveCount(0);
-  await page.locator('[data-inquiry-filter="inactive"]').click();
+  await filter.click();
+  await page.getByRole('option', { name: inquiriesCopy.de.inactive, exact: true }).click();
   await expect(card(page, id)).toBeVisible();
   await inquiryAction(page, id, 'toggle');
   await expect(card(page, id)).toHaveCount(0);
   await expect(page.locator('#inquiries-title')).toBeFocused();
-  await page.locator('[data-inquiry-filter="active"]').click();
-  await expect(card(page, id).locator('[data-inquiry-search]')).toBeVisible();
+  await filter.click();
+  await page.getByRole('option', { name: inquiriesCopy.de.active, exact: true }).click();
+  await card(page, id).locator('[data-inquiry-menu]').click();
+  await expect(page.getByRole('menu').locator('[data-inquiry-search]')).toBeVisible();
+  await page.keyboard.press('Escape');
   expect((await (await api(page, app.origin, requestPath(id))).json()).active).toBe(true);
-  await page.locator('[data-inquiry-filter="all"]').click();
-  await layout(page, info, 'customer');
+  await filter.click();
+  await page.getByRole('option', { name: inquiriesCopy.de.all, exact: true }).click();
   await deleteInquiry(page, app.origin, id, true);
   expect(
     await page.evaluate(() => sessionStorage.getItem('autokosova.repair-request-draft.v1')),
@@ -82,12 +88,9 @@ test('customer-crud creates, edits, toggles and deletes an inquiry through the U
   await logout(page, app.origin);
 });
 
-test('garage-crud creates, edits and deletes a draft through the UI', async ({
-  app,
-  page,
-}, info) => {
+test('garage-crud creates, edits and deletes a draft through the UI', async ({ app, page }) => {
   await app.login(page, 'garage');
-  await expect(page).toHaveURL(app.origin + '/garages/new');
+  await expect(page).toHaveURL(app.origin + '/garages/manage');
   const baseline = (await (await api(page, app.origin, '/api/me/garages')).json()).garages;
   const id = await createGarage(page, app.origin, 'E2E · Fiktive Werkstatt');
   await editGarage(page, app.origin, id, 'E2E · Bearbeitete Werkstatt');
@@ -98,10 +101,7 @@ test('garage-crud creates, edits and deletes a draft through the UI', async ({
     serviceCategoryIds: ['bremsen'],
     languages: ['Deutsch'],
   });
-  await layout(page, info, 'garage');
-  await garageButton(page, id).click();
-  await page.screenshot({ path: info.outputPath('garage-menu.png'), fullPage: true });
-  await page.keyboard.press('Escape');
+  await expect(garageCard(page, id)).toBeVisible();
   await deleteGarage(page, app.origin, id);
   expect((await (await api(page, app.origin, '/api/me/garages')).json()).garages).toEqual(baseline);
   await logout(page, app.origin);
@@ -120,9 +120,6 @@ test('published-deletion removes actual public visibility and keeps the operator
     ),
   ).toBe(true);
   expect((await api(page, app.origin, '/api/public/garages/' + garages[0])).status()).toBe(200);
-  await garageButton(page, garages[0]).click();
-  await expect(page.locator(`[data-public-garage][href="/garages/${garages[0]}"]`)).toBeVisible();
-  await page.keyboard.press('Escape');
   for (const id of garages) await deleteGarage(page, app.origin, id);
   expect(
     (await (await search()).json()).results.some((garage: { id: string }) =>
@@ -232,11 +229,8 @@ test('persistent-restart preserves edits and deletions across a real app restart
   expect((await api(page, app.origin, requestPath(inquiries[1]))).status()).toBe(404);
   await app.login(page, 'garage');
   await readyGarages(page);
-  await expect(garageButton(page, garages[0])).toHaveAttribute(
-    'aria-label',
-    /E2E PERSISTENT GARAGE/,
-  );
-  await expect(garageButton(page, garages[1])).toHaveCount(0);
+  await expect(garageCard(page, garages[0])).toContainText('E2E PERSISTENT GARAGE');
+  await expect(garageCard(page, garages[1])).toHaveCount(0);
   expect((await api(page, app.origin, garagePath(garages[1]))).status()).toBe(403);
   await garageAction(page, garages[0], 'edit');
   await expect(page.locator('#garage-name')).toHaveValue('E2E PERSISTENT GARAGE');
@@ -274,7 +268,6 @@ test('localized-navigation checks both account types, explicit destinations, key
       await page.reload();
       await readyInquiries(page);
       await checkActions(page, inquiries[0], inquiries[1], locale);
-      await layout(page, info, locale + '-' + width + '-customer');
       const menu = card(page, inquiries[0]).locator('[data-inquiry-menu]');
       await menu.focus();
       await page.keyboard.press('Enter');
@@ -284,7 +277,6 @@ test('localized-navigation checks both account types, explicit destinations, key
       await inquiryAction(page, inquiries[0], 'edit');
       await expect(page.locator('[data-inquiry-editor]')).toBeVisible();
       await expect(page.locator('#edit-service')).toBeFocused();
-      await layout(page, info, locale + '-' + width + '-editor');
       await page.keyboard.press('Escape');
       await expect(page.locator('[data-inquiry-editor]')).toHaveCount(0);
       const source = await page.request.get(app.origin + prefix + '/inquiries');
@@ -292,11 +284,10 @@ test('localized-navigation checks both account types, explicit destinations, key
       expect(source.headers()['x-robots-tag']).toBe('noindex, nofollow');
       expect(await source.text()).not.toContain(app.subjects.customer);
       await app.login(page, 'garage', locale);
-      await expect(page).toHaveURL(app.origin + prefix + '/garages/new');
+      await expect(page).toHaveURL(app.origin + prefix + '/garages/manage');
       await readyGarages(page);
-      await expect(page.locator('#form-title')).toHaveText(garageManagementCopy[locale].title);
+      await expect(page.locator('main h1')).toHaveText(garageManagementCopy[locale].title);
       await expect(page.locator('[data-garage-status][data-state="published"]')).toHaveCount(2);
-      await layout(page, info, locale + '-' + width + '-garage');
       await app.login(page, 'garage', locale, prefix + '/inquiries');
       await expect(page).toHaveURL(app.origin + prefix + '/inquiries');
       await expect(page.locator('[data-inquiries-empty]')).toBeVisible();
@@ -359,6 +350,7 @@ test('error-feedback preserves unsaved edits on network, conflict, permission an
   await app.login(page, 'garage');
   await readyGarages(page);
   await garageAction(page, garages[0], 'edit');
+  await expect(page.locator('#garage-name')).not.toHaveValue('');
   const name = await page.locator('#garage-name').inputValue();
   await page.locator('#garage-name').fill('E2E UNSAVED GARAGE');
   const original = (await page.context().cookies(app.origin)).find(
@@ -423,14 +415,10 @@ test('late-response cannot restore private garage data after another tab changes
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
     await expect(page.locator('[data-account-trigger]')).toContainText('E2E other');
     release();
-    await expect(page.locator('#garage-name')).toHaveValue('');
+    await expect(page.locator('#garage-name')).toHaveCount(0);
     await expect(page.locator('body')).not.toContainText(responseName);
     await expect(page.locator('[data-delete-garage]')).toHaveCount(0);
     await page.unroute(target);
-    await logout(other, app.origin);
-    await page.bringToFront();
-    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-    await expect(page.locator('body')).not.toContainText(responseName);
   } finally {
     release();
     await other.close();

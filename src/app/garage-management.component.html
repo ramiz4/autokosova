@@ -12,7 +12,11 @@
       [loginReturnTo]="language.link('garage-management')"
     />
   </div>
-  <main class="mx-auto w-full max-w-340 px-4 pt-6 pb-14 sm:px-6">
+  <main
+    data-garages-overview
+    [attr.aria-busy]="state() === 'loading'"
+    class="mx-auto w-full max-w-340 px-4 pt-6 pb-14 sm:px-6"
+  >
     <header class="my-8 flex flex-wrap items-center justify-between gap-5">
       <div>
         <h1 class="text-[clamp(28px,4vw,36px)] font-bold tracking-[-.035em]">
@@ -51,6 +55,7 @@
         <ul class="grid gap-5 md:grid-cols-2">
           @for (garage of garages(); track garage.id) {
             <li
+              [attr.data-garage-id]="garage.id"
               class="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
             >
               <div class="relative flex h-48 items-center justify-center bg-slate-100 sm:h-52">
@@ -70,6 +75,8 @@
                   <lucide-icon [name]="ShieldCheckIcon" class="size-12 text-brand" />
                 }
                 <span
+                  data-garage-status
+                  [attr.data-state]="garage.publicationState"
                   [class]="
                     garage.publicationState === 'published'
                       ? 'absolute top-3 right-3 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm'

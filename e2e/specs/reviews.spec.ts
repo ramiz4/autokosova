@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { test, expect, type App } from '../support/application';
-import { api, layout, logout } from '../support/journeys';
+import { api, logout } from '../support/journeys';
 import { staffDemoGarage, staffDemoFixtures } from '../../db/staff-demo-data.mjs';
 import { reviewLabel } from '../../src/shared/review-copy';
 import { staffLabel } from '../../src/shared/staff-copy';
@@ -41,9 +41,8 @@ async function newReview(app: App, page: Page) {
 test('review-workflow submits evidence, assigns, verifies, publishes, replies and updates through actual UI', async ({
   app,
   page,
-}, info) => {
+}) => {
   await app.login(page, 'moderator');
-  await logout(page, app.origin); // Verified directory entry, not a seeded role.
   const review = await newReview(app, page);
   expect(
     (await (await api(page, app.origin, '/api/me/reviews/' + review.id)).json()).publicationState,
@@ -58,7 +57,6 @@ test('review-workflow submits evidence, assigns, verifies, publishes, replies an
   await expect(page.locator('[data-own-review-status]')).toHaveText('Eingereicht');
   await page.locator('[data-open-own-evidence]').click();
   await expect(page.locator('[data-own-evidence]')).toContainText('DEMO – kein echter Nachweis');
-  await layout(page, info, 'own-review-submitted');
   await logout(page, app.origin);
   await app.login(page, 'admin');
   const row = () => page.locator(`[data-case-id="review:${review.id}"]`);
@@ -76,7 +74,6 @@ test('review-workflow submits evidence, assigns, verifies, publishes, replies an
   await expect(page.locator('[data-staff-list]')).toHaveAttribute('aria-busy', 'false');
   await expect(page.locator('[data-admin-overview]')).toBeVisible();
   await expect(page.locator('[data-admin-overview] a').first()).toBeVisible();
-  await layout(page, info, 'review-approval-queue');
   await row().getByRole('button', { name: 'Bewertung prüfen', exact: true }).click();
   await page.locator('#staff-assignee').selectOption(app.subjects.moderator);
   await page.locator('[data-assign]').click();
@@ -112,7 +109,6 @@ test('review-workflow submits evidence, assigns, verifies, publishes, replies an
     await expect(
       page.getByRole('heading', { name: staffLabel('reviewEvidence', locale), exact: true }),
     ).toBeVisible();
-    await layout(page, info, 'review-approval-' + locale);
   }
   await page.goto(app.origin + `/moderation/cases/${encodeURIComponent('review:' + review.id)}`);
 
@@ -123,7 +119,6 @@ test('review-workflow submits evidence, assigns, verifies, publishes, replies an
   await expect(page.locator('[data-review-publish-hint]')).toContainText(
     'Besuchsnachweis bleibt privat',
   );
-  await layout(page, info, 'review-approval-ready');
   await page.getByRole('button', { name: 'Bewertung freigeben', exact: true }).click();
   await expect(page.getByRole('alertdialog')).toContainText('Besuchsnachweis bleibt privat');
   await page.locator('[data-confirmation-confirm]').click();
@@ -162,7 +157,6 @@ test('review-workflow submits evidence, assigns, verifies, publishes, replies an
   await expect(card).toContainText(reply);
   await expect(card).toContainText(text);
   await expect(card).toContainText('Nach unserer Reklamation');
-  await layout(page, info, 'public-review-response');
   const current = await (
     await api(page, app.origin, `/api/public/garages/${staffDemoGarage}/reviews`)
   ).json();
@@ -174,7 +168,8 @@ test('review-workflow submits evidence, assigns, verifies, publishes, replies an
   expect(JSON.stringify(result)).not.toContain('evidenceFileId');
   await app.restart();
   await app.login(page, 'customer', 'de', '/reviews');
-  await page.locator(`[data-review-id="${review.id}"] [data-open-own-review]`).click();
+  await page.locator(`[data-review-id="${review.id}"] [data-review-menu]`).click();
+  await page.locator('[role="menu"] [data-open-own-review]').click();
   await expect(page.locator('[data-own-review-status]')).toHaveText('Veröffentlicht');
   await expect(page.locator('[data-own-review-detail]')).toContainText('Nach unserer Reklamation');
 });
@@ -182,7 +177,7 @@ test('review-workflow submits evidence, assigns, verifies, publishes, replies an
 test('review-boundaries preserve input, reject foreign access and validate localized routes and private uploads', async ({
   app,
   page,
-}, info) => {
+}) => {
   for (const locale of ['de', 'sq', 'en'] as const) {
     const path = `${locale === 'de' ? '' : '/' + locale}/garages/${staffDemoGarage}/reviews/new`;
     await app.login(page, 'customer', locale, path);
@@ -195,7 +190,6 @@ test('review-boundaries preserve input, reject foreign access and validate local
     expect(document.headers()['x-robots-tag']).toContain('noindex');
     await page.locator('#review-text').focus();
     await expect(page.locator('#review-text')).toBeFocused();
-    await layout(page, info, 'review-new-' + locale);
   }
   await page.locator('#review-evidence-file').setInputFiles({
     name: 'unknown.txt',

@@ -227,8 +227,7 @@ export class GarageOnboardingComponent {
     this.cdr.detectChanges();
     this.workspaceTitle()?.nativeElement.focus();
   }
-  protected async backToOverview(): Promise<void> {
-    if (!(await this.canLeave())) return;
+  protected backToOverview(): void {
     void this.router.navigateByUrl(this.language.link('garage-management'));
   }
   protected readonly places = CATALOG_PLACES;
