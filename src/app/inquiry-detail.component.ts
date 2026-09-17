@@ -1,4 +1,4 @@
-import { Component, afterNextRender, inject, signal } from '@angular/core';
+import { Component, DestroyRef, afterNextRender, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LucideArrowLeft, LucideMapPin, LucidePaperclip, type LucideIcon } from '@lucide/angular';
 import { getCatalogPlace, VEHICLE_MAKE_LABELS } from '../shared/catalog';
@@ -33,9 +33,15 @@ export class InquiryDetailComponent {
   protected readonly detail = signal<SavedRepairRequest | null>(null);
   protected readonly state = signal<'loading' | 'ready' | 'error' | 'missing'>('loading');
   private readonly route = inject(ActivatedRoute);
+  private generation = 0;
+  private controller = new AbortController();
 
   constructor() {
     afterNextRender(() => void this.load());
+    inject(DestroyRef).onDestroy(() => {
+      this.generation++;
+      this.controller.abort();
+    });
   }
   protected loginUrl(): string {
     return `/auth/login?returnTo=${encodeURIComponent(this.routeUrl())}`;
@@ -56,16 +62,20 @@ export class InquiryDetailComponent {
     return getCatalogPlace(id)?.label ?? id;
   }
   protected date(value: string): string {
+    const date = new Date(`${value}T00:00:00Z`);
+    if (Number.isNaN(date.getTime())) return value;
     return new Intl.DateTimeFormat(this.language.language, {
       dateStyle: 'medium',
       timeZone: 'UTC',
-    }).format(new Date(`${value}T00:00:00Z`));
+    }).format(date);
   }
   protected dateTime(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
     return new Intl.DateTimeFormat(this.language.language, {
       dateStyle: 'medium',
       timeStyle: 'short',
-    }).format(new Date(value));
+    }).format(date);
   }
   protected vehicleEntries(
     vehicle: RepairRequestVehicle | undefined,
@@ -86,7 +96,12 @@ export class InquiryDetailComponent {
       if (value === undefined || value === '') return [];
       let display = String(value);
       if (key === 'makeId') display = VEHICLE_MAKE_LABELS[display] ?? display;
-      else if (key === 'vehicleClass' || key === 'fuel')
+      else if (
+        key === 'vehicleClass' ||
+        key === 'fuel' ||
+        (key === 'transmissionDetails' &&
+          ['manual', 'automatic', 'semiAutomatic', 'other'].includes(display))
+      )
         display = this.requestText(display as RequestCopyKey);
       else if (key === 'mileageKm')
         display = `${Number(value).toLocaleString(this.language.language)} km`;
@@ -97,20 +112,35 @@ export class InquiryDetailComponent {
     await this.account.refresh();
     if (!this.account.signedIn()) return;
     const id = this.route.snapshot.paramMap.get('inquiryId') ?? '';
+    const generation = ++this.generation;
+    const context = this.account.dataContext();
+    this.controller.abort();
+    this.controller = new AbortController();
+    this.detail.set(null);
     this.state.set('loading');
     try {
       const response = await fetch(`/api/me/repair-requests/${encodeURIComponent(id)}`, {
         credentials: 'same-origin',
         cache: 'no-store',
+        signal: this.controller.signal,
       });
+      if (!this.current(generation, context)) return;
+      if (response.status === 401) {
+        this.account.invalidate();
+        return;
+      }
       if (response.status === 404) return this.state.set('missing');
       if (!response.ok) throw new Error('load');
       const detail = (await response.json()) as SavedRepairRequest;
+      if (!this.current(generation, context)) return;
       if (detail.id !== id) throw new Error('invalid');
       this.detail.set(detail);
       this.state.set('ready');
     } catch {
-      this.state.set('error');
+      if (this.current(generation, context)) this.state.set('error');
     }
+  }
+  private current(generation: number, context: unknown): boolean {
+    return generation === this.generation && context === this.account.dataContext();
   }
 }

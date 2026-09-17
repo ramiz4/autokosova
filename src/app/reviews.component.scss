@@ -1,5 +1,4 @@
-.state-panel,
-.detail-card {
+.state-panel {
   border: 1px solid #dbe6f3;
   border-radius: 20px;
   background: #fff;
@@ -121,38 +120,6 @@
   background: #fee2e2;
   color: #b42318;
 }
-.rating-summary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #344c70;
-  font-weight: 700;
-}
-.detail-statuses {
-  display: grid;
-  gap: 1rem;
-  margin-top: 1.5rem;
-  padding: 1rem;
-  border-radius: 14px;
-  background: #f7faff;
-}
-.detail-statuses dt {
-  color: #64748b;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-.detail-statuses dd {
-  margin-top: 0.35rem;
-  color: #102d54;
-  font-size: 0.875rem;
-}
-.notice-warning {
-  margin-top: 1rem;
-  border-radius: 12px;
-  background: #fffbeb;
-  padding: 0.8rem;
-  color: #7c5700;
-}
 .review-skeleton {
   height: 180px;
   border-radius: 18px;
@@ -166,15 +133,11 @@
   }
 }
 @media (min-width: 640px) {
-  .state-panel,
-  .detail-card {
+  .state-panel {
     padding: 2rem;
   }
   .review-toolbar {
     grid-template-columns: minmax(0, 1fr) minmax(390px, 0.85fr);
-  }
-  .detail-statuses {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (min-width: 900px) {

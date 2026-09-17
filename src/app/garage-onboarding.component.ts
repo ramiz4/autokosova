@@ -19,7 +19,7 @@ import { garageManagementCopy } from '../shared/garage-management-copy';
 import { accountType } from '../shared/account';
 import { DOCUMENT, isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
 import { CdkMenuTrigger } from '@angular/cdk/menu';
-import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
+import { HlmDropdownMenuImports } from '@autokosova/ui/dropdown-menu';
 import { ActionMenuImports } from './ui/action-menu.directive';
 import {
   afterNextRender,
@@ -253,7 +253,11 @@ export class GarageOnboardingComponent {
     }));
   }
   protected get loginUrl(): string {
-    return '/auth/login?returnTo=' + encodeURIComponent(this.language.link('onboarding'));
+    const editorId = this.route.snapshot.paramMap.get('garageId');
+    const returnTo = editorId
+      ? this.language.link('garage-management-edit', editorId)
+      : this.language.link('onboarding');
+    return '/auth/login?returnTo=' + encodeURIComponent(returnTo);
   }
   protected get unchanged(): boolean {
     return JSON.stringify(this.form) === this.savedSnapshot;

@@ -81,17 +81,6 @@ input[type='file']:not(:disabled)::file-selector-button {
   cursor: pointer;
 }
 
-/* Native selects keep the full control as the hit area; the chevron is decorative. */
-select:not([multiple]) {
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2307143e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E") !important;
-  background-position: right 0.875rem center !important;
-  background-repeat: no-repeat !important;
-  background-size: 1rem !important;
-  padding-inline-end: 2.75rem !important;
-}
-
 /* A separate backdrop layer lets the floating menu blur the page independently. */
 .site-navbar-surface::before {
   content: '';

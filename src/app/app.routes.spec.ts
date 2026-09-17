@@ -47,6 +47,8 @@ it.each(['', 'sq', 'en'])('redirects old German links to English paths for /%s',
   }
   await router.navigateByUrl(base + '/suche?service=bremsen&places=xk-pristina:20');
   expect(router.url).toBe(base + '/garages?service=bremsen&places=xk-pristina:20');
+  await router.navigateByUrl(base + '/inquires/request-1');
+  expect(router.url).toBe(base + '/inquiries/request-1');
 });
 
 // Non-landing pages must not pull their component code into the initial shell.
@@ -91,5 +93,6 @@ describe.each(['', 'sq', 'en'])('Route bundle boundaries for /%s', (locale) => {
       expect(route.canDeactivate).toHaveLength(1);
       expect(route.data?.['ownsFooter']).toBe(true);
     }
+    if (path === 'reviews/:reviewId') expect(route.canDeactivate).toHaveLength(1);
   });
 });

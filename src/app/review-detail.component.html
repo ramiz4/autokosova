@@ -1,4 +1,5 @@
 <div class="min-h-screen bg-brand/5 font-sans text-ink">
+  <app-confirmation-dialog #confirmation />
   <app-auth-required-dialog
     [open]="account.state() === 'guest'"
     [loginAvailable]="account.loginAvailable() !== false"
@@ -11,6 +12,14 @@
     <a appButton="outline" size="compact" [routerLink]="language.link('reviews')"
       ><lucide-icon [name]="ArrowLeftIcon" class="size-4" />{{ label('own') }}</a
     >
+    @if (error()) {
+      <div
+        role="alert"
+        class="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900"
+      >
+        {{ error() }}
+      </div>
+    }
     @switch (state()) {
       @case ('loading') {
         <p class="mt-8 rounded-2xl bg-white p-8" role="status">{{ label('loading') }}</p>
@@ -138,6 +147,7 @@
               [reviewId]="review.id"
               [garageId]="review.garageId"
               [startRequested]="startUpdate()"
+              (dirtyChange)="setDirty($event)"
               (changed)="load()"
             />
           }

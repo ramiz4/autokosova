@@ -1,4 +1,13 @@
-import { Component, afterNextRender, effect, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  afterNextRender,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   LucideMapPin,
@@ -60,10 +69,30 @@ export class GarageManagementComponent {
   protected readonly deletingId = signal<string | null>(null);
   protected readonly failedPhotos = signal<ReadonlySet<string>>(new Set());
   protected readonly message = signal('');
+  private generation = 0;
+  private controller = new AbortController();
 
   constructor() {
     effect(() => this.language.setPageText(this.management.title, this.management.intro, true));
+    effect(() => {
+      const context = this.account.dataContext();
+      const accountState = this.account.state();
+      untracked(() => {
+        this.generation++;
+        this.controller.abort();
+        this.controller = new AbortController();
+        this.garages.set([]);
+        this.failedPhotos.set(new Set());
+        this.message.set('');
+        if (!context && accountState === 'guest') this.state.set('forbidden');
+      });
+    });
     afterNextRender(() => void this.refresh());
+    inject(DestroyRef).onDestroy(() => {
+      this.generation++;
+      this.controller.abort();
+      this.confirmation().cancelPending();
+    });
   }
 
   protected get management() {
@@ -104,19 +133,35 @@ export class GarageManagementComponent {
       this.state.set('forbidden');
       return;
     }
+    const generation = ++this.generation;
+    const context = this.account.dataContext();
+    this.controller.abort();
+    this.controller = new AbortController();
     this.state.set('loading');
     try {
-      const response = await fetch('/api/me/garages', { cache: 'no-store' });
+      const response = await fetch('/api/me/garages', {
+        credentials: 'same-origin',
+        cache: 'no-store',
+        signal: this.controller.signal,
+      });
+      if (!this.current(generation, context)) return;
+      if (response.status === 401) {
+        this.account.invalidate();
+        return;
+      }
       if (!response.ok) throw new Error('load');
       const data = (await response.json()) as { garages: ManagedGarage[] };
-      this.garages.set(await this.withPublicPhotos(data.garages));
+      const garages = await this.withPublicPhotos(data.garages, this.controller.signal);
+      if (!this.current(generation, context)) return;
+      this.garages.set(garages);
       this.state.set('ready');
     } catch {
-      this.state.set('error');
+      if (this.current(generation, context)) this.state.set('error');
     }
   }
   private async withPublicPhotos(
     garages: readonly ManagedGarage[],
+    signal: AbortSignal,
   ): Promise<readonly ManagedGarage[]> {
     return Promise.all(
       garages.map(async (garage) => {
@@ -126,6 +171,7 @@ export class GarageManagementComponent {
             credentials: 'omit',
             cache: 'no-store',
             referrerPolicy: 'no-referrer',
+            signal,
           });
           if (!response.ok) return garage;
           const profile = (await response.json()) as { photoIds?: unknown };
@@ -153,6 +199,7 @@ export class GarageManagementComponent {
       .find((cookie) => cookie.startsWith('autokosova_csrf='))
       ?.split('=')[1];
     if (!csrf) return;
+    const context = this.account.dataContext();
     this.deletingId.set(garage.id);
     try {
       const response = await fetch('/api/garages/' + encodeURIComponent(garage.id), {
@@ -160,14 +207,22 @@ export class GarageManagementComponent {
         credentials: 'same-origin',
         headers: { 'x-csrf-token': csrf },
       });
+      if (context !== this.account.dataContext()) return;
+      if (response.status === 401) {
+        this.account.invalidate();
+        return;
+      }
       if (!response.ok) throw new Error('delete');
       this.garages.update((items) => items.filter((item) => item.id !== garage.id));
       this.message.set(this.management.deleted);
       await this.account.refresh();
     } catch {
-      this.message.set(this.copy.error);
+      if (context === this.account.dataContext()) this.message.set(this.copy.error);
     } finally {
-      this.deletingId.set(null);
+      if (context === this.account.dataContext()) this.deletingId.set(null);
     }
+  }
+  private current(generation: number, context: unknown): boolean {
+    return generation === this.generation && context === this.account.dataContext();
   }
 }

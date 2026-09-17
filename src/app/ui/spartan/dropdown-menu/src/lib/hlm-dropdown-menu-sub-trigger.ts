@@ -6,7 +6,7 @@ import {
   type MenuAlign,
   type MenuSide,
 } from '@spartan-ng/brain/core';
-import { classes } from '@spartan-ng/helm/utils';
+import { classes } from '@autokosova/ui/utils';
 import { injectHlmDropdownMenuConfig } from './hlm-dropdown-menu-token';
 
 @Directive({

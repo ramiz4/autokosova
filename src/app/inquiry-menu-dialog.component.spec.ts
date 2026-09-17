@@ -48,6 +48,14 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 beforeEach(() => {
   vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  vi.stubGlobal(
     'fetch',
     vi.fn().mockImplementation(async (url: RequestInfo | URL) => {
       const path = new URL(String(url), 'http://localhost').pathname;
@@ -89,7 +97,7 @@ it('closes the CDK menu before either dialog owns focus and restores the persist
   const editor = document.querySelector<HTMLElement>('[data-inquiry-editor]')!;
   expect(editor.className).toContain('max-h-[min(820px,calc(100dvh-48px))]');
   expect(editor.textContent).not.toContain('PRIVAT');
-  expect(page.querySelector('[id^="inquiry-detail-"]')?.className).toContain('hidden');
+  expect(page.querySelector('[id^="inquiry-detail-"]')).toBeNull();
   expect(document.activeElement).toBe(document.querySelector('#edit-service'));
 
   document

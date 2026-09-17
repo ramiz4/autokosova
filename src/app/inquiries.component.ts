@@ -18,7 +18,7 @@ import {
 } from '@lucide/angular';
 import { DOCUMENT } from '@angular/common';
 import { CdkMenuTrigger } from '@angular/cdk/menu';
-import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
+import { HlmDropdownMenuImports } from '@autokosova/ui/dropdown-menu';
 import {
   Component,
   computed,
@@ -39,7 +39,6 @@ import { requestCopy, type RequestCopyKey } from '../shared/request-copy';
 import {
   buildRepairRequestSearchParams,
   REPAIR_REQUEST_SERVICE_CATEGORIES,
-  type RepairRequestVehicle,
 } from '../shared/repair-request';
 import type { RepairRequestSummary } from '../shared/saved-repair-request';
 import { AccountSessionService } from './account-session.service';
@@ -257,37 +256,5 @@ export class InquiriesComponent {
       dateStyle: 'medium',
       ...(calendar ? { timeZone: 'UTC' } : { timeStyle: 'short' as const }),
     }).format(new Date(calendar ? `${value}T00:00:00Z` : value));
-  }
-
-  protected vehicleEntries(
-    vehicle: RepairRequestVehicle | undefined,
-  ): readonly { label: string; value: string }[] {
-    if (!vehicle) return [];
-    const labels: Readonly<Record<keyof RepairRequestVehicle, RequestCopyKey>> = {
-      makeId: 'make',
-      model: 'model',
-      year: 'year',
-      vehicleClass: 'class',
-      fuel: 'fuel',
-      engineDetails: 'engine',
-      transmissionDetails: 'transmission',
-      mileageKm: 'mileage',
-    };
-    return (Object.keys(labels) as (keyof RepairRequestVehicle)[]).flatMap((key) => {
-      const value = vehicle[key];
-      if (value === undefined || value === '') return [];
-      let display = String(value);
-      if (key === 'makeId') display = VEHICLE_MAKE_LABELS[display] ?? display;
-      else if (
-        key === 'vehicleClass' ||
-        key === 'fuel' ||
-        (key === 'transmissionDetails' &&
-          ['manual', 'automatic', 'semiAutomatic', 'other'].includes(display))
-      ) {
-        display = this.requestText(display as RequestCopyKey);
-      } else if (key === 'mileageKm')
-        display = `${Number(value).toLocaleString(this.language.language)} km`;
-      return [{ label: this.requestText(labels[key]), value: display }];
-    });
   }
 }

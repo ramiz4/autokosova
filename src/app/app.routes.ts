@@ -113,15 +113,15 @@ function localizedRoutes(prefix: string): Routes {
       pathMatch: 'full',
       loadComponent: () =>
         import('./review-detail.component').then((module) => module.ReviewDetailComponent),
+      canDeactivate: [
+        (component: import('./review-detail.component').ReviewDetailComponent | null) =>
+          component?.canLeave() ?? true,
+      ],
     },
     {
       path: `${childPrefix}reviews`,
       pathMatch: 'full',
       loadComponent: () => import('./reviews.component').then((m) => m.ReviewsComponent),
-      canDeactivate: [
-        (component: import('./reviews.component').ReviewsComponent | null) =>
-          component?.canLeave() ?? true,
-      ],
     },
     {
       path: `${childPrefix}garages/:garageId/reviews/new`,

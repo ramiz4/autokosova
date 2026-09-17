@@ -1,6 +1,5 @@
-import { DOCUMENT } from '@angular/common';
 import { CdkMenuTrigger } from '@angular/cdk/menu';
-import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
+import { HlmDropdownMenuImports } from '@autokosova/ui/dropdown-menu';
 import {
   Component,
   DestroyRef,
@@ -9,7 +8,6 @@ import {
   inject,
   signal,
   untracked,
-  viewChild,
   viewChildren,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -28,10 +26,8 @@ import { SiteHeaderComponent } from './site-header.component';
 import { ButtonDirective } from './ui/button.directive';
 import { AuthRequiredDialogComponent } from './ui/auth-required-dialog.component';
 import { ActionMenuImports } from './ui/action-menu.directive';
-import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
 import { LucideIconComponent } from './ui/lucide-icon.component';
 import { RatingStarsComponent } from './ui/rating-stars.component';
-import { ReviewContributionComponent } from './review-contribution.component';
 import { SelectFieldComponent, type SelectFieldOption } from './ui/select-field.component';
 import { reviewLabel } from '../shared/review-copy';
 import {
@@ -41,9 +37,7 @@ import {
   type OwnReviewSort,
   type ReviewPublicationState,
 } from '../shared/reviews';
-import { ReviewHttpError, reviewChecked, reviewError, reviewJson } from './review-http';
-
-type ReviewAction = 'view' | 'evidence' | 'update';
+import { ReviewHttpError, reviewError, reviewJson } from './review-http';
 
 @Component({
   selector: 'app-reviews',
@@ -51,8 +45,6 @@ type ReviewAction = 'view' | 'evidence' | 'update';
     SiteHeaderComponent,
     RouterLink,
     ButtonDirective,
-    ReviewContributionComponent,
-    ConfirmationDialogComponent,
     LucideIconComponent,
     RatingStarsComponent,
     SelectFieldComponent,
@@ -70,24 +62,19 @@ export class ReviewsComponent {
   readonly EyeIcon: LucideIcon = LucideEye;
   readonly SearchIcon: LucideIcon = LucideSearch;
   readonly UpdateIcon: LucideIcon = LucideMessageSquarePlus;
-  readonly confirmation = viewChild.required<ConfirmationDialogComponent>('confirmation');
   readonly account = inject(AccountSessionService);
   readonly language = inject(LanguageService);
   readonly ready = signal(false);
   readonly loading = signal(false);
-  readonly busy = signal(false);
   readonly error = signal('');
   readonly reviews = signal<readonly OwnReviewDetail[]>([]);
   readonly garagePhotos = signal<ReadonlyMap<string, string | null>>(new Map());
   readonly failedGaragePhotos = signal<ReadonlySet<string>>(new Set());
-  readonly detail = signal<OwnReviewDetail | null>(null);
-  readonly evidence = signal<string | null>(null);
   readonly page = signal(1);
   readonly total = signal(0);
   readonly search = signal('');
   readonly publicationState = signal<ReviewPublicationState | 'all'>('all');
   readonly sort = signal<OwnReviewSort>('submitted_desc');
-  readonly startUpdate = signal(false);
   readonly states: readonly (ReviewPublicationState | 'all')[] = [
     'all',
     'submitted',
@@ -99,8 +86,6 @@ export class ReviewsComponent {
   ];
   readonly sorts: readonly OwnReviewSort[] = ['submitted_desc', 'submitted_asc'];
   private readonly actionMenus = viewChildren(CdkMenuTrigger);
-  private readonly document = inject(DOCUMENT);
-  private dirty = false;
   private generation = 0;
   private controller = new AbortController();
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -117,7 +102,6 @@ export class ReviewsComponent {
       // dependency of this session/view lifecycle effect, or each response triggers
       // another reset and list request.
       untracked(() => {
-        this.confirmation().cancelPending();
         this.actionMenus().forEach((menu) => menu.close());
         this.generation++;
         this.controller.abort();
@@ -126,13 +110,9 @@ export class ReviewsComponent {
         this.reviews.set([]);
         this.garagePhotos.set(new Map());
         this.failedGaragePhotos.set(new Set());
-        this.detail.set(null);
-        this.evidence.set(null);
         this.error.set('');
         this.loading.set(false);
-        this.busy.set(false);
         this.total.set(0);
-        this.dirty = false;
         if (context && ready) void this.load();
       });
     });
@@ -186,24 +166,10 @@ export class ReviewsComponent {
   statusClass(status: string): string {
     return `status-${status}`;
   }
-  setDirty(value: boolean): void {
-    this.dirty = value;
-  }
-  async canLeave(): Promise<boolean> {
-    if (this.busy() || !this.dirty) return !this.busy();
-    const context = this.account.dataContext();
-    const accepted = await this.confirmation().ask({
-      title: this.label('discard'),
-      description: this.label('discard'),
-      confirmLabel: this.label('discard'),
-      cancelLabel: this.label('cancel'),
-    });
-    return accepted && context === this.account.dataContext() && !this.busy() && this.dirty;
-  }
   onSearch(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (this.searchTimer) clearTimeout(this.searchTimer);
-    this.searchTimer = setTimeout(() => void this.changeList({ query: input.value }, input), 250);
+    this.searchTimer = setTimeout(() => void this.changeList({ query: input.value }), 250);
   }
   stateOptions(): readonly SelectFieldOption[] {
     return this.states.map((state) => ({ value: state, label: this.stateLabel(state) }));
@@ -220,19 +186,14 @@ export class ReviewsComponent {
   async clearFilters(): Promise<void> {
     await this.changeList({ query: '', publicationState: 'all', sort: 'submitted_desc' });
   }
-  async load(page = 1, skipLeave = false): Promise<void> {
-    if (!this.account.dataContext() || this.busy() || (!skipLeave && !(await this.canLeave())))
-      return;
+  async load(page = 1): Promise<void> {
+    if (!this.account.dataContext()) return;
     const generation = ++this.generation,
       context = this.account.dataContext();
     this.controller.abort();
     this.controller = new AbortController();
     this.loading.set(true);
     this.error.set('');
-    this.detail.set(null);
-    this.evidence.set(null);
-    this.startUpdate.set(false);
-    this.dirty = false;
     try {
       const data = await reviewJson<OwnReviewPage>(
         await fetch(this.listUrl(page), {
@@ -251,7 +212,7 @@ export class ReviewsComponent {
         const lastPage = Math.max(1, Math.ceil(data.total / REVIEW_PAGE_SIZE));
         if (data.total > 0 && page > lastPage) {
           this.total.set(data.total);
-          void this.load(lastPage, true);
+          void this.load(lastPage);
           return;
         }
         this.reviews.set(data.reviews);
@@ -314,93 +275,15 @@ export class ReviewsComponent {
     if (!this.current(generation, context)) return;
     this.garagePhotos.update((current) => new Map([...current, ...resolved]));
   }
-  async open(id: string, action: ReviewAction = 'view'): Promise<void> {
-    if (!(await this.canLeave())) return;
-    const generation = ++this.generation,
-      context = this.account.dataContext();
-    this.controller.abort();
-    this.controller = new AbortController();
-    this.loading.set(true);
-    this.error.set('');
-    this.detail.set(null);
-    this.evidence.set(null);
-    this.startUpdate.set(false);
-    this.dirty = false;
-    try {
-      const data = await reviewJson<OwnReviewDetail>(
-        await fetch('/api/me/reviews/' + encodeURIComponent(id), {
-          credentials: 'same-origin',
-          cache: 'no-store',
-          signal: this.controller.signal,
-        }),
-      );
-      if (this.current(generation, context)) {
-        if (data.id !== id || typeof data.text !== 'string') throw new Error('Invalid own review');
-        this.detail.set(data);
-        if (action === 'update') this.startUpdate.set(true);
-        afterNextRender(() => this.document.getElementById('own-review-detail-title')?.focus());
-        if (action === 'evidence') await this.openEvidence();
-      }
-    } catch (error) {
-      if (this.current(generation, context)) this.failure(error);
-    } finally {
-      if (this.current(generation, context)) this.loading.set(false);
-    }
-  }
-  openFromMenu(review: OwnReviewDetail, action: ReviewAction, menu: CdkMenuTrigger): void {
-    menu.close();
-    void this.open(review.id, action);
-  }
-  async openEvidence(): Promise<void> {
-    const detail = this.detail();
-    if (!detail || this.busy()) return;
-    const generation = this.generation,
-      context = this.account.dataContext();
-    this.busy.set(true);
-    this.error.set('');
-    this.evidence.set(null);
-    try {
-      const grant = await reviewJson<{ fileId: string; grantId: string; localFixture?: boolean }>(
-        await fetch('/api/reviews/' + encodeURIComponent(detail.id) + '/evidence/download-grant', {
-          credentials: 'same-origin',
-          cache: 'no-store',
-          signal: this.controller.signal,
-        }),
-      );
-      if (!this.current(generation, context)) return;
-      if (!grant.localFixture) throw new ReviewHttpError(503);
-      const response = await reviewChecked(
-        await fetch('/api/local-demo/files/' + encodeURIComponent(grant.fileId) + '/content', {
-          credentials: 'same-origin',
-          cache: 'no-store',
-          headers: { 'x-file-grant': grant.grantId },
-          signal: this.controller.signal,
-        }),
-      );
-      const text = await response.text();
-      if (this.current(generation, context)) this.evidence.set(text);
-    } catch (error) {
-      if (this.current(generation, context)) this.failure(error);
-    } finally {
-      if (this.current(generation, context)) this.busy.set(false);
-    }
-  }
-  private async changeList(
-    change: {
-      query?: string;
-      publicationState?: ReviewPublicationState | 'all';
-      sort?: OwnReviewSort;
-    },
-    input?: HTMLInputElement,
-  ): Promise<void> {
-    if (!(await this.canLeave())) {
-      if (input) input.value = this.search();
-      return;
-    }
+  private async changeList(change: {
+    query?: string;
+    publicationState?: ReviewPublicationState | 'all';
+    sort?: OwnReviewSort;
+  }): Promise<void> {
     if (change.query !== undefined) this.search.set(change.query);
     if (change.publicationState !== undefined) this.publicationState.set(change.publicationState);
     if (change.sort !== undefined) this.sort.set(change.sort);
-    await this.load(1, true);
+    await this.load(1);
   }
   private listUrl(page: number): string {
     const params = new URLSearchParams({ page: String(page), sort: this.sort() });

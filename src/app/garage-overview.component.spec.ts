@@ -11,6 +11,7 @@ afterEach(() => {
 
 async function setup() {
   const account = {
+    dataContext: signal<string | null>('fixture:1'),
     signedIn: signal(true),
     state: signal('ready'),
     identity: signal({ userId: 'fixture', accountType: 'garage', roles: ['customer'] }),
@@ -18,6 +19,7 @@ async function setup() {
     busy: signal(false),
     loginAvailable: signal(true),
     refresh: vi.fn().mockResolvedValue(undefined),
+    invalidate: vi.fn(),
   };
   await TestBed.configureTestingModule({
     imports: [GarageManagementComponent],

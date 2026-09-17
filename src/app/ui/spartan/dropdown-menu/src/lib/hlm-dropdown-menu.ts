@@ -7,7 +7,7 @@ import {
   MENU_SIDE,
   type MenuSide,
 } from '@spartan-ng/brain/core';
-import { classes } from '@spartan-ng/helm/utils';
+import { classes } from '@autokosova/ui/utils';
 
 @Directive({
   selector: '[hlmDropdownMenu],hlm-dropdown-menu',
