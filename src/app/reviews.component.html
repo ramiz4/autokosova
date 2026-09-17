@@ -1,5 +1,10 @@
 <div class="min-h-screen bg-brand/5 text-ink">
   <app-confirmation-dialog #confirmation />
+  <app-auth-required-dialog
+    [open]="account.state() === 'guest'"
+    [loginAvailable]="account.loginAvailable() !== false"
+    [loginUrl]="loginUrl()"
+  />
   <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
     <app-site-header [compact]="true" active="reviews" [loginReturnTo]="language.link('reviews')" />
   </div>
@@ -18,12 +23,7 @@
       </h1>
       <p class="page-subtitle mt-3 text-[15px] leading-relaxed text-muted">{{ label('intro') }}</p>
     </div>
-    @if (account.state() === 'guest') {
-      <section class="state-panel">
-        <h2 class="text-xl font-semibold">{{ label('login') }}</h2>
-        <a appButton class="mt-5" [href]="loginUrl()">{{ language.t('nav.login') }}</a>
-      </section>
-    } @else if (account.state() === 'loading' || !ready()) {
+    @if (account.state() === 'loading' || !ready()) {
       <p role="status" class="state-panel">{{ label('loading') }}</p>
     } @else if (account.state() === 'error') {
       <section class="state-panel">
@@ -215,7 +215,21 @@
               <article [attr.data-review-id]="review.id" class="review-card">
                 <div class="review-card-main">
                   <div class="review-fallback" aria-hidden="true">
-                    <lucide-icon [name]="EvidenceIcon" class="size-7" />
+                    @if (garagePhotoUrl(review); as photo) {
+                      <img
+                        data-review-garage-photo
+                        [src]="photo"
+                        alt=""
+                        width="96"
+                        height="96"
+                        loading="lazy"
+                        referrerpolicy="no-referrer"
+                        class="h-full w-full object-cover"
+                        (error)="garagePhotoFailed(review.garageId)"
+                      />
+                    } @else {
+                      <lucide-icon [name]="EvidenceIcon" class="size-7" />
+                    }
                   </div>
                   <div class="min-w-0 flex-1">
                     <h2 class="wrap-break-word text-xl font-bold tracking-tight">
@@ -340,27 +354,6 @@
               </article>
             }
           </div>
-          <nav class="review-pagination" [attr.aria-label]="label('pagination')">
-            <button
-              appButton="outline"
-              type="button"
-              (click)="load(page() - 1)"
-              [disabled]="loading() || page() <= 1"
-            >
-              {{ label('previous') }}
-            </button>
-            <p>
-              {{ pageDescription() }}
-            </p>
-            <button
-              appButton="outline"
-              type="button"
-              (click)="load(page() + 1)"
-              [disabled]="loading() || !hasMore()"
-            >
-              {{ label('next') }}
-            </button>
-          </nav>
         }
       }
     }

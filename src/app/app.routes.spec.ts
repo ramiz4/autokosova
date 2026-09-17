@@ -10,7 +10,13 @@ it.each(['', 'sq', 'en'])(
   async (locale) => {
     const base = locale ? `/${locale}` : '';
     const router = TestBed.inject(Router);
-    for (const path of ['/inquiry', '/garages/new', '/garages/demo', '/garages']) {
+    for (const path of [
+      '/inquiry',
+      '/garages/new',
+      '/garages/manage',
+      '/garages/demo',
+      '/garages',
+    ]) {
       await router.navigateByUrl(base + path);
       expect(router.url).toBe(base + path);
     }
@@ -18,6 +24,8 @@ it.each(['', 'sq', 'en'])(
     expect(TestBed.inject(LanguageService).switchUrl('en')).toBe('/en/garages/demo');
     expect(routePath('sq', 'request')).toBe('/sq/inquiry');
     expect(routePath('sq', 'onboarding')).toBe('/sq/garages/new');
+    expect(routePath('sq', 'garage-management')).toBe('/sq/garages/manage');
+    expect(routePath('sq', 'garage-management-edit', 'demo')).toBe('/sq/garages/manage/demo/edit');
   },
   15_000,
 );
@@ -56,6 +64,10 @@ describe.each(['', 'sq', 'en'])('Route bundle boundaries for /%s', (locale) => {
     ['monetization', () => import('./monetization.component').then((m) => m.MonetizationComponent)],
     ['inquiry', () => import('./repair-request.component').then((m) => m.RepairRequestComponent)],
     ['garages', () => import('./search-handoff.component').then((m) => m.SearchHandoffComponent)],
+    [
+      'garages/manage',
+      () => import('./garage-management.component').then((m) => m.GarageManagementComponent),
+    ],
     [
       'garages/:garageId',
       () => import('./garage-profile.component').then((m) => m.GarageProfileComponent),

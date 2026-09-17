@@ -77,6 +77,8 @@ it.each(['de', 'sq', 'en'] as const)(
     expect(page.querySelector('[data-favorite-profile]')?.getAttribute('href')).toBe(
       routePath(locale, 'garage', 'one'),
     );
+    expect(page.querySelector('[data-favorite-profile] svg')?.classList).toContain('lucide-eye');
+    expect(page.querySelector('[data-favorite-profile]')?.className).toContain('bg-white');
     expect(page.querySelectorAll('[data-favorite-no-photo]')).toHaveLength(2);
     expect(page.querySelector('app-rating-stars')).toBeNull();
     expect(TestBed.inject(Meta).getTag("name='robots'")?.content).toBe('noindex, nofollow');
@@ -143,7 +145,7 @@ it('loads at most a page and retries a list error without losing account isolati
   TestBed.inject(AccountSessionService).invalidate();
   await fixture.whenStable();
   expect(page.querySelector('[data-favorite-card]')).toBeNull();
-  expect(page.querySelector('[data-favorites-login]')?.getAttribute('href')).toBe(
+  expect(document.querySelector('[data-auth-login]')?.getAttribute('href')).toBe(
     '/auth/login?returnTo=%2Ffavorites',
   );
 });
@@ -151,7 +153,7 @@ it('never asks guests for private favorites and uses the localized login return'
   guest = true;
   const { page } = await render('sq');
   expect(request.mock.calls.some(([url]) => url === '/api/me/favorites')).toBe(false);
-  expect(page.querySelector('[data-favorites-login]')?.getAttribute('href')).toBe(
+  expect(document.querySelector('[data-auth-login]')?.getAttribute('href')).toBe(
     '/auth/login?returnTo=%2Fsq%2Ffavorites',
   );
   expect(page.querySelector('[data-favorite-card]')).toBeNull();

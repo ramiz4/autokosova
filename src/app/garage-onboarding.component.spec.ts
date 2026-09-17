@@ -181,9 +181,9 @@ it.each(['de', 'sq', 'en'] as const)(
     expect(getComputedStyle(checkboxLabel).alignItems).toBe('center');
     expect(getComputedStyle(checkbox).width).toBe('20px');
     const title = page.querySelector<HTMLElement>('#form-title')!;
-    expect(title.className).toBe('text-3xl font-bold tracking-tight sm:text-[34px]');
-    expect(title.nextElementSibling?.className).toBe('mt-1 text-muted');
-    expect(title.parentElement?.className).toContain('sm:py-6');
+    expect(title.className).toContain('text-[clamp(28px,4vw,36px)]');
+    expect(title.parentElement?.nextElementSibling?.className).toBe('mt-1 text-muted');
+    expect(title.parentElement?.parentElement?.className).toContain('sm:py-6');
     const infoPanels = page.querySelectorAll<HTMLElement>('aside .info-card');
     expect(infoPanels).toHaveLength(3);
     expect(infoPanels[0].querySelector('h2')!.className).toBe('text-lg font-bold tracking-tight');

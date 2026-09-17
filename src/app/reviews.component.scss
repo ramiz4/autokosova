@@ -57,6 +57,7 @@
 }
 .review-fallback {
   display: grid;
+  overflow: hidden;
   width: 5rem;
   height: 5rem;
   flex: 0 0 auto;
@@ -159,21 +160,6 @@
   background: #fee2e2;
   color: #b42318;
 }
-.review-pagination {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
-}
-.review-pagination p {
-  text-align: center;
-  color: #526483;
-  font-size: 0.875rem;
-}
-.review-pagination button:last-child {
-  justify-self: end;
-}
 .rating-summary {
   display: inline-flex;
   align-items: center;
@@ -247,18 +233,5 @@
   .review-fallback {
     width: 3.75rem;
     height: 3.75rem;
-  }
-  .review-pagination {
-    grid-template-columns: 1fr 1fr;
-  }
-  .review-pagination p {
-    grid-column: 1/-1;
-    grid-row: 1;
-  }
-  .review-pagination button {
-    grid-row: 2;
-  }
-  .review-pagination button:last-child {
-    grid-column: 2;
   }
 }

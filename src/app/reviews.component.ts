@@ -25,6 +25,7 @@ import { AccountSessionService } from './account-session.service';
 import { LanguageService } from './language.service';
 import { SiteHeaderComponent } from './site-header.component';
 import { ButtonDirective } from './ui/button.directive';
+import { AuthRequiredDialogComponent } from './ui/auth-required-dialog.component';
 import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
 import { LucideIconComponent } from './ui/lucide-icon.component';
 import { RatingStarsComponent } from './ui/rating-stars.component';
@@ -56,6 +57,7 @@ type ReviewAction = 'view' | 'evidence' | 'update';
     CdkMenu,
     CdkMenuItem,
     CdkMenuTrigger,
+    AuthRequiredDialogComponent,
   ],
   styleUrl: './reviews.component.scss',
   templateUrl: './reviews.component.html',
@@ -75,10 +77,11 @@ export class ReviewsComponent {
   readonly busy = signal(false);
   readonly error = signal('');
   readonly reviews = signal<readonly OwnReviewDetail[]>([]);
+  readonly garagePhotos = signal<ReadonlyMap<string, string | null>>(new Map());
+  readonly failedGaragePhotos = signal<ReadonlySet<string>>(new Set());
   readonly detail = signal<OwnReviewDetail | null>(null);
   readonly evidence = signal<string | null>(null);
   readonly page = signal(1);
-  readonly hasMore = signal(false);
   readonly total = signal(0);
   readonly search = signal('');
   readonly publicationState = signal<ReviewPublicationState | 'all'>('all');
@@ -124,6 +127,8 @@ export class ReviewsComponent {
         this.controller = new AbortController();
         if (this.searchTimer) clearTimeout(this.searchTimer);
         this.reviews.set([]);
+        this.garagePhotos.set(new Map());
+        this.failedGaragePhotos.set(new Set());
         this.detail.set(null);
         this.evidence.set(null);
         this.error.set('');
@@ -146,15 +151,6 @@ export class ReviewsComponent {
   }
   loginUrl(): string {
     return '/auth/login?returnTo=' + encodeURIComponent(this.language.link('reviews'));
-  }
-  pageCount(): number {
-    return Math.max(1, Math.ceil(this.total() / REVIEW_PAGE_SIZE));
-  }
-  pageDescription(): string {
-    return this.label('pageOf')
-      .replace('{page}', String(this.page()))
-      .replace('{pages}', String(this.pageCount()))
-      .replace('{total}', String(this.total()));
   }
   hasActiveFilters(): boolean {
     return !!this.search() || this.publicationState() !== 'all' || this.sort() !== 'submitted_desc';
@@ -262,8 +258,8 @@ export class ReviewsComponent {
           return;
         }
         this.reviews.set(data.reviews);
+        void this.resolveGaragePhotos(data.reviews, generation, context, this.controller.signal);
         this.page.set(data.total ? page : 1);
-        this.hasMore.set(data.hasMore);
         this.total.set(data.total);
       }
     } catch (error) {
@@ -275,6 +271,51 @@ export class ReviewsComponent {
     } finally {
       if (this.current(generation, context)) this.loading.set(false);
     }
+  }
+  protected garagePhotoUrl(review: OwnReviewDetail): string | null {
+    const photoId = this.garagePhotos().get(review.garageId);
+    return photoId && !this.failedGaragePhotos().has(review.garageId)
+      ? `/api/public/garages/${encodeURIComponent(review.garageId)}/photos/${encodeURIComponent(photoId)}`
+      : null;
+  }
+  protected garagePhotoFailed(garageId: string): void {
+    this.failedGaragePhotos.update((current) => new Set([...current, garageId]));
+  }
+  private async resolveGaragePhotos(
+    reviews: readonly OwnReviewDetail[],
+    generation: number,
+    context: unknown,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const garageIds = [
+      ...new Set(
+        reviews
+          .map((review) => review.garageId)
+          .filter((garageId) => !this.garagePhotos().has(garageId)),
+      ),
+    ];
+    const resolved = await Promise.all(
+      garageIds.map(async (garageId): Promise<readonly [string, string | null]> => {
+        try {
+          const response = await fetch(`/api/public/garages/${encodeURIComponent(garageId)}`, {
+            credentials: 'omit',
+            cache: 'no-store',
+            referrerPolicy: 'no-referrer',
+            signal,
+          });
+          if (!response.ok) return [garageId, null];
+          const profile = (await response.json()) as { photoIds?: unknown };
+          const photoId = Array.isArray(profile.photoIds)
+            ? profile.photoIds.find((value): value is string => typeof value === 'string')
+            : undefined;
+          return [garageId, photoId ?? null];
+        } catch {
+          return [garageId, null];
+        }
+      }),
+    );
+    if (!this.current(generation, context)) return;
+    this.garagePhotos.update((current) => new Map([...current, ...resolved]));
   }
   async open(id: string, action: ReviewAction = 'view'): Promise<void> {
     if (!(await this.canLeave())) return;

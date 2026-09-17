@@ -245,16 +245,16 @@ it('distinguishes empty, retry, missing detail and expired session without readi
   TestBed.inject(AccountSessionService).invalidate();
   await fixture.whenStable();
   expect(page.querySelectorAll('[data-inquiry-card]')).toHaveLength(0);
-  expect(page.querySelector('[data-inquiries-login]')?.getAttribute('href')).toBe(
+  expect(document.querySelector('[data-auth-login]')?.getAttribute('href')).toBe(
     '/auth/login?returnTo=%2Fsq%2Finquiries',
   );
   expect(page.textContent).not.toContain('PRIVATE-SYMPTOM');
-  expect(page.querySelector('[data-inquiries-login-help]')?.textContent).toContain(
-    inquiriesCopy.sq.expired,
+  expect(document.querySelector('[data-auth-required-dialog]')?.textContent).toContain(
+    'Identifikohu',
   );
   TestBed.inject(AccountSessionService).loginAvailable.set(false);
   await fixture.whenStable();
-  expect(page.querySelector('[data-inquiries-login]')).toBeNull();
+  expect(document.querySelector('[data-auth-login]')).toBeNull();
 });
 
 it('preserves overview context on language change and clears private data during a real shared-service logout', async () => {

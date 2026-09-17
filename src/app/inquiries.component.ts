@@ -50,6 +50,7 @@ import { InquiryEditorComponent } from './inquiry-editor.component';
 import { InquiryDeleteDialogComponent } from './inquiry-delete-dialog.component';
 import { LucideIconComponent } from './ui/lucide-icon.component';
 import { ButtonDirective } from './ui/button.directive';
+import { AuthRequiredDialogComponent } from './ui/auth-required-dialog.component';
 
 type InquiryToast = 'updated' | 'deactivated' | 'reactivated' | 'deleted';
 
@@ -65,6 +66,7 @@ type InquiryToast = 'updated' | 'deactivated' | 'reactivated' | 'deleted';
     CdkMenu,
     CdkMenuItem,
     CdkMenuTrigger,
+    AuthRequiredDialogComponent,
   ],
   providers: [SavedRepairRequestsService],
   templateUrl: './inquiries.component.html',

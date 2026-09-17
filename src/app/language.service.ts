@@ -16,6 +16,8 @@ import {
 export type AppRoute =
   | 'home'
   | 'onboarding'
+  | 'garage-management'
+  | 'garage-management-edit'
   | 'request'
   | 'search'
   | 'garage'
@@ -142,6 +144,8 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
     admin: '/admin',
     moderation: '/moderation',
     onboarding: '/garages/new',
+    'garage-management': '/garages/manage',
+    'garage-management-edit': `/garages/manage/${encodeURIComponent(parameter ?? '')}/edit`,
     request: '/inquiry',
     search: '/garages',
     garage: `/garages/${encodeURIComponent(parameter ?? '')}`,
@@ -166,6 +170,10 @@ function identifyRoute(path: string): { readonly parameter?: string; readonly ro
     return { route: 'monetization' };
   }
   if (normalized === '/garages/new') return { route: 'onboarding' };
+  if (normalized === '/garages/manage') return { route: 'garage-management' };
+  const garageManagementEdit = normalized.match(/^\/garages\/manage\/([^/]+)\/edit$/);
+  if (garageManagementEdit)
+    return { route: 'garage-management-edit', parameter: garageManagementEdit[1] };
   if (normalized === '/inquiry') return { route: 'request' };
   if (normalized === '/garages' || normalized === '/suche' || normalized === '/werkstaetten') {
     return { route: 'search' };

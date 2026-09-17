@@ -1,43 +1,10 @@
 :host {
   display: block;
 }
-.editor-back {
-  display: inline-flex;
-  min-height: 44px;
-  align-items: center;
-  gap: 7px;
-  margin: 0 0 18px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #0061ff;
-  font-size: 13px;
-  font-weight: 650;
-  cursor: pointer;
-}
-.editor-back:focus-visible,
 .editor-section-nav button:focus-visible,
 .editor-danger-card button:focus-visible {
   outline: 2px solid #0061ff;
   outline-offset: 3px;
-}
-.editor-back:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-.editor-intro {
-  margin: 8px 0 0;
-  color: #536d98;
-  font-size: 14px;
-  line-height: 1.55;
-}
-.editor-illustration {
-  position: absolute;
-  top: -12px;
-  right: 0;
-  width: min(35%, 250px);
-  height: auto;
-  pointer-events: none;
 }
 .editor-section-nav {
   display: grid;
@@ -113,14 +80,8 @@
   margin-top: 28px;
 }
 .editor-actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
-  margin: 26px -28px -20px;
-  padding: 16px 28px max(16px, env(safe-area-inset-bottom));
-  background: rgb(255 255 255 / 96%);
-  box-shadow: 0 -8px 20px rgb(25 67 120 / 5%);
-  backdrop-filter: blur(8px);
+  margin: 26px 0 0;
+  padding: 16px 0 0;
 }
 .editor-sidebar {
   min-width: 0;
@@ -588,8 +549,8 @@
     border-radius: 13px;
   }
   .editor-actions {
-    margin: 22px -16px -16px;
-    padding: 13px 16px max(13px, env(safe-area-inset-bottom));
+    margin-top: 22px;
+    padding-top: 13px;
   }
   .onboarding-section + .onboarding-section {
     padding-top: 24px;

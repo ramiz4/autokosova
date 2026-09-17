@@ -26,6 +26,7 @@ import { LanguageSwitcherComponent } from './language-switcher.component';
 import { SiteHeaderComponent } from './site-header.component';
 import { ButtonDirective } from './ui/button.directive';
 import { LucideIconComponent } from './ui/lucide-icon.component';
+import { AuthRequiredDialogComponent } from './ui/auth-required-dialog.component';
 
 type CopyField = 'username' | 'userId';
 type CopyState = 'idle' | 'copied' | 'error';
@@ -38,6 +39,7 @@ type CopyState = 'idle' | 'copied' | 'error';
     LanguageSwitcherComponent,
     ButtonDirective,
     LucideIconComponent,
+    AuthRequiredDialogComponent,
   ],
   templateUrl: './account-profile.component.html',
 })

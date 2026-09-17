@@ -136,12 +136,30 @@ function localizedRoutes(prefix: string): Routes {
       redirectTo: `${childPrefix}garages/:garageId`,
     },
     {
+      path: `${childPrefix}garages/manage`,
+      pathMatch: 'full',
+      loadComponent: () =>
+        import('./garage-management.component').then((module) => module.GarageManagementComponent),
+    },
+    {
+      path: `${childPrefix}garages/manage/:garageId/edit`,
+      pathMatch: 'full',
+      loadComponent: () =>
+        import('./garage-onboarding.component').then((module) => module.GarageOnboardingComponent),
+      data: { editor: true },
+      canDeactivate: [
+        (component: import('./garage-onboarding.component').GarageOnboardingComponent | null) =>
+          component?.canLeave() ?? true,
+      ],
+    },
+    {
       loadComponent: () =>
         import('./garage-onboarding.component').then((module) => module.GarageOnboardingComponent),
       canDeactivate: [
         (component: import('./garage-onboarding.component').GarageOnboardingComponent | null) =>
           component?.canLeave() ?? true,
       ],
+      data: { create: true },
       path: `${childPrefix}garages/new`,
     },
     {

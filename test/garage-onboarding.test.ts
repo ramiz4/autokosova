@@ -150,7 +150,7 @@ test(
     await client.query(`CREATE ROLE ${role} NOLOGIN`);
     await client.query(`GRANT USAGE ON SCHEMA public TO ${role}`);
     await client.query(
-      `GRANT SELECT, INSERT, UPDATE, DELETE ON app_user, garage, membership, garage_consent, garage_verification, garage_service_category, garage_vehicle_make, moderation_event TO ${role}`,
+      `GRANT SELECT, INSERT, UPDATE, DELETE ON app_user, garage, membership, garage_consent, garage_verification, garage_service_category, garage_vehicle_make, garage_photo, moderation_event TO ${role}`,
     );
     await client.query(
       `GRANT SELECT ON public_garage_profile, place, service_category, vehicle_make TO ${role}`,

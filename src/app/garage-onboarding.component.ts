@@ -35,7 +35,7 @@ import {
   untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CATALOG_PLACES, SERVICE_CATEGORY_LABELS, VEHICLE_MAKE_LABELS } from '../shared/catalog';
 import {
   GARAGE_LANGUAGES,
@@ -144,6 +144,8 @@ export class GarageOnboardingComponent {
   protected readonly account = inject(AccountSessionService);
   protected readonly accountType = accountType;
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -175,15 +177,11 @@ export class GarageOnboardingComponent {
   protected ownedLoadFailed = false;
   protected ownedLoading = false;
   protected ownedLoaded = false;
-  protected editing = false;
+  protected editing = this.route.snapshot.data['editor'] === true;
   protected activeSection = 'garage-basics';
   private readonly workspaceTitle = viewChild<ElementRef<HTMLElement>>('workspaceTitle');
   protected get managing(): boolean {
-    return (
-      !this.supportMode &&
-      this.account.signedIn() &&
-      accountType(this.account.identity()) === 'garage'
-    );
+    return !this.supportMode && this.route.snapshot.data['editor'] === true;
   }
   protected get showForm(): boolean {
     return this.supportMode || !this.managing || this.editing;
@@ -234,9 +232,7 @@ export class GarageOnboardingComponent {
   }
   protected async backToOverview(): Promise<void> {
     if (!(await this.canLeave())) return;
-    this.clearForm();
-    this.editing = false;
-    this.focusTitle();
+    void this.router.navigateByUrl(this.language.link('garage-management'));
   }
   protected readonly places = CATALOG_PLACES;
   protected get copy() {
@@ -410,7 +406,6 @@ export class GarageOnboardingComponent {
         }
         if (state === 'ready' && id) {
           this.dataOwnerId = id;
-          if (this.browser && !this.ownedLoaded && !this.ownedLoading) void this.loadOwned();
         }
         this.cdr.markForCheck();
       });
@@ -437,8 +432,8 @@ export class GarageOnboardingComponent {
   protected async refreshSession(): Promise<void> {
     await this.account.refresh();
     this.needsLogin = !this.account.signedIn();
-    if (this.account.signedIn()) await this.loadOwned();
-    else this.owned = [];
+    const editorId = this.route.snapshot.paramMap.get('garageId');
+    if (editorId && this.account.signedIn()) await this.open(editorId);
     this.cdr.markForCheck();
   }
   private async loadOwned(): Promise<void> {
@@ -583,6 +578,12 @@ export class GarageOnboardingComponent {
         this.editing = true;
         await this.account.refresh();
         if (!this.currentContext(context)) return;
+        if (this.route.snapshot.data['create'] === true) {
+          await this.router.navigateByUrl(
+            this.language.link('garage-management-edit', this.garageId),
+          );
+          return;
+        }
       }
       this.form = profile;
       this.savedSnapshot = JSON.stringify(this.form);

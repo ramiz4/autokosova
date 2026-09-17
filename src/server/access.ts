@@ -13,6 +13,7 @@ import type {
   GarageProfileInput,
   VerificationChecklist,
 } from '../shared/garage-onboarding';
+import { LOCAL_DEMO_PHOTOS, isLocalDemoGarageId } from '../shared/local-demo';
 import { validGarageProfile } from '../shared/garage-onboarding';
 export type {
   GaragePublicationState,
@@ -1317,6 +1318,14 @@ export class AccessStore implements ReviewStore {
         description: garage.profile.description,
         id: garage.id,
         name: garage.profile.name,
+        ...(garage.publicationState === 'published'
+          ? {
+              photoId:
+                [...this.garagePhotos.values()].find(
+                  (photo) => photo.garageId === garage.id && photo.visibility === 'approved',
+                )?.id ?? (isLocalDemoGarageId(garage.id) ? LOCAL_DEMO_PHOTOS[0].id : undefined),
+            }
+          : {}),
         placeId: garage.profile.placeId,
         publicationState: garage.publicationState,
         serviceCategoryIds: [...garage.profile.serviceCategoryIds],

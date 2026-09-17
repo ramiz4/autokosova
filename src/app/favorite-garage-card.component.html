@@ -77,16 +77,6 @@
           </li>
         }
       </ul>
-      <div class="mt-auto pt-5">
-        <a
-          data-favorite-profile
-          appButton
-          size="compact"
-          class="w-full"
-          [routerLink]="language.link('garage', garage.id)"
-          >{{ text('profile') }}<lucide-icon [name]="ArrowRightIcon" class="size-4"
-        /></a>
-      </div>
     </div>
   } @else {
     <div class="flex grow flex-col items-start p-6 sm:p-8">
@@ -114,11 +104,22 @@
     </div>
   }
   @if (card().state !== 'loading') {
-    <div class="border-t border-slate-100 px-5 py-2 sm:px-6">
+    <div
+      class="grid gap-2 border-t border-slate-100 px-5 py-2 sm:px-6"
+      [class.grid-cols-2]="!!card().garage"
+    >
       @if (failed()) {
-        <p data-favorite-remove-error role="alert" class="mt-2 text-sm text-rose-800">
+        <p data-favorite-remove-error role="alert" class="col-span-full mt-2 text-sm text-rose-800">
           {{ text('removeError') }}
         </p>
+      }
+      @if (card().garage; as garage) {
+        <a
+          data-favorite-profile
+          class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          [routerLink]="language.link('garage', garage.id)"
+          ><lucide-icon [name]="EyeIcon" class="size-4" />{{ text('profile') }}</a
+        >
       }
       <button
         data-favorite-remove
