@@ -319,220 +319,233 @@
         </details>
       </section>
     } @else {
-      <section class="my-4 border-y border-slate-200 py-3" aria-label="{{ copy().cases }}">
+      <!-- ── Queue toolbar ─────────────────────────────────────────── -->
+      <div class="mt-6 space-y-3" aria-label="{{ copy().cases }}">
         @if (staffDomain) {
           <p
             data-domain-badge
-            class="mb-3 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700"
+            class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700"
           >
             <span class="text-muted">{{ adminLabel('domainLocked') }}</span>
             {{ adminLabel(staffDomain) }}
           </p>
         }
-        <div class="flex flex-wrap items-center gap-2" data-queue-tabs>
-          @for (item of ['todo', 'waiting', 'done']; track item) {
-            <button
-              [appButton]="queue === item ? 'primary' : 'outline'"
-              type="button"
-              [attr.aria-pressed]="queue === item"
-              (click)="setQueue($any(item))"
-            >
-              {{ queueLabel($any(item)) }}
-            </button>
-          }
+        <!-- 1. Segmented queue-state tabs + "Meine Fälle" shortcut -->
+        <div class="flex items-center gap-3">
+          <div role="tablist" data-queue-tabs class="flex flex-1 gap-1 rounded-xl bg-slate-100 p-1">
+            @for (item of ['todo', 'waiting', 'done']; track item) {
+              <button
+                role="tab"
+                type="button"
+                [attr.aria-pressed]="queue === item"
+                class="flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-colors"
+                [class.bg-white]="queue === item"
+                [class.shadow-sm]="queue === item"
+                [class.text-brand-dark]="queue === item"
+                [class.text-slate-500]="queue !== item"
+                (click)="setQueue($any(item))"
+              >
+                {{ queueLabel($any(item)) }}
+              </button>
+            }
+          </div>
           @if (isAdmin() && adminOnly) {
-            <button appButton="outline" type="button" data-my-cases (click)="openMyCases()">
+            <button
+              type="button"
+              data-my-cases
+              class="shrink-0 text-sm font-semibold text-brand-dark hover:underline"
+              (click)="openMyCases()"
+            >
               {{ copy().myCases }}
             </button>
+          }
+        </div>
+
+        <!-- 2. Compact always-visible filter bar -->
+        <form
+          class="flex flex-wrap items-end gap-x-4 gap-y-2 border-b border-slate-100 pb-3"
+          (ngSubmit)="applyFilters()"
+          data-active-filters
+        >
+          @if (isAdmin() && !myCases()) {
+            <label class="grid gap-1">
+              <span class="text-xs font-semibold text-muted">{{ adminLabel('caseWorker') }}</span>
+              <select
+                data-case-assignee-filter
+                name="assignedUserId"
+                [(ngModel)]="filterAssignee"
+                (change)="applyFilters()"
+                class="min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-sm"
+              >
+                <option value="">{{ copy().all }}</option>
+                @for (person of moderators(); track person.userId) {
+                  <option [value]="person.userId">{{ person.label }}</option>
+                }
+              </select>
+            </label>
+          }
+          @if (staffDomain !== 'reviews' && staffDomain !== 'reports') {
+            <label class="grid gap-1">
+              <span class="text-xs font-semibold text-muted">{{ copy().kind }}</span>
+              <select
+                name="kind"
+                [(ngModel)]="filterKind"
+                (change)="applyFilters()"
+                class="min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-sm"
+              >
+                <option value="">{{ copy().all }}</option>
+                @for (
+                  kind of staffDomain === 'appeals'
+                    ? ['report', 'review_submission']
+                    : isAdmin()
+                      ? ['report', 'review_submission', 'garage_submission', 'data_deletion']
+                      : ['report', 'review_submission'];
+                  track kind
+                ) {
+                  <option [value]="kind">{{ label(kind) }}</option>
+                }
+              </select>
+            </label>
+          }
+          <label class="grid gap-1">
+            <span class="text-xs font-semibold text-muted">{{ copy().priority }}</span>
+            <select
+              name="priority"
+              [(ngModel)]="filterPriority"
+              (change)="applyFilters()"
+              class="min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-sm"
+            >
+              <option value="">{{ copy().all }}</option>
+              <option value="high">{{ copy().high }}</option>
+              <option value="normal">{{ copy().normal }}</option>
+            </select>
+          </label>
+          @if (isAdmin() && !myCases()) {
+            <label class="flex items-center gap-2 self-end pb-1.5 text-sm"
+              ><input
+                type="checkbox"
+                name="unassigned"
+                [(ngModel)]="onlyUnassigned"
+                (change)="applyFilters()"
+              />{{ copy().unassigned }}</label
+            >
+            <label class="flex items-center gap-2 self-end pb-1.5 text-sm"
+              ><input
+                type="checkbox"
+                name="escalated"
+                [(ngModel)]="onlyEscalated"
+                (change)="applyFilters()"
+              />{{ copy().escalation }}</label
+            >
           }
           @if (!staffDomain) {
             <button
               [appButton]="filterKind === 'review_submission' ? 'primary' : 'outline'"
+              [size]="'compact'"
               type="button"
               data-review-filter
               [attr.aria-pressed]="filterKind === 'review_submission'"
+              class="self-end"
               (click)="toggleReviews()"
             >
               {{ label('reviewFilter') }}
             </button>
-          }
-          @if (staffDomain !== 'appeals') {
             <button
               appButton="outline"
+              [size]="'compact'"
               type="button"
               data-appeal-filter
               [class.font-extrabold]="onlyAppeal"
               [attr.aria-pressed]="onlyAppeal"
+              class="self-end"
               (click)="toggleAppeals()"
             >
               {{ copy().appeals }}
             </button>
           }
-        </div>
-        <details class="mt-2">
-          <summary class="min-h-11 cursor-pointer py-2 font-semibold text-brand-dark">
-            {{ copy().moreFilters }}
-          </summary>
-          <form class="grid gap-4 pt-3 sm:grid-cols-3" (ngSubmit)="applyFilters()">
-            @if (isAdmin() && !myCases()) {
-              <label class="grid gap-2 text-sm font-semibold"
-                >{{ adminLabel('caseWorker') }}
-                <select
-                  data-case-assignee-filter
-                  name="assignedUserId"
-                  [(ngModel)]="filterAssignee"
-                  (change)="applyFilters()"
-                  class="min-h-11 rounded-lg border border-slate-300 px-3"
-                >
-                  <option value="">{{ copy().all }}</option>
-                  @for (person of moderators(); track person.userId) {
-                    <option [value]="person.userId">{{ person.label }}</option>
-                  }
-                </select>
-              </label>
-            }
-            @if (staffDomain !== 'reviews' && staffDomain !== 'reports') {
-              <label class="grid gap-2 text-sm font-semibold"
-                >{{ copy().kind }}
-                <select
-                  name="kind"
-                  [(ngModel)]="filterKind"
-                  (change)="applyFilters()"
-                  class="min-h-11 rounded-lg border border-slate-300 px-3"
-                >
-                  <option value="">{{ copy().all }}</option>
-                  @for (
-                    kind of staffDomain === 'appeals'
-                      ? ['report', 'review_submission']
-                      : isAdmin()
-                        ? ['report', 'review_submission', 'garage_submission', 'data_deletion']
-                        : ['report', 'review_submission'];
-                    track kind
-                  ) {
-                    <option [value]="kind">{{ label(kind) }}</option>
-                  }
-                </select>
-              </label>
-            }
-            <label class="grid gap-2 text-sm font-semibold"
-              >{{ copy().priority }}
-              <select
-                name="priority"
-                [(ngModel)]="filterPriority"
-                (change)="applyFilters()"
-                class="min-h-11 rounded-lg border border-slate-300 px-3"
-              >
-                <option value="">{{ copy().all }}</option>
-                <option value="high">{{ copy().high }}</option>
-                <option value="normal">{{ copy().normal }}</option>
-              </select>
-            </label>
-            @if (isAdmin() && !myCases()) {
-              <label class="flex min-h-11 items-center gap-3"
-                ><input
-                  type="checkbox"
-                  name="unassigned"
-                  [(ngModel)]="onlyUnassigned"
-                  (change)="applyFilters()"
-                />{{ copy().unassigned }}</label
-              >
-              <label class="flex min-h-11 items-center gap-3"
-                ><input
-                  type="checkbox"
-                  name="escalated"
-                  [(ngModel)]="onlyEscalated"
-                  (change)="applyFilters()"
-                />{{ copy().escalation }}</label
-              >
-            }
-            @if (staffDomain !== 'appeals') {
-              <label class="flex min-h-11 items-center gap-3"
-                ><input
-                  type="checkbox"
-                  name="appeal"
-                  [(ngModel)]="onlyAppeal"
-                  (change)="applyFilters()"
-                />{{ copy().appeals }}</label
-              >
-            }
-          </form>
-        </details>
-        @if (
-          filterKind ||
-          filterPriority ||
-          filterAssignee ||
-          filterStatus ||
-          onlyEscalated ||
-          onlyUnassigned ||
-          onlyAppeal ||
-          queue !== 'todo'
-        ) {
-          <div data-active-filters class="mt-2 flex flex-wrap items-center gap-3 text-sm">
-            @if (filterKind) {
-              <span>{{ label(filterKind) }}</span>
-            }
-            @if (filterPriority) {
-              <span>{{ label(filterPriority) }}</span>
-            }
-            @if (filterStatus) {
-              <span>{{ label(filterStatus) }}</span>
-            }
-            @if (filterAssignee) {
-              <span>{{ adminLabel('caseWorker') }}</span>
-            }
-            @if (onlyEscalated) {
-              <span>{{ copy().escalation }}</span>
-            }
-            @if (onlyUnassigned) {
-              <span>{{ copy().unassigned }}</span>
-            }
-            @if (onlyAppeal) {
-              <span>{{ copy().appeals }}</span>
-            }
-            <button data-reset-filters appButton="outline" type="button" (click)="resetFilters()">
+          @if (
+            (!staffDomain && filterKind) ||
+            filterPriority ||
+            filterAssignee ||
+            filterStatus ||
+            onlyEscalated ||
+            onlyUnassigned ||
+            (!staffDomain && onlyAppeal) ||
+            queue !== 'todo'
+          ) {
+            <button
+              data-reset-filters
+              appButton="outline"
+              [size]="'compact'"
+              type="button"
+              class="ml-auto self-end"
+              (click)="resetFilters()"
+            >
               {{ copy().reset }}
             </button>
-          </div>
-        }
-      </section>
+          }
+        </form>
+      </div>
+
+      <!-- ── Case list ────────────────────────────────────────────── -->
       @if (!loading() && !error() && !cases().length) {
-        <p data-staff-empty class="rounded-xl border border-slate-200 bg-white p-6">
+        <p data-staff-empty class="mt-4 rounded-xl border border-slate-200 bg-white p-6 text-muted">
           {{ isAdmin() ? copy().empty : label('emptyMine') }}
         </p>
       }
-      <div data-staff-list [attr.aria-busy]="loading()" class="grid gap-4">
+      <div data-staff-list [attr.aria-busy]="loading()" class="mt-4 grid gap-3">
         @for (item of cases(); track item.id) {
           <article
             data-staff-row
             [attr.data-case-id]="item.id"
-            class="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-[minmax(0,1fr)_auto]"
+            class="flex items-center gap-4 rounded-xl border bg-white p-4 transition-shadow hover:shadow-sm"
+            [class.border-l-4]="item.escalation || item.priority === 'high'"
+            [class.border-amber-400]="item.escalation"
+            [class.border-blue-400]="!item.escalation && item.priority === 'high'"
+            [class.border-slate-200]="!item.escalation && item.priority !== 'high'"
           >
-            <div class="min-w-0">
-              <p class="text-sm font-semibold text-brand-dark">
-                {{ label(item.kind) }} · {{ label(item.priority) }}
-              </p>
-              <h2 class="mt-1 text-lg font-bold break-words">
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="text-xs font-semibold text-brand-dark">{{ label(item.kind) }}</span>
+                @if (!item.assignedModeratorUserId) {
+                  <span
+                    class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800"
+                  >
+                    {{ copy().unassigned }}
+                  </span>
+                }
+                @if (item.priority === 'high') {
+                  <span
+                    class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800"
+                  >
+                    {{ copy().high }}
+                  </span>
+                }
+                @if (item.escalation) {
+                  <span
+                    data-escalated
+                    class="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-900"
+                  >
+                    {{ copy().escalation }}
+                  </span>
+                }
+              </div>
+              <h2 class="mt-1 font-bold break-words">
                 {{ item.label || label(item.kind) }}
               </h2>
-              <p class="mt-1 text-sm">
-                {{ label(item.status) }} ·
-                {{
-                  item.assignedModeratorLabel ||
-                    (item.assignedModeratorUserId ? copy().assigned : copy().unassigned)
-                }}
+              <p class="mt-0.5 text-sm text-muted">
+                {{ label(item.status) }} · {{ item.createdAt | date: 'dd.MM.yyyy' }}
+                @if (item.assignedModeratorLabel) {
+                  · {{ item.assignedModeratorLabel }}
+                }
               </p>
-              <p class="mt-1 text-sm text-muted">{{ item.createdAt | date: 'dd.MM.yyyy HH:mm' }}</p>
-              @if (item.escalation) {
-                <p data-escalated class="mt-2 font-semibold text-amber-900">
-                  {{ copy().escalation }}
-                </p>
-              }
             </div>
             <button
               data-open-case
               appButton="outline"
+              [size]="'compact'"
               type="button"
-              class="self-center"
+              class="shrink-0"
               [disabled]="loading()"
               (click)="open(item)"
             >
@@ -549,17 +562,22 @@
           </article>
         }
       </div>
-      <div class="mt-6 flex flex-wrap gap-3">
+
+      <!-- ── Pagination ────────────────────────────────────────────── -->
+      <div class="mt-6 flex gap-3">
         <button
           appButton="outline"
+          [size]="'compact'"
           type="button"
           [disabled]="page() <= 1 || loading()"
           data-previous-cases
           (click)="goPage(page() - 1)"
         >
-          {{ copy().previous }}</button
-        ><button
+          {{ copy().previous }}
+        </button>
+        <button
           appButton="outline"
+          [size]="'compact'"
           type="button"
           [disabled]="!hasMore() || loading()"
           data-next-cases
