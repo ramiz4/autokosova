@@ -54,14 +54,14 @@ test('every concrete icon is explicitly imported and exposed as a typed readonly
         continue;
       const module = statement.moduleSpecifier.text;
       assert.notEqual(module, 'lucide-angular', path);
-      if (module !== '@lucide/angular') continue;
+      assert.notEqual(module, '@lucide/angular', path);
+      if (module !== '@autokosova/icons') continue;
       const bindings = statement.importClause?.namedBindings;
       assert.ok(bindings && ts.isNamedImports(bindings), `Explicit imports required: ${path}`);
       if (statement.importClause?.isTypeOnly) continue;
       for (const binding of bindings.elements) {
         if (binding.isTypeOnly) continue;
-        if (binding.name.text === 'LucideDynamicIcon' && path.endsWith('/lucide-icon.component.ts'))
-          continue;
+        assert.notEqual(binding.name.text, 'LucideDynamicIcon', path);
         const property = properties.find(
           (member) =>
             member.initializer &&

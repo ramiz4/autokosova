@@ -1,6 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, effect, inject, input } from '@angular/core';
-import { LucideLogIn, type LucideIcon } from '@lucide/angular';
+import { LucideLogIn, type LucideIcon } from '@autokosova/icons';
 import {
   BrnAlertDialog,
   BrnAlertDialogContent,

@@ -6,20 +6,41 @@ The shell imports three small account-navigation labels from `account-navigation
 
 ## Measured result
 
-Production build, Node 24.21.0, pinned lockfile, September 16, 2026. Before: PR #129 commit `f35360e`; after: the lazy-route and shell-copy optimization in the same PR. Decimal kB; JavaScript and CSS only.
+Production build, Node 24.21.0 and the pinned lockfile, September 17, 2026. The
+baseline is merge commit `a9926e1` before Issue #189; the optimized result uses
+the same production configuration. Decimal kB; JavaScript and CSS only.
 
-| Metric                                 |      Before |       After |           Difference |
-| -------------------------------------- | ----------: | ----------: | -------------------: |
-| Initial raw                            |   830.47 kB |   663.71 kB | -166.76 kB (-20.08%) |
-| Initial estimated transfer             |   177.43 kB |   140.87 kB |  -36.56 kB (-20.60%) |
-| All browser chunks, raw                | 1,128.89 kB | 1,130.03 kB |             +1.14 kB |
-| All browser chunks, estimated transfer |   255.39 kB |   269.09 kB |            +13.71 kB |
+| Metric                                 |        Before |         After |           Difference |
+| -------------------------------------- | ------------: | ------------: | -------------------: |
+| Initial raw                            |     724.98 kB |     478.21 kB | -246.78 kB (-34.04%) |
+| Initial estimated transfer             |     147.55 kB |     120.79 kB |  -26.76 kB (-18.13%) |
+| All browser chunks, raw                |   1,555.06 kB |   1,418.83 kB |  -136.23 kB (-8.76%) |
+| All browser chunks, estimated transfer |     370.12 kB |     367.01 kB |    -3.10 kB (-0.84%) |
 
-This is a first-load optimization, not removal of feature functionality. Fetching every route eventually costs slightly more because split chunks compress separately and need loading metadata. A cold inquiry route needs 711.71 kB raw / 154.91 kB estimated including its initial dependencies; a cold garage profile needs 735.12 kB / 162.06 kB. Both remain below the former initial bundle.
+The `stats.json` baseline identified three concrete initial-load costs:
 
-Estimated transfer matches Angular's default Brotli calculation, including its uncompressed treatment of files below 1 KiB. It is not a measurement of the deployed HTTP response encoding or Core Web Vitals. Branding and other image assets are excluded from these build metrics.
+1. The shared initial chunk was 617.45 kB. The Angular Lucide package alone
+   contributed 197.87 kB because component metadata for its generated icon
+   catalog was hoisted into that shared chunk. The local, typed icon facade now
+   uses the already approved `@ng-icons/lucide` SVG data and preserves the
+   existing `LucideIcon` references, class names, fill variables and stroke
+   widths. This reduced the initial total to 587.01 kB.
+2. The always-rendered footer language switcher pulled the CDK/Spartan overlay,
+   portal and accessibility stack into the initial graph for a three-link,
+   nonmodal menu. A native `details` control retains canonical locale links,
+   focus transfer, Escape close behavior and above/below placement without that
+   eager overlay dependency. This reduced the initial total to 501.66 kB.
+3. The footer's decorative language-chevron was the only remaining eager icon
+   user. Rendering that mark with CSS lets the complete icon facade stay with
+   the lazy pages and yields the final 478.21 kB result, including the small
+   outside-click handler that preserves the previous close behavior.
 
-All 38 explicitly imported Lucide icon definitions remain; the icon renderer and styling contract are unchanged. An isolated experiment using `LucideX.icon` / `LucideIconData` measured 830.81 kB raw / 177.32 kB estimated before route splitting, so that change was discarded rather than adding an ineffective abstraction.
+This is a first-load optimization, not removal of feature functionality. Route
+components remain lazy, SSR still prerenders the landing route, and the complete
+browser output is smaller as well. Estimated transfer matches Angular's default
+Brotli calculation, including its uncompressed treatment of files below 1 KiB.
+It is not a deployed HTTP or Core Web Vitals measurement. Branding and other
+image assets are excluded from these build metrics.
 
 ## Reproduce and protect
 
@@ -32,8 +53,11 @@ CI=1 npm run verify
 
 `npm run build` emits `dist/autokosova/stats.json` outside the served `browser/` directory. The report follows static imports from `src/main.ts` and the styles linked in the built index. Pass saved build directories as arguments to compare revisions, for example `node scripts/bundle-report.mjs /tmp/before-build dist/autokosova`.
 
-The native initial error budget is tightened from 1 MB to 700 kB; the 500 kB warning remains visible. Route regression tests cover all three locales and retain an eager landing page. The Chromium smoke checks that feature chunks are absent from landing requests, loads the inquiry via a real client-side click without a document reload, and checks SSR plus hydration on twelve localized lazy deep links.
+The initial budget now warns at 490 kB and fails at 500 kB. This leaves measured
+headroom while enforcing the product goal that the production initial bundle
+stays below 500 kB. Route regression tests cover all three locales and retain an
+eager landing page. The Chromium smoke checks that feature chunks are absent
+from landing requests, loads the inquiry via a real client-side click without a
+document reload, and checks SSR plus hydration on localized lazy deep links.
 
-Local verification: 372 Angular tests, 20 development tests, 112 server/architecture tests, and 45 localized SSR smoke pages passed. Eighteen database-dependent tests remain environment-skipped; full authenticated/database-backed acceptance is not claimed by these public-page checks.
-
-References: [Angular route loading strategies](https://angular.dev/guide/routing/loading-strategies), [Lucide Angular reference imports](https://lucide.dev/guide/angular/getting-started). The transfer estimator is implemented in the installed `@angular/build/src/tools/esbuild/utils.js`.
+References: [Angular route loading strategies](https://angular.dev/guide/routing/loading-strategies), [ng-icons](https://ng-icons.github.io/ng-icons/). The transfer estimator is implemented in the installed `@angular/build/src/tools/esbuild/utils.js`.

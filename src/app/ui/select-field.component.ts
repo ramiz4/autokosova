@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
-import { LucideChevronDown, type LucideIcon } from '@lucide/angular';
+import { LucideChevronDown, type LucideIcon } from '@autokosova/icons';
 import { BrnPopover, BrnPopoverContent } from '@spartan-ng/brain/popover';
 import {
   BrnSelect,

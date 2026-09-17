@@ -14,7 +14,7 @@ import {
   LucideUsers,
   LucideWrench,
   type LucideIcon,
-} from '@lucide/angular';
+} from '@autokosova/icons';
 import { reviewLabel } from '../shared/review-copy';
 import { accountProfileCopy } from '../shared/account-profile-copy';
 import { accountType } from '../shared/account';

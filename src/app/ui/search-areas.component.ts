@@ -1,4 +1,4 @@
-import { LucideMapPin, LucidePencil, LucideX, type LucideIcon } from '@lucide/angular';
+import { LucideMapPin, LucidePencil, LucideX, type LucideIcon } from '@autokosova/icons';
 import { isPlatformBrowser } from '@angular/common';
 import {
   afterNextRender,

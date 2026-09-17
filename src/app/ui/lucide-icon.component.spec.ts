@@ -6,7 +6,7 @@ import {
   LucideHouse,
   LucideStar,
   type LucideIcon,
-} from '@lucide/angular';
+} from '@autokosova/icons';
 import { LucideIconComponent } from './lucide-icon.component';
 
 @Component({

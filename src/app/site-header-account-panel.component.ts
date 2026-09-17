@@ -9,7 +9,7 @@ import {
   LucideWrench,
   LucideX,
   type LucideIcon,
-} from '@lucide/angular';
+} from '@autokosova/icons';
 import {
   Component,
   ElementRef,

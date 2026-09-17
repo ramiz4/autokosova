@@ -12,6 +12,7 @@
     "target": "ES2022",
     "module": "preserve",
     "paths": {
+      "@autokosova/icons": ["./src/app/ui/lucide-icons.ts"],
       "@autokosova/ui/dropdown-menu": ["./src/app/ui/spartan/dropdown-menu/src/index.ts"],
       "@autokosova/ui/utils": ["./src/app/ui/spartan/utils/src/index.ts"]
     }

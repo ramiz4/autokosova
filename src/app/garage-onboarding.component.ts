@@ -12,7 +12,7 @@ import {
   LucideSearch,
   LucideShieldCheck,
   type LucideIcon,
-} from '@lucide/angular';
+} from '@autokosova/icons';
 import { adminLabel } from '../shared/admin-copy';
 import type { AdminSupportContext } from '../shared/administration';
 import { garageManagementCopy } from '../shared/garage-management-copy';

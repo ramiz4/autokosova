@@ -1,4 +1,4 @@
-import { type LucideIcon } from '@lucide/angular';
+import { type LucideIcon } from '@autokosova/icons';
 import { Component, input } from '@angular/core';
 import { LucideIconComponent } from './lucide-icon.component';
 

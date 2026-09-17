@@ -16,7 +16,7 @@ import {
   LucideShieldCheck,
   LucideTrash2,
   type LucideIcon,
-} from '@lucide/angular';
+} from '@autokosova/icons';
 import { accountType } from '../shared/account';
 import { CATALOG_PLACES } from '../shared/catalog';
 import { garageManagementCopy } from '../shared/garage-management-copy';

@@ -53,7 +53,9 @@ describe.each(['', 'sq', 'en'])('Account menu icons for /%s', (locale) => {
           document.getElementById(navigationTrigger!.getAttribute('aria-controls')!),
         ).toBeNull();
       }
-      expect(page.querySelector('app-language-switcher lucide-icon')).not.toBeNull();
+      expect(
+        page.querySelector('app-language-switcher summary [aria-hidden="true"]'),
+      ).not.toBeNull();
       page.querySelector<HTMLButtonElement>('button[data-account-trigger]')!.click();
       await fixture.whenStable();
       const menu = accountPanel()!;
@@ -64,7 +66,7 @@ describe.each(['', 'sq', 'en'])('Account menu icons for /%s', (locale) => {
         expect(link.textContent?.trim()).toBeTruthy();
         const icon = fixture.debugElement.query(By.css(selector + ' lucide-icon'));
         expect(icon, selector).not.toBeNull();
-        expect((icon.componentInstance as LucideIconComponent).name().icon.name).toBe(name);
+        expect((icon.componentInstance as LucideIconComponent).name().name).toBe(name);
         const host = icon.nativeElement as HTMLElement;
         expect(host.classList.contains('size-4.5')).toBe(true);
         expect(host.classList.contains('shrink-0')).toBe(true);

@@ -54,20 +54,18 @@ it('keeps the noncompact switcher as native navigation with canonical locale lin
   fixture.destroy();
 });
 
-it('opens compact locale navigation through the nonmodal Brain trigger and closes with Escape', async () => {
+it('opens compact native locale navigation and closes with Escape', async () => {
   const { fixture, page } = await render();
-  const trigger = page.querySelector<HTMLButtonElement>('button[brnOverlayTrigger]')!;
+  const details = page.querySelector<HTMLDetailsElement>('details')!;
+  const trigger = details.querySelector<HTMLElement>('summary')!;
 
-  expect(page.querySelector('details, summary')).toBeNull();
-  expect(trigger.getAttribute('aria-expanded')).toBe('false');
-  expect(trigger.getAttribute('aria-haspopup')).toBeNull();
+  expect(details.open).toBe(false);
   trigger.click();
-  await fixture.whenRenderingDone();
+  await fixture.whenStable();
 
-  const panel = document.querySelector<HTMLElement>('.cdk-overlay-container nav')!;
+  const panel = details.querySelector<HTMLElement>('nav')!;
   const links = languageLinks(panel);
-  expect(trigger.getAttribute('aria-expanded')).toBe('true');
-  expect(trigger.getAttribute('aria-controls')).toBeTruthy();
+  expect(details.open).toBe(true);
   expect(panel.getAttribute('role')).toBeNull();
   expect(panel.querySelector('[role="dialog"], [role="menuitem"]')).toBeNull();
   expect(links.map((link) => link.getAttribute('href'))).toEqual([
@@ -80,24 +78,18 @@ it('opens compact locale navigation through the nonmodal Brain trigger and close
 
   links[0].dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
   await fixture.whenStable();
-  expect(document.querySelector('.cdk-overlay-container nav')).toBeNull();
-  expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  expect(details.open).toBe(false);
+  expect(document.activeElement).toBe(trigger);
   fixture.destroy();
 });
 
-it('uses eight-pixel above-first or below-first fallback positions without opening during SSR', async () => {
+it('positions compact navigation above or below and stays closed during SSR', async () => {
   const below = await render('/', true, 'below', 'server');
-  expect(below.component['state']()).toBe('closed');
-  expect(below.component['positions']()).toEqual([
-    { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
-    { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -8 },
-  ]);
-  expect(document.querySelector('.cdk-overlay-container nav')).toBeNull();
+  const details = below.page.querySelector<HTMLDetailsElement>('details')!;
+  expect(details.open).toBe(false);
+  expect(details.querySelector('nav')?.classList).toContain('top-full');
   below.fixture.componentRef.setInput('placement', 'above');
   below.fixture.detectChanges();
-  expect(below.component['positions']()).toEqual([
-    { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -8 },
-    { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
-  ]);
+  expect(details.querySelector('nav')?.classList).toContain('bottom-full');
   below.fixture.destroy();
 });

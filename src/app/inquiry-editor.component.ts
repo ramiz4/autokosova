@@ -1,4 +1,4 @@
-import { LucideCheck, LucideX, type LucideIcon } from '@lucide/angular';
+import { LucideCheck, LucideX, type LucideIcon } from '@autokosova/icons';
 import { DOCUMENT } from '@angular/common';
 import {
   afterNextRender,

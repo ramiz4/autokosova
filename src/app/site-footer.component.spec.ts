@@ -91,26 +91,25 @@ describe('Shared site footer', () => {
   it('preserves the page, query and fragment in the existing language switcher', async () => {
     const { fixture, page } = await render('/sq/help?topic=general#public-page-title');
     const switcher = page.querySelector('app-language-switcher')!;
-    const trigger = switcher.querySelector<HTMLButtonElement>('button[brnOverlayTrigger]')!;
+    const details = switcher.querySelector<HTMLDetailsElement>('details')!;
+    const trigger = details.querySelector<HTMLElement>('summary')!;
     expect(trigger.getAttribute('aria-label')).toBeTruthy();
-    expect(trigger.getAttribute('aria-expanded')).toBe('false');
-    expect(trigger.getAttribute('aria-haspopup')).toBeNull();
+    expect(details.open).toBe(false);
     trigger.click();
-    await fixture.whenRenderingDone();
-    const panel = document.querySelector<HTMLElement>('.cdk-overlay-container nav')!;
+    await fixture.whenStable();
+    const panel = details.querySelector<HTMLElement>('nav')!;
     const links = [...panel.querySelectorAll('a')];
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/help?topic=general#public-page-title',
       '/sq/help?topic=general#public-page-title',
       '/en/help?topic=general#public-page-title',
     ]);
-    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    expect(details.open).toBe(true);
     expect(panel.getAttribute('role')).toBeNull();
     expect(panel.querySelector('[aria-current="page"]')?.textContent).toContain('Shqip');
     links[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await fixture.whenStable();
-    expect(document.querySelector('.cdk-overlay-container nav')).toBeNull();
-    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(details.open).toBe(false);
     expect(TestBed.inject(LanguageService).switchUrl('en')).toBe(
       '/en/help?topic=general#public-page-title',
     );

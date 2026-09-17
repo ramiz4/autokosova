@@ -1,4 +1,4 @@
-import { LucideTrash2, type LucideIcon } from '@lucide/angular';
+import { LucideTrash2, type LucideIcon } from '@autokosova/icons';
 import {
   ChangeDetectionStrategy,
   Component,

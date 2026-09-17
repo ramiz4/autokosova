@@ -5,7 +5,7 @@ import {
   LucideSearch,
   LucideShieldCheck,
   type LucideIcon,
-} from '@lucide/angular';
+} from '@autokosova/icons';
 import { ChangeDetectorRef, Component, ElementRef, inject, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
