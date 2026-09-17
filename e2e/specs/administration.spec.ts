@@ -174,7 +174,19 @@ test('admin-boundaries checks staff separation, takeover, policy gates and local
     expect((await page.request.get(app.origin + '/api/admin/management/users')).status()).toBe(403);
     await expect(page.locator('[data-admin-garage-list]')).toHaveCount(0);
   }
+  for (const section of ['reviews', 'reports', 'appeals'] as const) {
+    // A customer has no staff access at all; a moderator may legitimately call the shared
+    // `/api/staff/cases` endpoint (scoped to their own assignments), but these admin-only
+    // subpages still hide the list client-side per `adminOnly`/`allowed()`.
+    await app.login(page, 'customer', 'de', `/admin/${section}`);
+    expect((await page.request.get(app.origin + '/api/staff/cases')).status()).toBe(403);
+    await expect(page.locator('[data-staff-list]')).toHaveCount(0);
+    await app.login(page, 'moderator', 'de', `/admin/${section}`);
+    await expect(page.locator('[data-staff-list]')).toHaveCount(0);
+  }
   await app.login(page, 'admin');
+  await expect(page.locator('[data-admin-overview]')).toBeVisible();
+  await page.locator('[data-open-reviews]').click();
   await page
     .locator('[data-case-id="review:demo-staff-review-unassigned"] [data-open-case]')
     .click();
@@ -219,4 +231,19 @@ test('admin-boundaries checks staff separation, takeover, policy gates and local
   }
   await app.login(page, 'moderator', 'de', '/admin/users');
   await expect(page.locator('[data-admin-users]')).toHaveCount(0);
+  for (const language of ['de', 'sq', 'en'] as const) {
+    const prefix = language === 'de' ? '' : '/' + language;
+    await app.login(page, 'admin', language, prefix + '/admin/reviews');
+    await expect(page.locator('main h1')).toHaveText(adminLabel('reviews', language));
+    await expect(page.locator('[data-staff-list]')).toBeVisible();
+  }
+  for (const section of ['reports', 'appeals'] as const) {
+    await app.login(page, 'admin', 'de', `/admin/${section}`);
+    await expect(page.locator('main h1')).toHaveText(adminLabel(section, 'de'));
+    await expect(page.locator('[data-staff-list]')).toBeVisible();
+  }
+  for (const section of ['reviews', 'reports', 'appeals'] as const) {
+    await app.login(page, 'moderator', 'de', `/admin/${section}`);
+    await expect(page.locator('[data-staff-list]')).toHaveCount(0);
+  }
 });

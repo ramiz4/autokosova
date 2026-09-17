@@ -105,6 +105,19 @@ test(
         overview.escalatedCases,
         (await lifecycle.listStaffCases(a, { queue: 'todo', escalated: true })).cases.length,
       );
+      assert.equal(
+        overview.openReviews,
+        (await lifecycle.listStaffCases(a, { queue: 'todo', kind: 'review_submission' })).cases
+          .length,
+      );
+      assert.equal(
+        overview.openReports,
+        (await lifecycle.listStaffCases(a, { queue: 'todo', kind: 'report' })).cases.length,
+      );
+      assert.equal(
+        overview.openAppeals,
+        (await lifecycle.listStaffCases(a, { queue: 'todo', appeal: true })).cases.length,
+      );
       for (const person of [m, owner]) {
         await assert.rejects(adminStore.overview(person));
         await assert.rejects(adminStore.users(person, {}));

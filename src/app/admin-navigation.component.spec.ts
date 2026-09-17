@@ -3,7 +3,7 @@ import { provideRouter, Router } from '@angular/router';
 import { AdminNavigationComponent } from './admin-navigation.component';
 import { LanguageService } from './language.service';
 
-async function render(admin: boolean) {
+async function render(admin: boolean, active?: string) {
   await TestBed.configureTestingModule({
     imports: [AdminNavigationComponent],
     providers: [
@@ -20,6 +20,7 @@ async function render(admin: boolean) {
   }).compileComponents();
   const fixture = TestBed.createComponent(AdminNavigationComponent);
   fixture.componentRef.setInput('admin', admin);
+  if (active) fixture.componentRef.setInput('active', active);
   fixture.detectChanges();
   return fixture.nativeElement as HTMLElement;
 }
@@ -30,6 +31,9 @@ it('uses one native mobile section select and keeps admin work grouped', async (
   expect(select).not.toBeNull();
   expect(Array.from(select!.options).map((option) => option.value)).toEqual([
     'overview',
+    'reviews',
+    'reports',
+    'appeals',
     'garages',
     'users',
     'privacy',
@@ -37,7 +41,24 @@ it('uses one native mobile section select and keeps admin work grouped', async (
     'catalog',
   ]);
   expect(page.querySelectorAll('button')).toHaveLength(0);
-  expect(page.querySelector('nav a[aria-current="page"]')?.textContent).toContain('Cases');
+  expect(page.querySelector('nav a[aria-current="page"]')?.textContent).toContain(
+    'Open admin tasks',
+  );
+});
+
+it('links each domain case section to its own admin route', async () => {
+  const page = await render(true, 'reviews');
+  const links = Array.from(page.querySelectorAll<HTMLAnchorElement>('nav a'));
+  expect(links.find((a) => a.textContent?.includes('Reviews'))?.getAttribute('href')).toBe(
+    '/en/admin/reviews',
+  );
+  expect(links.find((a) => a.textContent?.includes('Reports'))?.getAttribute('href')).toBe(
+    '/en/admin/reports',
+  );
+  expect(links.find((a) => a.textContent?.includes('Appeals'))?.getAttribute('href')).toBe(
+    '/en/admin/appeals',
+  );
+  expect(page.querySelector('nav a[aria-current="page"]')?.textContent).toContain('Reviews');
 });
 
 it('does not expose administration paths in the moderator navigator', async () => {

@@ -3,8 +3,10 @@ import { Router, RouterLink } from '@angular/router';
 import { LanguageService } from './language.service';
 import { adminLabel } from '../shared/admin-copy';
 import { staffCopy } from '../shared/staff-copy';
+import type { AdminCaseSection } from '../shared/administration';
 
-type Section = 'overview' | 'garages' | 'users' | 'privacy' | 'audit' | 'catalog';
+type Section =
+  'overview' | AdminCaseSection | 'garages' | 'users' | 'privacy' | 'audit' | 'catalog';
 
 /** One compact internal navigator; it deliberately has no role-switching controls. */
 @Component({
@@ -65,14 +67,14 @@ export class AdminNavigationComponent {
   groups(): readonly { readonly label: string; readonly sections: readonly Section[] }[] {
     if (!this.admin()) return [{ label: '', sections: ['overview'] }];
     return [
-      { label: '', sections: ['overview', 'garages', 'users'] },
+      { label: '', sections: ['overview', 'reviews', 'reports', 'appeals', 'garages', 'users'] },
       { label: this.adminLabel('administration'), sections: ['privacy', 'audit', 'catalog'] },
     ];
   }
   label(section: Section): string {
     return section === 'overview'
       ? this.admin()
-        ? staffCopy(this.language.language).cases
+        ? adminLabel('overview', this.language.language)
         : staffCopy(this.language.language).myCases
       : section === 'catalog'
         ? adminLabel('settings', this.language.language)

@@ -71,7 +71,10 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
         (SELECT count(*)::integer FROM moderation_case WHERE kind IN ('report','review_submission') AND assigned_moderator_user_id IS NULL AND status IN ('submitted','assigned') AND escalation_reason IS NULL) AS "unassignedCases",
         (SELECT count(*)::integer FROM moderation_case WHERE escalation_reason IS NOT NULL AND status IN ('submitted','assigned')) AS "escalatedCases",
         (SELECT count(*)::integer FROM privacy_readiness WHERE runnable) AS "pendingDeletions",
-        (SELECT count(*)::integer FROM privacy_readiness WHERE status<>'completed' AND NOT runnable) AS "blockedDeletions"`);
+        (SELECT count(*)::integer FROM privacy_readiness WHERE status<>'completed' AND NOT runnable) AS "blockedDeletions",
+        (SELECT count(*)::integer FROM moderation_case WHERE kind='review_submission' AND status IN ('submitted','assigned')) AS "openReviews",
+        (SELECT count(*)::integer FROM moderation_case WHERE kind='report' AND status IN ('submitted','assigned')) AS "openReports",
+        (SELECT count(*)::integer FROM moderation_case WHERE appeal_against_user_id IS NOT NULL AND status IN ('submitted','assigned')) AS "openAppeals"`);
       return result.rows[0];
     });
   }

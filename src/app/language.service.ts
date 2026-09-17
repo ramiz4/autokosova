@@ -5,6 +5,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
 import { filter } from 'rxjs';
 import { PUBLIC_PAGE_PATHS, isPublicPageId, type PublicPageId } from '../shared/public-pages';
+import { ADMIN_CASE_SECTIONS, ADMIN_MANAGEMENT_SECTIONS } from '../shared/administration';
 import {
   APP_LANGUAGES,
   type AppLanguage,
@@ -139,7 +140,9 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
     favorites: '/favorites',
     'admin-section':
       '/admin/' +
-      (['garages', 'users', 'privacy', 'audit', 'catalog', 'support'].includes(parameter ?? '')
+      (([...ADMIN_MANAGEMENT_SECTIONS, ...ADMIN_CASE_SECTIONS] as readonly string[]).includes(
+        parameter ?? '',
+      )
         ? parameter
         : 'garages'),
     reviews: '/reviews',
@@ -160,7 +163,9 @@ export function routePath(language: AppLanguage, route: AppRoute, parameter?: st
 function identifyRoute(path: string): { readonly parameter?: string; readonly route: AppRoute } {
   const normalized = path.replace(/^\/(?:sq|en)(?=\/|$)/, '') || '/';
   if (normalized === '/') return { route: 'home' };
-  const admin = normalized.match(/^\/admin\/(garages|users|privacy|audit|catalog|support)$/);
+  const admin = normalized.match(
+    new RegExp(`^/admin/(${[...ADMIN_MANAGEMENT_SECTIONS, ...ADMIN_CASE_SECTIONS].join('|')})$`),
+  );
   if (admin) return { route: 'admin-section', parameter: admin[1] };
   if (normalized === '/admin') return { route: 'admin' };
   if (normalized === '/moderation') return { route: 'moderation' };

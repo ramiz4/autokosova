@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { Router, Routes } from '@angular/router';
 import { PUBLIC_PAGE_PATHS } from '../shared/public-pages';
+import { ADMIN_CASE_SECTIONS, ADMIN_MANAGEMENT_SECTIONS } from '../shared/administration';
 import type { GarageProfileComponent } from './garage-profile.component';
 import { StaffDraftGuardService } from './staff-draft-guard.service';
 import { AdminDraftGuardService } from './admin-draft-guard.service';
@@ -40,7 +41,7 @@ function localizedRoutes(prefix: string): Routes {
           fragment: fragment ?? undefined,
         }),
     },
-    ...['garages', 'users', 'privacy', 'audit', 'catalog', 'support'].map((section) => ({
+    ...ADMIN_MANAGEMENT_SECTIONS.map((section) => ({
       path: `${childPrefix}admin/${section}`,
       pathMatch: 'full' as const,
       data: { adminSection: section, ownsFooter: true },
@@ -52,6 +53,26 @@ function localizedRoutes(prefix: string): Routes {
       ],
       loadComponent: () => import('./admin-console.component').then((m) => m.AdminConsoleComponent),
     })),
+    ...ADMIN_CASE_SECTIONS.map((section) => ({
+      path: `${childPrefix}admin/${section}`,
+      pathMatch: 'full' as const,
+      data: { adminOnly: true, staffDomain: section, ownsFooter: true },
+      runGuardsAndResolvers: 'always' as const,
+      canActivate: [staffDraftNavigationGuard],
+      canDeactivate: [
+        (component: import('./staff-workspace.component').StaffWorkspaceComponent | null) =>
+          component?.canLeave() ?? true,
+      ],
+      loadComponent: () =>
+        import('./staff-workspace.component').then((m) => m.StaffWorkspaceComponent),
+    })),
+    {
+      path: `${childPrefix}admin`,
+      pathMatch: 'full' as const,
+      data: { ownsFooter: true },
+      loadComponent: () =>
+        import('./admin-overview.component').then((m) => m.AdminOverviewComponent),
+    },
     ...['admin', 'moderation'].flatMap((path) => [
       {
         path: `${childPrefix}${path}/cases/:caseId`,
@@ -66,20 +87,20 @@ function localizedRoutes(prefix: string): Routes {
         loadComponent: () =>
           import('./staff-workspace.component').then((m) => m.StaffWorkspaceComponent),
       },
-      {
-        path: `${childPrefix}${path}`,
-        pathMatch: 'full' as const,
-        data: { adminOnly: path === 'admin', ownsFooter: true },
-        runGuardsAndResolvers: 'always' as const,
-        canActivate: [staffDraftNavigationGuard],
-        canDeactivate: [
-          (component: import('./staff-workspace.component').StaffWorkspaceComponent | null) =>
-            component?.canLeave() ?? true,
-        ],
-        loadComponent: () =>
-          import('./staff-workspace.component').then((m) => m.StaffWorkspaceComponent),
-      },
     ]),
+    {
+      path: `${childPrefix}moderation`,
+      pathMatch: 'full' as const,
+      data: { adminOnly: false, ownsFooter: true },
+      runGuardsAndResolvers: 'always' as const,
+      canActivate: [staffDraftNavigationGuard],
+      canDeactivate: [
+        (component: import('./staff-workspace.component').StaffWorkspaceComponent | null) =>
+          component?.canLeave() ?? true,
+      ],
+      loadComponent: () =>
+        import('./staff-workspace.component').then((m) => m.StaffWorkspaceComponent),
+    },
     {
       path: `${childPrefix}profile`,
       pathMatch: 'full',

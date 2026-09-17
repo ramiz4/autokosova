@@ -1,5 +1,24 @@
 import { test, expect } from '../support/application';
 
+test('staff-context returns to its own domain page after leaving a case opened from /admin/reviews, /admin/reports or /admin/appeals', async ({
+  app,
+  page,
+}) => {
+  await app.login(page, 'admin');
+  for (const [section, caseId] of [
+    ['reviews', 'review:demo-staff-review-unassigned'],
+    ['reports', 'demo-staff-profile-report'],
+    ['appeals', 'review:demo-staff-review-appeal'],
+  ] as const) {
+    await page.goto(app.origin + `/admin/${section}`);
+    await page.locator(`[data-case-id="${caseId}"] [data-open-case]`).click();
+    await expect(page.locator('[data-staff-case]')).toBeVisible();
+    await page.locator('[data-back-cases]').click();
+    await expect(page).toHaveURL(app.origin + `/admin/${section}`);
+    await expect(page.locator('[data-staff-list]')).toBeVisible();
+  }
+});
+
 test('staff-context preserves authorized case context across navigation, drafts, reload, language, claim and stale boundaries', async ({
   app,
   page,

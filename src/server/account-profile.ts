@@ -1,4 +1,10 @@
 import type { AccountProfile } from '../shared/account';
+import { ADMIN_CASE_SECTIONS, ADMIN_MANAGEMENT_SECTIONS } from '../shared/administration';
+
+const adminSections = [...ADMIN_MANAGEMENT_SECTIONS, ...ADMIN_CASE_SECTIONS].join('|');
+const accountPagePattern = new RegExp(
+  `^/(?:sq/|en/)?(?:admin(?:/(?:${adminSections}))?|moderation|profile|reviews|inquiries|favorites|garages/[A-Za-z0-9_-]{1,128}/reviews/new)/?$`,
+);
 
 /** Only verified ID-token claims or same-subject, trusted UserInfo may reach this mapper. */
 export function accountProfileFromClaims(
@@ -42,7 +48,5 @@ export function accountProfileFromClaims(
   return profile;
 }
 export function isAccountPagePath(url: string): boolean {
-  return /^\/(?:sq\/|en\/)?(?:admin(?:\/(?:garages|users|privacy|audit|catalog|support))?|moderation|profile|reviews|inquiries|favorites|garages\/[A-Za-z0-9_-]{1,128}\/reviews\/new)\/?$/.test(
-    url.split(/[?#]/, 1)[0],
-  );
+  return accountPagePattern.test(url.split(/[?#]/, 1)[0]);
 }

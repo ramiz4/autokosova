@@ -1,58 +1,9 @@
-<app-staff-layout [admin]="isAdmin()" active="overview">
+<app-staff-layout [admin]="isAdmin()" [active]="staffDomain ?? 'overview'">
   <app-confirmation-dialog #confirmation />
   <h1 tabindex="-1" class="text-3xl font-bold tracking-tight">
-    {{ adminOnly ? copy().cases : copy().myCases }}
+    {{ pageTitle() }}
   </h1>
-  <p class="mt-2 max-w-3xl text-muted">{{ adminOnly ? copy().adminIntro : copy().ownIntro }}</p>
-  @if (isAdmin()) {
-    @if (adminOnly && adminOverview(); as overview) {
-      <section
-        class="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:flex sm:flex-wrap"
-        data-admin-overview
-      >
-        @if (overview.pendingGarages > 0) {
-          <a
-            class="inline-flex min-h-11 min-w-11 items-center font-semibold text-brand-dark underline-offset-4 hover:underline"
-            [routerLink]="language.link('admin-section', 'garages')"
-            [queryParams]="{ status: 'pending_review' }"
-            >{{ overview.pendingGarages }} {{ adminLabel('pendingGarages') }}</a
-          >
-        }
-        @if (overview.unassignedCases > 0) {
-          <a
-            class="inline-flex min-h-11 min-w-11 items-center font-semibold text-brand-dark underline-offset-4 hover:underline"
-            [routerLink]="language.link('admin')"
-            [queryParams]="{ queue: 'todo', unassigned: 'true' }"
-            >{{ overview.unassignedCases }} {{ adminLabel('unassignedCases') }}</a
-          >
-        }
-        @if (overview.escalatedCases > 0) {
-          <a
-            class="inline-flex min-h-11 min-w-11 items-center font-semibold text-brand-dark underline-offset-4 hover:underline"
-            [routerLink]="language.link('admin')"
-            [queryParams]="{ queue: 'todo', escalated: 'true' }"
-            >{{ overview.escalatedCases }} {{ adminLabel('escalatedCases') }}</a
-          >
-        }
-        @if (overview.pendingDeletions > 0) {
-          <a
-            class="inline-flex min-h-11 min-w-11 items-center font-semibold text-brand-dark underline-offset-4 hover:underline"
-            [routerLink]="language.link('admin-section', 'privacy')"
-            [queryParams]="{ status: 'submitted' }"
-            >{{ overview.pendingDeletions }} {{ adminLabel('pendingDeletions') }}</a
-          >
-        }
-        @if (overview.blockedDeletions > 0) {
-          <a
-            class="inline-flex min-h-11 min-w-11 items-center font-semibold text-brand-dark underline-offset-4 hover:underline"
-            [routerLink]="language.link('admin-section', 'privacy')"
-            [queryParams]="{ status: 'blocked' }"
-            >{{ overview.blockedDeletions }} {{ adminLabel('blockedDeletions') }}</a
-          >
-        }
-      </section>
-    }
-  }
+  <p class="mt-2 max-w-3xl text-muted">{{ pageIntro() }}</p>
   @if (account.state() === 'guest') {
     <section class="mt-8 rounded-2xl border border-slate-200 bg-white p-6">
       <p>{{ copy().guest }}</p>
@@ -369,6 +320,15 @@
       </section>
     } @else {
       <section class="my-4 border-y border-slate-200 py-3" aria-label="{{ copy().cases }}">
+        @if (staffDomain) {
+          <p
+            data-domain-badge
+            class="mb-3 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700"
+          >
+            <span class="text-muted">{{ adminLabel('domainLocked') }}</span>
+            {{ adminLabel(staffDomain) }}
+          </p>
+        }
         <div class="flex flex-wrap items-center gap-2" data-queue-tabs>
           @for (item of ['todo', 'waiting', 'done']; track item) {
             <button
@@ -385,25 +345,29 @@
               {{ copy().myCases }}
             </button>
           }
-          <button
-            [appButton]="filterKind === 'review_submission' ? 'primary' : 'outline'"
-            type="button"
-            data-review-filter
-            [attr.aria-pressed]="filterKind === 'review_submission'"
-            (click)="toggleReviews()"
-          >
-            {{ label('reviewFilter') }}
-          </button>
-          <button
-            appButton="outline"
-            type="button"
-            data-appeal-filter
-            [class.font-extrabold]="onlyAppeal"
-            [attr.aria-pressed]="onlyAppeal"
-            (click)="toggleAppeals()"
-          >
-            {{ copy().appeals }}
-          </button>
+          @if (!staffDomain) {
+            <button
+              [appButton]="filterKind === 'review_submission' ? 'primary' : 'outline'"
+              type="button"
+              data-review-filter
+              [attr.aria-pressed]="filterKind === 'review_submission'"
+              (click)="toggleReviews()"
+            >
+              {{ label('reviewFilter') }}
+            </button>
+          }
+          @if (staffDomain !== 'appeals') {
+            <button
+              appButton="outline"
+              type="button"
+              data-appeal-filter
+              [class.font-extrabold]="onlyAppeal"
+              [attr.aria-pressed]="onlyAppeal"
+              (click)="toggleAppeals()"
+            >
+              {{ copy().appeals }}
+            </button>
+          }
         </div>
         <details class="mt-2">
           <summary class="min-h-11 cursor-pointer py-2 font-semibold text-brand-dark">
@@ -427,25 +391,29 @@
                 </select>
               </label>
             }
-            <label class="grid gap-2 text-sm font-semibold"
-              >{{ copy().kind }}
-              <select
-                name="kind"
-                [(ngModel)]="filterKind"
-                (change)="applyFilters()"
-                class="min-h-11 rounded-lg border border-slate-300 px-3"
-              >
-                <option value="">{{ copy().all }}</option>
-                @for (
-                  kind of isAdmin()
-                    ? ['report', 'review_submission', 'garage_submission', 'data_deletion']
-                    : ['report', 'review_submission'];
-                  track kind
-                ) {
-                  <option [value]="kind">{{ label(kind) }}</option>
-                }
-              </select>
-            </label>
+            @if (staffDomain !== 'reviews' && staffDomain !== 'reports') {
+              <label class="grid gap-2 text-sm font-semibold"
+                >{{ copy().kind }}
+                <select
+                  name="kind"
+                  [(ngModel)]="filterKind"
+                  (change)="applyFilters()"
+                  class="min-h-11 rounded-lg border border-slate-300 px-3"
+                >
+                  <option value="">{{ copy().all }}</option>
+                  @for (
+                    kind of staffDomain === 'appeals'
+                      ? ['report', 'review_submission']
+                      : isAdmin()
+                        ? ['report', 'review_submission', 'garage_submission', 'data_deletion']
+                        : ['report', 'review_submission'];
+                    track kind
+                  ) {
+                    <option [value]="kind">{{ label(kind) }}</option>
+                  }
+                </select>
+              </label>
+            }
             <label class="grid gap-2 text-sm font-semibold"
               >{{ copy().priority }}
               <select
@@ -477,14 +445,16 @@
                 />{{ copy().escalation }}</label
               >
             }
-            <label class="flex min-h-11 items-center gap-3"
-              ><input
-                type="checkbox"
-                name="appeal"
-                [(ngModel)]="onlyAppeal"
-                (change)="applyFilters()"
-              />{{ copy().appeals }}</label
-            >
+            @if (staffDomain !== 'appeals') {
+              <label class="flex min-h-11 items-center gap-3"
+                ><input
+                  type="checkbox"
+                  name="appeal"
+                  [(ngModel)]="onlyAppeal"
+                  (change)="applyFilters()"
+                />{{ copy().appeals }}</label
+              >
+            }
           </form>
         </details>
         @if (

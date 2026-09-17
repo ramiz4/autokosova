@@ -174,6 +174,9 @@ test('OIDC login preserves only bounded local staff and administration context r
       '/en/admin/cases/case_123?unassigned=true&priority=high',
       '/admin/garages?garageId=garage_1&tab=review&returnRequest=request_1',
       '/sq/admin/privacy?requestId=request_1&status=submitted',
+      '/admin/reviews',
+      '/admin/reports',
+      '/en/admin/appeals',
     ];
     for (const returnTo of accepted) {
       const response = await app.inject('/auth/login?returnTo=' + encodeURIComponent(returnTo));
