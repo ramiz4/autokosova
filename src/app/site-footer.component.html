@@ -1,7 +1,7 @@
 <footer
   class="w-full border-t border-slate-100 bg-white px-6 py-10 font-sans text-slate-600 sm:px-10 lg:py-12"
 >
-  <div class="mx-auto max-w-[1320px]">
+  <div class="mx-auto max-w-330">
     <div
       class="grid items-start gap-8 border-b border-slate-100 pb-8 lg:grid-cols-[minmax(180px,1fr)_minmax(0,2.6fr)_minmax(144px,0.85fr)] lg:gap-6 lg:pb-10"
     >
@@ -37,7 +37,7 @@
                 <li>
                   <a
                     [routerLink]="language.link(link.route)"
-                    class="flex min-h-11 items-center rounded py-2 text-[13px] leading-5 break-words text-slate-600 transition-colors hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                    class="flex min-h-11 items-center rounded py-2 text-[13px] leading-5 wrap-break-word text-slate-600 transition-colors hover:text-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                     >{{ text(link.label) }}</a
                   >
                 </li>

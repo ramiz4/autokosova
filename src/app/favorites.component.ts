@@ -1,10 +1,4 @@
-import {
-  LucideChevronLeft,
-  LucideHeart,
-  LucideSearch,
-  LucideShieldCheck,
-  type LucideIcon,
-} from '@lucide/angular';
+import { LucideHeart, LucideSearch, type LucideIcon } from '@lucide/angular';
 import { Component, afterNextRender, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { favoritesCopy, type FavoritesCopyKey } from '../shared/favorites-copy';
@@ -32,10 +26,8 @@ import { LucideIconComponent } from './ui/lucide-icon.component';
   templateUrl: './favorites.component.html',
 })
 export class FavoritesComponent {
-  readonly ChevronLeftIcon: LucideIcon = LucideChevronLeft;
   readonly HeartIcon: LucideIcon = LucideHeart;
   readonly SearchIcon: LucideIcon = LucideSearch;
-  readonly ShieldCheckIcon: LucideIcon = LucideShieldCheck;
 
   protected readonly account = inject(AccountSessionService);
   protected readonly favorites = inject(FavoritesService);

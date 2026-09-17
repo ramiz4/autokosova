@@ -19,7 +19,6 @@ import {
   LucideFileText,
   LucideMessageSquarePlus,
   LucideSearch,
-  LucideSlidersHorizontal,
   type LucideIcon,
 } from '@lucide/angular';
 import { AccountSessionService } from './account-session.service';
@@ -30,6 +29,7 @@ import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component'
 import { LucideIconComponent } from './ui/lucide-icon.component';
 import { RatingStarsComponent } from './ui/rating-stars.component';
 import { ReviewContributionComponent } from './review-contribution.component';
+import { SelectFieldComponent, type SelectFieldOption } from './ui/select-field.component';
 import { reviewLabel } from '../shared/review-copy';
 import {
   REVIEW_PAGE_SIZE,
@@ -52,6 +52,7 @@ type ReviewAction = 'view' | 'evidence' | 'update';
     ConfirmationDialogComponent,
     LucideIconComponent,
     RatingStarsComponent,
+    SelectFieldComponent,
     CdkMenu,
     CdkMenuItem,
     CdkMenuTrigger,
@@ -65,7 +66,6 @@ export class ReviewsComponent {
   readonly EvidenceIcon: LucideIcon = LucideFileText;
   readonly EyeIcon: LucideIcon = LucideEye;
   readonly SearchIcon: LucideIcon = LucideSearch;
-  readonly SortIcon: LucideIcon = LucideSlidersHorizontal;
   readonly UpdateIcon: LucideIcon = LucideMessageSquarePlus;
   readonly confirmation = viewChild.required<ConfirmationDialogComponent>('confirmation');
   readonly account = inject(AccountSessionService);
@@ -113,21 +113,26 @@ export class ReviewsComponent {
     effect(() => {
       const context = this.account.dataContext(),
         ready = this.ready();
-      this.confirmation().cancelPending();
-      this.actionMenus().forEach((menu) => menu.close());
-      this.generation++;
-      this.controller.abort();
-      this.controller = new AbortController();
-      if (this.searchTimer) clearTimeout(this.searchTimer);
-      this.reviews.set([]);
-      this.detail.set(null);
-      this.evidence.set(null);
-      this.error.set('');
-      this.loading.set(false);
-      this.busy.set(false);
-      this.total.set(0);
-      this.dirty = false;
-      if (context && ready) untracked(() => void this.load());
+      // The menu query changes when loaded rows are rendered. It must not become a
+      // dependency of this session/view lifecycle effect, or each response triggers
+      // another reset and list request.
+      untracked(() => {
+        this.confirmation().cancelPending();
+        this.actionMenus().forEach((menu) => menu.close());
+        this.generation++;
+        this.controller.abort();
+        this.controller = new AbortController();
+        if (this.searchTimer) clearTimeout(this.searchTimer);
+        this.reviews.set([]);
+        this.detail.set(null);
+        this.evidence.set(null);
+        this.error.set('');
+        this.loading.set(false);
+        this.busy.set(false);
+        this.total.set(0);
+        this.dirty = false;
+        if (context && ready) void this.load();
+      });
     });
     effect(() => this.language.setPageText(this.label('own'), this.label('intro'), true));
     inject(DestroyRef).onDestroy(() => {
@@ -207,11 +212,17 @@ export class ReviewsComponent {
     if (this.searchTimer) clearTimeout(this.searchTimer);
     this.searchTimer = setTimeout(() => void this.changeList({ query: input.value }, input), 250);
   }
-  onState(state: ReviewPublicationState | 'all', select: HTMLSelectElement): void {
-    void this.changeList({ publicationState: state }, undefined, select);
+  stateOptions(): readonly SelectFieldOption[] {
+    return this.states.map((state) => ({ value: state, label: this.stateLabel(state) }));
   }
-  onSort(sort: OwnReviewSort, select: HTMLSelectElement): void {
-    void this.changeList({ sort }, undefined, select);
+  sortOptions(): readonly SelectFieldOption[] {
+    return this.sorts.map((sort) => ({ value: sort, label: this.sortLabel(sort) }));
+  }
+  onState(state: string): void {
+    void this.changeList({ publicationState: state as ReviewPublicationState | 'all' });
+  }
+  onSort(sort: string): void {
+    void this.changeList({ sort: sort as OwnReviewSort });
   }
   async clearFilters(): Promise<void> {
     await this.changeList({ query: '', publicationState: 'all', sort: 'submitted_desc' });
@@ -343,13 +354,9 @@ export class ReviewsComponent {
       sort?: OwnReviewSort;
     },
     input?: HTMLInputElement,
-    select?: HTMLSelectElement,
   ): Promise<void> {
     if (!(await this.canLeave())) {
       if (input) input.value = this.search();
-      if (select)
-        select.value =
-          change.publicationState !== undefined ? this.publicationState() : this.sort();
       return;
     }
     if (change.query !== undefined) this.search.set(change.query);

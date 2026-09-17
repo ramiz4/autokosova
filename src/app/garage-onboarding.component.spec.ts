@@ -52,23 +52,38 @@ it('uses the same image, overlay, text container and card overlap as the inquiry
   const page = fixture.nativeElement as HTMLElement;
   const hero = page.querySelector<HTMLElement>('header[aria-labelledby="onboarding-hero-title"]')!;
   const image = hero.querySelector<HTMLImageElement>('img')!;
-  expect(hero.className).toContain('min-h-[272px]');
-  expect(hero.className).toContain('lg:h-[272px]');
+  expect(hero.className).toContain('min-h-68');
+  expect(hero.className).toContain('lg:h-68');
   expect(hero.className).toContain('pt-8');
   expect(hero.className).toContain('pb-20');
   expect(image.src).toContain('/images/home/hero-mountain-road-1672.webp');
   expect(image.className).toContain('object-[75%_54%]');
-  expect(hero.querySelector('.bg-gradient-to-r')).not.toBeNull();
+  expect(hero.querySelector('.bg-linear-to-r')).not.toBeNull();
   expect(hero.querySelector('h1')!.className).toContain('max-w-xl');
   expect(hero.querySelector('p')!.className).toBe(
     'mt-3 max-w-xl text-base leading-6 text-white sm:text-lg',
   );
   expect(
-    [...hero.querySelectorAll('div')].some((element) =>
-      element.className.includes('max-w-[1360px]'),
-    ),
+    [...hero.querySelectorAll('div')].some((element) => element.className.includes('max-w-340')),
   ).toBe(true);
   expect(page.querySelector<HTMLElement>('header + div')!.className).toContain('-mt-10');
+});
+
+it('renders the garage overview with one standard page title and no illustration hero', async () => {
+  const fixture = await setup();
+  const component = fixture.componentInstance;
+  vi.spyOn(component as unknown as { managing: boolean }, 'managing', 'get').mockReturnValue(true);
+  component['editing'] = false;
+  fixture.detectChanges();
+
+  const page = fixture.nativeElement as HTMLElement;
+  const overview = page.querySelector<HTMLElement>('[data-garages-overview]')!;
+  expect(overview.querySelectorAll('#workspace-title')).toHaveLength(1);
+  expect(page.querySelector('#form-title')).toBeNull();
+  const heading = overview.querySelector<HTMLElement>('.garage-management-heading')!;
+  expect(heading.className).toContain('my-8');
+  expect(overview.querySelector('.garage-management-art')).toBeNull();
+  expect(overview.querySelector<HTMLElement>('[data-new-garage]')?.className).toContain('min-h-13');
 });
 
 it('sends the address, preserves input on a failed save and prevents a second concurrent request', async () => {
@@ -191,38 +206,10 @@ it.each(['de', 'sq', 'en'] as const)(
   },
 );
 
-it('filters, sorts and counts only the private overview summaries without inventing dates', async () => {
+it('uses the localized fallback when an overview timestamp is unavailable', async () => {
   const fixture = await setup();
   const component = fixture.componentInstance;
-  component['owned'] = [
-    {
-      id: 'garage-z',
-      name: 'Zeta Klima',
-      placeId: 'xk-pristina',
-      publicationState: 'published',
-      canDelete: true,
-      description: 'Klimaservice',
-      serviceCategoryIds: ['klima'],
-      updatedAt: '2026-09-16T08:00:00.000Z',
-    },
-    {
-      id: 'garage-a',
-      name: 'Alpha Bremsen',
-      placeId: 'xk-prizren',
-      publicationState: 'draft',
-      canDelete: false,
-      serviceCategoryIds: ['bremsen'],
-    },
-  ];
-  component['overviewSearch'] = 'PRIZREN';
-  expect(component['filteredOwned'].map((garage) => garage.id)).toEqual(['garage-a']);
-  expect(component['draftCount']).toBe(1);
-  expect(component['publishedCount']).toBe(1);
   expect(component['date'](undefined)).toBe(garageManagementCopy.de.dateUnavailable);
-  component['overviewSearch'] = '';
-  component['overviewSort'] = 'name';
-  expect(component['filteredOwned'].map((garage) => garage.id)).toEqual(['garage-a', 'garage-z']);
-  fixture.detectChanges();
 });
 
 it('does not send a delete without ownership, confirmation or a CSRF token', async () => {

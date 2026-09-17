@@ -5,7 +5,7 @@
   </div>
 
   <main
-    class="mx-auto max-w-[1352px] px-4 pt-4 pb-28 sm:px-6 lg:pb-10"
+    class="mx-auto max-w-338 px-4 pt-4 pb-28 sm:px-6 lg:pb-10"
     aria-labelledby="profile-title"
     data-gallery-fallback
     tabindex="-1"
@@ -98,7 +98,7 @@
         @if (profile.photoIds.length === 1) {
           <button
             type="button"
-            class="group relative block h-[280px] w-full overflow-hidden rounded-2xl bg-slate-100 text-left sm:h-[420px]"
+            class="group relative block h-70 w-full overflow-hidden rounded-2xl bg-slate-100 text-left sm:h-105"
             [attr.aria-label]="ui('profile.ui.allPhotos', { count: 1 })"
             data-gallery-open
             (click)="openGallery(0, $event)"
@@ -110,7 +110,7 @@
             />
           </button>
         } @else if (profile.photoIds.length > 1) {
-          <div class="grid h-[330px] gap-2 sm:h-[430px] lg:grid-cols-[2fr_1fr]">
+          <div class="grid h-82.5 gap-2 sm:h-107.5 lg:grid-cols-[2fr_1fr]">
             <button
               type="button"
               class="group relative overflow-hidden rounded-2xl bg-slate-100 text-left"
@@ -191,7 +191,7 @@
           </div>
         } @else {
           <div
-            class="flex min-h-56 items-center justify-center rounded-2xl border border-dashed border-blue-200 bg-[linear-gradient(135deg,#eff6ff,#f8fafc)] p-8 text-center sm:min-h-72"
+            class="flex min-h-56 items-center justify-center rounded-2xl border border-dashed border-blue-200 bg-linear-to-br from-brand/10 to-brand/5 p-8 text-center sm:min-h-72"
           >
             <div>
               <span
@@ -220,7 +220,7 @@
               />
             } @else {
               <span
-                class="flex size-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-dark to-brand text-xl font-bold text-white sm:size-20"
+                class="flex size-16 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-brand-dark to-brand text-xl font-bold text-white sm:size-20"
                 role="img"
                 [attr.aria-label]="ui('profile.ui.neutralLogo', { garage: profile.name })"
                 >{{ initials() }}</span
@@ -302,7 +302,7 @@
             </button>
             <button
               type="button"
-              class="inline-flex min-h-14 min-w-60 items-center justify-center gap-3 rounded-xl bg-gradient-to-br from-brand to-blue-800 px-6 text-left font-bold text-white shadow-lg shadow-blue-900/15 transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand motion-reduce:transform-none motion-reduce:transition-none"
+              class="inline-flex min-h-14 min-w-60 items-center justify-center gap-3 rounded-xl bg-linear-to-br from-brand to-blue-800 px-6 text-left font-bold text-white shadow-lg shadow-blue-900/15 transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand motion-reduce:transform-none motion-reduce:transition-none"
               data-contact-open
               (click)="openContact($event)"
             >

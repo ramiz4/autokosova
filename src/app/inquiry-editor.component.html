@@ -6,28 +6,28 @@
   [state]="dialogState()"
   (closed)="onDialogClosed()"
 >
-  <brn-dialog-overlay class="bg-[#07143e85]"></brn-dialog-overlay>
+  <brn-dialog-overlay class="bg-black/80"></brn-dialog-overlay>
   <ng-template brnDialogContent>
     <section
       data-inquiry-editor
       [attr.data-inquiry-editor-id]="request().id"
       (keydown.escape)="onEditorEscape($event)"
-      class="app-dialog-panel m-auto max-h-[calc(100dvh-24px)] w-[min(760px,calc(100vw-24px))] rounded-[20px] border border-[#dbe5f2] bg-white p-0 text-[#07143e] shadow-[0_24px_100px_#07143e35] [&_label]:mb-[7px] [&_label]:mt-[14px] [&_label]:block [&_label]:text-[13px] [&_label]:font-semibold [&_input]:block [&_input]:min-h-[46px] [&_input]:w-full [&_input]:min-w-0 [&_input]:rounded-[9px] [&_input]:border [&_input]:border-[#cfd9e7] [&_input]:bg-white [&_input]:px-3 [&_input]:py-[11px] [&_input]:text-base [&_select]:block [&_select]:min-h-[46px] [&_select]:w-full [&_select]:min-w-0 [&_select]:rounded-[9px] [&_select]:border [&_select]:border-[#cfd9e7] [&_select]:bg-white [&_select]:px-3 [&_select]:py-[11px] [&_select]:text-base [&_textarea]:block [&_textarea]:min-h-[46px] [&_textarea]:w-full [&_textarea]:resize-y [&_textarea]:rounded-[9px] [&_textarea]:border [&_textarea]:border-[#cfd9e7] [&_textarea]:bg-white [&_textarea]:px-3 [&_textarea]:py-[11px] [&_textarea]:text-base [&_button:disabled]:opacity-[.55] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-[#0061ff] [&_button:focus-visible]:outline-offset-3 [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-[#0061ff] [&_input:focus-visible]:outline-offset-3 [&_select:focus-visible]:outline-2 [&_select:focus-visible]:outline-[#0061ff] [&_select:focus-visible]:outline-offset-3 [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-[#0061ff] [&_textarea:focus-visible]:outline-offset-3 [&_summary:focus-visible]:outline-2 [&_summary:focus-visible]:outline-[#0061ff] [&_summary:focus-visible]:outline-offset-3"
+      class="app-dialog-panel m-auto max-h-[calc(100dvh-24px)] w-[min(760px,calc(100vw-24px))] rounded-[20px] border border-slate-200 bg-white p-0 text-ink shadow-2xl shadow-ink/20 [&_label]:mb-1.75 [&_label]:mt-3.5 [&_label]:block [&_label]:text-[13px] [&_label]:font-semibold [&_input]:block [&_input]:min-h-11.5 [&_input]:w-full [&_input]:min-w-0 [&_input]:rounded-[9px] [&_input]:border [&_input]:border-slate-300 [&_input]:bg-white [&_input]:px-3 [&_input]:py-2.75 [&_input]:text-base [&_select]:block [&_select]:min-h-11.5 [&_select]:w-full [&_select]:min-w-0 [&_select]:rounded-[9px] [&_select]:border [&_select]:border-slate-300 [&_select]:bg-white [&_select]:px-3 [&_select]:py-2.75 [&_select]:text-base [&_textarea]:block [&_textarea]:min-h-11.5 [&_textarea]:w-full [&_textarea]:resize-y [&_textarea]:rounded-[9px] [&_textarea]:border [&_textarea]:border-slate-300 [&_textarea]:bg-white [&_textarea]:px-3 [&_textarea]:py-2.75 [&_textarea]:text-base [&_button:disabled]:opacity-[.55] [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-brand [&_button:focus-visible]:outline-offset-3 [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-brand [&_input:focus-visible]:outline-offset-3 [&_select:focus-visible]:outline-2 [&_select:focus-visible]:outline-brand [&_select:focus-visible]:outline-offset-3 [&_textarea:focus-visible]:outline-2 [&_textarea:focus-visible]:outline-brand [&_textarea:focus-visible]:outline-offset-3 [&_summary:focus-visible]:outline-2 [&_summary:focus-visible]:outline-brand [&_summary:focus-visible]:outline-offset-3"
     >
       <header
-        class="app-dialog-header flex items-center justify-between gap-4 border-b border-[#e7edf5] bg-white px-[26px] py-[22px] max-[480px]:p-[18px]"
+        class="app-dialog-header flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6.5 py-5.5 max-[480px]:p-4.5"
       >
         <div>
-          <p class="mb-[6px] text-[11px] font-bold uppercase tracking-[.12em] text-[#536d98]">
+          <p class="mb-1.5 text-[11px] font-bold uppercase tracking-[.12em] text-muted">
             {{ text('privateLabel') }}
           </p>
-          <h2 brnDialogTitle class="text-2xl font-bold tracking-[-.025em] max-[480px]:text-[21px]">
+          <h2 brnDialogTitle class="text-2xl font-bold tracking-tight max-[480px]:text-[21px]">
             {{ text('editTitle') }}
           </h2>
         </div>
         <button
           type="button"
-          class="inline-flex size-11 shrink-0 items-center justify-center rounded-[10px] hover:bg-[#f1f5fb]"
+          class="inline-flex size-11 shrink-0 items-center justify-center rounded-[10px] hover:bg-brand/5"
           [attr.aria-label]="text('closeEditor')"
           [disabled]="saved.writeState() === 'saving'"
           (click)="cancel()"
@@ -36,19 +36,19 @@
         </button>
       </header>
       <form class="app-dialog-form" [formGroup]="form" (ngSubmit)="save()" novalidate>
-        <div class="app-dialog-body overflow-wrap-anywhere px-[26px] py-6 max-[480px]:p-[18px]">
-          <p brnDialogDescription class="text-sm leading-[1.65] text-[#536d98]">
+        <div class="app-dialog-body overflow-wrap-anywhere px-6.5 py-6 max-[480px]:p-4.5">
+          <p brnDialogDescription class="text-sm leading-[1.65] text-muted">
             {{ text('editHelp') }}
           </p>
-          <p class="mt-4 text-sm leading-[1.65] text-[#536d98]" data-inquiry-editor-status>
+          <p class="mt-4 text-sm leading-[1.65] text-muted" data-inquiry-editor-status>
             {{ text('statusLabel') }}: {{ text(request().active ? 'active' : 'inactive') }}
           </p>
           <fieldset
             [disabled]="saved.writeState() === 'saving'"
-            class="mt-[18px] min-w-0 border-0 border-t border-[#e7edf5] pt-[22px]"
+            class="mt-4.5 min-w-0 border-0 border-t border-slate-200 pt-5.5"
           >
             <legend class="pr-3 text-base font-bold">{{ field('repair') }}</legend>
-            <label for="edit-service" class="mb-[7px] mt-[14px] block text-[13px] font-semibold">{{
+            <label for="edit-service" class="mb-1.75 mt-3.5 block text-[13px] font-semibold">{{
               field('service')
             }}</label>
             <select
@@ -64,9 +64,9 @@
                 <option [value]="id">{{ language.serviceLabel(id) }}</option>
               }
             </select>
-            <label for="edit-symptom" class="mb-[7px] mt-[14px] block text-[13px] font-semibold"
+            <label for="edit-symptom" class="mb-1.75 mt-3.5 block text-[13px] font-semibold"
               >{{ field('problem') }}
-              <span class="ml-1.5 text-xs font-normal text-[#536d98]">{{
+              <span class="ml-1.5 text-xs font-normal text-muted">{{
                 language.t('common.optional')
               }}</span></label
             >
@@ -78,28 +78,28 @@
             ></textarea>
           </fieldset>
           <details
-            class="mt-[18px] min-w-0 border-0 border-t border-[#e7edf5] pt-[22px]"
+            class="mt-4.5 min-w-0 border-0 border-t border-slate-200 pt-5.5"
             [open]="!!request().vehicle"
           >
             <summary class="min-h-11 text-base font-bold">
               {{ field('vehicle') }}
-              <span class="ml-1.5 text-xs font-normal text-[#536d98]">{{
+              <span class="ml-1.5 text-xs font-normal text-muted">{{
                 language.t('common.optional')
               }}</span>
             </summary>
             <fieldset
               formGroupName="vehicle"
               [disabled]="saved.writeState() === 'saving'"
-              class="grid min-w-0 grid-cols-2 gap-x-[18px] gap-y-1 max-[480px]:grid-cols-1"
+              class="grid min-w-0 grid-cols-2 gap-x-4.5 gap-y-1 max-[480px]:grid-cols-1"
             >
               <div>
-                <label for="edit-make" class="mb-[7px] mt-[14px] block text-[13px] font-semibold">{{
+                <label for="edit-make" class="mb-1.75 mt-3.5 block text-[13px] font-semibold">{{
                   field('make')
                 }}</label
                 ><select
                   id="edit-make"
                   formControlName="makeId"
-                  class="block min-h-[46px] w-full min-w-0 rounded-[9px] border border-[#cfd9e7] bg-white px-3 py-[11px] text-base text-[#07143e]"
+                  class="block min-h-11.5 w-full min-w-0 rounded-[9px] border border-slate-300 bg-white px-3 py-2.75 text-base text-ink"
                 >
                   <option value="">{{ language.t('common.optional') }}</option>
                   @for (id of makes; track id) {
@@ -108,26 +108,24 @@
                 </select>
               </div>
               <div>
-                <label
-                  for="edit-model"
-                  class="mb-[7px] mt-[14px] block text-[13px] font-semibold"
-                  >{{ field('model') }}</label
+                <label for="edit-model" class="mb-1.75 mt-3.5 block text-[13px] font-semibold">{{
+                  field('model')
+                }}</label
                 ><input
                   id="edit-model"
                   formControlName="model"
                   maxlength="120"
-                  class="block min-h-[46px] w-full min-w-0 rounded-[9px] border border-[#cfd9e7] bg-white px-3 py-[11px] text-base text-[#07143e]"
+                  class="block min-h-11.5 w-full min-w-0 rounded-[9px] border border-slate-300 bg-white px-3 py-2.75 text-base text-ink"
                 />
               </div>
               <div>
-                <label
-                  for="edit-class"
-                  class="mb-[7px] mt-[14px] block text-[13px] font-semibold"
-                  >{{ field('class') }}</label
+                <label for="edit-class" class="mb-1.75 mt-3.5 block text-[13px] font-semibold">{{
+                  field('class')
+                }}</label
                 ><select
                   id="edit-class"
                   formControlName="vehicleClass"
-                  class="block min-h-[46px] w-full min-w-0 rounded-[9px] border border-[#cfd9e7] bg-white px-3 py-[11px] text-base text-[#07143e]"
+                  class="block min-h-11.5 w-full min-w-0 rounded-[9px] border border-slate-300 bg-white px-3 py-2.75 text-base text-ink"
                 >
                   <option value="">{{ language.t('common.optional') }}</option>
                   @for (id of classes; track id) {
@@ -187,7 +185,7 @@
             </fieldset>
           </details>
           <fieldset
-            class="mt-[18px] min-w-0 border-0 border-t border-[#e7edf5] pt-[22px]"
+            class="mt-4.5 min-w-0 border-0 border-t border-slate-200 pt-5.5"
             [disabled]="saved.writeState() === 'saving'"
           >
             <legend class="pr-3 text-base font-bold">{{ field('placeTime') }}</legend>
@@ -196,7 +194,7 @@
               idPrefix="inquiry-edit"
               (editingChange)="areasEditing.set($event)"
             />
-            <div class="grid min-w-0 grid-cols-2 gap-x-[18px] gap-y-1 max-[480px]:grid-cols-1">
+            <div class="grid min-w-0 grid-cols-2 gap-x-4.5 gap-y-1 max-[480px]:grid-cols-1">
               <div>
                 <label for="edit-dropoff">{{ field('dropoff') }}</label
                 ><input
@@ -213,7 +211,7 @@
             </div>
           </fieldset>
           @if (request().attachmentIds.length) {
-            <p class="text-sm leading-[1.65] text-[#536d98]">
+            <p class="text-sm leading-[1.65] text-muted">
               {{ text('attachments') }}: {{ request().attachmentIds.length }}.
               {{ text('attachmentsKept') }}
             </p>
@@ -221,7 +219,7 @@
           @if (validation()) {
             <p
               role="alert"
-              class="mt-[18px] rounded-xl border border-[#f1c9cf] bg-[#fff5f6] p-4 text-sm leading-[1.65] text-[#8e2037]"
+              class="mt-4.5 rounded-xl border border-rose-200 bg-brand/5 p-4 text-sm leading-[1.65] text-rose-800"
               data-edit-validation
             >
               {{ validation() }}
@@ -230,7 +228,7 @@
           @if (saved.writeErrorKey(); as errorKey) {
             <p
               role="alert"
-              class="mt-[18px] rounded-xl border border-[#f1c9cf] bg-[#fff5f6] p-4 text-sm leading-[1.65] text-[#8e2037]"
+              class="mt-4.5 rounded-xl border border-rose-200 bg-brand/5 p-4 text-sm leading-[1.65] text-rose-800"
             >
               {{ text(errorKey) }}
             </p>
@@ -238,12 +236,12 @@
           @if (discarding()) {
             <section
               role="alert"
-              class="mt-[18px] rounded-xl border border-[#f1c9cf] bg-[#fff5f6] p-4 text-sm leading-[1.65] text-[#8e2037]"
+              class="mt-4.5 rounded-xl border border-rose-200 bg-brand/5 p-4 text-sm leading-[1.65] text-rose-800"
               aria-labelledby="discard-title"
             >
               <h3 id="discard-title" class="font-bold">{{ text('discardTitle') }}</h3>
               <p>{{ text('discardBody') }}</p>
-              <div class="mt-[18px] flex flex-wrap justify-end gap-[10px]">
+              <div class="mt-4.5 flex flex-wrap justify-end gap-2.5">
                 <button type="button" appButton="outline" size="compact" (click)="keepEditing()">
                   {{ text('keepEditing') }}</button
                 ><button
@@ -260,7 +258,7 @@
           }
         </div>
         <footer
-          class="app-dialog-footer sticky bottom-0 z-2 flex flex-wrap justify-end gap-[10px] border-t border-[#e7edf5] bg-white px-[26px] py-[18px] max-[480px]:p-[18px] max-[480px]:[&_button]:flex-1 max-[480px]:[&_button]:basis-[160px]"
+          class="app-dialog-footer sticky bottom-0 z-2 flex flex-wrap justify-end gap-2.5 border-t border-slate-200 bg-white px-6.5 py-4.5 max-[480px]:p-4.5 max-[480px]:[&_button]:flex-1 max-[480px]:[&_button]:basis-40"
         >
           <button
             type="button"

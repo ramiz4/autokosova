@@ -1,7 +1,6 @@
 import {
   LucideArrowRight,
   LucideBadgeCheck,
-  LucideChevronDown,
   LucideClock,
   LucideEllipsis,
   LucideFileText,
@@ -53,6 +52,7 @@ import type {
 import { LanguageService } from './language.service';
 import { AccountSessionService } from './account-session.service';
 import { SiteHeaderComponent } from './site-header.component';
+import { ButtonDirective } from './ui/button.directive';
 import { LucideIconComponent } from './ui/lucide-icon.component';
 import { MultiSelectComponent, type SelectionOption } from './ui/multi-select.component';
 import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
@@ -101,6 +101,7 @@ function blankForm(): Form {
     RouterLink,
     NgTemplateOutlet,
     SiteHeaderComponent,
+    ButtonDirective,
     LucideIconComponent,
     MultiSelectComponent,
     ConfirmationDialogComponent,
@@ -118,7 +119,6 @@ export class GarageOnboardingComponent {
   readonly confirmation = viewChild.required<ConfirmationDialogComponent>('confirmation');
   readonly ArrowRightIcon: LucideIcon = LucideArrowRight;
   readonly BadgeCheckIcon: LucideIcon = LucideBadgeCheck;
-  readonly ChevronDownIcon: LucideIcon = LucideChevronDown;
   readonly ClockIcon: LucideIcon = LucideClock;
   readonly EllipsisIcon: LucideIcon = LucideEllipsis;
   readonly FileTextIcon: LucideIcon = LucideFileText;
@@ -172,9 +172,6 @@ export class GarageOnboardingComponent {
   protected statusKnown = true;
   protected savedSnapshot = JSON.stringify(this.form);
   protected owned: OwnedGarage[] = [];
-  protected overviewSearch = '';
-  protected overviewState: GaragePublicationState | 'all' = 'all';
-  protected overviewSort: 'updated' | 'name' = 'updated';
   protected ownedLoadFailed = false;
   protected ownedLoading = false;
   protected ownedLoaded = false;
@@ -199,41 +196,6 @@ export class GarageOnboardingComponent {
         !this.account.busy())
     );
   }
-  protected get filteredOwned(): OwnedGarage[] {
-    const query = this.overviewSearch.trim().toLocaleLowerCase();
-    return this.owned
-      .filter((garage) => {
-        const matchesState =
-          this.overviewState === 'all' || garage.publicationState === this.overviewState;
-        const matchesQuery =
-          !query ||
-          [garage.name, this.placeLabel(garage.placeId), ...this.serviceLabels(garage)]
-            .join(' ')
-            .toLocaleLowerCase()
-            .includes(query);
-        return matchesState && matchesQuery;
-      })
-      .sort((left, right) => {
-        if (this.overviewSort === 'name')
-          return (
-            left.name.localeCompare(right.name, this.language.language) ||
-            left.id.localeCompare(right.id)
-          );
-        const leftTime = left.updatedAt ? Date.parse(left.updatedAt) : Number.NEGATIVE_INFINITY;
-        const rightTime = right.updatedAt ? Date.parse(right.updatedAt) : Number.NEGATIVE_INFINITY;
-        return (
-          rightTime - leftTime ||
-          left.name.localeCompare(right.name, this.language.language) ||
-          left.id.localeCompare(right.id)
-        );
-      });
-  }
-  protected get publishedCount(): number {
-    return this.owned.filter((garage) => garage.publicationState === 'published').length;
-  }
-  protected get draftCount(): number {
-    return this.owned.filter((garage) => garage.publicationState === 'draft').length;
-  }
   protected placeLabel(placeId: string): string {
     return CATALOG_PLACES.find((place) => place.id === placeId)?.label ?? placeId;
   }
@@ -252,9 +214,6 @@ export class GarageOnboardingComponent {
       this.language.language === 'sq' ? 'sq' : this.language.language === 'en' ? 'en-GB' : 'de-CH',
       { day: '2-digit', month: 'short', year: 'numeric' },
     ).format(new Date(value));
-  }
-  protected cardDescription(garage: OwnedGarage): string {
-    return garage.description?.trim() || this.management.descriptionUnavailable;
   }
   private captureContext() {
     const userId = this.account.identity()?.userId;

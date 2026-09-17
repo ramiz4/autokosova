@@ -11,8 +11,7 @@
   gap: 0.75rem;
   margin-bottom: 1.25rem;
 }
-.review-search,
-.review-select {
+.review-search {
   display: flex;
   min-height: 48px;
   align-items: center;
@@ -24,8 +23,7 @@
   color: #315680;
   box-shadow: 0 2px 7px rgb(18 52 86 / 3%);
 }
-.review-search input,
-.review-select select {
+.review-search input {
   min-width: 0;
   flex: 1;
   border: 0;
@@ -34,12 +32,7 @@
   outline: 0;
   font-size: 0.9375rem;
 }
-.review-select select {
-  appearance: none;
-  cursor: pointer;
-}
-.review-search:focus-within,
-.review-select:focus-within {
+.review-search:focus-within {
   outline: 3px solid #bfdbfe;
   outline-offset: 2px;
 }
@@ -80,6 +73,7 @@
   font-size: 0.9375rem;
   line-height: 1.45;
   -webkit-box-orient: vertical;
+  line-clamp: 3;
   -webkit-line-clamp: 3;
 }
 .review-chip {

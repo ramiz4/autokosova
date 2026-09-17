@@ -44,58 +44,58 @@ import { LucideIconComponent } from './ui/lucide-icon.component';
       [state]="dialogState()"
       (closed)="onDialogClosed()"
     >
-      <brn-alert-dialog-overlay class="bg-[#07143e85]" />
+      <brn-alert-dialog-overlay class="bg-back/80" />
       <ng-template brnAlertDialogContent>
         <section
           data-delete-dialog
           (keydown.escape)="cancel($event)"
-          class="app-dialog-panel m-auto max-h-[calc(100dvh-24px)] w-[min(760px,calc(100vw-24px))] rounded-[20px] border border-[#dbe5f2] bg-white p-0 text-[#07143e] shadow-[0_24px_100px_#07143e35]"
+          class="app-dialog-panel m-auto max-h-[calc(100dvh-24px)] w-[min(760px,calc(100vw-24px))] rounded-[20px] border border-slate-200 bg-white p-0 text-ink shadow-2xl shadow-ink/20"
         >
           <header
-            class="app-dialog-header flex items-center justify-between gap-4 border-b border-[#e7edf5] bg-white px-[26px] py-[22px] max-[480px]:p-[18px]"
+            class="app-dialog-header flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6.5 py-5.5 max-[480px]:p-4.5"
           >
             <div>
-              <p class="mb-[6px] text-[11px] font-bold uppercase tracking-[.12em] text-[#536d98]">
+              <p class="mb-1.5 text-[11px] font-bold uppercase tracking-[.12em] text-muted">
                 {{ language.serviceLabel(request().serviceCategoryId) }}
               </p>
               <h2
                 brnAlertDialogTitle
-                class="text-2xl font-bold tracking-[-.025em] max-[480px]:text-[21px]"
+                class="text-2xl font-bold tracking-tight max-[480px]:text-[21px]"
               >
                 {{ text('deleteTitle') }}
               </h2>
             </div>
-            <lucide-icon [name]="TrashIcon" class="size-6 text-[#bb2445]" />
+            <lucide-icon [name]="TrashIcon" class="size-6 text-rose-700" />
           </header>
-          <div class="app-dialog-body overflow-wrap-anywhere px-[26px] py-6 max-[480px]:p-[18px]">
+          <div class="app-dialog-body overflow-wrap-anywhere px-6.5 py-6 max-[480px]:p-4.5">
             <div class="mb-4" data-delete-summary>
               <p>{{ vehicleLabel() }}</p>
               @if (request().symptomPreview) {
                 <p>{{ request().symptomPreview }}</p>
               }
-              <p class="text-sm leading-[1.65] text-[#536d98]">
+              <p class="text-sm leading-[1.65] text-muted">
                 {{ text('savedOn') }}
                 <time [attr.datetime]="request().createdAt">{{ createdAt() }}</time>
               </p>
             </div>
-            <p brnAlertDialogDescription class="text-sm leading-[1.65] text-[#536d98]">
+            <p brnAlertDialogDescription class="text-sm leading-[1.65] text-muted">
               {{ text('deleteBody') }}
             </p>
-            <p class="mt-4 text-sm leading-[1.65] text-[#536d98]">
+            <p class="mt-4 text-sm leading-[1.65] text-muted">
               {{ text('deactivateInstead') }}
             </p>
-            <p class="mt-4 text-sm leading-[1.65] text-[#536d98]">{{ text('fileRetention') }}</p>
+            <p class="mt-4 text-sm leading-[1.65] text-muted">{{ text('fileRetention') }}</p>
             @if (saved.writeErrorKey(); as errorKey) {
               <p
                 role="alert"
-                class="mt-[18px] rounded-xl border border-[#f1c9cf] bg-[#fff5f6] p-4 text-sm leading-[1.65] text-[#8e2037]"
+                class="mt-4.5 rounded-xl border border-rose-200 bg-brand/5 p-4 text-sm leading-[1.65] text-rose-800"
               >
                 {{ text(errorKey) }}
               </p>
             }
           </div>
           <footer
-            class="app-dialog-footer dialog-footer flex flex-wrap justify-end gap-[10px] border-t border-[#e7edf5] bg-white px-[26px] py-[18px] max-[480px]:p-[18px]"
+            class="app-dialog-footer dialog-footer flex flex-wrap justify-end gap-2.5 border-t border-slate-200 bg-white px-6.5 py-4.5 max-[480px]:p-4.5"
           >
             <button
               type="button"
@@ -113,7 +113,7 @@ import { LucideIconComponent } from './ui/lucide-icon.component';
               appButton
               size="compact"
               data-confirm-delete
-              class="border-[#bb2445] bg-[#bb2445] hover:bg-[#921a35] max-[480px]:flex-[1_1_160px]"
+              class="border-rose-700 bg-rose-700 hover:bg-rose-800 max-[480px]:flex-[1_1_160px]"
               [disabled]="saved.writeState() === 'saving'"
               (click)="remove()"
             >

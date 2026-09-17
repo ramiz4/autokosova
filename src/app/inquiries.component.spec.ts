@@ -498,6 +498,21 @@ it('preserves the editor and unsaved text across real session revalidation', asy
   expect(input.value).toBe('Ungespeicherte fiktive Bearbeitung');
 });
 
+it('shows activation changes as dismissible toasts instead of an inline notice', async () => {
+  const { page, fixture, service } = await render();
+  for (const notice of ['deactivated', 'reactivated'] as const) {
+    service.notice.set(notice);
+    await fixture.whenStable();
+    expect(page.querySelector('[data-inquiry-toast]')?.textContent).toContain(
+      inquiriesCopy.de[notice],
+    );
+    expect(page.querySelector('[data-inquiry-notice]')).toBeNull();
+    page.querySelector<HTMLButtonElement>('[data-inquiry-toast] button')!.click();
+    await fixture.whenStable();
+    expect(page.querySelector('[data-inquiry-toast]')).toBeNull();
+  }
+});
+
 it.each(['de', 'sq', 'en'] as const)(
   'keeps cards and details stable through both status directions in %s',
   async (locale) => {
@@ -593,9 +608,6 @@ it.each(['de', 'sq', 'en'] as const)(
         expect(search.disabled).toBe(true);
         expect(search.textContent?.trim()).toBe(copy.findShort);
         expect(footer.querySelector('[data-inquiry-search]')).toBeNull();
-        const help = footer.querySelector('[data-inquiry-search-help]')!;
-        expect(help.textContent?.trim()).toBe(copy.activateToSearch);
-        expect(search.getAttribute('aria-describedby')).toBe(help.id);
       }
       const trigger = card.querySelector<HTMLButtonElement>('[data-inquiry-menu]')!;
       expect(trigger.getAttribute('aria-haspopup')).toBe('menu');

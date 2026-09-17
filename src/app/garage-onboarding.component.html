@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-[#f2f7fc] text-ink">
+<div class="min-h-screen bg-brand/5 font-sans text-ink">
   <app-confirmation-dialog #confirmation />
   @if (!supportMode) {
     <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
@@ -13,7 +13,7 @@
   @if (workspaceVisible) {
     @if (!managing && !supportMode) {
       <header
-        class="relative isolate min-h-[272px] overflow-hidden px-5 pt-8 pb-20 sm:px-10 lg:h-[272px] lg:px-16"
+        class="relative isolate min-h-68 overflow-hidden px-5 pt-8 pb-20 sm:px-10 lg:h-68 lg:px-16"
         aria-labelledby="onboarding-hero-title"
       >
         <img
@@ -25,9 +25,9 @@
           class="absolute inset-0 -z-20 h-full w-full object-cover object-[75%_54%]"
         />
         <div
-          class="absolute inset-0 -z-10 bg-gradient-to-r from-slate-950/80 via-slate-950/55 to-transparent"
+          class="absolute inset-0 -z-10 bg-linear-to-r from-slate-950/80 via-slate-950/55 to-transparent"
         ></div>
-        <div class="mx-auto max-w-[1360px]">
+        <div class="mx-auto max-w-340">
           <h1
             id="onboarding-hero-title"
             class="max-w-xl text-4xl leading-[1.08] font-bold whitespace-pre-line tracking-tight text-white sm:text-[44px]"
@@ -43,15 +43,17 @@
     <div
       [class]="
         managing && editing
-          ? 'relative mx-auto grid max-w-[1240px] gap-5 px-4 py-7 sm:px-8 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:py-10'
-          : managing || supportMode
-            ? 'relative mx-auto grid max-w-[1200px] gap-4 px-4 py-8 sm:px-8'
-            : 'relative mx-auto -mt-10 grid max-w-[1360px] gap-4 px-4 pb-16 lg:grid-cols-[minmax(0,2.15fr)_minmax(290px,1fr)] lg:px-5'
+          ? 'relative mx-auto grid max-w-310 gap-5 px-4 py-7 sm:px-8 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:py-10'
+          : managing
+            ? 'relative mx-auto w-full max-w-340 px-4 pt-6 pb-14 sm:px-6 max-[480px]:pt-4 max-[480px]:pb-8'
+            : supportMode
+              ? 'relative mx-auto grid max-w-300 gap-4 px-4 py-8 sm:px-8'
+              : 'relative mx-auto -mt-10 grid max-w-340 gap-4 px-4 pb-16 lg:grid-cols-[minmax(0,2.15fr)_minmax(290px,1fr)] lg:px-5'
       "
     >
       <section
         [class]="
-          managing && editing
+          managing
             ? 'relative min-w-0'
             : 'min-w-0 rounded-2xl border border-white/85 bg-white/87 p-5 shadow-xl shadow-blue-900/5 backdrop-blur-sm sm:px-8 sm:py-6 lg:px-10'
         "
@@ -68,36 +70,36 @@
             <lucide-icon [name]="ArrowRightIcon" class="size-4 rotate-180" />{{ management.back }}
           </button>
         }
-        <h2
-          #workspaceTitle
-          [attr.aria-level]="managing ? 1 : null"
-          tabindex="-1"
-          id="form-title"
-          class="text-3xl font-bold tracking-tight sm:text-[34px]"
-        >
-          {{
-            garageId
-              ? management.editTitle + ': ' + form.name
-              : managing
-                ? editing
+        @if (!(managing && !editing)) {
+          <h2
+            #workspaceTitle
+            [attr.aria-level]="managing ? 1 : null"
+            tabindex="-1"
+            id="form-title"
+            class="text-3xl font-bold tracking-tight sm:text-[34px]"
+          >
+            {{
+              garageId
+                ? management.editTitle + ': ' + form.name
+                : managing
                   ? management.create
-                  : management.title
-                : copy.title
-          }}
-        </h2>
-        <p [class]="managing && editing ? 'editor-intro' : 'mt-1 text-muted'">
-          {{
-            garageId || accountType(account.identity()) === 'garage'
-              ? managing && editing
-                ? management.editorIntro
-                : management.intro
-              : copy.intro
-          }}
-        </p>
+                  : copy.title
+            }}
+          </h2>
+          <p [class]="managing && editing ? 'editor-intro' : 'mt-1 text-muted'">
+            {{
+              garageId || accountType(account.identity()) === 'garage'
+                ? managing && editing
+                  ? management.editorIntro
+                  : management.intro
+                : copy.intro
+            }}
+          </p>
+        }
         @if (managing && editing && garageId) {
           <img
             class="editor-illustration"
-            src="/images/garage-management/editor-garage-illustration.svg"
+            src="/images/garage-management/editor-garage-illustration.png"
             alt=""
             width="560"
             height="260"
@@ -121,51 +123,30 @@
             data-garages-overview
             [attr.aria-busy]="ownedLoading || loading"
           >
-            <header class="garage-management-hero">
-              <div class="garage-management-copy">
-                <h1 #workspaceTitle tabindex="-1" id="workspace-title">{{ management.title }}</h1>
-                <p>{{ management.intro }}</p>
-                <div class="garage-metrics" aria-label="{{ management.title }}">
-                  <article>
-                    <span class="metric-icon"
-                      ><lucide-icon [name]="ShieldCheckIcon" class="size-6"
-                    /></span>
-                    <strong>{{ owned.length }}</strong
-                    ><span>{{ management.title }}</span>
-                  </article>
-                  <article>
-                    <span class="metric-icon metric-icon-success"
-                      ><lucide-icon [name]="BadgeCheckIcon" class="size-6"
-                    /></span>
-                    <strong>{{ publishedCount }}</strong
-                    ><span>{{ copy.statePublished }}</span>
-                  </article>
-                  <article>
-                    <span class="metric-icon"
-                      ><lucide-icon [name]="FileTextIcon" class="size-6"
-                    /></span>
-                    <strong>{{ draftCount }}</strong
-                    ><span>{{ copy.stateDraft }}</span>
-                  </article>
-                </div>
-              </div>
-              <div class="garage-management-art">
-                <img
-                  src="/images/garage-management/garage-management-hero.png"
-                  alt=""
-                  width="1536"
-                  height="1024"
-                />
-                <button
-                  data-new-garage
-                  type="button"
-                  class="new-garage"
-                  [disabled]="sending || loading"
-                  (click)="reset()"
+            <header class="garage-management-heading my-8">
+              <div class="min-w-0">
+                <h1
+                  #workspaceTitle
+                  tabindex="-1"
+                  id="workspace-title"
+                  class="text-[clamp(28px,4vw,36px)] font-bold leading-[1.2] tracking-[-.035em]"
                 >
-                  <lucide-icon [name]="PlusIcon" class="size-5" />{{ management.create }}
-                </button>
+                  {{ management.title }}
+                </h1>
+                <p class="page-subtitle mt-3 text-[15px] leading-relaxed text-muted">
+                  {{ management.intro }}
+                </p>
               </div>
+              <button
+                appButton
+                data-new-garage
+                type="button"
+                class="max-[480px]:w-full"
+                [disabled]="sending || loading"
+                (click)="reset()"
+              >
+                <lucide-icon [name]="PlusIcon" class="size-5" />{{ management.create }}
+              </button>
             </header>
             @if (ownedLoading || !ownedLoaded) {
               <div class="garage-state" role="status" data-garages-loading>
@@ -182,45 +163,11 @@
                 {{ management.retry }}
               </button>
             } @else {
-              <div class="garage-toolbar">
-                <label class="garage-search"
-                  ><lucide-icon [name]="SearchIcon" class="size-5" /><span class="sr-only">{{
-                    management.search
-                  }}</span>
-                  <input
-                    type="search"
-                    [(ngModel)]="overviewSearch"
-                    [placeholder]="management.search"
-                  />
-                </label>
-                <div class="garage-toolbar-selects">
-                  <label
-                    ><span class="sr-only">{{ management.allStates }}</span
-                    ><select [(ngModel)]="overviewState">
-                      <option value="all">{{ management.allStates }}</option>
-                      <option value="draft">{{ copy.stateDraft }}</option>
-                      <option value="pending_review">{{ copy.statePending }}</option>
-                      <option value="published">{{ copy.statePublished }}</option>
-                      <option value="rejected">{{ copy.stateRejected }}</option>
-                      <option value="suspended">{{ copy.stateSuspended }}</option></select
-                    ><lucide-icon [name]="ChevronDownIcon" class="size-4"
-                  /></label>
-                  <label
-                    ><span class="sr-only">{{ management.sortUpdated }}</span
-                    ><select [(ngModel)]="overviewSort">
-                      <option value="updated">{{ management.sortUpdated }}</option>
-                      <option value="name">{{ management.sortName }}</option></select
-                    ><lucide-icon [name]="ChevronDownIcon" class="size-4"
-                  /></label>
-                </div>
-              </div>
               @if (!owned.length) {
                 <div data-garages-empty class="garage-state">{{ management.empty }}</div>
-              } @else if (!filteredOwned.length) {
-                <div data-garages-no-results class="garage-state">{{ management.noResults }}</div>
               } @else {
                 <ul class="garage-list">
-                  @for (garage of filteredOwned; track garage.id) {
+                  @for (garage of owned; track garage.id) {
                     <li class="garage-card" [attr.data-garage-card]="garage.id">
                       <div class="garage-thumbnail" aria-hidden="true">
                         <lucide-icon [name]="ShieldCheckIcon" class="size-9" />
@@ -238,7 +185,6 @@
                             placeLabel(garage.placeId)
                           }}
                         </p>
-                        <p class="garage-description">{{ cardDescription(garage) }}</p>
                         <ul class="garage-chips" [attr.aria-label]="management.title">
                           @for (service of visibleServices(garage); track service) {
                             <li>{{ service }}</li>
@@ -260,10 +206,9 @@
                           >
                         </p>
                         <p>
-                          <lucide-icon [name]="GlobeIcon" class="size-5" /><span
-                            >{{ management.publicProfile
-                            }}<strong>{{ stateHelpFor(garage.publicationState) }}</strong></span
-                          >
+                          <lucide-icon [name]="GlobeIcon" class="size-5" /><span>{{
+                            management.publicProfile
+                          }}</span>
                         </p>
                       </div>
                       <div class="garage-actions">
@@ -339,13 +284,6 @@
                     </li>
                   }
                 </ul>
-                <p class="garage-results">
-                  {{
-                    management.results
-                      .replace('{visible}', '' + filteredOwned.length)
-                      .replace('{total}', '' + owned.length)
-                  }}
-                </p>
               }
             }
           </section>
@@ -890,6 +828,5 @@
       class="inline-flex rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-brand-dark"
       >{{ stateLabelFor(state) }}</span
     >
-    <p class="mt-2 text-sm leading-relaxed text-muted">{{ stateHelpFor(state) }}</p>
   </div>
 </ng-template>

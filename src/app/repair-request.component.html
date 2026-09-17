@@ -1,9 +1,9 @@
-<div class="min-h-screen bg-[#f2f7fc] text-ink">
+<div class="min-h-screen bg-brand/5 text-ink">
   <div class="site-navbar-surface sticky top-0 z-50 px-3 lg:px-8">
     <app-site-header [compact]="true" active="request" [loginReturnTo]="language.link('request')" />
   </div>
   <header
-    class="relative isolate min-h-[272px] overflow-hidden px-5 pt-8 pb-20 sm:px-10 lg:h-[272px] lg:px-16"
+    class="relative isolate min-h-68 overflow-hidden px-5 pt-8 pb-20 sm:px-10 lg:h-68 lg:px-16"
   >
     <img
       src="/images/home/hero-mountain-road-1672.webp"
@@ -14,9 +14,9 @@
       class="absolute inset-0 -z-20 h-full w-full object-cover object-[75%_54%]"
     />
     <div
-      class="absolute inset-0 -z-10 bg-gradient-to-r from-slate-950/80 via-slate-950/55 to-transparent"
+      class="absolute inset-0 -z-10 bg-linear-to-r from-slate-950/80 via-slate-950/55 to-transparent"
     ></div>
-    <div class="mx-auto max-w-[1360px]">
+    <div class="mx-auto max-w-340">
       <h1
         id="request-title"
         class="max-w-xl text-4xl leading-[1.08] font-bold whitespace-pre-line tracking-tight text-white sm:text-[44px]"
@@ -28,7 +28,7 @@
   </header>
   <main
     aria-labelledby="request-title"
-    class="relative mx-auto -mt-10 grid max-w-[1360px] gap-4 px-4 pb-5 lg:grid-cols-[minmax(0,2.15fr)_minmax(290px,1fr)] lg:px-5"
+    class="relative mx-auto -mt-10 grid max-w-340 gap-4 px-4 pb-5 lg:grid-cols-[minmax(0,2.15fr)_minmax(290px,1fr)] lg:px-5"
   >
     <form
       [formGroup]="form"
@@ -41,7 +41,7 @@
         {{ text('title') }}
       </h2>
       <p class="mt-1 text-muted">{{ text('subtitle') }}</p>
-      <div class="my-4 rounded-xl bg-[#f5f9fe] p-3 sm:px-4">
+      <div class="my-4 rounded-xl bg-brand/5 p-3 sm:px-4">
         <ol
           class="grid grid-cols-5 gap-2 text-xs sm:gap-3 sm:text-sm"
           [attr.aria-label]="text('steps')"
@@ -276,7 +276,7 @@
           <dl class="mt-5 grid gap-4 rounded-xl bg-blue-50 p-4 text-sm leading-6">
             <div>
               <dt class="font-bold">{{ text('vehicle') }}</dt>
-              <dd class="break-words">{{ vehicleSummary() }}</dd>
+              <dd class="wrap-break-word">{{ vehicleSummary() }}</dd>
             </div>
             <div>
               <dt class="font-bold">{{ text('service') }}</dt>
@@ -285,7 +285,7 @@
             @if (form.controls.symptom.value) {
               <div>
                 <dt class="font-bold">{{ text('symptom') }}</dt>
-                <dd class="whitespace-pre-wrap break-words">{{ form.controls.symptom.value }}</dd>
+                <dd class="whitespace-pre-wrap wrap-break-word">{{ form.controls.symptom.value }}</dd>
               </div>
             }
             <div>
@@ -419,7 +419,7 @@
     </aside>
   </main>
   <div class="bg-white px-6 py-5">
-    <div class="mx-auto grid max-w-[1360px] gap-5 text-sm sm:grid-cols-3">
+    <div class="mx-auto grid max-w-340 gap-5 text-sm sm:grid-cols-3">
       @for (item of footerBenefits; track $index) {
         <p class="flex items-center gap-5 sm:justify-center">
           <lucide-icon [name]="item[0]" class="size-9" />{{ text(item[1]) }}

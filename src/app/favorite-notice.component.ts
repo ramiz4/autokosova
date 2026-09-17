@@ -17,7 +17,7 @@ import { LucideIconComponent } from './ui/lucide-icon.component';
   template: `
     @if (favorites.message(); as message) {
       <div
-        class="pointer-events-none fixed right-0 bottom-[max(1rem,env(safe-area-inset-bottom))] left-0 z-[70] mx-auto flex w-[calc(100%_-_2rem)] max-w-xl justify-center"
+        class="pointer-events-none fixed right-0 bottom-[max(1rem,env(safe-area-inset-bottom))] left-0 z-70 mx-auto flex w-[calc(100%_-_2rem)] max-w-xl justify-center"
       >
         <div
           [attr.role]="message === 'error' ? 'alert' : 'status'"
@@ -29,7 +29,7 @@ import { LucideIconComponent } from './ui/lucide-icon.component';
           >
             <lucide-icon
               [name]="noticeIcon()"
-              class="size-[18px]"
+              class="size-4.5"
               [style.--lucide-fill]="message === 'saved' ? 'currentColor' : 'none'"
             />
           </span>
@@ -51,7 +51,7 @@ import { LucideIconComponent } from './ui/lucide-icon.component';
             [attr.aria-label]="language.t('favorites.dismiss')"
             (click)="favorites.dismiss()"
           >
-            <lucide-icon [name]="XIcon" class="size-[18px]" />
+            <lucide-icon [name]="XIcon" class="size-4.5" />
           </button>
         </div>
       </div>

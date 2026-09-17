@@ -3,7 +3,6 @@ import {
   LucideCar,
   LucideCheck,
   LucideChevronDown,
-  LucideChevronRight,
   LucideClock,
   LucideEllipsis,
   LucideFileText,
@@ -15,8 +14,8 @@ import {
   LucidePlus,
   LucideShieldCheck,
   LucideTrash2,
-  LucideUser,
   LucideWrench,
+  LucideX,
   type LucideIcon,
 } from '@lucide/angular';
 import { DOCUMENT } from '@angular/common';
@@ -52,6 +51,8 @@ import { InquiryDeleteDialogComponent } from './inquiry-delete-dialog.component'
 import { LucideIconComponent } from './ui/lucide-icon.component';
 import { ButtonDirective } from './ui/button.directive';
 
+type InquiryToast = 'updated' | 'deactivated' | 'reactivated' | 'deleted';
+
 @Component({
   selector: 'app-inquiries',
   imports: [
@@ -65,7 +66,6 @@ import { ButtonDirective } from './ui/button.directive';
     CdkMenuItem,
     CdkMenuTrigger,
   ],
-  styleUrl: './inquiries.component.scss',
   providers: [SavedRepairRequestsService],
   templateUrl: './inquiries.component.html',
 })
@@ -74,7 +74,6 @@ export class InquiriesComponent {
   readonly CarIcon: LucideIcon = LucideCar;
   readonly CheckIcon: LucideIcon = LucideCheck;
   readonly ChevronDownIcon: LucideIcon = LucideChevronDown;
-  readonly ChevronRightIcon: LucideIcon = LucideChevronRight;
   readonly ClockIcon: LucideIcon = LucideClock;
   readonly EllipsisIcon: LucideIcon = LucideEllipsis;
   readonly FileTextIcon: LucideIcon = LucideFileText;
@@ -86,8 +85,8 @@ export class InquiriesComponent {
   readonly PlusIcon: LucideIcon = LucidePlus;
   readonly ShieldCheckIcon: LucideIcon = LucideShieldCheck;
   readonly TrashIcon: LucideIcon = LucideTrash2;
-  readonly UserIcon: LucideIcon = LucideUser;
   readonly WrenchIcon: LucideIcon = LucideWrench;
+  readonly XIcon: LucideIcon = LucideX;
 
   protected readonly account = inject(AccountSessionService);
   protected readonly language = inject(LanguageService);
@@ -112,11 +111,13 @@ export class InquiriesComponent {
   ] satisfies CdkMenuTrigger['menuPosition'];
   protected readonly editingId = signal<string | null>(null);
   protected readonly deleting = signal<RepairRequestSummary | null>(null);
+  protected readonly toast = signal<InquiryToast | null>(null);
   private readonly editor = viewChild(InquiryEditorComponent);
   private readonly actionMenus = viewChildren(CdkMenuTrigger);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
+  private toastTimer?: ReturnType<typeof setTimeout>;
 
   constructor() {
     effect(() => {
@@ -128,16 +129,32 @@ export class InquiriesComponent {
       });
     });
     effect(() => this.language.setPageText(this.text('title'), this.text('description'), true));
+    effect(() => {
+      const notice = this.saved.notice();
+      untracked(() => this.showToast(notice));
+    });
     // Browser-only session validation; no private data is fetched into SSR/TransferState.
     afterNextRender(() => {
       void this.account.refresh();
     });
+    this.destroyRef.onDestroy(() => clearTimeout(this.toastTimer));
+  }
+  protected dismissToast(): void {
+    clearTimeout(this.toastTimer);
+    this.toastTimer = undefined;
+    this.toast.set(null);
   }
 
   canLeave(): boolean | Promise<boolean> {
     return this.account.state() !== 'ready' || this.account.busy()
       ? true
       : (this.editor()?.canLeave() ?? true);
+  }
+  private showToast(notice: InquiryToast | null): void {
+    clearTimeout(this.toastTimer);
+    this.toastTimer = undefined;
+    this.toast.set(notice);
+    if (notice) this.toastTimer = setTimeout(() => this.dismissToast(), 5000);
   }
   protected async edit(request: RepairRequestSummary, menu: CdkMenuTrigger): Promise<void> {
     if (this.saved.writeState() === 'saving') return;

@@ -72,7 +72,7 @@ import { BrnOverlay, BrnOverlayClose, BrnOverlayContent } from '@spartan-ng/brai
         <button type="button" brnDialogTrigger data-foundation-dialog-trigger>
           Open dialog fixture
         </button>
-        <brn-dialog-overlay class="bg-[#07143e85]"></brn-dialog-overlay>
+        <brn-dialog-overlay class="bg-black/80"></brn-dialog-overlay>
         <ng-template brnDialogContent>
           <section class="foundation-pilot-panel p-6" data-foundation-dialog-panel>
             <h2 brnDialogTitle>Dialog fixture</h2>

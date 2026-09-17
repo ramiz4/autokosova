@@ -230,9 +230,7 @@ it('uses the server-confirmed publication state after submission instead of gues
   expect(component['publicationState']).toBe('published');
   expect(component['statusKnown']).toBe(true);
   expect(page.querySelector('[data-garage-status]')?.getAttribute('data-state')).toBe('published');
-  expect(page.querySelector('[data-garage-status]')?.textContent).toContain(
-    'In der öffentlichen Suche sichtbar.',
-  );
+  expect(page.querySelector('[data-garage-status]')?.textContent).toContain('Veröffentlicht');
   expect(
     page
       .querySelector('[data-garage-status]')!
@@ -249,9 +247,7 @@ it('does not announce a successful transition when submission fails', async () =
   fixture.detectChanges();
   expect(component['publicationState']).toBe('draft');
   expect(component['message']).toBe(component['copy'].error);
-  expect(page.querySelector('[data-garage-status]')?.textContent).toContain(
-    'Noch nicht öffentlich sichtbar.',
-  );
+  expect(page.querySelector('[data-garage-status]')?.textContent).toContain('Privater Entwurf');
   expect(fetch).toHaveBeenCalledTimes(1);
 });
 
