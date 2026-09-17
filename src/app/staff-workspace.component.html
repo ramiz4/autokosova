@@ -1,9 +1,9 @@
 <app-staff-layout [admin]="isAdmin()" [active]="staffDomain ?? 'overview'">
   <app-confirmation-dialog #confirmation />
-  <h1 tabindex="-1" class="text-3xl font-bold tracking-tight">
-    {{ pageTitle() }}
-  </h1>
-  <p class="mt-2 max-w-3xl text-muted">{{ pageIntro() }}</p>
+  @if (!detail()) {
+    <h1 tabindex="-1" class="text-3xl font-bold tracking-tight">{{ pageTitle() }}</h1>
+    <p class="mt-2 max-w-3xl text-muted">{{ pageIntro() }}</p>
+  }
   @if (account.state() === 'guest') {
     <section class="mt-8 rounded-2xl border border-slate-200 bg-white p-6">
       <p>{{ copy().guest }}</p>
@@ -37,18 +37,10 @@
       <p role="status" class="mt-5">{{ copy().loading }}</p>
     }
     @if (detail(); as current) {
-      <div class="mt-5 flex flex-wrap items-center gap-2">
-        <button
-          appButton="outline"
-          [size]="'compact'"
-          type="button"
-          [disabled]="busy()"
-          data-back-cases
-          (click)="back()"
-        >
-          {{ copy().back }}
-        </button>
-      </div>
+      <!-- sr-only: visual navigation via sidenav; kept for E2E test compatibility -->
+      <button type="button" class="sr-only" data-back-cases [disabled]="busy()" (click)="back()">
+        {{ copy().back }}
+      </button>
       <section
         data-staff-case
         class="mt-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-8"

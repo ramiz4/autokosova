@@ -37,6 +37,7 @@ it('uses one native mobile section select and keeps admin work grouped', async (
     'garages',
     'users',
     'privacy',
+    'policy',
     'audit',
     'catalog',
   ]);

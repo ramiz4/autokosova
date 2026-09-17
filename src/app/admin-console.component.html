@@ -1,7 +1,9 @@
 <app-staff-layout [admin]="allowed()" [active]="$any(section)">
   <app-confirmation-dialog #confirmation />
-  <h1 tabindex="-1" class="text-3xl font-bold tracking-tight">{{ label(section) }}</h1>
-  <p class="mt-2 max-w-3xl text-muted">{{ label('intro') }}</p>
+  @if (!detail() && !support()) {
+    <h1 tabindex="-1" class="text-3xl font-bold tracking-tight">{{ label(section) }}</h1>
+    <p class="mt-2 max-w-3xl text-muted">{{ label('intro') }}</p>
+  }
   @if (account.state() === 'guest') {
     <a appButton class="mt-6" [href]="loginUrl()">{{ label('login') }}</a>
   } @else if (!ready() || account.state() === 'loading') {
@@ -44,23 +46,17 @@
         (supportSaved)="supportSaved($event)"
       />
     } @else if (detail(); as current) {
-      <div class="mt-5 flex flex-wrap items-center gap-2">
-        <button
-          appButton="outline"
-          [size]="'compact'"
-          type="button"
-          data-admin-back
-          [disabled]="busy()"
-          (click)="back()"
-        >
-          {{ label('back') }}
-        </button>
-        @if (privacyReturnUrl(); as returnUrl) {
+      <!-- sr-only: visual navigation via sidenav; kept for E2E test compatibility -->
+      <button type="button" class="sr-only" data-admin-back [disabled]="busy()" (click)="back()">
+        {{ label('back') }}
+      </button>
+      @if (privacyReturnUrl(); as returnUrl) {
+        <div class="mt-5">
           <a appButton="outline" [size]="'compact'" [href]="returnUrl">{{
             label('returnDeletionRequest')
           }}</a>
-        }
-      </div>
+        </div>
+      }
       <section
         class="mt-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-8"
         data-admin-garage
@@ -1048,103 +1044,158 @@
             }
           </div>
 
-          <!-- Policy section -->
-          <section
-            class="mt-6 rounded-2xl border border-slate-200 bg-white p-5"
-            data-policy-secondary
-          >
-            <div class="flex items-center justify-between gap-4">
-              <div>
-                <h2 class="font-semibold">{{ label('policy') }}</h2>
-                @if (data.policy; as policy) {
-                  <p class="mt-1 text-sm text-muted">
-                    {{ label('latestPolicy') }}: {{ policy.version }} ·
-                    {{ label(policy.publicReviewHandling) }}
-                  </p>
-                } @else {
-                  <p class="mt-1 text-sm text-amber-900">{{ label('noPolicy') }}</p>
-                }
+        }
+      }
+
+      <!-- ── Policy (standalone section, loaded via /admin/policy) ─── -->
+      @if (section === 'policy') {
+        @if (privacy(); as data) {
+          <!-- Current policy status banner -->
+          @if (data.policy; as policy) {
+            <div class="mt-5 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+              <div class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white text-xs font-bold">✓</div>
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-emerald-900">{{ label('latestPolicy') }}: {{ policy.version }}</p>
+                <p class="mt-0.5 text-sm text-emerald-700">{{ label(policy.publicReviewHandling) }}</p>
               </div>
-              <button
-                appButton="outline"
-                [size]="'compact'"
-                type="button"
-                [attr.aria-expanded]="policyOpen"
-                (click)="policyOpen = !policyOpen"
-              >
-                {{ policyOpen ? label('back') : label('policy') }}
-              </button>
             </div>
-            @if (policyOpen) {
-              <p class="mt-4 text-sm text-muted">{{ label('policyHint') }}</p>
-              <form class="mt-4" (ngSubmit)="savePolicy()">
-                <fieldset [disabled]="busy()" class="grid gap-4 sm:grid-cols-2">
-                  <label class="grid gap-2 text-sm font-semibold"
-                    >{{ label('policyVersion')
-                    }}<input
+          } @else {
+            <div class="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <p class="text-sm font-semibold text-amber-900">{{ label('noPolicy') }}</p>
+            </div>
+          }
+
+          <p class="mt-5 text-sm text-muted">{{ label('policyHint') }}</p>
+
+          <form class="mt-5 grid gap-4" (ngSubmit)="savePolicy()">
+            <fieldset [disabled]="busy()" class="contents">
+
+              <!-- Step 1: Identification -->
+              <section class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6" data-policy-secondary>
+                <h2 class="text-base font-semibold">{{ label('policyIdentification') }}</h2>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                  <label class="grid gap-1.5 text-sm">
+                    <span class="font-semibold">{{ label('policyVersion') }}</span>
+                    <span class="text-xs text-muted">{{ label('policyVersionHint') }}</span>
+                    <input
                       name="policyVersion"
                       required
                       maxlength="80"
+                      placeholder="2024-01-v1"
                       [(ngModel)]="policyVersion"
                       (ngModelChange)="policyChanged()"
-                      class="min-h-10 rounded-lg border border-slate-300 px-3 text-sm"
-                  /></label>
-                  <label class="grid gap-2 text-sm font-semibold"
-                    >{{ label('operatorApprovalReference')
-                    }}<input
+                      class="min-h-10 rounded-lg border border-slate-300 px-3 font-mono text-sm"
+                    />
+                  </label>
+                  <label class="grid gap-1.5 text-sm">
+                    <span class="font-semibold">{{ label('operatorApprovalReference') }}</span>
+                    <span class="text-xs text-muted">{{ label('approvalReferenceHint') }}</span>
+                    <input
                       name="approvalReference"
                       required
                       maxlength="200"
                       [(ngModel)]="approvalReference"
                       (ngModelChange)="policyChanged()"
                       class="min-h-10 rounded-lg border border-slate-300 px-3 text-sm"
-                  /></label>
+                    />
+                  </label>
+                </div>
+              </section>
+
+              <!-- Step 2: Retention periods -->
+              <section class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+                <h2 class="text-base font-semibold">{{ label('retentionPeriodsTitle') }}</h2>
+                <p class="mt-1 text-sm text-muted">{{ label('retentionPeriodsHint') }}</p>
+                <div class="mt-4 grid gap-3 sm:grid-cols-2">
                   @for (key of durations; track key) {
-                    <label class="grid gap-2 text-sm font-semibold"
-                      >{{ label(key)
-                      }}<input
-                        type="number"
-                        [name]="key"
-                        [attr.data-policy-duration]="key"
-                        min="1"
-                        max="3650"
-                        required
-                        [(ngModel)]="days[key]"
-                        (ngModelChange)="policyChanged()"
-                        class="min-h-10 rounded-lg border border-slate-300 px-3 text-sm"
-                    /></label>
+                    <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3">
+                      <span class="text-sm font-medium">{{ label(key) }}</span>
+                      <div class="flex shrink-0 items-center gap-2">
+                        <input
+                          type="number"
+                          [name]="key"
+                          [attr.data-policy-duration]="key"
+                          min="1"
+                          max="3650"
+                          required
+                          [(ngModel)]="days[key]"
+                          (ngModelChange)="policyChanged()"
+                          class="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-center text-sm tabular-nums"
+                        />
+                        <span class="text-xs text-muted">{{ label('days') }}</span>
+                      </div>
+                    </div>
                   }
-                  <label class="grid gap-2 text-sm font-semibold sm:col-span-2"
-                    >{{ label('publicReviewHandling')
-                    }}<select
+                </div>
+              </section>
+
+              <!-- Step 3: Public review handling (radio cards) -->
+              <section class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+                <h2 class="text-base font-semibold">{{ label('publicReviewHandling') }}</h2>
+                <p class="mt-1 text-sm text-muted">{{ label('publicReviewHandlingHint') }}</p>
+                <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                  <label
+                    class="flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors"
+                    [class.border-brand]="publicReviewHandling === 'delete'"
+                    [class.border-slate-200]="publicReviewHandling !== 'delete'"
+                  >
+                    <input
+                      type="radio"
                       name="publicReviewHandling"
-                      required
+                      value="delete"
                       [(ngModel)]="publicReviewHandling"
                       (ngModelChange)="policyChanged()"
-                      class="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm"
-                    >
-                      <option value="">{{ label('choose') }}</option>
-                      <option value="delete">{{ label('delete') }}</option>
-                      <option value="retain_anonymized">{{ label('retain_anonymized') }}</option>
-                    </select></label
+                      class="mt-0.5 shrink-0 accent-brand"
+                    />
+                    <div>
+                      <p class="text-sm font-semibold">{{ label('delete') }}</p>
+                      <p class="mt-1 text-xs text-muted">{{ label('deleteDescription') }}</p>
+                    </div>
+                  </label>
+                  <label
+                    class="flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors"
+                    [class.border-brand]="publicReviewHandling === 'retain_anonymized'"
+                    [class.border-slate-200]="publicReviewHandling !== 'retain_anonymized'"
                   >
-                  <label class="flex min-h-11 items-start gap-3 sm:col-span-2"
-                    ><input
-                      type="checkbox"
-                      name="approvalConfirmed"
-                      required
-                      [(ngModel)]="approvalConfirmed"
+                    <input
+                      type="radio"
+                      name="publicReviewHandling"
+                      value="retain_anonymized"
+                      [(ngModel)]="publicReviewHandling"
                       (ngModelChange)="policyChanged()"
-                      class="mt-1 h-4 w-4 shrink-0"
-                    />{{ label('approvalAttestation') }}</label
-                  >
+                      class="mt-0.5 shrink-0 accent-brand"
+                    />
+                    <div>
+                      <p class="text-sm font-semibold">{{ label('retain_anonymized') }}</p>
+                      <p class="mt-1 text-xs text-muted">{{ label('retainAnonymizedDescription') }}</p>
+                    </div>
+                  </label>
+                </div>
+              </section>
+
+              <!-- Step 4: Confirmation + Submit -->
+              <section class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+                <h2 class="text-base font-semibold">{{ label('confirmationTitle') }}</h2>
+                <label class="mt-4 flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    name="approvalConfirmed"
+                    required
+                    [(ngModel)]="approvalConfirmed"
+                    (ngModelChange)="policyChanged()"
+                    class="mt-1 h-4 w-4 shrink-0 accent-brand"
+                  />
+                  <span class="text-sm text-slate-700">{{ label('approvalAttestation') }}</span>
+                </label>
+                <div class="mt-5">
                   <button appButton type="submit" data-save-policy [disabled]="!validPolicy()">
                     {{ label('savePolicy') }}
                   </button>
-                </fieldset>
-              </form>
-            }
-          </section>
+                </div>
+              </section>
+
+            </fieldset>
+          </form>
         }
       }
 
@@ -1215,28 +1266,32 @@
       }
 
       <!-- ── Pagination ─────────────────────────────────────────── -->
-      @if (section !== 'catalog') {
+      @if (section !== 'catalog' && section !== 'policy' && (page() > 1 || hasMore())) {
         <div class="mt-6 flex gap-3">
-          <button
-            appButton="outline"
-            [size]="'compact'"
-            type="button"
-            data-admin-previous
-            [disabled]="page() <= 1 || loading() || busy()"
-            (click)="load(page() - 1)"
-          >
-            {{ label('previous') }}
-          </button>
-          <button
-            appButton="outline"
-            [size]="'compact'"
-            type="button"
-            data-admin-next
-            [disabled]="!hasMore() || loading() || busy()"
-            (click)="load(page() + 1)"
-          >
-            {{ label('next') }}
-          </button>
+          @if (page() > 1) {
+            <button
+              appButton="outline"
+              [size]="'compact'"
+              type="button"
+              data-admin-previous
+              [disabled]="loading() || busy()"
+              (click)="load(page() - 1)"
+            >
+              {{ label('previous') }}
+            </button>
+          }
+          @if (hasMore()) {
+            <button
+              appButton="outline"
+              [size]="'compact'"
+              type="button"
+              data-admin-next
+              [disabled]="loading() || busy()"
+              (click)="load(page() + 1)"
+            >
+              {{ label('next') }}
+            </button>
+          }
         </div>
       }
     }

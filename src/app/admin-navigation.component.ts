@@ -15,11 +15,19 @@ import {
   LucideClock,
   LucideSettings,
   LucideHouse,
+  LucideTrash2,
   type LucideIcon,
 } from '@autokosova/icons';
 
 type Section =
-  'overview' | AdminCaseSection | 'garages' | 'users' | 'privacy' | 'audit' | 'catalog';
+  | 'overview'
+  | AdminCaseSection
+  | 'garages'
+  | 'users'
+  | 'privacy'
+  | 'policy'
+  | 'audit'
+  | 'catalog';
 
 /** One compact internal navigator; it deliberately has no role-switching controls. */
 @Component({
@@ -28,33 +36,35 @@ type Section =
   template: `
     <nav class="hidden lg:block" [attr.aria-label]="adminLabel('administration')">
       @for (group of groups(); track group.label) {
-        <section class="mb-4">
+        <section [class.mt-5]="group.label" [class.pt-4]="group.label" [class.border-t]="group.label" [class.border-slate-100]="group.label">
           @if (group.label) {
-            <p
-              class="mb-1 mt-4 border-t border-slate-100 px-3 pt-4 text-xs font-bold tracking-wide text-muted uppercase"
-            >
+            <p class="mb-1 px-2.5 text-[10px] font-bold tracking-widest text-slate-400 uppercase">
               {{ group.label }}
             </p>
           }
           <div class="grid gap-0.5">
             @for (section of group.sections; track section) {
               <a
-                class="group flex min-h-10 items-center gap-2.5 rounded-lg px-3 text-sm font-semibold transition-colors"
-                [class.bg-blue-50]="active() === section"
-                [class.text-brand-dark]="active() === section"
+                class="group flex min-h-9 items-center gap-2.5 rounded-xl px-3 text-sm font-medium transition-all"
+                [class.bg-brand]="active() === section"
+                [class.text-white]="active() === section"
+                [class.font-semibold]="active() === section"
+                [class.shadow-sm]="active() === section"
                 [class.text-slate-600]="active() !== section"
                 [class.hover:bg-slate-100]="active() !== section"
+                [class.hover:text-slate-900]="active() !== section"
                 [attr.aria-current]="active() === section ? 'page' : null"
                 [routerLink]="path(section)"
               >
                 <lucide-icon
                   [name]="icon(section)"
-                  class="size-4 shrink-0"
-                  [class.text-brand-dark]="active() === section"
+                  class="size-4 shrink-0 transition-colors"
+                  [class.text-white]="active() === section"
+                  [class.opacity-80]="active() === section"
                   [class.text-slate-400]="active() !== section"
                   [class.group-hover:text-slate-600]="active() !== section"
                 />
-                {{ label(section) }}
+                <span class="truncate">{{ label(section) }}</span>
               </a>
             }
           </div>
@@ -97,7 +107,8 @@ export class AdminNavigationComponent {
   readonly appealsIcon: LucideIcon = LucideMessageCircle;
   readonly garagesIcon: LucideIcon = LucideBuilding2;
   readonly usersIcon: LucideIcon = LucideUsers;
-  readonly privacyIcon: LucideIcon = LucideShieldCheck;
+  readonly privacyIcon: LucideIcon = LucideTrash2;
+  readonly policyIcon: LucideIcon = LucideShieldCheck;
   readonly auditIcon: LucideIcon = LucideClock;
   readonly catalogIcon: LucideIcon = LucideSettings;
 
@@ -109,6 +120,7 @@ export class AdminNavigationComponent {
     garages: this.garagesIcon,
     users: this.usersIcon,
     privacy: this.privacyIcon,
+    policy: this.policyIcon,
     audit: this.auditIcon,
     catalog: this.catalogIcon,
   };
@@ -121,7 +133,10 @@ export class AdminNavigationComponent {
     if (!this.admin()) return [{ label: '', sections: ['overview'] }];
     return [
       { label: '', sections: ['overview', 'reviews', 'reports', 'appeals', 'garages', 'users'] },
-      { label: this.adminLabel('administration'), sections: ['privacy', 'audit', 'catalog'] },
+      {
+        label: this.adminLabel('administration'),
+        sections: ['privacy', 'policy', 'audit', 'catalog'],
+      },
     ];
   }
   label(section: Section): string {

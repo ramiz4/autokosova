@@ -319,7 +319,8 @@ export class AdminConsoleComponent {
     const context = `${garageId}|${validTab}|${params.get('requestId') ?? ''}|${params.get('status') ?? ''}|${validPage}`;
     if (context === this.routeContext) return;
     this.routeContext = context;
-    this.status = params.get('status') ?? (this.section === 'privacy' ? 'submitted' : '');
+    this.status =
+      params.get('status') ?? (this.section === 'privacy' ? 'submitted' : '');
     if (this.section === 'garages' && validGarage) {
       this.page.set(validPage);
       if (this.detail()?.id === garageId) {
@@ -348,12 +349,17 @@ export class AdminConsoleComponent {
     if (this.query) q.set('query', this.query);
     if (this.status && this.section === 'garages') q.set('status', this.status);
     if (this.status && this.section === 'privacy') q.set('status', this.status);
-    if (this.section === 'privacy') {
+    if (this.section === 'privacy' || this.section === 'policy') {
       const requestId = this.currentParam('requestId');
       if (requestId && /^[A-Za-z0-9_-]{1,200}$/.test(requestId)) q.set('requestId', requestId);
     }
     try {
-      const section = this.section === 'support' ? 'users' : this.section;
+      const section =
+        this.section === 'support'
+          ? 'users'
+          : this.section === 'policy'
+            ? 'privacy'
+            : this.section;
       const data = await this.json<
         AdminPage<AdminUser> &
           AdminPage<AdminGarageSummary> &
