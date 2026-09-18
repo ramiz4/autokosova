@@ -2,7 +2,21 @@
   <app-confirmation-dialog #confirmation />
   @if (!detail() && !support()) {
     <h1 tabindex="-1" class="text-3xl font-bold tracking-tight">{{ label(section) }}</h1>
-    <p class="mt-2 max-w-3xl text-muted">{{ label('intro') }}</p>
+    <p class="mt-2 max-w-3xl text-muted">
+      {{
+        section === 'garages'
+          ? label('garagesIntro')
+          : section === 'users'
+            ? label('usersIntro')
+            : section === 'privacy'
+              ? label('privacyIntro')
+              : section === 'audit'
+                ? label('auditIntro')
+                : section === 'catalog'
+                  ? label('catalogIntro')
+                  : label('intro')
+      }}
+    </p>
   }
   @if (account.state() === 'guest') {
     <a appButton class="mt-6" [href]="loginUrl()">{{ label('login') }}</a>
@@ -404,7 +418,9 @@
                   </div>
                 </article>
               } @empty {
-                <p class="text-muted">{{ label('empty') }}</p>
+                <div class="py-12 text-center">
+                  <p class="text-sm font-medium text-slate-400">{{ label('empty') }}</p>
+                </div>
               }
             </div>
           }
@@ -587,6 +603,7 @@
               name="query"
               [(ngModel)]="query"
               maxlength="120"
+              [placeholder]="label('searchPlaceholder')"
               class="min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-sm"
             />
           </label>
@@ -636,68 +653,69 @@
             label('startSupport')
           }}</a>
         </div>
-        <div class="grid gap-3 sm:grid-cols-2" data-admin-garage-list>
+        <div
+          class="mt-4 divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white"
+          data-admin-garage-list
+        >
           @for (item of garages(); track item.id) {
-            <article
-              class="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 transition-shadow hover:shadow-sm"
-              [attr.data-admin-garage-id]="item.id"
-            >
+            <div class="flex items-center gap-3 px-4 py-3" [attr.data-admin-garage-id]="item.id">
               <div class="min-w-0 flex-1">
-                <h2 class="font-bold break-words">{{ item.name }}</h2>
-                <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
-                  <span
-                    class="rounded-full px-2 py-0.5 text-xs font-semibold"
-                    [class.bg-amber-100]="item.publicationState === 'pending_review'"
-                    [class.text-amber-800]="item.publicationState === 'pending_review'"
-                    [class.bg-emerald-100]="item.publicationState === 'published'"
-                    [class.text-emerald-800]="item.publicationState === 'published'"
-                    [class.bg-rose-100]="
-                      item.publicationState === 'rejected' ||
-                      item.publicationState === 'suspended' ||
-                      item.deleted
-                    "
-                    [class.text-rose-800]="
-                      item.publicationState === 'rejected' ||
-                      item.publicationState === 'suspended' ||
-                      item.deleted
-                    "
-                    [class.bg-slate-100]="
-                      !item.deleted &&
-                      item.publicationState !== 'pending_review' &&
-                      item.publicationState !== 'published' &&
-                      item.publicationState !== 'rejected' &&
-                      item.publicationState !== 'suspended'
-                    "
-                    [class.text-slate-600]="
-                      !item.deleted &&
-                      item.publicationState !== 'pending_review' &&
-                      item.publicationState !== 'published' &&
-                      item.publicationState !== 'rejected' &&
-                      item.publicationState !== 'suspended'
-                    "
-                  >
-                    {{ label(item.deleted ? 'deleted' : item.publicationState) }}
-                  </span>
-                  <span class="text-xs text-muted"
-                    >{{ label('owner') }}: {{ item.ownerCount }}</span
-                  >
-                </div>
+                <span class="text-sm font-medium break-words">{{ item.name }}</span>
               </div>
-              <button
-                data-admin-open-garage
-                appButton="outline"
-                [size]="'compact'"
-                type="button"
-                class="shrink-0"
-                [disabled]="loading()"
-                (click)="openGarage(item.id)"
-              >
-                {{ label('open') }}
-              </button>
-            </article>
+              <div class="flex shrink-0 items-center gap-2.5">
+                <span
+                  class="rounded-full px-2 py-0.5 text-xs font-semibold"
+                  [class.bg-amber-100]="item.publicationState === 'pending_review'"
+                  [class.text-amber-800]="item.publicationState === 'pending_review'"
+                  [class.bg-emerald-100]="item.publicationState === 'published'"
+                  [class.text-emerald-800]="item.publicationState === 'published'"
+                  [class.bg-rose-100]="
+                    item.publicationState === 'rejected' ||
+                    item.publicationState === 'suspended' ||
+                    item.deleted
+                  "
+                  [class.text-rose-800]="
+                    item.publicationState === 'rejected' ||
+                    item.publicationState === 'suspended' ||
+                    item.deleted
+                  "
+                  [class.bg-slate-100]="
+                    !item.deleted &&
+                    item.publicationState !== 'pending_review' &&
+                    item.publicationState !== 'published' &&
+                    item.publicationState !== 'rejected' &&
+                    item.publicationState !== 'suspended'
+                  "
+                  [class.text-slate-600]="
+                    !item.deleted &&
+                    item.publicationState !== 'pending_review' &&
+                    item.publicationState !== 'published' &&
+                    item.publicationState !== 'rejected' &&
+                    item.publicationState !== 'suspended'
+                  "
+                >
+                  {{ label(item.deleted ? 'deleted' : item.publicationState) }}
+                </span>
+                <span class="hidden text-xs text-muted sm:inline"
+                  >{{ label('owner') }}: {{ item.ownerCount }}</span
+                >
+                <button
+                  data-admin-open-garage
+                  appButton="outline"
+                  [size]="'compact'"
+                  type="button"
+                  [disabled]="loading()"
+                  (click)="openGarage(item.id)"
+                >
+                  {{ label('open') }}
+                </button>
+              </div>
+            </div>
           } @empty {
             @if (!loading() && !error()) {
-              <p class="text-muted">{{ label('empty') }}</p>
+              <div class="py-12 text-center">
+                <p class="text-sm font-medium text-slate-400">{{ label('empty') }}</p>
+              </div>
             }
           }
         </div>
@@ -850,7 +868,9 @@
               </article>
             } @empty {
               @if (!loading() && !error()) {
-                <p class="p-5 text-muted">{{ label('empty') }}</p>
+                <div class="py-12 text-center">
+                  <p class="text-sm font-medium text-slate-400">{{ label('empty') }}</p>
+                </div>
               }
             }
           </div>
@@ -1040,7 +1060,9 @@
                 </div>
               </article>
             } @empty {
-              <p class="text-muted">{{ label('empty') }}</p>
+              <div class="py-12 text-center">
+                <p class="text-sm font-medium text-slate-400">{{ label('empty') }}</p>
+              </div>
             }
           </div>
         }
@@ -1217,7 +1239,17 @@
       @if (section === 'audit') {
         <ol class="mt-5 grid gap-2" data-admin-audit>
           @for (event of events(); track event.id) {
-            <li class="flex gap-4 rounded-xl border border-slate-200 bg-white p-4">
+            <li
+              class="flex gap-4 rounded-xl border p-4"
+              [class.border-emerald-200]="auditColor(event.action) === 'green'"
+              [class.bg-emerald-50]="auditColor(event.action) === 'green'"
+              [class.border-rose-200]="auditColor(event.action) === 'red'"
+              [class.bg-rose-50]="auditColor(event.action) === 'red'"
+              [class.border-amber-200]="auditColor(event.action) === 'amber'"
+              [class.bg-amber-50]="auditColor(event.action) === 'amber'"
+              [class.border-slate-200]="auditColor(event.action) === 'slate'"
+              [class.bg-white]="auditColor(event.action) === 'slate'"
+            >
               <time class="w-32 shrink-0 text-xs text-muted pt-0.5">{{
                 event.createdAt | date: 'dd.MM.yyyy HH:mm'
               }}</time>
@@ -1230,7 +1262,11 @@
             </li>
           } @empty {
             @if (!loading() && !error()) {
-              <li class="text-muted">{{ label('empty') }}</li>
+              <li>
+                <div class="py-12 text-center">
+                  <p class="text-sm font-medium text-slate-400">{{ label('empty') }}</p>
+                </div>
+              </li>
             }
           }
         </ol>
@@ -1281,7 +1317,7 @@
 
       <!-- ── Pagination ─────────────────────────────────────────── -->
       @if (section !== 'catalog' && section !== 'policy' && (page() > 1 || hasMore())) {
-        <div class="mt-6 flex gap-3">
+        <div class="mt-6 flex items-center gap-3">
           @if (page() > 1) {
             <button
               appButton="outline"
@@ -1294,6 +1330,7 @@
               {{ label('previous') }}
             </button>
           }
+          <span class="text-sm text-muted">{{ label('page') }} {{ page() }}</span>
           @if (hasMore()) {
             <button
               appButton="outline"

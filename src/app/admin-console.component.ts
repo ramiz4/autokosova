@@ -877,6 +877,14 @@ export class AdminConsoleComponent {
     await this.openGarage(id, this.detailTab, false, true);
     this.toast.show(this.label('saved'));
   }
+  auditColor(action: string): 'green' | 'red' | 'amber' | 'slate' {
+    if (/published|approved|restore|active/.test(action)) return 'green';
+    if (/rejected|suspended|deleted|revoked/.test(action)) return 'red';
+    if (/submitted|transferred|assigned|started|updated|corrected|granted/.test(action))
+      return 'amber';
+    return 'slate';
+  }
+
   validPolicy() {
     return (
       this.approvalConfirmed &&

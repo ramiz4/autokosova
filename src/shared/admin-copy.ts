@@ -31,6 +31,33 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Administrative tasks use the actual server state. No general access to private requests or favorites.',
     'Detyrat administrative përdorin gjendjen reale të serverit. Pa qasje të përgjithshme në kërkesa private ose të preferuara.',
   ],
+  garagesIntro: [
+    'Werkstätten suchen, prüfen, freigeben oder administrativ sperren.',
+    'Search, review, publish or administratively suspend garages.',
+    'Kërkoni, shqyrtoni, publikoni ose pezulloni serviset administrativisht.',
+  ],
+  usersIntro: [
+    'Konten nach Name oder ID suchen und App-Sitzungen widerrufen.',
+    'Search accounts by name or ID and revoke app sessions.',
+    'Kërkoni llogaritë sipas emrit ose ID-së dhe revokoni seancat.',
+  ],
+  privacyIntro: [
+    'Löschaufträge prüfen und ausführen. Neue Aufträge werden automatisch erfasst.',
+    'Review and execute deletion requests. New requests are captured automatically.',
+    'Shqyrtoni dhe ekzekutoni kërkesat për fshirje. Kërkesat e reja regjistrohen automatikisht.',
+  ],
+  auditIntro: [
+    'Protokoll aller administrativen Aktionen. Nur lesen — keine Bearbeitung möglich.',
+    'Log of all administrative actions. Read-only — no editing possible.',
+    'Regjistri i të gjitha veprimeve administrative. Vetëm lexim — pa mundësi redaktimi.',
+  ],
+  catalogIntro: [
+    'Dienste, Fahrzeugmarken und Orte die im System verfügbar sind.',
+    'Services, vehicle makes and places available in the system.',
+    'Shërbimet, markat e automjeteve dhe vendet e disponueshme në sistem.',
+  ],
+  searchPlaceholder: ['Name oder ID …', 'Name or ID …', 'Emri ose ID-ja …'],
+  page: ['Seite', 'Page', 'Faqja'],
   pendingGarages: [
     'Ausstehende Werkstattprüfungen',
     'Pending garage checks',
