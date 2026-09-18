@@ -159,7 +159,9 @@ export async function seedAdminDemo(client, environment = process.env) {
     );
     await mark(client, 'garage', item.id);
   }
-  const knownPolicy = await client.query("SELECT 1 FROM lifecycle_policy WHERE version='2025-06-v1'");
+  const knownPolicy = await client.query(
+    "SELECT 1 FROM lifecycle_policy WHERE version='2025-06-v1'",
+  );
   if (!knownPolicy.rowCount) {
     await client.query(
       `INSERT INTO lifecycle_policy(version,operator_approval_reference,public_review_handling,
