@@ -250,6 +250,16 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'No account selected',
     'Nuk është zgjedhur asnjë llogari',
   ],
+  revokedMembers: [
+    'Frühere Zuordnungen',
+    'Former assignments',
+    'Caktimet e mëparshme',
+  ],
+  transferNeedsTarget: [
+    'Kein Zielkonto — wählen Sie oben unter „Neue Zuordnung" ein Konto aus.',
+    'No target account — search for one above under "New assignment".',
+    'Nuk ka llogari të synuar — zgjidhni një llogari më sipër.',
+  ],
   completeChecks: [
     'Die vier Prüfpunkte müssen bewusst bestätigt sein.',
     'All four checks must be deliberately confirmed.',
