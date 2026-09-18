@@ -196,6 +196,17 @@
                 <p class="text-sm text-muted">{{ label('unavailable') }}</p>
               }
             </div>
+            @if (
+              (current.publicationState === 'pending_review' &&
+                publishBlockers(current).includes('company_document')) ||
+              (current.publicationState === 'suspended' &&
+                current.adminSuspended &&
+                restoreBlockers(current).includes('company_document'))
+            ) {
+              <p class="mt-2 text-sm font-medium text-amber-700">
+                ⚠ {{ label('publishBlocker.company_document') }}
+              </p>
+            }
             @if (proof()) {
               <pre
                 data-company-evidence
@@ -256,47 +267,89 @@
                   /></label>
                   <p class="text-sm text-muted sm:col-span-2">{{ label('locationHint') }}</p>
                 }
-                <details data-review-save class="sm:col-span-2">
-                  <summary class="min-h-11 cursor-pointer py-3 font-semibold text-brand-dark">
-                    {{ label('saveChecksOptional') }}
-                  </summary>
-                  <div class="grid gap-3">
-                    <label class="grid gap-2 text-sm font-semibold sm:col-span-2"
-                      >{{ label('saveReason') }}
-                      <select
-                        name="reviewReason"
-                        data-admin-reason
-                        [(ngModel)]="reviewReason"
-                        required
-                        class="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm"
-                      >
-                        <option value="">{{ label('choose') }}</option>
-                        @for (reason of reasons; track reason) {
-                          <option [value]="reason">{{ label(reason) }}</option>
-                        }
-                      </select>
-                    </label>
-                    <button
-                      data-save-checks
-                      appButton="outline"
-                      [size]="'compact'"
-                      type="submit"
-                      [disabled]="!reviewReason"
-                    >
-                      {{ label('saveChecks') }}
-                    </button>
-                  </div>
-                </details>
               </fieldset>
+              <div data-review-save class="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <p class="mb-0.5 text-sm font-semibold text-slate-700">
+                  {{ label('saveChecksOptional') }}
+                </p>
+                <p class="mb-3 text-xs text-slate-500">{{ label('saveChecksHint') }}</p>
+                <div class="flex flex-wrap items-end gap-3">
+                  <label class="grid gap-1.5 text-xs font-semibold text-slate-600">
+                    {{ label('saveReason') }}
+                    <select
+                      name="reviewReason"
+                      data-admin-reason
+                      [(ngModel)]="reviewReason"
+                      required
+                      [disabled]="busy()"
+                      class="min-h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm"
+                    >
+                      <option value="">{{ label('choose') }}</option>
+                      @for (reason of reasons; track reason) {
+                        <option [value]="reason">{{ label(reason) }}</option>
+                      }
+                    </select>
+                  </label>
+                  <button
+                    data-save-checks
+                    appButton="outline"
+                    [size]="'compact'"
+                    type="submit"
+                    [disabled]="busy() || !reviewReason"
+                  >
+                    {{ label('saveChecks') }}
+                  </button>
+                </div>
+              </div>
             </form>
-            <div class="mt-5 flex flex-wrap items-start gap-3">
+            <div class="mt-6 border-t border-slate-200 pt-6">
               @if (
                 current.publicationState === 'pending_review' ||
                 current.publicationState === 'published' ||
                 (current.publicationState === 'suspended' && current.adminSuspended)
               ) {
-                <label class="basis-full grid gap-2 text-sm font-semibold">
-                  {{ label('decisionReason') }}
+                @if (
+                  current.publicationState === 'pending_review' &&
+                  publishBlockers(current).length > 0
+                ) {
+                  <div
+                    data-publish-blocker
+                    class="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4"
+                  >
+                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                      {{ label('prerequisitesMissing') }}
+                    </p>
+                    <ul class="space-y-1.5">
+                      @for (blocker of publishBlockers(current); track blocker) {
+                        <li class="flex items-start gap-2 text-sm text-amber-900">
+                          <span class="mt-0.5 shrink-0">✗</span>
+                          {{ label('publishBlocker.' + blocker) }}
+                        </li>
+                      }
+                    </ul>
+                  </div>
+                }
+                @if (
+                  current.publicationState === 'suspended' &&
+                  current.adminSuspended &&
+                  restoreBlockers(current).length > 0
+                ) {
+                  <div class="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                      {{ label('prerequisitesMissing') }}
+                    </p>
+                    <ul class="space-y-1.5">
+                      @for (blocker of restoreBlockers(current); track blocker) {
+                        <li class="flex items-start gap-2 text-sm text-amber-900">
+                          <span class="mt-0.5 shrink-0">✗</span>
+                          {{ label('publishBlocker.' + blocker) }}
+                        </li>
+                      }
+                    </ul>
+                  </div>
+                }
+                <label class="grid gap-2 text-sm font-semibold"
+                  >{{ label('decisionReason') }}
                   <select
                     name="decisionReason"
                     data-admin-decision-reason
@@ -310,66 +363,55 @@
                     }
                   </select>
                 </label>
-              }
-              @if (current.publicationState === 'pending_review') {
-                <button
-                  data-publish-garage
-                  appButton
-                  type="button"
-                  [disabled]="!canPublish(current)"
-                  (click)="decide('published')"
-                >
-                  {{ label('publish') }}
-                </button>
-                <button
-                  data-reject-garage
-                  appButton="outline"
-                  type="button"
-                  [disabled]="busy() || !decisionReason || stale()"
-                  (click)="decide('rejected')"
-                >
-                  {{ label('reject') }}
-                </button>
-                @if (!canPublish(current)) {
-                  <p data-publish-blocker class="basis-full text-sm text-amber-900">
-                    @for (blocker of publishBlockers(current); track blocker) {
-                      {{ label('publishBlocker.' + blocker) }} ·
-                    }
-                    {{ label('completeChecks') }}
-                  </p>
-                }
-                <p class="basis-full text-sm text-muted">{{ label('company_verified') }}</p>
-              }
-              @if (
-                current.publicationState === 'published' ||
-                (current.publicationState === 'suspended' && !current.adminSuspended)
-              ) {
-                <button
-                  data-suspend-garage
-                  appButton="outline"
-                  type="button"
-                  [disabled]="busy() || !decisionReason || stale()"
-                  (click)="decide('suspended')"
-                >
-                  {{ label('suspend') }}
-                </button>
-              }
-              @if (current.publicationState === 'suspended' && current.adminSuspended) {
-                <button
-                  data-restore-garage
-                  appButton="outline"
-                  type="button"
-                  [disabled]="!canRestore(current) || !decisionReason"
-                  (click)="decide('restore')"
-                >
-                  {{ label('restore') }}
-                </button>
-                @if (!canRestore(current)) {
-                  <p class="basis-full text-sm text-amber-900">
-                    @for (blocker of restoreBlockers(current); track blocker) {
-                      {{ label('publishBlocker.' + blocker) }} ·
-                    }
-                  </p>
+                <div class="mt-4 flex flex-wrap gap-3">
+                  @if (current.publicationState === 'pending_review') {
+                    <button
+                      data-publish-garage
+                      appButton
+                      type="button"
+                      [disabled]="!canPublish(current)"
+                      (click)="decide('published')"
+                    >
+                      {{ label('publish') }}
+                    </button>
+                    <button
+                      data-reject-garage
+                      appButton="outline"
+                      type="button"
+                      [disabled]="busy() || !decisionReason || stale()"
+                      (click)="decide('rejected')"
+                    >
+                      {{ label('reject') }}
+                    </button>
+                  }
+                  @if (
+                    current.publicationState === 'published' ||
+                    (current.publicationState === 'suspended' && !current.adminSuspended)
+                  ) {
+                    <button
+                      data-suspend-garage
+                      appButton="outline"
+                      type="button"
+                      [disabled]="busy() || !decisionReason || stale()"
+                      (click)="decide('suspended')"
+                    >
+                      {{ label('suspend') }}
+                    </button>
+                  }
+                  @if (current.publicationState === 'suspended' && current.adminSuspended) {
+                    <button
+                      data-restore-garage
+                      appButton="outline"
+                      type="button"
+                      [disabled]="!canRestore(current) || !decisionReason"
+                      (click)="decide('restore')"
+                    >
+                      {{ label('restore') }}
+                    </button>
+                  }
+                </div>
+                @if (current.publicationState === 'pending_review') {
+                  <p class="mt-3 text-sm text-muted">{{ label('company_verified') }}</p>
                 }
               }
             </div>

@@ -206,9 +206,9 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
   review: ['Prüfung', 'Review', 'Shqyrtimi'],
   team: ['Team & Eigentum', 'Team & ownership', 'Ekipi dhe pronësia'],
   saveReason: [
-    'Grund für Teilprüfung',
-    'Reason for partial review',
-    'Arsyeja për kontroll të pjesshëm',
+    'Grund für Zwischenspeicherung',
+    'Reason for intermediate save',
+    'Arsyeja për ruajtjen e ndërmjetme',
   ],
   decisionReason: [
     'Grund für diese Entscheidung',
@@ -272,9 +272,19 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
   ],
   saveChecks: ['Prüfstand speichern', 'Save verification', 'Ruaj verifikimin'],
   saveChecksOptional: [
-    'Teilprüfung speichern (optional, noch nicht veröffentlichen)',
-    'Save partial review (optional, do not publish yet)',
-    'Ruaj shqyrtimin e pjesshëm (opsionale, mos publiko ende)',
+    'Prüffortschritt zwischenspeichern',
+    'Save verification progress',
+    'Ruaj progresin e verifikimit',
+  ],
+  saveChecksHint: [
+    'Fortschritt speichern ohne eine Veröffentlichungsentscheidung zu treffen.',
+    'Save progress without making a publication decision.',
+    'Ruaj progresin pa marrë një vendim për publikim.',
+  ],
+  prerequisitesMissing: [
+    'Voraussetzungen fehlen noch',
+    'Prerequisites not yet met',
+    'Kushtet nuk janë plotësuar ende',
   ],
   company_verified: ['Unternehmensprüfung', 'Company check', 'Kontroll biznesi'],
   missing_information: ['Fehlende Angaben', 'Missing information', 'Informacion i munguar'],
