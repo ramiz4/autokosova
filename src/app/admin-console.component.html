@@ -436,25 +436,29 @@
                   }
                   <p class="mt-3 text-sm">{{ label(photo.visibility) }}</p>
                   <div class="mt-3 flex flex-wrap gap-2">
-                    <button
-                      appButton="outline"
-                      [size]="'compact'"
-                      type="button"
-                      data-approve-photo
-                      [disabled]="busy() || !photo.previewPath"
-                      (click)="setPhoto(photo.id, true)"
-                    >
-                      {{ label('approvePhoto') }}
-                    </button>
-                    <button
-                      appButton="outline"
-                      [size]="'compact'"
-                      type="button"
-                      [disabled]="busy()"
-                      (click)="setPhoto(photo.id, false)"
-                    >
-                      {{ label('rejectPhoto') }}
-                    </button>
+                    @if (photo.visibility !== 'approved') {
+                      <button
+                        appButton="outline"
+                        [size]="'compact'"
+                        type="button"
+                        data-approve-photo
+                        [disabled]="busy() || !photo.previewPath"
+                        (click)="setPhoto(photo.id, true)"
+                      >
+                        {{ label('approvePhoto') }}
+                      </button>
+                    }
+                    @if (photo.visibility !== 'rejected') {
+                      <button
+                        appButton="outline"
+                        [size]="'compact'"
+                        type="button"
+                        [disabled]="busy()"
+                        (click)="setPhoto(photo.id, false)"
+                      >
+                        {{ label('rejectPhoto') }}
+                      </button>
+                    }
                   </div>
                 </article>
               } @empty {
