@@ -57,7 +57,11 @@ import type { VerificationChecklist } from '../shared/garage-onboarding';
   host: { '(window:beforeunload)': 'beforeUnload($event)' },
 })
 export class AdminConsoleComponent {
-  protected readonly icons = { userPlus: LucideUserPlus, arrowRightLeft: LucideArrowRightLeft, upload: LucideUpload };
+  protected readonly icons = {
+    userPlus: LucideUserPlus,
+    arrowRightLeft: LucideArrowRightLeft,
+    upload: LucideUpload,
+  };
   readonly account = inject(AccountSessionService);
   readonly language = inject(LanguageService);
   private readonly route = inject(ActivatedRoute);
@@ -652,7 +656,8 @@ export class AdminConsoleComponent {
     });
     if (!confirmed) return;
     const reason = this.confirmation().selectedValue as AdminReasonCode;
-    if (!reason || this.detail() !== detail || this.busy() || !this.allowed() || this.stale()) return;
+    if (!reason || this.detail() !== detail || this.busy() || !this.allowed() || this.stale())
+      return;
     await this.garageMutation(
       'membership',
       reason,
@@ -676,7 +681,12 @@ export class AdminConsoleComponent {
     const reason = this.confirmation().selectedValue as AdminReasonCode;
     if (!reason || this.detail() !== detail || this.busy() || !this.allowed() || this.stale())
       return;
-    await this.garageMutation('membership', reason, { userId, role, state: 'revoked' }, 'membershipSaved');
+    await this.garageMutation(
+      'membership',
+      reason,
+      { userId, role, state: 'revoked' },
+      'membershipSaved',
+    );
   }
   async member(
     userId = this.targetUserId,
@@ -823,17 +833,32 @@ export class AdminConsoleComponent {
     });
     if (!confirmed) return;
     const reason = this.confirmation().selectedValue as AdminReasonCode;
-    if (!reason || this.detail() !== detail || this.busy() || !this.allowed() || this.stale()) return;
-    await this.garageMutation('membership', reason, { userId: this.targetUserId, role: this.memberRole, state: 'active' }, 'membershipSaved');
+    if (!reason || this.detail() !== detail || this.busy() || !this.allowed() || this.stale())
+      return;
+    await this.garageMutation(
+      'membership',
+      reason,
+      { userId: this.targetUserId, role: this.memberRole, state: 'active' },
+      'membershipSaved',
+    );
   }
   async confirmTransferStep1() {
-    if (!this.transferTargetUserId || !this.fromUserId || this.fromUserId === this.transferTargetUserId) return;
+    if (
+      !this.transferTargetUserId ||
+      !this.fromUserId ||
+      this.fromUserId === this.transferTargetUserId
+    )
+      return;
     this.memberModalMode.set(null);
     const detail = this.detail();
     if (!detail) return;
     const confirmed = await this.confirmation().ask({
       title: this.label('transferOwnership'),
-      description: this.transferConfirmation(detail.name, this.memberLabel(this.fromUserId), this.memberLabel(this.transferTargetUserId)),
+      description: this.transferConfirmation(
+        detail.name,
+        this.memberLabel(this.fromUserId),
+        this.memberLabel(this.transferTargetUserId),
+      ),
       confirmLabel: this.label('transfer'),
       cancelLabel: this.label('cancel'),
       selectLabel: this.label('memberReasonForTransfer'),
@@ -841,8 +866,14 @@ export class AdminConsoleComponent {
     });
     if (!confirmed) return;
     const reason = this.confirmation().selectedValue as AdminReasonCode;
-    if (!reason || this.detail() !== detail || this.busy() || !this.allowed() || this.stale()) return;
-    await this.garageMutation('ownership-transfer', reason, { fromUserId: this.fromUserId, targetUserId: this.transferTargetUserId }, 'transferSaved');
+    if (!reason || this.detail() !== detail || this.busy() || !this.allowed() || this.stale())
+      return;
+    await this.garageMutation(
+      'ownership-transfer',
+      reason,
+      { fromUserId: this.fromUserId, targetUserId: this.transferTargetUserId },
+      'transferSaved',
+    );
   }
   private async garageMutation(
     action: string,

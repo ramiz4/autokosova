@@ -133,10 +133,7 @@ export class LocalDemoFileStore {
       );
       if (!user.rowCount) throw new AccessError(403, 'Active account required');
       await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [fileId]);
-      const prior = await client.query(
-        'SELECT 1 FROM file_object WHERE id=$1',
-        [fileId],
-      );
+      const prior = await client.query('SELECT 1 FROM file_object WHERE id=$1', [fileId]);
       if (!prior.rowCount) {
         await client.query(
           "INSERT INTO file_object(id,owner_user_id,storage_key,content_type,size_bytes,scan_state,retention_state) VALUES($1,$2,$3,'text/plain',$4,'clean','active')",
