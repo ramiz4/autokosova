@@ -505,8 +505,8 @@
                           appButton="outline"
                           [size]="'compact'"
                           type="button"
-                          [disabled]="busy() || !memberReason"
-                          (click)="member(person.userId, person.role, 'revoked')"
+                          [disabled]="busy()"
+                          (click)="revokeMember(person.userId, person.role)"
                         >
                           {{ label('revoke') }}
                         </button>
@@ -532,8 +532,8 @@
                             appButton="outline"
                             [size]="'compact'"
                             type="button"
-                            [disabled]="busy() || !memberReason"
-                            (click)="member(person.userId, person.role, 'revoked')"
+                            [disabled]="busy()"
+                            (click)="revokeMember(person.userId, person.role)"
                           >
                             {{ label('revoke') }}
                           </button>
@@ -542,22 +542,6 @@
                     }
                   </ul>
                 </div>
-              }
-
-              @if (current.members.some((m) => m.state === 'active')) {
-                <label class="mt-3 grid gap-2 text-sm font-semibold">
-                  {{ label('memberReasonForRevoke') }}
-                  <select
-                    [(ngModel)]="memberReason"
-                    name="memberReasonRevoke"
-                    class="min-h-10 w-full max-w-xs rounded-lg border border-slate-300 bg-white px-3 text-sm"
-                  >
-                    <option value="">{{ label('choose') }}</option>
-                    @for (reason of reasons; track reason) {
-                      <option [value]="reason">{{ label(reason) }}</option>
-                    }
-                  </select>
-                </label>
               }
 
               @if (current.members.some((m) => m.state === 'revoked')) {
@@ -600,7 +584,7 @@
                     (queryChange)="changeCandidateQuery($event)"
                     (selected)="selectCandidate($event)"
                   />
-                  @if (targetUserId) {
+                  @if (targetUserId && candidateQuery !== targetUserId) {
                     <span class="text-xs text-muted">ID: {{ targetUserId }}</span>
                   }
                 </div>

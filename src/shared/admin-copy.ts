@@ -245,6 +245,7 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Asnjë anëtar aktiv — pa pronar aktiv servisit nuk mund të publikohet.',
   ],
   transferOwnership: ['Eigentumsübertragung', 'Ownership transfer', 'Transferimi i pronësisë'],
+  cancel: ['Abbrechen', 'Cancel', 'Anulo'],
   noTargetChosen: [
     'Kein Konto ausgewählt',
     'No account selected',
