@@ -370,10 +370,16 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Correct profile under a documented request',
     'Korrigjo profilin sipas kërkesës së dokumentuar',
   ],
-  reference: [
-    'Referenz des freigegebenen Supportauftrags',
-    'Approved support request reference',
-    'Referenca e kërkesës së miratuar për mbështetje',
+  reference: ['Auftragsreferenz', 'Request reference', 'Referenca e kërkesës'],
+  referencePlaceholder: [
+    'z.B. SUP-1234 oder Vorgangsnummer',
+    'e.g. SUP-1234 or case number',
+    'p.sh. SUP-1234 ose numri i rastit',
+  ],
+  referenceHint: [
+    'Mindestens 5 Zeichen — wird im Ereignisprotokoll als Nachweis gespeichert.',
+    'At least 5 characters — saved in the audit log as evidence.',
+    'Të paktën 5 karaktere — ruhet në regjistrin e ngjarjeve si provë.',
   ],
   supportHint: [
     'Nur mit vorliegendem Auftrag und Zustimmung. Adminrechte ersetzen keine Einwilligung; keine sensiblen Details in die Referenz kopieren.',

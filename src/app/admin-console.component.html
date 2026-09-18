@@ -613,16 +613,19 @@
           @if (detailTab === 'support' && current.publicationState !== 'suspended') {
             <div class="mt-7 border-t border-slate-200 pt-6">
               <p class="text-sm text-muted">{{ label('supportHint') }}</p>
-              <label class="mt-3 grid gap-2 text-sm font-semibold"
-                >{{ label('reference')
-                }}<input
+              <label class="mt-5 grid gap-1.5 text-sm font-semibold">
+                {{ label('reference') }}
+                <input
                   data-support-reference
                   name="supportReference"
                   [(ngModel)]="requestReference"
                   minlength="5"
                   maxlength="200"
+                  [placeholder]="label('referencePlaceholder')"
                   class="min-h-10 rounded-lg border border-slate-300 px-3 text-sm"
-              /></label>
+                />
+                <span class="text-xs font-normal text-slate-500">{{ label('referenceHint') }}</span>
+              </label>
               <div class="mt-4 flex flex-wrap gap-2">
                 <button
                   appButton="outline"
