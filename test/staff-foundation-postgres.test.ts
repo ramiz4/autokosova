@@ -122,10 +122,7 @@ test(
       const file = 'demo-staff-review-unassigned-file';
       const grant = await files.issue(moderator, file);
       await assert.rejects(files.consume(other, file, grant.grantId));
-      assert.match(
-        await files.consume(moderator, file, grant.grantId),
-        /Fiktiver/,
-      );
+      assert.match(await files.consume(moderator, file, grant.grantId), /Fiktiver/);
       await assert.rejects(files.consume(moderator, file, grant.grantId));
       await assert.rejects(files.issue(moderator, 'demo-staff-review-blocked-file'));
       const prior = await files.issue(moderator, file);
