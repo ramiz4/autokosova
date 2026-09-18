@@ -49,7 +49,8 @@ test(
         profiles.rows.map((profile) => profile.id),
         [...demoIds].sort(),
       );
-      assert.ok(profiles.rows.every((profile) => profile.name.startsWith('DEMO ·')));
+      // IDs are the stable demo identifiers — names are intentionally realistic.
+      assert.ok(profiles.rows.every((profile) => profile.id.startsWith('demo-')));
       assert.equal(reviews.rows[0].count, '0');
       assert.equal(provenance.rows[0].count, String(demoGarages.length));
       assert.deepEqual(
