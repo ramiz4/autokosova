@@ -46,7 +46,7 @@ test(
       assert.equal(provenance.rows[0].count, String(demoGarages.length));
       assert.deepEqual(
         result.results.map((garage) => garage.id),
-        ['demo-prishtina-bremsen', 'demo-prishtina-bremsen-offen'],
+        ['demo-prishtina-bremsen', 'demo-prishtina-bremsen-offen', 'demo-admin-garage-members'],
       );
       assert.equal(result.results[0].reviewSummary.state, 'unavailable');
       assert.deepEqual(
