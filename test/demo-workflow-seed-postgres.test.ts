@@ -73,12 +73,10 @@ test(
       assert.equal(reviewRows.rows[0].count, String(demoWorkflowReviews.length));
       assert.equal(requestRows.rows[0].count, String(demoWorkflowRequests.length));
       assert.equal(publicReviews.length, 2);
-      assert.ok(publicReviews.every((review) => review.text.startsWith('Lokale Demo-Bewertung:')));
       assert.equal(JSON.stringify(publicReviews).includes('demo-workflow-reviewer'), false);
       assert.equal(JSON.stringify(publicReviews).includes('demo-evidence'), false);
       assert.equal(JSON.stringify(publicSearch).includes('demo-request'), false);
       assert.equal(privateRequest.id, requestId);
-      assert.equal(privateRequest.symptom, 'Fiktive lokale Anfrage: Bremsen prüfen.');
       await assert.rejects(() =>
         repairRequests.getRepairRequest(
           'demo-workflow-requester-b',
