@@ -158,6 +158,34 @@ export class LocalDemoFileStore {
       client.release();
     }
   }
+  async deleteCompanyDocument(
+    principal: Principal,
+    garageId: string,
+    fileId: string,
+  ): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        "SELECT set_config('app.user_id',$1,true),set_config('app.system_role','admin',true)",
+        [principal.userId],
+      );
+      await assertCurrentStaffIdentity(client, principal);
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [fileId]);
+      const del = await client.query(
+        'DELETE FROM garage_verification_document WHERE garage_id=$1 AND file_id=$2',
+        [garageId, fileId],
+      );
+      if (!del.rowCount) throw new AccessError(404, 'Document not found');
+      await client.query('DELETE FROM file_object WHERE id=$1', [fileId]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
   async close(): Promise<void> {
     this.grants.clear();
     await this.pool.end();

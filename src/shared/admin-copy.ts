@@ -364,6 +364,13 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
   ],
   documentSample: ['Musterdokument herunterladen', 'Download sample', 'Shkarko mostrën'],
   documentUploaded: ['Nachweis hochgeladen.', 'Evidence uploaded.', 'Dëshmia u ngarkua.'],
+  deleteDocument: ['Nachweis löschen', 'Delete evidence', 'Fshi dëshminë'],
+  deleteDocumentConfirm: [
+    'Nachweis unwiderruflich löschen?',
+    'Permanently delete this document?',
+    'Të fshihet dëshmia përfundimisht?',
+  ],
+  documentDeleted: ['Nachweis gelöscht.', 'Evidence deleted.', 'Dëshmia u fshi.'],
   photos: ['Foto-Prüfung', 'Photo review', 'Kontrolli i fotove'],
   photo: ['Profilfoto', 'Profile photo', 'Foto profili'],
   approvePhoto: ['Foto freigeben', 'Approve photo', 'Mirato foton'],

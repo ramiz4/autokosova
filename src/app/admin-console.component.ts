@@ -22,7 +22,12 @@ import { AdminAccountComboboxComponent } from './admin-account-combobox.componen
 import { AdminDraftGuardService } from './admin-draft-guard.service';
 import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
 import { LucideIconComponent } from './ui/lucide-icon.component';
-import { LucideArrowRightLeft, LucideUpload, LucideUserPlus } from './ui/lucide-icons';
+import {
+  LucideArrowRightLeft,
+  LucideTrash2,
+  LucideUpload,
+  LucideUserPlus,
+} from './ui/lucide-icons';
 import { ToastService } from './ui/toast.service';
 import { adminLabel } from '../shared/admin-copy';
 import {
@@ -61,6 +66,7 @@ export class AdminConsoleComponent {
     userPlus: LucideUserPlus,
     arrowRightLeft: LucideArrowRightLeft,
     upload: LucideUpload,
+    trash: LucideTrash2,
   };
   readonly account = inject(AccountSessionService);
   readonly language = inject(LanguageService);
@@ -969,7 +975,50 @@ export class AdminConsoleComponent {
       if (!response.ok) throw await this.responseError(response);
       if (generation === this.generation) {
         this.toast.show(this.label('documentUploaded'));
-        this.stale.set(true);
+        await this.openGarage(detail.id, this.detailTab, false, true);
+      }
+    } catch (error) {
+      if (generation === this.generation) this.failure(error);
+    } finally {
+      if (generation === this.generation) this.busy.set(false);
+    }
+  }
+  async deleteDocument(fileId: string) {
+    const detail = this.detail();
+    if (!detail || this.busy()) return;
+    const confirmed = await this.confirmation().ask({
+      title: this.label('deleteDocument'),
+      description: this.label('deleteDocumentConfirm'),
+      confirmLabel: this.label('deleteDocument'),
+      cancelLabel: this.label('cancel'),
+    });
+    if (!confirmed || this.detail() !== detail || this.busy() || !this.allowed() || this.stale())
+      return;
+    const generation = this.generation;
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const csrf =
+        this.document.cookie
+          .split('; ')
+          .find((c) => c.startsWith('autokosova_csrf='))
+          ?.split('=')[1] ?? '';
+      const response = await fetch(
+        '/api/admin/management/garages/' +
+          encodeURIComponent(detail.id) +
+          '/documents/' +
+          encodeURIComponent(fileId),
+        {
+          method: 'DELETE',
+          cache: 'no-store',
+          credentials: 'same-origin',
+          headers: { 'x-csrf-token': csrf },
+        },
+      );
+      if (!response.ok) throw await this.responseError(response);
+      if (generation === this.generation) {
+        this.toast.show(this.label('documentDeleted'));
+        await this.openGarage(detail.id, this.detailTab, false, true);
       }
     } catch (error) {
       if (generation === this.generation) this.failure(error);

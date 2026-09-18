@@ -124,6 +124,16 @@ export function registerAdministrationRoutes(
       }
     },
   );
+  app.delete(prefix + '/garages/:garageId/documents/:fileId', async (request, reply) => {
+    try {
+      const principal = await admin(request, true);
+      if (!files) throw new AccessError(503, 'Private document storage is not configured');
+      await files.deleteCompanyDocument(principal, ids(request).garageId, ids(request).fileId!);
+      return reply.code(204).send();
+    } catch (error) {
+      return respond(error, reply);
+    }
+  });
   const post = (
     path: string,
     action: (request: FastifyRequest, principal: Principal) => Promise<void>,
