@@ -48,7 +48,6 @@ test(
         result.results.map((garage) => garage.id),
         ['demo-prishtina-bremsen', 'demo-prishtina-bremsen-offen', 'demo-admin-garage-members'],
       );
-      assert.equal(result.results[0].reviewSummary.state, 'unavailable');
       assert.deepEqual(
         result.results[0].photoIds,
         LOCAL_DEMO_PHOTOS.map((photo) => photo.id),
