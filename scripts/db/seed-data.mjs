@@ -13,6 +13,7 @@ import {
   demoWorkflowUsers,
   demoGarages,
   demoBetreiberUsers,
+  demoUserDisplayNames,
 } from '../../db/demo-data.mjs';
 import { staffDemoFixtures } from '../../db/staff-demo-data.mjs';
 import { places, serviceCategories, vehicleMakes } from '../../db/catalog.mjs';
@@ -266,6 +267,15 @@ async function seedDemoData(client) {
        ON CONFLICT (id) DO UPDATE SET status = 'active'`,
       [userId],
     );
+    const entry = demoUserDisplayNames[userId];
+    if (entry) {
+      await client.query(
+        `INSERT INTO staff_identity (user_id, display_name, verified_roles)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name, verified_roles = EXCLUDED.verified_roles`,
+        [userId, entry.name, entry.roles],
+      );
+    }
   }
   const companyDocSize = Buffer.byteLength(staffDemoFixtures['company-valid'], 'utf8');
   const demoAccountGarageIdSet = new Set(demoAccountGarageIds);
@@ -375,6 +385,15 @@ async function seedDemoWorkflowData(client) {
        ON CONFLICT (id) DO UPDATE SET oidc_subject = EXCLUDED.oidc_subject, status = 'active'`,
       [userId],
     );
+    const entry = demoUserDisplayNames[userId];
+    if (entry) {
+      await client.query(
+        `INSERT INTO staff_identity (user_id, display_name, verified_roles)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name, verified_roles = EXCLUDED.verified_roles`,
+        [userId, entry.name, entry.roles],
+      );
+    }
     await recordDemoWorkflowEntity(client, 'app_user', userId);
   }
 

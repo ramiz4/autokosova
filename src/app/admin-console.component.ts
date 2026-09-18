@@ -201,7 +201,9 @@ export class AdminConsoleComponent {
   applyStatusFilter(): void {
     const queryParams =
       this.section === 'privacy'
-        ? this.privacyContextParams()
+        ? this.status
+          ? this.privacyContextParams()
+          : { status: 'all' }
         : this.status
           ? { status: this.status }
           : {};
@@ -324,9 +326,8 @@ export class AdminConsoleComponent {
   }
   private restoreSafeFilter(): void {
     if (this.section !== 'garages' && this.section !== 'privacy') return;
-    this.status =
-      this.route.snapshot.queryParamMap?.get('status') ??
-      (this.section === 'privacy' ? 'submitted' : '');
+    const raw = this.route.snapshot.queryParamMap?.get('status') ?? null;
+    this.status = raw === 'all' ? '' : (raw ?? (this.section === 'privacy' ? 'submitted' : ''));
   }
   private applyRouteContext(params: ParamMap): void {
     if (!this.ready() || !this.allowed() || !this.account.dataContext()) return;
@@ -342,7 +343,9 @@ export class AdminConsoleComponent {
     const context = `${garageId}|${validTab}|${params.get('requestId') ?? ''}|${params.get('status') ?? ''}|${validPage}`;
     if (context === this.routeContext) return;
     this.routeContext = context;
-    this.status = params.get('status') ?? (this.section === 'privacy' ? 'submitted' : '');
+    const rawStatus = params.get('status');
+    this.status =
+      rawStatus === 'all' ? '' : (rawStatus ?? (this.section === 'privacy' ? 'submitted' : ''));
     if (this.section === 'garages' && validGarage) {
       this.page.set(validPage);
       if (this.detail()?.id === garageId) {
@@ -1169,8 +1172,9 @@ export class AdminConsoleComponent {
   }
   private privacyContextParams(requestId = this.currentParam('requestId') ?? '') {
     const focus = this.currentParam('focus');
+    const urlStatus = this.status || (this.currentParam('status') === 'all' ? 'all' : '');
     return {
-      ...(this.status ? { status: this.status } : {}),
+      ...(urlStatus ? { status: urlStatus } : {}),
       ...(this.page() > 1 ? { page: this.page() } : {}),
       ...(requestId && /^[A-Za-z0-9_-]{1,200}$/.test(requestId) ? { requestId } : {}),
       ...(focus === 'privacy-context' ? { focus } : {}),
@@ -1193,7 +1197,7 @@ export class AdminConsoleComponent {
     const status = this.currentParam('status');
     const query = new URLSearchParams({ requestId, focus: 'privacy-context' });
     if (page && /^\d{1,5}$/.test(page)) query.set('page', page);
-    if (status && ['submitted', 'blocked', 'completed'].includes(status))
+    if (status && ['submitted', 'blocked', 'completed', 'all'].includes(status))
       query.set('status', status);
     return `${this.link('privacy')}?${query}`;
   }

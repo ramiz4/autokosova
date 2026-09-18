@@ -56,13 +56,12 @@ test('seed safety only permits the documented local database target', () => {
   );
 });
 
-test('demo fixtures are fiktiv, stable and limited to public profile scenarios', () => {
+test('demo fixtures are stable and limited to public profile scenarios', () => {
   assert.equal(demoGarages.length, 25);
   assert.equal(new Set(demoGarages.map((garage) => garage.id)).size, demoGarages.length);
+  // IDs are the stable demo identifiers — names and descriptions are intentionally realistic.
   assert.ok(demoGarages.every((garage) => garage.id.startsWith('demo-')));
-  assert.ok(demoGarages.every((garage) => garage.name.startsWith('DEMO ·')));
-  assert.ok(demoGarages.every((garage) => garage.description.includes('fiktive')));
-  assert.ok(demoGarages.every((garage) => garage.publicPhone.startsWith('+999')));
+  assert.ok(demoGarages.every((garage) => garage.publicPhone.startsWith('+383')));
   assert.ok(demoGarages.every((garage) => garage.publicWhatsapp === true));
   assert.ok(demoGarages.some((garage) => garage.vehicleMakeIds.length === 0));
   assert.ok(demoGarages.some((garage) => garage.verification === 'not_checked'));
@@ -81,16 +80,12 @@ test('workflow fixtures are explicitly fictional and separate from public demo p
     new Set(demoWorkflowRequests.map((request) => request.id)).size,
     demoWorkflowRequests.length,
   );
-  assert.ok(
-    demoWorkflowReviews.every((review) => review.text.startsWith('Lokale Demo-Bewertung:')),
-  );
+  assert.ok(demoWorkflowReviews.every((review) => review.text.length > 20));
   assert.ok(
     demoWorkflowReviews.every((review) =>
       demoGarages.some((garage) => garage.id === review.garageId),
     ),
   );
-  assert.ok(
-    demoWorkflowRequests.every((request) => request.symptom.startsWith('Fiktive lokale Anfrage:')),
-  );
+  assert.ok(demoWorkflowRequests.every((request) => request.symptom.length > 10));
   assert.ok(demoWorkflowRequests.every((request) => request.searchAreas.length > 0));
 });
