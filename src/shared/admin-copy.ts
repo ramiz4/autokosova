@@ -37,9 +37,9 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Kërkoni, shqyrtoni, publikoni ose pezulloni serviset administrativisht.',
   ],
   usersIntro: [
-    'Konten nach Name oder ID suchen und App-Sitzungen widerrufen.',
-    'Search accounts by name or ID and revoke app sessions.',
-    'Kërkoni llogaritë sipas emrit ose ID-së dhe revokoni seancat.',
+    'Konten nach Name oder ID suchen und bei Bedarf erneuten Login erzwingen.',
+    'Search accounts by name or ID and force re-login if needed.',
+    'Kërkoni llogaritë sipas emrit ose ID-së dhe detyroni hyrje të re nëse nevojitet.',
   ],
   privacyIntro: [
     'Löschaufträge prüfen und ausführen. Neue Aufträge werden automatisch erfasst.',
@@ -451,15 +451,17 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Nuk ka lidhje të miratuar të konsolës. Kontaktoni administratorin e identitetit.',
   ],
   rolesHint: [
-    'Rollen aus dem letzten verifizierten Abgleich, kein Echtzeitnachweis. Nach externem Entzug lokale App-Sitzungen widerrufen und erneuten regulären Login prüfen.',
-    'Roles from the last verified synchronization, not real-time proof. After external revocation, revoke local app sessions and check a new regular login.',
-    'Rolet janë nga sinkronizimi i fundit, jo provë në kohë reale. Pas revokimit, çkyçni sesionet dhe kontrolloni hyrjen e re.',
+    'Rollen aus dem letzten verifizierten Abgleich, kein Echtzeitnachweis. Nach externem Rollenentzug im Provider „Neu einloggen erzwingen" anwenden.',
+    'Roles from the last verified synchronization, not real-time proof. After revoking roles in the provider, use "Force re-login".',
+    'Rolet janë nga sinkronizimi i fundit, jo provë në kohë reale. Pas revokimit të roleve te ofruesi, zgjidhni „Detyro hyrje të re".',
   ],
-  sessions: [
-    'Lokale App-Sitzungen widerrufen',
-    'Revoke local app sessions',
-    'Revoko sesionet lokale',
+  sessions: ['Neu einloggen erzwingen', 'Force re-login', 'Detyro hyrje të re'],
+  sessionHint: [
+    'Beendet alle aktiven Sitzungen in dieser App. Provideridentität und Rollen bleiben unverändert.',
+    'Ends all active sessions in this app. Provider identity and roles stay unchanged.',
+    'Përfundon të gjitha seancat aktive në këtë aplikacion. Identiteti dhe rolet te ofruesi mbeten të pandryshuara.',
   ],
+  sessionRevoke: ['Abmelden', 'Sign out', 'Çkyçu'],
   sessionConfirm: [
     'Dieses Konto in dieser App-Instanz abmelden? Provideridentität und Rollen bleiben unverändert.',
     'Sign this account out of this app instance? Provider identity and roles stay unchanged.',

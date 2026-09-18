@@ -24,6 +24,7 @@ import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component'
 import { LucideIconComponent } from './ui/lucide-icon.component';
 import {
   LucideArrowRightLeft,
+  LucideLogOut,
   LucideTrash2,
   LucideUpload,
   LucideUserPlus,
@@ -67,6 +68,7 @@ export class AdminConsoleComponent {
     arrowRightLeft: LucideArrowRightLeft,
     upload: LucideUpload,
     trash: LucideTrash2,
+    logOut: LucideLogOut,
   };
   readonly account = inject(AccountSessionService);
   readonly language = inject(LanguageService);
@@ -1278,7 +1280,7 @@ export class AdminConsoleComponent {
     );
   }
   async revokeSessions(id: string) {
-    if (!(await this.confirm(this.label('sessionConfirm'), this.label('save')))) return;
+    if (!(await this.confirm(this.label('sessionConfirm'), this.label('sessionRevoke')))) return;
     if (this.busy() || !this.allowed() || this.stale()) return;
     await this.mutate(
       '/api/admin/management/users/' + encodeURIComponent(id) + '/revoke-sessions',
