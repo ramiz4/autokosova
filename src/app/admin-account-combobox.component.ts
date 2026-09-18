@@ -39,7 +39,7 @@ import type { AdminUser } from '../shared/administration';
         *ngIf="open && items.length"
         [id]="listId"
         role="listbox"
-        class="mt-1 max-h-60 w-full overflow-auto rounded-lg border border-slate-300 bg-white p-1 shadow-lg"
+        class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-slate-300 bg-white p-1 shadow-lg"
       >
         <li
           *ngFor="let account of items; let index = index"
