@@ -233,6 +233,17 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Shkruaj emrin ose ID-në …',
   ],
   memberRole: ['Rolle', 'Role', 'Roli'],
+  memberReasonForRevoke: ['Grund für Widerruf', 'Reason for revocation', 'Arsyeja për revokimin'],
+  memberReasonForAdd: [
+    'Grund für neue Zuordnung',
+    'Reason for new membership',
+    'Arsyeja për anëtarësimin e ri',
+  ],
+  noActiveMembers: [
+    'Keine aktiven Mitglieder — ohne aktiven Eigentümer kann die Werkstatt nicht veröffentlicht werden.',
+    'No active members — without an active owner the garage cannot be published.',
+    'Asnjë anëtar aktiv — pa pronar aktiv servisit nuk mund të publikohet.',
+  ],
   transferOwnership: ['Eigentumsübertragung', 'Ownership transfer', 'Transferimi i pronësisë'],
   noTargetChosen: [
     'Kein Konto ausgewählt',
