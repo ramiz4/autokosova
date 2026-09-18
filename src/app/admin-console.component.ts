@@ -117,7 +117,6 @@ export class AdminConsoleComponent {
   readonly memberModalMode = signal<null | 'add' | 'transfer'>(null);
   reviewReason: AdminReasonCode | '' = '';
   decisionReason: AdminReasonCode | '' = '';
-  photoReason: AdminReasonCode | '' = '';
   memberReason: AdminReasonCode | '' = '';
   detailTab: (typeof this.detailTabs)[number] = 'review';
   verification: { -readonly [K in keyof VerificationChecklist]: VerificationChecklist[K] } = {
@@ -244,7 +243,6 @@ export class AdminConsoleComponent {
     this.stale.set(false);
     this.reviewReason = '';
     this.decisionReason = '';
-    this.photoReason = '';
     this.memberReason = '';
     this.targetUserId = '';
     this.fromUserId = '';
@@ -282,7 +280,6 @@ export class AdminConsoleComponent {
       longitude: this.longitude,
       reviewReason: this.reviewReason,
       decisionReason: this.decisionReason,
-      photoReason: this.photoReason,
       memberReason: this.memberReason,
       targetUserId: this.targetUserId,
       fromUserId: this.fromUserId,
@@ -293,7 +290,6 @@ export class AdminConsoleComponent {
   private captureGarageBaseline(): void {
     const reviewReason = this.reviewReason,
       decisionReason = this.decisionReason,
-      photoReason = this.photoReason,
       memberReason = this.memberReason,
       targetUserId = this.targetUserId,
       fromUserId = this.fromUserId,
@@ -301,7 +297,6 @@ export class AdminConsoleComponent {
       requestReference = this.requestReference;
     this.reviewReason = '';
     this.decisionReason = '';
-    this.photoReason = '';
     this.memberReason = '';
     this.targetUserId = '';
     this.memberRole = 'editor';
@@ -309,7 +304,6 @@ export class AdminConsoleComponent {
     this.garageBaseline = this.garageSnapshot();
     this.reviewReason = reviewReason;
     this.decisionReason = decisionReason;
-    this.photoReason = photoReason;
     this.memberReason = memberReason;
     this.targetUserId = targetUserId;
     this.fromUserId = fromUserId;
@@ -445,7 +439,6 @@ export class AdminConsoleComponent {
       if (!ownMutation) {
         this.reviewReason = '';
         this.decisionReason = '';
-        this.photoReason = '';
         this.memberReason = '';
         this.targetUserId = '';
         this.candidateQuery = '';
@@ -758,29 +751,24 @@ export class AdminConsoleComponent {
   }
   async setPhoto(id: string, approved: boolean) {
     const detail = this.detail();
-    if (
-      !detail ||
-      !this.photoReason ||
-      !(await this.confirm(
-        this.photoConfirmation(detail.name, approved),
-        this.label(approved ? 'approvePhoto' : 'rejectPhoto'),
-      ))
-    )
-      return;
-    if (
-      this.detail() !== detail ||
-      this.busy() ||
-      !this.allowed() ||
-      this.stale() ||
-      !this.photoReason
-    )
+    if (!detail) return;
+    const actionLabel = this.label(approved ? 'approvePhoto' : 'rejectPhoto');
+    const confirmed = await this.confirmation().ask({
+      title: actionLabel,
+      description: this.photoConfirmation(detail.name, approved),
+      confirmLabel: actionLabel,
+      cancelLabel: this.label('cancel'),
+      selectLabel: this.label('photoReason'),
+      selectOptions: this.reasons.map((r) => ({ value: r, label: this.label(r) })),
+    });
+    if (!confirmed) return;
+    const reason = this.confirmation().selectedValue as AdminReasonCode;
+    if (!reason || this.detail() !== detail || this.busy() || !this.allowed() || this.stale())
       return;
     await this.garageMutation(
       'photos/' + encodeURIComponent(id) + '/decision',
-      this.photoReason,
-      {
-        approved,
-      },
+      reason,
+      { approved },
       approved ? 'photoApproved' : 'photoRejected',
     );
   }
@@ -880,7 +868,6 @@ export class AdminConsoleComponent {
   private clearSubmittedGarageInput(action: string): void {
     if (action === 'verification') this.reviewReason = '';
     if (action === 'decision') this.decisionReason = '';
-    if (action.startsWith('photos/')) this.photoReason = '';
     if (action === 'membership') {
       this.memberReason = '';
       this.targetUserId = '';

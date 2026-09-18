@@ -419,19 +419,6 @@
 
           @if (detailTab === 'photos') {
             <h3 class="mt-7 text-lg font-bold">{{ label('photos') }}</h3>
-            <label class="mt-3 grid gap-2 text-sm font-semibold"
-              >{{ label('photoReason') }}
-              <select
-                [(ngModel)]="photoReason"
-                name="photoReason"
-                class="min-h-10 w-full max-w-xs rounded-lg border border-slate-300 bg-white px-3 text-sm"
-              >
-                <option value="">{{ label('choose') }}</option>
-                @for (reason of reasons; track reason) {
-                  <option [value]="reason">{{ label(reason) }}</option>
-                }
-              </select>
-            </label>
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
               @for (photo of current.photos; track photo.id) {
                 <article class="rounded-xl border border-slate-200 p-4">
@@ -455,7 +442,7 @@
                       [size]="'compact'"
                       type="button"
                       data-approve-photo
-                      [disabled]="busy() || !photoReason || !photo.previewPath"
+                      [disabled]="busy() || !photo.previewPath"
                       (click)="setPhoto(photo.id, true)"
                     >
                       {{ label('approvePhoto') }}
@@ -464,7 +451,7 @@
                       appButton="outline"
                       [size]="'compact'"
                       type="button"
-                      [disabled]="busy() || !photoReason"
+                      [disabled]="busy()"
                       (click)="setPhoto(photo.id, false)"
                     >
                       {{ label('rejectPhoto') }}
