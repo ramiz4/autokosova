@@ -336,6 +336,9 @@ export const demoGarages = [
   }),
 ];
 
+/** Fictional garage operators — seeded as owners of the demo garages. */
+export const demoBetreiberUsers = ['demo-betreiber-a', 'demo-betreiber-b', 'demo-betreiber-c'];
+
 export const demoWorkflowUsers = [
   'demo-workflow-moderator',
   'demo-workflow-reviewer-a',
