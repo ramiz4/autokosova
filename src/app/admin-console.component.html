@@ -418,8 +418,7 @@
           }
 
           @if (detailTab === 'photos') {
-            <h3 class="mt-7 text-lg font-bold">{{ label('photos') }}</h3>
-            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+            <div class="mt-7 grid gap-4 sm:grid-cols-2">
               @for (photo of current.photos; track photo.id) {
                 <article class="rounded-xl border border-slate-200 p-4">
                   @if (photo.previewPath) {
