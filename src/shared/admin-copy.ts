@@ -225,6 +225,20 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Reason for team change',
     'Arsyeja për ndryshimin e ekipit',
   ],
+  addMember: ['Neue Zuordnung', 'Add membership', 'Shto anëtarësim'],
+  memberSearch: ['Konto suchen', 'Search account', 'Kërko llogari'],
+  memberSearchPlaceholder: [
+    'Name oder ID eingeben …',
+    'Enter name or ID …',
+    'Shkruaj emrin ose ID-në …',
+  ],
+  memberRole: ['Rolle', 'Role', 'Roli'],
+  transferOwnership: ['Eigentumsübertragung', 'Ownership transfer', 'Transferimi i pronësisë'],
+  noTargetChosen: [
+    'Kein Konto ausgewählt',
+    'No account selected',
+    'Nuk është zgjedhur asnjë llogari',
+  ],
   completeChecks: [
     'Die vier Prüfpunkte müssen bewusst bestätigt sein.',
     'All four checks must be deliberately confirmed.',

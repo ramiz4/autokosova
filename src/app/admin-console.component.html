@@ -494,7 +494,7 @@
                 }
               </select>
             </label>
-            <ul class="mt-4 grid gap-2">
+            <ul class="mt-5 grid gap-2">
               @for (person of current.members; track person.userId) {
                 <li
                   class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3"
@@ -519,50 +519,56 @@
                 </li>
               }
             </ul>
-            <div class="mt-5 grid gap-4 sm:grid-cols-2">
-              <div class="grid gap-2 text-sm font-semibold">
-                <span>{{ label('memberTarget') }}</span>
-                <app-admin-account-combobox
-                  inputId="target-user"
-                  [disabled]="busy() || stale()"
-                  [emptyLabel]="label('empty')"
-                  [label]="label('memberTarget')"
-                  [items]="candidates()"
-                  [query]="candidateQuery"
-                  (queryChange)="changeCandidateQuery($event)"
-                  (selected)="selectCandidate($event)"
-                />
-                @if (targetUserId) {
-                  <span class="text-muted">{{ targetUserId }}</span>
-                }
+            <div class="mt-5 rounded-xl border border-slate-200 p-4">
+              <h4 class="mb-3 text-base font-semibold">{{ label('addMember') }}</h4>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div class="grid gap-2 text-sm font-semibold">
+                  {{ label('memberSearch') }}
+                  <app-admin-account-combobox
+                    inputId="target-user"
+                    [disabled]="busy() || stale()"
+                    [emptyLabel]="label('empty')"
+                    [label]="label('memberSearch')"
+                    [placeholder]="label('memberSearchPlaceholder')"
+                    [items]="candidates()"
+                    [query]="candidateQuery"
+                    (queryChange)="changeCandidateQuery($event)"
+                    (selected)="selectCandidate($event)"
+                  />
+                  @if (targetUserId) {
+                    <span class="text-xs text-muted">ID: {{ targetUserId }}</span>
+                  }
+                </div>
+                <label class="grid gap-2 text-sm font-semibold"
+                  >{{ label('memberRole') }}
+                  <select
+                    name="memberRole"
+                    [(ngModel)]="memberRole"
+                    class="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm"
+                    [disabled]="busy()"
+                  >
+                    <option value="editor">{{ label('editor') }}</option>
+                    <option value="owner">{{ label('owner') }}</option>
+                  </select>
+                </label>
               </div>
-              <label class="grid gap-2 text-sm font-semibold"
-                >{{ label('members') }}
-                <select
-                  name="memberRole"
-                  [(ngModel)]="memberRole"
-                  class="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm"
-                  [disabled]="busy()"
-                >
-                  <option value="editor">{{ label('editor') }}</option>
-                  <option value="owner">{{ label('owner') }}</option>
-                </select>
-              </label>
               <button
                 appButton="outline"
                 [size]="'compact'"
                 data-save-member
                 type="button"
+                class="mt-4"
                 [disabled]="busy() || !memberReason || !targetUserId"
                 (click)="member()"
               >
                 {{ label('memberSave') }}
               </button>
             </div>
-            <div class="mt-5 rounded-xl bg-slate-50 p-4">
-              <p class="text-sm text-muted">{{ label('transferHint') }}</p>
+            <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <h4 class="mb-1 text-base font-semibold">{{ label('transferOwnership') }}</h4>
+              <p class="mb-4 text-sm text-muted">{{ label('transferHint') }}</p>
               @if (activeOwners(current).length > 1) {
-                <label class="mt-3 grid gap-2 text-sm font-semibold">
+                <label class="grid gap-2 text-sm font-semibold">
                   {{ label('sourceOwner') }}
                   <select
                     name="sourceOwner"
@@ -572,25 +578,30 @@
                   >
                     <option value="">{{ label('choose') }}</option>
                     @for (owner of activeOwners(current); track owner.userId) {
-                      <option [value]="owner.userId">{{ owner.label }} · {{ owner.userId }}</option>
+                      <option [value]="owner.userId">{{ owner.label }}</option>
                     }
                   </select>
                 </label>
               } @else {
-                <p class="mt-3 text-sm">
-                  {{ label('sourceOwner') }}: {{ memberLabel(fromUserId) }}
+                <p class="text-sm">
+                  <span class="font-semibold">{{ label('sourceOwner') }}:</span>
+                  {{ memberLabel(fromUserId) }}
                 </p>
               }
               <p class="mt-3 text-sm">
-                {{ label('sourceOwner') }} → {{ memberLabel(fromUserId) }} ·
-                {{ label('memberTarget') }} → {{ memberLabel(targetUserId) }}
+                <span class="font-semibold">{{ label('memberTarget') }}:</span>
+                @if (targetUserId) {
+                  {{ memberLabel(targetUserId) }}
+                } @else {
+                  <span class="italic text-muted">{{ label('noTargetChosen') }}</span>
+                }
               </p>
               <button
                 appButton="outline"
                 [size]="'compact'"
                 data-transfer-owner
-                class="mt-4"
                 type="button"
+                class="mt-4"
                 [disabled]="busy() || !fromUserId || !targetUserId || fromUserId === targetUserId"
                 (click)="transfer()"
               >

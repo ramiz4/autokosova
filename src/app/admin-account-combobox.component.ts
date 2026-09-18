@@ -27,6 +27,7 @@ import type { AdminUser } from '../shared/administration';
         [attr.aria-expanded]="open && items.length > 0"
         [attr.aria-controls]="open && items.length ? listId : null"
         [attr.aria-activedescendant]="activeId"
+        [placeholder]="placeholder"
         [value]="query"
         [disabled]="disabled"
         (input)="input($any($event.target).value)"
@@ -64,6 +65,7 @@ export class AdminAccountComboboxComponent {
   @Input({ required: true }) inputId = '';
   @Input() disabled = false;
   @Input() emptyLabel = '';
+  @Input() placeholder = '';
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
   private accounts: readonly AdminUser[] = [];
