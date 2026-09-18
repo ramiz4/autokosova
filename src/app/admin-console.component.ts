@@ -21,6 +21,8 @@ import { ButtonDirective } from './ui/button.directive';
 import { AdminAccountComboboxComponent } from './admin-account-combobox.component';
 import { AdminDraftGuardService } from './admin-draft-guard.service';
 import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
+import { LucideIconComponent } from './ui/lucide-icon.component';
+import { LucideArrowRightLeft, LucideUserPlus } from './ui/lucide-icons';
 import { ToastService } from './ui/toast.service';
 import { adminLabel } from '../shared/admin-copy';
 import {
@@ -49,11 +51,13 @@ import type { VerificationChecklist } from '../shared/garage-onboarding';
     ButtonDirective,
     AdminAccountComboboxComponent,
     ConfirmationDialogComponent,
+    LucideIconComponent,
   ],
   templateUrl: './admin-console.component.html',
   host: { '(window:beforeunload)': 'beforeUnload($event)' },
 })
 export class AdminConsoleComponent {
+  protected readonly icons = { userPlus: LucideUserPlus, arrowRightLeft: LucideArrowRightLeft };
   readonly account = inject(AccountSessionService);
   readonly language = inject(LanguageService);
   private readonly route = inject(ActivatedRoute);
@@ -105,9 +109,12 @@ export class AdminConsoleComponent {
   status = '';
   candidateQuery = '';
   targetUserId = '';
+  transferTargetUserId = '';
+  transferCandidateQuery = '';
   fromUserId = '';
   requestReference = '';
   memberRole: 'owner' | 'editor' = 'editor';
+  readonly memberModalMode = signal<null | 'add' | 'transfer'>(null);
   reviewReason: AdminReasonCode | '' = '';
   decisionReason: AdminReasonCode | '' = '';
   photoReason: AdminReasonCode | '' = '';
@@ -786,6 +793,68 @@ export class AdminConsoleComponent {
   selectCandidate(account: AdminUser) {
     this.targetUserId = account.id;
     this.candidateQuery = account.label;
+  }
+  openAddModal() {
+    this.targetUserId = '';
+    this.candidateQuery = '';
+    this.memberRole = 'editor';
+    this.memberModalMode.set('add');
+  }
+  openTransferModal() {
+    this.transferTargetUserId = '';
+    this.transferCandidateQuery = '';
+    this.memberModalMode.set('transfer');
+  }
+  closeModal() {
+    this.memberModalMode.set(null);
+  }
+  changeTransferQuery(value: string): void {
+    this.transferCandidateQuery = value;
+    this.transferTargetUserId = '';
+    this.candidateQuery = value;
+    this.candidates.set([]);
+    void this.findCandidates();
+  }
+  selectTransferCandidate(account: AdminUser) {
+    this.transferTargetUserId = account.id;
+    this.transferCandidateQuery = account.label;
+  }
+  async confirmAddStep1() {
+    if (!this.targetUserId) return;
+    this.memberModalMode.set(null);
+    const detail = this.detail();
+    if (!detail) return;
+    const target = this.memberLabel(this.targetUserId);
+    const confirmed = await this.confirmation().ask({
+      title: this.label('addMember'),
+      description: this.membershipConfirmation(detail.name, target, this.memberRole, 'active'),
+      confirmLabel: this.label('memberSave'),
+      cancelLabel: this.label('cancel'),
+      selectLabel: this.label('memberReasonForAdd'),
+      selectOptions: this.reasons.map((r) => ({ value: r, label: this.label(r) })),
+    });
+    if (!confirmed) return;
+    const reason = this.confirmation().selectedValue as AdminReasonCode;
+    if (!reason || this.detail() !== detail || this.busy() || !this.allowed() || this.stale()) return;
+    await this.garageMutation('membership', reason, { userId: this.targetUserId, role: this.memberRole, state: 'active' }, 'membershipSaved');
+  }
+  async confirmTransferStep1() {
+    if (!this.transferTargetUserId || !this.fromUserId || this.fromUserId === this.transferTargetUserId) return;
+    this.memberModalMode.set(null);
+    const detail = this.detail();
+    if (!detail) return;
+    const confirmed = await this.confirmation().ask({
+      title: this.label('transferOwnership'),
+      description: this.transferConfirmation(detail.name, this.memberLabel(this.fromUserId), this.memberLabel(this.transferTargetUserId)),
+      confirmLabel: this.label('transfer'),
+      cancelLabel: this.label('cancel'),
+      selectLabel: this.label('memberReasonForTransfer'),
+      selectOptions: this.reasons.map((r) => ({ value: r, label: this.label(r) })),
+    });
+    if (!confirmed) return;
+    const reason = this.confirmation().selectedValue as AdminReasonCode;
+    if (!reason || this.detail() !== detail || this.busy() || !this.allowed() || this.stale()) return;
+    await this.garageMutation('ownership-transfer', reason, { fromUserId: this.fromUserId, targetUserId: this.transferTargetUserId }, 'transferSaved');
   }
   private async garageMutation(
     action: string,

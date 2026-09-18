@@ -43,7 +43,9 @@ import {
   lucideStar,
   lucideThumbsUp,
   lucideTrash2,
+  lucideArrowRightLeft,
   lucideUser,
+  lucideUserPlus,
   lucideUsers,
   lucideVan,
   lucideWrench,
@@ -101,7 +103,9 @@ export const LucideShieldCheck = icon('shield-check', lucideShieldCheck);
 export const LucideStar = icon('star', lucideStar);
 export const LucideThumbsUp = icon('thumbs-up', lucideThumbsUp);
 export const LucideTrash2 = icon('trash-2', lucideTrash2);
+export const LucideArrowRightLeft = icon('arrow-right-left', lucideArrowRightLeft);
 export const LucideUser = icon('user', lucideUser);
+export const LucideUserPlus = icon('user-plus', lucideUserPlus);
 export const LucideUsers = icon('users', lucideUsers);
 export const LucideVan = icon('van', lucideVan);
 export const LucideWrench = icon('wrench', lucideWrench);
