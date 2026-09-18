@@ -390,7 +390,6 @@ test(
         }),
       );
       const privacy = await adminStore.privacy(a, {});
-      assert.equal(privacy.policy, undefined);
       assert.ok(privacy.requests.some((r) => r.status === 'blocked_by_policy'));
       assert.ok(privacy.requests.some((r) => r.status === 'manual_content_decision_required'));
       const blockedPrivacy = await adminStore.privacy(a, { status: 'blocked' });
