@@ -22,7 +22,7 @@ import { AdminAccountComboboxComponent } from './admin-account-combobox.componen
 import { AdminDraftGuardService } from './admin-draft-guard.service';
 import { ConfirmationDialogComponent } from './ui/confirmation-dialog.component';
 import { LucideIconComponent } from './ui/lucide-icon.component';
-import { LucideArrowRightLeft, LucideUserPlus } from './ui/lucide-icons';
+import { LucideArrowRightLeft, LucideUpload, LucideUserPlus } from './ui/lucide-icons';
 import { ToastService } from './ui/toast.service';
 import { adminLabel } from '../shared/admin-copy';
 import {
@@ -57,7 +57,7 @@ import type { VerificationChecklist } from '../shared/garage-onboarding';
   host: { '(window:beforeunload)': 'beforeUnload($event)' },
 })
 export class AdminConsoleComponent {
-  protected readonly icons = { userPlus: LucideUserPlus, arrowRightLeft: LucideArrowRightLeft };
+  protected readonly icons = { userPlus: LucideUserPlus, arrowRightLeft: LucideArrowRightLeft, upload: LucideUpload };
   readonly account = inject(AccountSessionService);
   readonly language = inject(LanguageService);
   private readonly route = inject(ActivatedRoute);
@@ -909,6 +909,42 @@ export class AdminConsoleComponent {
   }
   private photoConfirmation(name: string, approved: boolean): string {
     return `„${name}“: ${this.label(approved ? 'approvePhoto' : 'rejectPhoto')}?`;
+  }
+  async uploadDocument(event: Event) {
+    const detail = this.detail();
+    const file = (event.target as HTMLInputElement).files?.[0];
+    (event.target as HTMLInputElement).value = '';
+    if (!detail || !file || this.busy()) return;
+    const generation = this.generation;
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const text = await file.text();
+      const csrf =
+        this.document.cookie
+          .split('; ')
+          .find((c) => c.startsWith('autokosova_csrf='))
+          ?.split('=')[1] ?? '';
+      const response = await fetch(
+        '/api/admin/management/garages/' + encodeURIComponent(detail.id) + '/documents',
+        {
+          method: 'POST',
+          cache: 'no-store',
+          credentials: 'same-origin',
+          headers: { 'content-type': 'text/plain; charset=utf-8', 'x-csrf-token': csrf },
+          body: text,
+        },
+      );
+      if (!response.ok) throw await this.responseError(response);
+      if (generation === this.generation) {
+        this.toast.show(this.label('documentUploaded'));
+        this.stale.set(true);
+      }
+    } catch (error) {
+      if (generation === this.generation) this.failure(error);
+    } finally {
+      if (generation === this.generation) this.busy.set(false);
+    }
   }
   async openDocument(fileId: string) {
     const detail = this.detail();

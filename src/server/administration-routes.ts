@@ -94,6 +94,36 @@ export function registerAdministrationRoutes(
     if (!files) throw new AccessError(503, 'Private document storage is not configured');
     return files.issue(p, params.fileId!);
   });
+  app.get(prefix + '/garages/:garageId/documents/sample', async (request, reply) => {
+    try {
+      await admin(request);
+      if (!files) throw new AccessError(503, 'Local document fixtures unavailable');
+      return reply
+        .type('text/plain; charset=utf-8')
+        .header('content-disposition', 'attachment; filename="demo-company.txt"')
+        .send(files.companySample());
+    } catch (error) {
+      return respond(error, reply);
+    }
+  });
+  app.post(
+    prefix + '/garages/:garageId/documents',
+    { bodyLimit: 8192, schema: { body: { type: 'string', minLength: 1, maxLength: 8192 } } },
+    async (request, reply) => {
+      try {
+        const principal = await admin(request, true);
+        if (!files) throw new AccessError(503, 'Private document storage is not configured');
+        const result = await files.createCompanyDocument(
+          principal,
+          ids(request).garageId,
+          request.body as string,
+        );
+        return reply.code(201).send(result);
+      } catch (error) {
+        return respond(error, reply);
+      }
+    },
+  );
   const post = (
     path: string,
     action: (request: FastifyRequest, principal: Principal) => Promise<void>,

@@ -98,6 +98,69 @@ export class LocalDemoFileStore {
   visitSample(): string {
     return staffDemoFixtures['visit-valid'];
   }
+  companySample(): string {
+    return staffDemoFixtures['company-valid'];
+  }
+  async createCompanyDocument(
+    principal: Principal,
+    garageId: string,
+    text: string,
+  ): Promise<{ fileId: string; localFixture: true }> {
+    if (staffDemoFixtures['company-valid'] !== text) {
+      throw new AccessError(
+        422,
+        'Only the supplied fictional demo document is accepted',
+        'demo_document_required',
+      );
+    }
+    const fileId =
+      'demo-company-doc-' +
+      createHash('sha256')
+        .update(JSON.stringify([principal.userId, garageId]))
+        .digest('hex')
+        .slice(0, 40);
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        "SELECT set_config('app.user_id',$1,true),set_config('app.system_role',$2,true)",
+        [principal.userId, principal.roles.has('admin') ? 'admin' : ''],
+      );
+      await assertCurrentStaffIdentity(client, principal);
+      const user = await client.query(
+        "SELECT id FROM app_user WHERE id=$1 AND status='active' FOR SHARE",
+        [principal.userId],
+      );
+      if (!user.rowCount) throw new AccessError(403, 'Active account required');
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [fileId]);
+      const prior = await client.query(
+        'SELECT 1 FROM file_object WHERE id=$1',
+        [fileId],
+      );
+      if (!prior.rowCount) {
+        await client.query(
+          "INSERT INTO file_object(id,owner_user_id,storage_key,content_type,size_bytes,scan_state,retention_state) VALUES($1,$2,$3,'text/plain',$4,'clean','active')",
+          [fileId, principal.userId, 'local-demo/' + fileId, Buffer.byteLength(text)],
+        );
+        await client.query("SELECT set_config('app.local_demo_upload','known_fixture',true)");
+        await client.query(
+          "INSERT INTO local_demo_file_fixture(file_id,fixture_key) VALUES($1,'company-valid')",
+          [fileId],
+        );
+        await client.query(
+          'INSERT INTO garage_verification_document(file_id,garage_id,uploaded_by_user_id) VALUES($1,$2,$3)',
+          [fileId, garageId, principal.userId],
+        );
+      }
+      await client.query('COMMIT');
+      return { fileId, localFixture: true };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
   async close(): Promise<void> {
     this.grants.clear();
     await this.pool.end();
