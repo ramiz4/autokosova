@@ -26,8 +26,12 @@ test(
       );
       const reviews = await client.query<{ count: string }>(
         `SELECT count(*)::text AS count
-         FROM garage_review
-         WHERE garage_id = ANY($1::text[])`,
+         FROM garage_review g
+         WHERE g.garage_id = ANY($1::text[])
+           AND NOT EXISTS (
+             SELECT 1 FROM local_demo_seed_entity
+             WHERE entity_type = 'garage_review' AND entity_id = g.id
+           )`,
         [demoIds],
       );
       const provenance = await client.query<{ count: string }>(
