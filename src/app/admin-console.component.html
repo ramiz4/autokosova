@@ -584,9 +584,6 @@
                     (queryChange)="changeCandidateQuery($event)"
                     (selected)="selectCandidate($event)"
                   />
-                  @if (targetUserId && candidateQuery !== targetUserId) {
-                    <span class="text-xs text-muted">ID: {{ targetUserId }}</span>
-                  }
                 </div>
                 <label class="grid gap-2 text-sm font-semibold"
                   >{{ label('memberRole') }}
@@ -601,28 +598,14 @@
                   </select>
                 </label>
               </div>
-              <label class="mt-4 grid gap-2 text-sm font-semibold"
-                >{{ label('memberReasonForAdd') }}
-                <select
-                  [(ngModel)]="memberReason"
-                  name="memberReasonAdd"
-                  class="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"
-                  [disabled]="busy()"
-                >
-                  <option value="">{{ label('choose') }}</option>
-                  @for (reason of reasons; track reason) {
-                    <option [value]="reason">{{ label(reason) }}</option>
-                  }
-                </select>
-              </label>
               <button
                 appButton="outline"
                 [size]="'compact'"
                 data-save-member
                 type="button"
                 class="mt-3"
-                [disabled]="busy() || !memberReason || !targetUserId"
-                (click)="member()"
+                [disabled]="busy() || !targetUserId"
+                (click)="addMember()"
               >
                 {{ label('memberSave') }}
               </button>

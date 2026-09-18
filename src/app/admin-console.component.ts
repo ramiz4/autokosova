@@ -638,6 +638,28 @@ export class AdminConsoleComponent {
       this.longitude <= 180
     );
   }
+  async addMember() {
+    const detail = this.detail();
+    if (!detail || !this.targetUserId) return;
+    const target = this.memberLabel(this.targetUserId);
+    const confirmed = await this.confirmation().ask({
+      title: this.label('addMember'),
+      description: this.membershipConfirmation(detail.name, target, this.memberRole, 'active'),
+      confirmLabel: this.label('memberSave'),
+      cancelLabel: this.label('cancel'),
+      selectLabel: this.label('memberReasonForAdd'),
+      selectOptions: this.reasons.map((r) => ({ value: r, label: this.label(r) })),
+    });
+    if (!confirmed) return;
+    const reason = this.confirmation().selectedValue as AdminReasonCode;
+    if (!reason || this.detail() !== detail || this.busy() || !this.allowed() || this.stale()) return;
+    await this.garageMutation(
+      'membership',
+      reason,
+      { userId: this.targetUserId, role: this.memberRole, state: 'active' },
+      'membershipSaved',
+    );
+  }
   async revokeMember(userId: string, role: string) {
     const detail = this.detail();
     if (!detail || !userId) return;
