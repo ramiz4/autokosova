@@ -50,7 +50,7 @@ test(
         AUTOKOSOVA_DEMO_MODERATOR_SUBJECT: 'staff-test-moderator',
         AUTOKOSOVA_DEMO_ADMIN_SUBJECT: 'staff-test-admin',
       };
-      await seedDatabase(seed, 'demo-workflows', env);
+      await seedDatabase(seed, 'demo', env);
       await root.query(`CREATE ROLE ${role} NOLOGIN NOSUPERUSER NOBYPASSRLS`);
       await root.query(`GRANT USAGE ON SCHEMA ${schema},public TO ${role}`);
       await root.query(
@@ -122,10 +122,7 @@ test(
       const file = 'demo-staff-review-unassigned-file';
       const grant = await files.issue(moderator, file);
       await assert.rejects(files.consume(other, file, grant.grantId));
-      assert.match(
-        await files.consume(moderator, file, grant.grantId),
-        /DEMO – kein echter Nachweis/,
-      );
+      assert.match(await files.consume(moderator, file, grant.grantId), /Fiktiver/);
       await assert.rejects(files.consume(moderator, file, grant.grantId));
       await assert.rejects(files.issue(moderator, 'demo-staff-review-blocked-file'));
       const prior = await files.issue(moderator, file);
@@ -147,7 +144,7 @@ test(
       assert.equal(escalated.escalation?.reason, 'requires_admin');
       assert.equal(escalated.assignedModeratorUserId, undefined);
       // Durable seed: an escalated/modified case is not assigned back or republished.
-      await seedDatabase(seed, 'demo-workflows', env);
+      await seedDatabase(seed, 'demo', env);
       assert.deepEqual(await store.getStaffCase(admin, id), escalated);
       await store.assignStaffCase(admin, id, {
         moderatorUserId: other.userId,
@@ -185,7 +182,7 @@ test(
       await seed.query("DELETE FROM moderation_case WHERE id='review:demo-staff-review-mismatch'");
       await seed.query("DELETE FROM garage_review WHERE id='demo-staff-review-mismatch'");
       await seed.query("DELETE FROM file_object WHERE id='demo-staff-review-mismatch-file'");
-      await seedDatabase(seed, 'demo-workflows', env);
+      await seedDatabase(seed, 'demo', env);
       assert.equal(
         (await seed.query("SELECT 1 FROM garage_review WHERE id='demo-staff-review-mismatch'"))
           .rowCount,

@@ -49,7 +49,7 @@ test(
         AUTOKOSOVA_DEMO_MODERATOR_SUBJECT: 'moderation-test-moderator',
         AUTOKOSOVA_DEMO_ADMIN_SUBJECT: 'moderation-test-admin',
       };
-      await seedDatabase(seed, 'demo-workflows', env);
+      await seedDatabase(seed, 'demo', env);
       await root.query(`CREATE ROLE ${runtimeRole} NOLOGIN NOSUPERUSER NOBYPASSRLS`);
       runtimeCreated = true;
       await root.query(`GRANT USAGE ON SCHEMA ${schema},public TO ${runtimeRole}`);
@@ -335,7 +335,7 @@ test(
         files.consume(mod, 'demo-staff-review-reported-file', reportProof.grantId),
       );
       const saved = await get(assigned);
-      await seedDatabase(seed, 'demo-workflows', env);
+      await seedDatabase(seed, 'demo', env);
       assert.deepEqual(await get(assigned), saved);
       // New Fastify route: actual DB, strict input, CSRF, role and object boundaries.
       const access = new AccessStore();

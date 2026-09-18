@@ -50,14 +50,12 @@ standardmäßig 4000. `PORT` steuert nicht den Angular-Entwicklungsserver. Ctrl+
 
 | Befehl                       | Datenprofil / Wirkung                                                                                           |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `npm run dev`                | Referenzkatalog: Kategorien, Marken und Orte                                                                    |
-| `npm run dev:demo`           | Zusätzlich 25 öffentliche fiktive Demo-Werkstätten                                                              |
-| `npm run dev:demo-workflows` | Zusätzlich gekennzeichnete Bewertungen, private Testanfragen und Nachweis-Metadaten                             |
-| `npm run dev:doctor`         | Nur Diagnose von Toolchain, Konfiguration, Docker, Ressourcen und Ports; kein Start und keine DB-/Dateiänderung |
+| `npm run dev`        | Referenzkatalog: Kategorien, Marken und Orte                                                                    |
+| `npm run dev:demo`   | Zusätzlich 25 öffentliche fiktive Demo-Werkstätten, Bewertungen, private Testanfragen und Nachweis-Metadaten    |
+| `npm run dev:doctor` | Nur Diagnose von Toolchain, Konfiguration, Docker, Ressourcen und Ports; kein Start und keine DB-/Dateiänderung |
 
-Die Demo-Befehle setzen die erforderlichen Seed-Freigaben nur im Seed-Prozess. Ein
-Profilwechsel entfernt keine vorhandenen Daten. Demo-Profile beginnen mit `DEMO ·`;
-der öffentliche Demo-Seed enthält keine Bewertungen oder privaten Nachweise.
+Der Demo-Befehl setzt die erforderlichen Seed-Freigaben nur im Seed-Prozess. Ein
+Profilwechsel entfernt keine vorhandenen Daten. Demo-Profile beginnen mit `DEMO ·`.
 Die Kontaktvorschau bleibt testbar, öffnet bei Demo-Profilen aber weder WhatsApp
 noch die Telefon-App. Workflowdaten erzeugen keinen Login-Bypass.
 
@@ -215,10 +213,9 @@ npm run build
 npm run test:smoke
 ALLOW_LOCAL_RESET=1 npm run db:reset
 ALLOW_LOCAL_RESET=1 AUTOKOSOVA_DEMO_DATA=1 npm run db:reset:demo
-ALLOW_LOCAL_RESET=1 AUTOKOSOVA_DEMO_DATA=1 AUTOKOSOVA_DEMO_WORKFLOW_DATA=1 npm run db:reset:demo-workflows
 ```
 
-`db:reset` ist absichtlich ohne `ALLOW_LOCAL_RESET=1` gesperrt und darf niemals mit `NODE_ENV=production` laufen. Alle Reset-Befehle akzeptieren nur die lokale Datenbank `autokosova`; `db:reset:demo` verlangt zusätzlich `AUTOKOSOVA_DEMO_DATA=1`, und `db:reset:demo-workflows` verlangt beide Demo-Freigaben. Ein Reset mit oder ohne Demo-Daten ist die einzige vorgesehene Bereinigung der Demo-Daten; die Seed-Befehle löschen keine anderen lokalen Daten.
+`db:reset` ist absichtlich ohne `ALLOW_LOCAL_RESET=1` gesperrt und darf niemals mit `NODE_ENV=production` laufen. Alle Reset-Befehle akzeptieren nur die lokale Datenbank `autokosova`; `db:reset:demo` verlangt zusätzlich `AUTOKOSOVA_DEMO_DATA=1`. Ein Reset mit oder ohne Demo-Daten ist die einzige vorgesehene Bereinigung der Demo-Daten; die Seed-Befehle löschen keine anderen lokalen Daten.
 Falls Port 55432 belegt ist, kann vor `docker compose up` ein anderer lokaler Port mit `AUTOKOSOVA_DB_PORT=55433` gesetzt werden; `DATABASE_URL` muss dann denselben Port verwenden.
 
 ## Produktregeln
@@ -309,7 +306,7 @@ bewusste Löschgrenze: [Demo-Konten und Datenbesitz](docs/development/DEMO-ACCOU
 
 ## Administration und Moderation lokal prüfen
 
-`npm run dev:demo-workflows` ist der vollständige lokale Demo-Einstieg. `dev:demo` bleibt das öffentliche Werkstattprofil, `dev` der Referenzdatenstart. Für den manuellen Mitarbeitendenablauf sind die bestehende freigegebene OIDC-Konfiguration und tatsächliche Projektrollen notwendig. Die ignorierte lokale Konfiguration kann `AUTOKOSOVA_DEMO_ADMIN_SUBJECT` und `AUTOKOSOVA_DEMO_MODERATOR_SUBJECT` aus der freigegebenen Subject-Zuordnung enthalten. Keine Werte aus E-Mail/Kontonamen ableiten und keine Rolle durch den Seed erzeugen.
+`npm run dev:demo` ist der vollständige lokale Demo-Einstieg. `dev` der Referenzdatenstart. Für den manuellen Mitarbeitendenablauf sind die bestehende freigegebene OIDC-Konfiguration und tatsächliche Projektrollen notwendig. Die ignorierte lokale Konfiguration kann `AUTOKOSOVA_DEMO_ADMIN_SUBJECT` und `AUTOKOSOVA_DEMO_MODERATOR_SUBJECT` aus der freigegebenen Subject-Zuordnung enthalten. Keine Werte aus E-Mail/Kontonamen ableiten und keine Rolle durch den Seed erzeugen.
 
 Ein Moderator ohne konfigurierte Zuordnung bekommt keine fremden Fälle. Sein regulärer erfolgreicher Login trägt die verifizierte Rolle in das eingeschränkte Zuweisungsverzeichnis ein; deshalb für die erste manuelle Demo zuerst Moderator anmelden, abmelden, danach Admin anmelden. Bei mehreren Konten werden die fremden Daten nach Logout nicht weiterverwendet. Eine geänderte bestehende Demo-Bindung wird abgewiesen statt Datensätze einem anderen Konto zuzuschreiben.
 
@@ -348,7 +345,7 @@ Automatisierter Nachweis: `npm run test:staff:browser` nach dem Build, mit lokal
 
 ## Kundenbewertung und Werkstattantwort lokal prüfen
 
-`npm run dev:demo-workflows` verwendet zusätzlich zur Staff-Basis die vorhandene freigegebene Kunden-/Werkstatt-Kontozuordnung. `demo-customer-review-pending` ist eine eigene eingereichte Bewertung; `demo-customer-review-published` eine fiktive veröffentlichte Bewertung für Kundenupdates. Der bestehende Moderatorbestand bleibt erhalten. Ein erneuter Seed setzt Entscheidungen, Änderungen oder Löschungen nicht zurück.
+`npm run dev:demo` verwendet zusätzlich zur Staff-Basis die vorhandene freigegebene Kunden-/Werkstatt-Kontozuordnung. `demo-customer-review-pending` ist eine eigene eingereichte Bewertung; `demo-customer-review-published` eine fiktive veröffentlichte Bewertung für Kundenupdates. Der bestehende Moderatorbestand bleibt erhalten. Ein erneuter Seed setzt Entscheidungen, Änderungen oder Löschungen nicht zurück.
 
 Durchlauf: Im veröffentlichten Demo-Profil „Bewertung schreiben“ wählen, regulär anmelden, fiktiven Beispielnachweis über den sichtbaren Link speichern und als `.txt` hochladen. Ausschliesslich die bereitgestellten fiktiven Bytes werden angenommen; keine echten Rechnungen verwenden. Vier Kriterien, Leistung und Besuchsmonat erfassen und zur Prüfung einreichen. In `/reviews` erscheint zunächst der tatsächliche Prüfstatus, nicht eine angebliche Veröffentlichung.
 
@@ -358,7 +355,7 @@ Automatisierte Abnahme: `npm run verify` mit lokaler DB, `npm run test:staff:bro
 
 ## Vollständige lokale Administration
 
-`npm run dev:demo-workflows` bereitet zusätzlich die Adminfälle vor. Ein regulärer Adminlogin öffnet `/admin` mit echtem Handlungsbedarf. Die Navigation führt zu Werkstattprüfung, Benutzern/Mitgliedschaften, Datenschutz, Audit, Katalog und dokumentierter Supportaufnahme. Alle Bereiche existieren ebenso unter `/sq` und `/en`. Die Fallbearbeitung wird aus der Moderation wiederverwendet.
+`npm run dev:demo` bereitet die Adminfälle vor. Ein regulärer Adminlogin öffnet `/admin` mit echtem Handlungsbedarf. Die Navigation führt zu Werkstattprüfung, Benutzern/Mitgliedschaften, Datenschutz, Audit, Katalog und dokumentierter Supportaufnahme. Alle Bereiche existieren ebenso unter `/sq` und `/en`. Die Fallbearbeitung wird aus der Moderation wiederverwendet.
 
 | Fiktiver Datensatz               | Übung                                                                                                                                                             |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |

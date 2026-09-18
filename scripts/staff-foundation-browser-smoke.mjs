@@ -36,7 +36,7 @@ try {
     await client.query(
       (await readFile(new URL(file, directory), 'utf8')).replaceAll("'public.", "'" + schema + '.'),
     );
-  await seedDatabase(client, 'demo-workflows', environment);
+  await seedDatabase(client, 'demo', environment);
   browser = await startBrowser(port, environment);
   async function login(role, locale = 'de', returnTo) {
     provider.setSubject(role === 'admin' ? admin : moderator);
@@ -143,7 +143,7 @@ try {
   const snapshot = await client.query(
     "SELECT revision,status,escalation_reason,assigned_moderator_user_id FROM moderation_case WHERE id='review:demo-staff-review-unassigned'",
   );
-  await seedDatabase(client, 'demo-workflows', environment);
+  await seedDatabase(client, 'demo', environment);
   assert.deepEqual(
     (
       await client.query(

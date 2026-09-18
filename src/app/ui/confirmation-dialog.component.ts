@@ -6,6 +6,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import {
   BrnAlertDialog,
   BrnAlertDialogContent,
@@ -20,12 +21,15 @@ export interface ConfirmationRequest {
   readonly description: string;
   readonly confirmLabel: string;
   readonly cancelLabel: string;
+  readonly selectLabel?: string;
+  readonly selectOptions?: readonly { value: string; label: string }[];
 }
 
 @Component({
   selector: 'app-confirmation-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    FormsModule,
     BrnAlertDialog,
     BrnAlertDialogContent,
     BrnAlertDialogDescription,
@@ -61,6 +65,20 @@ export interface ConfirmationRequest {
               >
                 {{ content.description }}
               </p>
+              @if (content.selectOptions && content.selectLabel) {
+                <label class="mt-4 grid gap-2 text-sm font-semibold">
+                  {{ content.selectLabel }}
+                  <select
+                    [(ngModel)]="selectedValue"
+                    class="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm"
+                  >
+                    <option value=""></option>
+                    @for (opt of content.selectOptions; track opt.value) {
+                      <option [value]="opt.value">{{ opt.label }}</option>
+                    }
+                  </select>
+                </label>
+              }
             </div>
             <footer
               class="app-dialog-footer flex flex-wrap justify-end gap-2.5 px-6.5 pt-4.5 pb-6.5"
@@ -79,6 +97,7 @@ export interface ConfirmationRequest {
                 appButton
                 size="compact"
                 data-confirmation-confirm
+                [disabled]="!!content.selectOptions && !selectedValue"
                 (click)="choose(true)"
               >
                 {{ content.confirmLabel }}
@@ -93,6 +112,7 @@ export interface ConfirmationRequest {
 export class ConfirmationDialogComponent {
   readonly request = signal<ConfirmationRequest | null>(null);
   readonly state = signal<'closed' | 'open'>('closed');
+  selectedValue = '';
   private readonly dialog = viewChild.required<BrnAlertDialog>('dialog');
   private resolve: ((answer: boolean) => void) | null = null;
   private closing = false;
@@ -103,6 +123,7 @@ export class ConfirmationDialogComponent {
 
   ask(request: ConfirmationRequest): Promise<boolean> {
     if (this.resolve || this.closing) return Promise.resolve(false);
+    this.selectedValue = '';
     this.request.set(request);
     this.state.set('open');
     return new Promise<boolean>((resolve) => (this.resolve = resolve));

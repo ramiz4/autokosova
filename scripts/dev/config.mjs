@@ -94,7 +94,6 @@ export function resolveConfig(root, environment = process.env) {
   }
   // Explicit profile selection is the only source of seed permissions here.
   env.AUTOKOSOVA_DEMO_DATA = '';
-  env.AUTOKOSOVA_DEMO_WORKFLOW_DATA = '';
   env.ALLOW_LOCAL_RESET = '';
   for (const key of Object.keys(env)) if (key.startsWith('COMPOSE_')) delete env[key];
   Object.assign(env, {
@@ -114,11 +113,9 @@ function port(value, name) {
 }
 
 export function seedEnvironment(env, profile) {
-  if (!['reference', 'demo', 'demo-workflows'].includes(profile))
-    throw new Error('Unbekanntes Datenprofil.');
+  if (!['reference', 'demo'].includes(profile)) throw new Error('Unbekanntes Datenprofil.');
   return {
     ...env,
     ...(profile !== 'reference' ? { AUTOKOSOVA_DEMO_DATA: '1' } : {}),
-    ...(profile === 'demo-workflows' ? { AUTOKOSOVA_DEMO_WORKFLOW_DATA: '1' } : {}),
   };
 }

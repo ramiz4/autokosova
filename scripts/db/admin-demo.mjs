@@ -4,14 +4,14 @@ import { staffDemoFixtures, staffDemoOperator } from '../../db/staff-demo-data.m
 export async function seedAdminDemo(client, environment = process.env) {
   if (environment.NODE_ENV === 'production')
     throw new Error('Administrative demo is prohibited in production.');
-  const actors = [
-    'demo-admin-owner',
-    'demo-admin-editor',
-    'demo-admin-next-owner',
-    'demo-admin-former-editor',
-    'demo-admin-erase-requester',
-  ];
-  for (const id of actors) {
+  const actors = {
+    'demo-admin-owner': 'Liridona Kelmendi',
+    'demo-admin-editor': 'Gëzim Morina',
+    'demo-admin-next-owner': 'Armend Hasani',
+    'demo-admin-former-editor': 'Vesa Berisha',
+    'demo-admin-erase-requester': 'Kushtrim Gashi',
+  };
+  for (const [id, displayName] of Object.entries(actors)) {
     const known = await client.query(
       "SELECT 1 FROM local_demo_seed_entity WHERE entity_type='app_user' AND entity_id=$1",
       [id],
@@ -23,6 +23,12 @@ export async function seedAdminDemo(client, environment = process.env) {
     );
     if (!inserted.rowCount) throw new Error('Unmanaged administrative demo account collision');
     await mark(client, 'app_user', id);
+    await client.query(
+      `INSERT INTO staff_identity (user_id, display_name, verified_roles)
+       VALUES ($1, $2, '{}')
+       ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name`,
+      [id, displayName],
+    );
   }
   const owner = await client.query(
     "SELECT 1 FROM app_user WHERE id='demo-admin-owner' AND status='active'",
@@ -31,31 +37,51 @@ export async function seedAdminDemo(client, environment = process.env) {
   const scenarios = [
     {
       id: 'demo-admin-garage-pending',
-      name: 'DEMO · Prüfung vollständig',
+      name: 'Auto-Service Pllana',
+      address: 'Rruga Nënë Tereza 12, Prishtina',
+      contact: 'Arbnor Pllana',
+      phone: '+383 44 200 101',
+      description: 'Fahrzeugreparaturen und Bremsen-Service in Prishtina. Alle Marken.',
       state: 'pending_review',
       proof: true,
     },
     {
       id: 'demo-admin-garage-incomplete',
-      name: 'DEMO · Angaben unvollständig',
+      name: 'Werkstatt Sejdiu',
+      address: 'Bulevardi Bill Clinton 8, Prishtina',
+      contact: 'Muharrem Sejdiu',
+      phone: '+383 44 200 102',
+      description: 'Allgemeine Kfz-Werkstatt und Inspektion in Prishtina.',
       state: 'pending_review',
       proof: false,
     },
     {
       id: 'demo-admin-garage-members',
-      name: 'DEMO · Zuständigkeiten',
+      name: 'Prishtina Auto-Centrum',
+      address: 'Rruga UÇK 45, Prishtina',
+      contact: 'Flamur Bajrami',
+      phone: '+383 44 200 103',
+      description: 'Vollservice, Elektrik und Inspektion für alle Fahrzeugmarken.',
       state: 'published',
       proof: true,
     },
     {
       id: 'demo-admin-garage-suspended',
-      name: 'DEMO · Administrative Sperre',
+      name: 'Karosserie Dragusha',
+      address: 'Rruga Fehmi Agani 23, Prishtina',
+      contact: 'Xhevdet Dragusha',
+      phone: '+383 44 200 104',
+      description: 'Karosserie und Lackierung in Prishtina.',
       state: 'suspended',
       proof: true,
     },
     {
       id: 'demo-admin-garage-unrestorable',
-      name: 'DEMO · Wiederherstellung nicht zulässig',
+      name: 'Auto-Fix Prishtina',
+      address: 'Rruga Agim Ramadani 67, Prishtina',
+      contact: 'Naim Kurtishi',
+      phone: '+383 44 200 105',
+      description: 'Schnellreparaturen und Reifenservice in Prishtina.',
       state: 'suspended',
       proof: false,
     },
@@ -71,13 +97,15 @@ export async function seedAdminDemo(client, environment = process.env) {
     await client.query(
       `INSERT INTO garage(id,name,publication_state,place_id,business_address,description,contact_person,contact_phone,languages,
       self_reported_specializations,created_by_user_id,location_point,location_source,admin_suspended)
-      VALUES($1,$2,'draft','xk-pristina',$3,$4,'DEMO Ansprechpartner','+383 00 000 000',ARRAY['Deutsch'],ARRAY[]::text[],
-        'demo-admin-owner',ST_SetSRID(ST_MakePoint($5,42.665),4326)::geography,'operator_entered',$6)`,
+      VALUES($1,$2,'draft','xk-pristina',$3,$4,$5,$6,ARRAY['Deutsch'],ARRAY[]::text[],
+        'demo-admin-owner',ST_SetSRID(ST_MakePoint($7,42.665),4326)::geography,'operator_entered',$8)`,
       [
         item.id,
         item.name,
-        'DEMO Teststrasse ' + (index + 1) + ', Prishtina',
-        'DEMO – Ausschliesslich fiktive Werkstatt für die lokale Administration.',
+        item.address,
+        item.description,
+        item.contact,
+        item.phone,
         21.15 + index * 0.001,
         item.state === 'suspended',
       ],
@@ -130,6 +158,27 @@ export async function seedAdminDemo(client, environment = process.env) {
       [item.id + '-event', staffDemoOperator, item.id],
     );
     await mark(client, 'garage', item.id);
+  }
+  const knownPolicy = await client.query(
+    "SELECT 1 FROM lifecycle_policy WHERE version='2025-06-v1'",
+  );
+  if (!knownPolicy.rowCount) {
+    await client.query(
+      `INSERT INTO lifecycle_policy(version,operator_approval_reference,public_review_handling,
+        review_evidence_retention_days,repair_request_retention_days,report_retention_days,
+        audit_log_retention_days,configured_by_user_id,configured_at)
+       VALUES($1,$2,$3,$4,$5,$6,$7,'demo-admin-owner','2025-06-01T09:00:00Z')
+       ON CONFLICT (version) DO NOTHING`,
+      [
+        '2025-06-v1',
+        'VB-2025-06 · Genehmigt durch Geschäftsführung AutoKosova SHPK, 01.06.2025',
+        'retain_anonymized',
+        730,
+        1095,
+        365,
+        1825,
+      ],
+    );
   }
   for (const [id, user, status] of [
     ['demo-admin-deletion-policy', 'demo-admin-erase-requester', 'blocked_by_policy'],

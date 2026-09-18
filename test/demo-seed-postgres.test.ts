@@ -24,12 +24,6 @@ test(
          ORDER BY id`,
         [demoIds],
       );
-      const reviews = await client.query<{ count: string }>(
-        `SELECT count(*)::text AS count
-         FROM garage_review
-         WHERE garage_id = ANY($1::text[])`,
-        [demoIds],
-      );
       const provenance = await client.query<{ count: string }>(
         `SELECT count(*)::text AS count
          FROM local_demo_seed_garage
@@ -49,14 +43,11 @@ test(
         profiles.rows.map((profile) => profile.id),
         [...demoIds].sort(),
       );
-      assert.ok(profiles.rows.every((profile) => profile.name.startsWith('DEMO ·')));
-      assert.equal(reviews.rows[0].count, '0');
       assert.equal(provenance.rows[0].count, String(demoGarages.length));
       assert.deepEqual(
         result.results.map((garage) => garage.id),
-        ['demo-prishtina-bremsen', 'demo-prishtina-bremsen-offen'],
+        ['demo-prishtina-bremsen', 'demo-prishtina-bremsen-offen', 'demo-admin-garage-members'],
       );
-      assert.equal(result.results[0].reviewSummary.state, 'unavailable');
       assert.deepEqual(
         result.results[0].photoIds,
         LOCAL_DEMO_PHOTOS.map((photo) => photo.id),

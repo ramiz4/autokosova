@@ -14,7 +14,7 @@ await client.connect();
 
 try {
   await seedDatabase(client, profile);
-  if (profile === 'demo-workflows') {
+  if (profile === 'demo') {
     console.log(
       process.env.AUTOKOSOVA_DEMO_GARAGE_SUBJECT && process.env.AUTOKOSOVA_DEMO_CUSTOMER_SUBJECT
         ? 'Demo-Konten zugeordnet; vorhandene Änderungen und Löschungen bleiben erhalten.'

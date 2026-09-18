@@ -34,7 +34,7 @@ Der lokale Einstieg mit sämtlichen vorhandenen fiktiven Demo- und Workflowdaten
 
 ```sh
 npm ci
-npm run dev:demo-workflows
+npm run dev:demo
 ```
 
 Voraussetzungen und sichere Worktree-Isolation stehen in der README. Kein Reset ist

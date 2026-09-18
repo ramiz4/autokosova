@@ -90,7 +90,8 @@ export class PostgresAdministrationStore extends PostgresGarageOnboardingStore {
         verified_roles: string[] | null;
         verified_at: Date | null;
       }>(
-        `SELECT u.id,COALESCE(s.display_name,u.id) AS label,u.account_type,u.status,s.verified_roles,s.verified_at
+        `SELECT u.id,COALESCE(s.display_name,u.id) AS label,u.account_type,u.status,s.verified_roles,
+         CASE WHEN array_length(s.verified_roles,1)>0 THEN s.verified_at ELSE NULL END AS verified_at
          FROM app_user u LEFT JOIN staff_identity s ON s.user_id=u.id
          WHERE ($1='' OR u.id ILIKE $2 OR s.display_name ILIKE $2)
          ORDER BY COALESCE(s.display_name,u.id),u.id LIMIT $3 OFFSET $4`,

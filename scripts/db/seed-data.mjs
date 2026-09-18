@@ -1,13 +1,21 @@
 import { seedAdminDemo } from './admin-demo.mjs';
 import { seedReviewWorkflowDemo } from './review-demo.mjs';
 import { seedStaffDemo, readStaffDemoConfig } from './staff-demo.mjs';
-import { isManagedDemoEntity, readDemoAccountConfig, seedDemoAccounts } from './demo-accounts.mjs';
+import {
+  isManagedDemoEntity,
+  readDemoAccountConfig,
+  seedDemoAccounts,
+  demoAccountGarageIds,
+} from './demo-accounts.mjs';
 import {
   demoWorkflowRequests,
   demoWorkflowReviews,
   demoWorkflowUsers,
   demoGarages,
+  demoBetreiberUsers,
+  demoUserDisplayNames,
 } from '../../db/demo-data.mjs';
+import { staffDemoFixtures } from '../../db/staff-demo-data.mjs';
 import { places, serviceCategories, vehicleMakes } from '../../db/catalog.mjs';
 
 export { demoGarages } from '../../db/demo-data.mjs';
@@ -33,10 +41,10 @@ export function parseSeedProfile(argumentsToParse) {
   if (!argumentsToParse.length) return 'reference';
   if (argumentsToParse.length === 2 && argumentsToParse[0] === '--profile') {
     if (argumentsToParse[1] === 'demo') return 'demo';
-    if (argumentsToParse[1] === 'demo-workflows') return 'demo-workflows';
+    if (argumentsToParse[1] === 'demo-workflows') return 'demo'; // backwards-compat alias
   }
 
-  throw new Error('Usage: node scripts/db/seed.mjs [--profile demo|demo-workflows]');
+  throw new Error('Usage: node scripts/db/seed.mjs [--profile demo]');
 }
 
 export function assertSeedEnvironment({ databaseUrl, environment = process.env, profile }) {
@@ -48,10 +56,6 @@ export function assertSeedEnvironment({ databaseUrl, environment = process.env, 
 
   if (profile !== 'reference' && environment.AUTOKOSOVA_DEMO_DATA !== '1') {
     throw new Error('Set AUTOKOSOVA_DEMO_DATA=1 to seed local demo data.');
-  }
-
-  if (profile === 'demo-workflows' && environment.AUTOKOSOVA_DEMO_WORKFLOW_DATA !== '1') {
-    throw new Error('Set AUTOKOSOVA_DEMO_WORKFLOW_DATA=1 to seed local demo workflow data.');
   }
 }
 
@@ -82,19 +86,19 @@ export function assertLocalDatabaseTarget(databaseUrl) {
 }
 
 export async function seedDatabase(client, profile, environment = process.env) {
-  const accounts = profile === 'demo-workflows' ? readDemoAccountConfig(environment) : undefined;
-  if (profile === 'demo-workflows') readStaffDemoConfig(environment);
+  const accounts = profile === 'demo' ? readDemoAccountConfig(environment) : undefined;
+  if (profile === 'demo') readStaffDemoConfig(environment);
   await client.query('BEGIN');
   try {
     await client.query(
       "SELECT pg_advisory_xact_lock(hashtextextended('local-demo-account-binding', 0))",
     );
     if (profile !== 'reference') await assertDemoIdsAreAvailable(client);
-    if (profile === 'demo-workflows') await assertDemoWorkflowIdsAreAvailable(client);
+    if (profile === 'demo') await assertDemoWorkflowIdsAreAvailable(client);
 
     await seedReferenceData(client);
     if (profile !== 'reference') await seedDemoData(client);
-    if (profile === 'demo-workflows') {
+    if (profile === 'demo') {
       await seedDemoWorkflowData(client);
       await seedDemoAccounts(client, accounts);
       await seedStaffDemo(client, environment);
@@ -255,6 +259,57 @@ async function seedDemoData(client) {
       );
     }
   }
+
+  // Seed fictional garage operators (owners + company documents for all demo garages)
+  for (const userId of demoBetreiberUsers) {
+    await client.query(
+      `INSERT INTO app_user (id, oidc_subject, status) VALUES ($1, $1, 'active')
+       ON CONFLICT (id) DO UPDATE SET status = 'active'`,
+      [userId],
+    );
+    const entry = demoUserDisplayNames[userId];
+    if (entry) {
+      await client.query(
+        `INSERT INTO staff_identity (user_id, display_name, verified_roles)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name, verified_roles = EXCLUDED.verified_roles`,
+        [userId, entry.name, entry.roles],
+      );
+    }
+  }
+  const companyDocSize = Buffer.byteLength(staffDemoFixtures['company-valid'], 'utf8');
+  const demoAccountGarageIdSet = new Set(demoAccountGarageIds);
+  for (const [index, garage] of demoGarages.entries()) {
+    const betreiber = demoBetreiberUsers[index % demoBetreiberUsers.length];
+    const docId = `demo-company-doc-${garage.id}`;
+
+    if (!demoAccountGarageIdSet.has(garage.id)) {
+      await client.query(
+        `INSERT INTO membership (user_id, garage_id, role, state, granted_by)
+         VALUES ($1, $2, 'owner', 'active', $1)
+         ON CONFLICT (user_id, garage_id) DO UPDATE SET role = 'owner', state = 'active'`,
+        [betreiber, garage.id],
+      );
+    }
+
+    await client.query(
+      `INSERT INTO file_object (id, owner_user_id, storage_key, content_type, size_bytes, scan_state)
+       VALUES ($1, $2, $3, 'text/plain', $4, 'clean')
+       ON CONFLICT (id) DO NOTHING`,
+      [docId, betreiber, `local-demo/${docId}`, companyDocSize],
+    );
+    await client.query(
+      `INSERT INTO local_demo_file_fixture (file_id, fixture_key) VALUES ($1, 'company-valid')
+       ON CONFLICT (file_id) DO NOTHING`,
+      [docId],
+    );
+    await client.query(
+      `INSERT INTO garage_verification_document (file_id, garage_id, uploaded_by_user_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (file_id) DO NOTHING`,
+      [docId, garage.id, betreiber],
+    );
+  }
 }
 
 function demoWorkflowFileId(review) {
@@ -330,6 +385,15 @@ async function seedDemoWorkflowData(client) {
        ON CONFLICT (id) DO UPDATE SET oidc_subject = EXCLUDED.oidc_subject, status = 'active'`,
       [userId],
     );
+    const entry = demoUserDisplayNames[userId];
+    if (entry) {
+      await client.query(
+        `INSERT INTO staff_identity (user_id, display_name, verified_roles)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name, verified_roles = EXCLUDED.verified_roles`,
+        [userId, entry.name, entry.roles],
+      );
+    }
     await recordDemoWorkflowEntity(client, 'app_user', userId);
   }
 

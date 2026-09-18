@@ -85,7 +85,7 @@ test(
         AUTOKOSOVA_DEMO_ADMIN_SUBJECT: 'reviewflow-admin',
         AUTOKOSOVA_DEMO_MODERATOR_SUBJECT: 'reviewflow-moderator',
       };
-      await seedDatabase(seed, 'demo-workflows', env);
+      await seedDatabase(seed, 'demo', env);
       await root.query(`CREATE ROLE ${role} NOLOGIN NOSUPERUSER NOBYPASSRLS`);
       createdRole = true;
       await root.query(`GRANT USAGE ON SCHEMA ${schema} TO ${role}`);
@@ -286,7 +286,7 @@ test(
       )!;
       assert.equal(restored.garageResponse?.text, reply);
       assert.equal(restored.updates.length, 1);
-      await seedDatabase(seed, 'demo-workflows', env);
+      await seedDatabase(seed, 'demo', env);
       assert.equal((await reviews.getOwnReview(author, saved.id)).publicationState, 'published');
       // Real HTTP schemas and owner boundaries over this non-owner PostgreSQL connection.
       const access = new AccessStore();

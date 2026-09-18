@@ -6,6 +6,7 @@ import {
   staffDemoGarage,
   staffDemoReviews,
   staffDemoFixtures,
+  staffDemoDisplayNames,
 } from '../../db/staff-demo-data.mjs';
 
 export function readStaffDemoConfig(environment = process.env) {
@@ -47,6 +48,15 @@ export async function seedStaffDemo(client, environment = process.env) {
     if (!inserted.rowCount)
       throw new Error('Staff demo fixture ID is already used by unmanaged data.');
     await mark(client, 'app_user', userId);
+    const entry = staffDemoDisplayNames[userId];
+    if (entry) {
+      await client.query(
+        `INSERT INTO staff_identity (user_id, display_name, verified_roles)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name, verified_roles = EXCLUDED.verified_roles`,
+        [userId, entry.name, entry.roles],
+      );
+    }
   }
   if (config.moderator) {
     // Binding a known, explicitly configured subject to a case does NOT assign a platform role.

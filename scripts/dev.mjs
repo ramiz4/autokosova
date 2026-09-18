@@ -25,8 +25,8 @@ try {
       : args.length === 2 && args[0] === '--profile'
         ? args[1]
         : undefined;
-  if (!['reference', 'demo', 'demo-workflows'].includes(profile)) {
-    throw new Error('Aufruf: npm run dev[:demo|:demo-workflows|:doctor]');
+  if (!['reference', 'demo'].includes(profile)) {
+    throw new Error('Aufruf: npm run dev[:demo|:doctor]');
   }
   const config = resolveConfig(root);
   console.log(
@@ -79,8 +79,8 @@ try {
     controller.signal.throwIfAborted();
     console.log('Starte Angular; prüfe API mit DB-Zugriff …');
     config.env.AUTOKOSOVA_DEV_INSTANCE = randomUUID();
-    config.env.AUTOKOSOVA_LOCAL_DEMO_FILES = profile === 'demo-workflows' ? '1' : '0';
-    if (profile === 'demo-workflows')
+    config.env.AUTOKOSOVA_LOCAL_DEMO_FILES = profile === 'demo' ? '1' : '0';
+    if (profile === 'demo')
       console.log(
         'Admin-/Moderator-Demo: regulärer OIDC-Login und verifizierte Rollen erforderlich. Fehlende Moderator-Zuordnung: AUTOKOSOVA_DEMO_MODERATOR_SUBJECT lokal einrichten.',
       );

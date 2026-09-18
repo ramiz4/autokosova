@@ -175,7 +175,7 @@ test('readiness requires the search API, valid response and the requested demo r
   );
   body = { results: [{ id: DEMO_READINESS_GARAGE_ID }] };
   await waitForApplication(url, child, { timeout: 500, profile: 'demo' });
-  await waitForApplication(url, child, { timeout: 500, profile: 'demo-workflows' });
+  await waitForApplication(url, child, { timeout: 500, profile: 'demo' });
   await assert.rejects(
     waitForApplication(url, child, { timeout: 100, instance: 'own-starter' }),
     /API\/DB/,

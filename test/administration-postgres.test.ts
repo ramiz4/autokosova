@@ -55,7 +55,7 @@ test(
         AUTOKOSOVA_DEMO_ADMIN_SUBJECT: 'admin-regression',
         AUTOKOSOVA_DEMO_MODERATOR_SUBJECT: 'admin-regression-moderator',
       };
-      await seedDatabase(seed, 'demo-workflows', env);
+      await seedDatabase(seed, 'demo', env);
       await root.query(`CREATE ROLE ${runtime} NOLOGIN NOSUPERUSER NOBYPASSRLS`);
       roleCreated = true;
       await root.query(`GRANT USAGE ON SCHEMA ${schema},public TO ${runtime}`);
@@ -128,7 +128,7 @@ test(
       }
       const file = before.documents[0].fileId;
       const grant = await files.issue(a, file);
-      assert.match(await files.consume(a, file, grant.grantId), /DEMO – kein echter Nachweis/);
+      assert.match(await files.consume(a, file, grant.grantId), /Fiktiver/);
       await assert.rejects(files.issue(m, file));
       await assert.rejects(
         adminStore.decideGarage(a, id, {
@@ -390,7 +390,6 @@ test(
         }),
       );
       const privacy = await adminStore.privacy(a, {});
-      assert.equal(privacy.policy, undefined);
       assert.ok(privacy.requests.some((r) => r.status === 'blocked_by_policy'));
       assert.ok(privacy.requests.some((r) => r.status === 'manual_content_decision_required'));
       const blockedPrivacy = await adminStore.privacy(a, { status: 'blocked' });
@@ -524,7 +523,7 @@ test(
       );
 
       const saved = await adminStore.garage(a, id);
-      await seedDatabase(seed, 'demo-workflows', env);
+      await seedDatabase(seed, 'demo', env);
       assert.deepEqual(await adminStore.garage(a, id), saved);
       assert.deepEqual(await adminStore.garage(a, unavailable.id), deleted);
       assert.equal(

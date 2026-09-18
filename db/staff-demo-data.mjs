@@ -4,13 +4,20 @@ export const staffDemoAuthor = 'demo-staff-review-author';
 export const staffDemoReporter = 'demo-staff-report-author';
 export const staffDemoForeign = 'demo-staff-foreign-moderator';
 export const staffDemoOperator = 'demo-staff-history-operator';
+
+export const staffDemoDisplayNames = {
+  [staffDemoAuthor]: { name: 'Dafina Kelmendi', roles: [] },
+  [staffDemoReporter]: { name: 'Behar Lleshi', roles: [] },
+  [staffDemoForeign]: { name: 'Teuta Osmani', roles: ['moderator'] },
+  [staffDemoOperator]: { name: 'Arlind Bytyqi', roles: ['moderator'] },
+};
 export const staffDemoFixtures = Object.freeze({
   'visit-valid':
-    'DEMO – kein echter Nachweis\nDEMO – not a real document\n\nDEMO · Bremsen Nord Prishtina\nWerkstatt-ID: demo-prishtina-bremsen-offen\nBesuch: 2026-08\nLeistung: Bremsenprüfung und Bremsbelagwechsel\nNur fiktive Testdaten. Keine Zahlung, Buchung oder echte Reparatur.\n',
+    'Bremsen-Centrum Nord\nRruga Agim Ramadani 14, Prishtina\nTel: +383 44 100 125\n\nLeistungsnachweis\nBesuch: August 2026\nLeistung: Bremsenprüfung und Bremsbelagwechsel Vorderachse\nFahrzeug: Škoda Octavia\n\nFiktiver Beleg – kein realer Betrieb oder Auftrag.\n',
   'visit-mismatch':
-    'DEMO – kein echter Nachweis\nDEMO – not a real document\n\nDEMO · Anderer Betrieb\nBesuch: 2025-01\nLeistung: Klimaanlagenprüfung\nAbsichtlich unpassender Besuchsnachweis für einen negativen Test.\n',
+    'Klima-Center Gjilan\nRruga Fehmi Agani 8, Gjilan\nTel: +383 44 100 122\n\nLeistungsnachweis\nBesuch: Januar 2025\nLeistung: Klimaanlagenprüfung und Kältemittelbefüllung\nFahrzeug: VW Golf\n\nFiktiver Beleg – absichtlich abweichende Werkstatt für Testszenarien.\n',
   'company-valid':
-    'DEMO – kein echter Nachweis\nDEMO – not a real document\n\nFiktiver Unternehmensnachweis für eine lokale Werkstattprüfung.\nKeine reale Registrierung, Person oder Kontaktadresse.\n',
+    'Bremsen-Centrum Nord\nGeschäftsinhaber: Arben Krasniqi\nNIPT: K12345678A\nRruga Agim Ramadani 14, 10000 Prishtina\n\nFiktiver Unternehmensnachweis – keine reale Registrierung oder Person.\n',
 });
 export const staffDemoReviews = [
   { id: 'demo-staff-review-unassigned', file: 'visit-valid', assignment: 'none' },
