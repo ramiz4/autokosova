@@ -56,7 +56,25 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
     'Services, vehicle makes and places available in the system.',
     'Shërbimet, markat e automjeteve dhe vendet e disponueshme në sistem.',
   ],
+  policyIntro: [
+    'Aktive Aufbewahrungsregel und Fristen für alle Datenkategorien verwalten.',
+    'Manage the active retention policy and periods for all data categories.',
+    'Administroni rregullin aktiv të ruajtjes dhe afatet për të gjitha kategoritë e të dhënave.',
+  ],
+  supportIntro: [
+    'Werkstatt im Auftrag eines Kunden anmelden. Nur mit schriftlicher Vollmacht zulässig.',
+    'Register a garage on behalf of a customer. Only permitted with written authorisation.',
+    'Regjistroni një servis në emër të një klienti. Lejohet vetëm me autorizim me shkrim.',
+  ],
   searchPlaceholder: ['Name oder ID …', 'Name or ID …', 'Emri ose ID-ja …'],
+  catalogSearchPlaceholder: [
+    'Dienste, Marken oder Orte filtern …',
+    'Filter services, makes or places …',
+    'Filtro shërbimet, markat ose vendet …',
+  ],
+  clearSearch: ['Suche zurücksetzen', 'Clear search', 'Pastro kërkimin'],
+  auditFrom: ['Von', 'From', 'Nga'],
+  auditTo: ['Bis', 'To', 'Deri'],
   page: ['Seite', 'Page', 'Faqja'],
   pendingGarages: [
     'Ausstehende Werkstattprüfungen',

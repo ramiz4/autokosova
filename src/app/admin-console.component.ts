@@ -33,6 +33,7 @@ import {
   type AdminPrivacy,
   type AdminAuditEvent,
   type AdminCatalog,
+  type AdminCatalogItem,
   type AdminSupportContext,
   type AdminOverview,
 } from '../shared/administration';
@@ -95,6 +96,9 @@ export class AdminConsoleComponent {
     'auditLogRetentionDays',
   ] as const;
   query = '';
+  catalogQuery = '';
+  auditFrom = '';
+  auditTo = '';
   status = '';
   candidateQuery = '';
   targetUserId = '';
@@ -236,6 +240,9 @@ export class AdminConsoleComponent {
     this.fromUserId = '';
     this.requestReference = '';
     this.query = '';
+    this.catalogQuery = '';
+    this.auditFrom = '';
+    this.auditTo = '';
     this.status = '';
     this.candidateQuery = '';
     this.latitude = null;
@@ -348,6 +355,8 @@ export class AdminConsoleComponent {
     if (this.query) q.set('query', this.query);
     if (this.status && this.section === 'garages') q.set('status', this.status);
     if (this.status && this.section === 'privacy') q.set('status', this.status);
+    if (this.auditFrom && this.section === 'audit') q.set('from', this.auditFrom);
+    if (this.auditTo && this.section === 'audit') q.set('to', this.auditTo);
     if (this.section === 'privacy' || this.section === 'policy') {
       const requestId = this.currentParam('requestId');
       if (requestId && /^[A-Za-z0-9_-]{1,200}$/.test(requestId)) q.set('requestId', requestId);
@@ -876,6 +885,23 @@ export class AdminConsoleComponent {
     this.support.set(null);
     await this.openGarage(id, this.detailTab, false, true);
     this.toast.show(this.label('saved'));
+  }
+  clearSearch(): void {
+    this.query = '';
+    void this.load();
+  }
+  filteredCatalog(group: 'services' | 'makes' | 'places'): readonly AdminCatalogItem[] {
+    const data = this.catalog();
+    if (!data) return [];
+    const items = data[group];
+    const q = this.catalogQuery.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter(
+      (item) =>
+        item.label.toLowerCase().includes(q) ||
+        (item.labelSq ?? '').toLowerCase().includes(q) ||
+        item.id.toLowerCase().includes(q),
+    );
   }
   auditColor(action: string): 'green' | 'red' | 'amber' | 'slate' {
     if (/published|approved|restore|active/.test(action)) return 'green';
