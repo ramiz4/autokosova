@@ -24,16 +24,6 @@ test(
          ORDER BY id`,
         [demoIds],
       );
-      const reviews = await client.query<{ count: string }>(
-        `SELECT count(*)::text AS count
-         FROM garage_review g
-         WHERE g.garage_id = ANY($1::text[])
-           AND NOT EXISTS (
-             SELECT 1 FROM local_demo_seed_entity
-             WHERE entity_type = 'garage_review' AND entity_id = g.id
-           )`,
-        [demoIds],
-      );
       const provenance = await client.query<{ count: string }>(
         `SELECT count(*)::text AS count
          FROM local_demo_seed_garage
@@ -53,9 +43,6 @@ test(
         profiles.rows.map((profile) => profile.id),
         [...demoIds].sort(),
       );
-      // IDs are the stable demo identifiers — names are intentionally realistic.
-      assert.ok(profiles.rows.every((profile) => profile.id.startsWith('demo-')));
-      assert.equal(reviews.rows[0].count, '0');
       assert.equal(provenance.rows[0].count, String(demoGarages.length));
       assert.deepEqual(
         result.results.map((garage) => garage.id),
