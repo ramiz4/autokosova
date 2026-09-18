@@ -80,6 +80,10 @@ export class AdminConsoleComponent {
   readonly events = signal<readonly AdminAuditEvent[]>([]);
   readonly catalog = signal<AdminCatalog | null>(null);
   readonly overview = signal<AdminOverview | null>(null);
+  readonly catalogQuery = signal('');
+  readonly filteredServices = computed(() => this.filterCatalogGroup('services'));
+  readonly filteredMakes = computed(() => this.filterCatalogGroup('makes'));
+  readonly filteredPlaces = computed(() => this.filterCatalogGroup('places'));
   readonly consoleUrl = signal('');
   readonly candidates = signal<readonly AdminUser[]>([]);
   readonly proof = signal('');
@@ -96,7 +100,6 @@ export class AdminConsoleComponent {
     'auditLogRetentionDays',
   ] as const;
   query = '';
-  catalogQuery = '';
   auditFrom = '';
   auditTo = '';
   status = '';
@@ -240,7 +243,7 @@ export class AdminConsoleComponent {
     this.fromUserId = '';
     this.requestReference = '';
     this.query = '';
-    this.catalogQuery = '';
+    this.catalogQuery.set('');
     this.auditFrom = '';
     this.auditTo = '';
     this.status = '';
@@ -890,11 +893,23 @@ export class AdminConsoleComponent {
     this.query = '';
     void this.load();
   }
-  filteredCatalog(group: 'services' | 'makes' | 'places'): readonly AdminCatalogItem[] {
+  filteredAuditEvents(): readonly AdminAuditEvent[] {
+    const events = this.events();
+    const from = this.auditFrom.trim();
+    const to = this.auditTo.trim();
+    if (!from && !to) return events;
+    const fromMs = from ? new Date(from).getTime() : -Infinity;
+    const toMs = to ? new Date(to + 'T23:59:59').getTime() : Infinity;
+    return events.filter((e) => {
+      const t = new Date(e.createdAt).getTime();
+      return t >= fromMs && t <= toMs;
+    });
+  }
+  private filterCatalogGroup(group: 'services' | 'makes' | 'places'): readonly AdminCatalogItem[] {
     const data = this.catalog();
     if (!data) return [];
     const items = data[group];
-    const q = this.catalogQuery.trim().toLowerCase();
+    const q = this.catalogQuery().trim().toLowerCase();
     if (!q) return items;
     return items.filter(
       (item) =>

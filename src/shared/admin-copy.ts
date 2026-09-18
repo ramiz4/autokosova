@@ -136,6 +136,8 @@ const labels: Readonly<Record<string, readonly [string, string, string]>> = {
   search: ['Suchen', 'Search', 'Kërko'],
   query: ['Name oder technische ID', 'Name or technical ID', 'Emri ose ID-ja teknike'],
   empty: ['Keine passenden Einträge.', 'No matching entries.', 'Nuk ka të dhëna që përputhen.'],
+  noEntries: ['Noch keine Einträge vorhanden.', 'No entries yet.', 'Akoma nuk ka të dhëna.'],
+  refresh: ['Aktualisieren', 'Refresh', 'Rifresko'],
   denied: [
     'Nur für berechtigte Administratoren.',
     'Authorized administrators only.',
