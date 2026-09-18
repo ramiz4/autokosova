@@ -14,7 +14,7 @@ const localDatabaseUrl = 'postgresql://autokosova:autokosova@127.0.0.1:55432/aut
 test('seed profiles are explicit and reject unknown arguments', () => {
   assert.equal(parseSeedProfile([]), 'reference');
   assert.equal(parseSeedProfile(['--profile', 'demo']), 'demo');
-  assert.equal(parseSeedProfile(['--profile', 'demo-workflows']), 'demo-workflows');
+  assert.equal(parseSeedProfile(['--profile', 'demo-workflows']), 'demo'); // backwards-compat alias
   assert.throws(() => parseSeedProfile(['--profile', 'reference']), /Usage/);
   assert.throws(() => parseSeedProfile(['demo']), /Usage/);
 });
@@ -47,30 +47,11 @@ test('seed safety only permits the documented local database target', () => {
       }),
     /AUTOKOSOVA_DEMO_DATA=1/,
   );
-  assert.throws(
-    () =>
-      assertSeedEnvironment({
-        databaseUrl: localDatabaseUrl,
-        environment: { AUTOKOSOVA_DEMO_DATA: '1' },
-        profile: 'demo-workflows',
-      }),
-    /AUTOKOSOVA_DEMO_WORKFLOW_DATA=1/,
-  );
   assert.doesNotThrow(() =>
     assertSeedEnvironment({
       databaseUrl: localDatabaseUrl,
       environment: { AUTOKOSOVA_DEMO_DATA: '1' },
       profile: 'demo',
-    }),
-  );
-  assert.doesNotThrow(() =>
-    assertSeedEnvironment({
-      databaseUrl: localDatabaseUrl,
-      environment: {
-        AUTOKOSOVA_DEMO_DATA: '1',
-        AUTOKOSOVA_DEMO_WORKFLOW_DATA: '1',
-      },
-      profile: 'demo-workflows',
     }),
   );
 });

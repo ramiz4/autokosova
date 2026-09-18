@@ -83,9 +83,7 @@ test('profile permissions cannot leak from shell or be reloaded from local files
   assert.equal(reloaded.ZITADEL_CLIENT_ID, '');
   assert.match(notices[0], /Login nicht konfiguriert/);
   assert.equal(seedEnvironment(env, 'reference').AUTOKOSOVA_DEMO_DATA, '');
-  assert.equal(seedEnvironment(env, 'demo').AUTOKOSOVA_DEMO_WORKFLOW_DATA, '');
   assert.equal(seedEnvironment(env, 'demo').AUTOKOSOVA_DEMO_DATA, '1');
-  assert.equal(seedEnvironment(env, 'demo-workflows').AUTOKOSOVA_DEMO_WORKFLOW_DATA, '1');
   assert.throws(() => seedEnvironment(env, 'unknown'));
 });
 

@@ -57,7 +57,7 @@ export async function createRealApplication(root, source, signal) {
       timeout: 30_000,
       signal,
     });
-    await seedDatabase(database, 'demo-workflows', {
+    await seedDatabase(database, 'demo', {
       ZITADEL_ISSUER: source.ZITADEL_ISSUER,
       AUTOKOSOVA_DEMO_CUSTOMER_SUBJECT: source.E2E_REAL_CUSTOMER_SUBJECT,
       AUTOKOSOVA_DEMO_GARAGE_SUBJECT: source.E2E_REAL_GARAGE_SUBJECT,

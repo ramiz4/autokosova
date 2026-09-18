@@ -156,10 +156,10 @@ try {
     );
   }
   console.log('PASS: Seed-Fehler stoppt vor dem App-Start.');
-  const workflows = await start(first, 'demo-workflows');
+  const workflows = await start(first, 'demo');
   await runProcess('npm', ['run', 'test:demo-workflow-seed'], { cwd: first, env: a.env });
   await stop(workflows);
-  console.log('PASS: Getrenntes Workflowprofil und private Datengrenzen.');
+  console.log('PASS: Demo-Profil mit Workflow- und privaten Daten.');
   await stop(secondApp);
   for (const root of worktrees) {
     await assert.rejects(readFile(join(root, '.autokosova-dev.lock', 'owner')), { code: 'ENOENT' });

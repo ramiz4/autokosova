@@ -38,7 +38,7 @@ Die gemeinsame Navbar liest den echten Sitzungsstatus. Angemeldet erscheint das 
 
 ## Lokaler Nachweis
 
-UI- und API-Tests prüfen Authentifizierung, CSRF, Besitzergrenzen, Persistenz, Idempotenz und Fehlerzustände. PostgreSQL-Tests prüfen erneutes Öffnen des Stores sowie Export und Löschung. Auf Port 4200 wurde mit dem fiktiven Customer-OIDC-Testkonto zusätzlich Anmeldung → Herz speichern → API bestätigen → Neuladen → Herz entfernen → Abmeldung geprüft. Demo-Bewertungen stammen ausschließlich aus dem ausdrücklich fiktiven `demo-workflows`-Seed.
+UI- und API-Tests prüfen Authentifizierung, CSRF, Besitzergrenzen, Persistenz, Idempotenz und Fehlerzustände. PostgreSQL-Tests prüfen erneutes Öffnen des Stores sowie Export und Löschung. Auf Port 4200 wurde mit dem fiktiven Customer-OIDC-Testkonto zusätzlich Anmeldung → Herz speichern → API bestätigen → Neuladen → Herz entfernen → Abmeldung geprüft. Demo-Bewertungen stammen ausschließlich aus dem ausdrücklich fiktiven Demo-Seed.
 
 Migration 019 muss vor dem neuen Serverstand angewendet werden. Bei Code-Rücknahme kann die zusätzliche Tabelle bestehen bleiben; sie wird nicht automatisch gelöscht.
 

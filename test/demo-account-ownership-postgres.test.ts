@@ -59,7 +59,7 @@ test(
         await client.query(sql);
       }
       // Wrong membership must roll back the complete first-time binding.
-      await seedDatabase(client, 'demo-workflows', {});
+      await seedDatabase(client, 'demo', {});
       await client.query("INSERT INTO app_user(id,oidc_subject,status) VALUES($1,$1,'active')", [
         outsiderId,
       ]);
@@ -67,10 +67,10 @@ test(
         "INSERT INTO membership(user_id,garage_id,role,state,granted_by) VALUES($1,$2,'owner','active',$1)",
         [outsiderId, demoAccountGarageIds[0]],
       );
-      await assert.rejects(() => seedDatabase(client, 'demo-workflows', config), /membership/);
+      await assert.rejects(() => seedDatabase(client, 'demo', config), /membership/);
       assert.equal((await client.query('SELECT * FROM local_demo_account_binding')).rowCount, 0);
       await client.query('DELETE FROM membership WHERE user_id=$1', [outsiderId]);
-      await seedDatabase(client, 'demo-workflows', config);
+      await seedDatabase(client, 'demo', config);
       for (const id of demoAccountRequestIds) {
         const response = await app.inject({
           url: '/api/me/repair-requests/' + id,
@@ -87,14 +87,14 @@ test(
         'UPDATE repair_request SET earliest_dropoff_on=NULL,latest_pickup_on=NULL WHERE id=$1',
         [demoAccountRequestIds[0]],
       );
-      await seedDatabase(client, 'demo-workflows', config);
+      await seedDatabase(client, 'demo', config);
       const repaired = await app.inject({
         url: '/api/me/repair-requests/' + demoAccountRequestIds[0],
         headers: headers(customer),
       });
       assert.equal(isSavedRepairRequest(repaired.json()), true);
       assert.equal(repaired.json().revision, 2);
-      await seedDatabase(client, 'demo-workflows', config);
+      await seedDatabase(client, 'demo', config);
       assert.equal(
         (
           await app.inject({
@@ -252,8 +252,7 @@ test(
         ).statusCode,
         204,
       );
-      for (const profile of ['demo-workflows', 'demo', 'demo-workflows'])
-        await seedDatabase(client, profile, config);
+      for (const profile of ['demo', 'demo', 'demo']) await seedDatabase(client, profile, config);
       assert.equal(
         (await app.inject({ url: garageUrl, headers: headers(garage) })).json().profile.name,
         edited.name,
@@ -285,7 +284,7 @@ test(
       );
       await assert.rejects(
         () =>
-          seedDatabase(client, 'demo-workflows', {
+          seedDatabase(client, 'demo', {
             ...config,
             ZITADEL_ISSUER: 'https://other.example.test',
           }),

@@ -40,10 +40,10 @@ export function parseSeedProfile(argumentsToParse) {
   if (!argumentsToParse.length) return 'reference';
   if (argumentsToParse.length === 2 && argumentsToParse[0] === '--profile') {
     if (argumentsToParse[1] === 'demo') return 'demo';
-    if (argumentsToParse[1] === 'demo-workflows') return 'demo-workflows';
+    if (argumentsToParse[1] === 'demo-workflows') return 'demo'; // backwards-compat alias
   }
 
-  throw new Error('Usage: node scripts/db/seed.mjs [--profile demo|demo-workflows]');
+  throw new Error('Usage: node scripts/db/seed.mjs [--profile demo]');
 }
 
 export function assertSeedEnvironment({ databaseUrl, environment = process.env, profile }) {
@@ -55,10 +55,6 @@ export function assertSeedEnvironment({ databaseUrl, environment = process.env, 
 
   if (profile !== 'reference' && environment.AUTOKOSOVA_DEMO_DATA !== '1') {
     throw new Error('Set AUTOKOSOVA_DEMO_DATA=1 to seed local demo data.');
-  }
-
-  if (profile === 'demo-workflows' && environment.AUTOKOSOVA_DEMO_WORKFLOW_DATA !== '1') {
-    throw new Error('Set AUTOKOSOVA_DEMO_WORKFLOW_DATA=1 to seed local demo workflow data.');
   }
 }
 
@@ -89,19 +85,19 @@ export function assertLocalDatabaseTarget(databaseUrl) {
 }
 
 export async function seedDatabase(client, profile, environment = process.env) {
-  const accounts = profile === 'demo-workflows' ? readDemoAccountConfig(environment) : undefined;
-  if (profile === 'demo-workflows') readStaffDemoConfig(environment);
+  const accounts = profile === 'demo' ? readDemoAccountConfig(environment) : undefined;
+  if (profile === 'demo') readStaffDemoConfig(environment);
   await client.query('BEGIN');
   try {
     await client.query(
       "SELECT pg_advisory_xact_lock(hashtextextended('local-demo-account-binding', 0))",
     );
     if (profile !== 'reference') await assertDemoIdsAreAvailable(client);
-    if (profile === 'demo-workflows') await assertDemoWorkflowIdsAreAvailable(client);
+    if (profile === 'demo') await assertDemoWorkflowIdsAreAvailable(client);
 
     await seedReferenceData(client);
     if (profile !== 'reference') await seedDemoData(client);
-    if (profile === 'demo-workflows') {
+    if (profile === 'demo') {
       await seedDemoWorkflowData(client);
       await seedDemoAccounts(client, accounts);
       await seedStaffDemo(client, environment);

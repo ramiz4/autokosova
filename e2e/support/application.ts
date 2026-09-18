@@ -58,7 +58,7 @@ export async function createApplication() {
   let created = false;
   let connected = false;
   async function seed() {
-    await seedDatabase(database, 'demo-workflows', env);
+    await seedDatabase(database, 'demo', env);
   }
   async function start() {
     // Use the real migrations and workflow seed, also on restart; no schema rewrite/reset.

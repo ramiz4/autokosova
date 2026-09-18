@@ -38,7 +38,7 @@ test(
           name === '082_administration.sql' ? '080_administration.sql' : name,
         ]);
       }
-      await seedDatabase(db, 'demo-workflows', { NODE_ENV: 'test' });
+      await seedDatabase(db, 'demo', { NODE_ENV: 'test' });
       await db.query(
         "UPDATE garage SET description='DEMO preserved operator edit' WHERE id='demo-admin-garage-pending'",
       );

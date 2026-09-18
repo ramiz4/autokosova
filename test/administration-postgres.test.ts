@@ -55,7 +55,7 @@ test(
         AUTOKOSOVA_DEMO_ADMIN_SUBJECT: 'admin-regression',
         AUTOKOSOVA_DEMO_MODERATOR_SUBJECT: 'admin-regression-moderator',
       };
-      await seedDatabase(seed, 'demo-workflows', env);
+      await seedDatabase(seed, 'demo', env);
       await root.query(`CREATE ROLE ${runtime} NOLOGIN NOSUPERUSER NOBYPASSRLS`);
       roleCreated = true;
       await root.query(`GRANT USAGE ON SCHEMA ${schema},public TO ${runtime}`);
@@ -524,7 +524,7 @@ test(
       );
 
       const saved = await adminStore.garage(a, id);
-      await seedDatabase(seed, 'demo-workflows', env);
+      await seedDatabase(seed, 'demo', env);
       assert.deepEqual(await adminStore.garage(a, id), saved);
       assert.deepEqual(await adminStore.garage(a, unavailable.id), deleted);
       assert.equal(

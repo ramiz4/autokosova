@@ -36,7 +36,7 @@ muss ebenfalls geladen sein. Keine Passwörter, Tokens oder Anbieter-IDs in Git 
 Danach im dafür konfigurierten Worktree:
 
 ```sh
-npm run dev:demo-workflows
+npm run dev:demo
 ```
 
 Die eigenständigen Seed-Befehle behalten ihre lokalen Zielprüfungen und beide expliziten
@@ -61,7 +61,7 @@ zugeordnete oder widerrufene Werkstatt-Mitgliedschaften blockieren die erste Zuo
 
 Nach der erstmaligen Bindung verändern die Demo-Seeds diese zwei Werkstätten und zwei
 Anfragen nicht mehr. Änderungen, entfernte Leistungen, widerrufene Mitgliedschaften
-und gelöschte Datensätze bleiben bei wiederholtem `dev:demo-workflows` und `dev:demo`
+und gelöschte Datensätze bleiben bei wiederholtem `dev:demo` und `dev:demo`
 erhalten. Auch ein tatsächlicher Löschvorgang einer Anfrage hinterlässt nur einen
 lokalen Provenienzmarker, sodass kein späterer Seed die Anfrage wiederherstellt.
 Andere, nicht zugewiesene öffentliche Demo-Fixtures behalten ihr bisheriges Seedverhalten.
