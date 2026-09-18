@@ -124,7 +124,7 @@ test(
       await assert.rejects(files.consume(other, file, grant.grantId));
       assert.match(
         await files.consume(moderator, file, grant.grantId),
-        /DEMO – kein echter Nachweis/,
+        /Fiktiver/,
       );
       await assert.rejects(files.consume(moderator, file, grant.grantId));
       await assert.rejects(files.issue(moderator, 'demo-staff-review-blocked-file'));

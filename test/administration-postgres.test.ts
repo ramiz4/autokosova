@@ -128,7 +128,7 @@ test(
       }
       const file = before.documents[0].fileId;
       const grant = await files.issue(a, file);
-      assert.match(await files.consume(a, file, grant.grantId), /DEMO – kein echter Nachweis/);
+      assert.match(await files.consume(a, file, grant.grantId), /Fiktiver/);
       await assert.rejects(files.issue(m, file));
       await assert.rejects(
         adminStore.decideGarage(a, id, {
